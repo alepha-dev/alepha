@@ -338,6 +338,48 @@ describe("QuestView", () => {
     await waitFor(() => expect(fake.unassignCalls).toBe(1));
   });
 
+  it("offers Answer in the composer only on a quest tagged needs-answer (#Q4348)", async () => {
+    const mount = async (tags: string[]) => {
+      alepha = Alepha.create()
+        .with(AlephaLogger)
+        .with(AlephaDateTime)
+        .with(AlephaFake)
+        .with({ provide: LinkProvider, use: FakeLinkProvider })
+        .with(AlephaReact)
+        .with(AlephaReactRouter)
+        .with(AlephaReactI18n);
+      alepha.inject(Routes);
+      alepha.inject(I18n);
+      alepha.inject(WorkShell);
+      alepha.inject(ResourceRailRegistry);
+      alepha.inject(PinnedPromptsSlot);
+      await alepha.start();
+      await alepha.inject(I18nProvider).setLang("en");
+      alepha.store.set(currentProjectAtom, projectFixture());
+      const fake = alepha.inject(FakeLinkProvider);
+      const view = render(
+        <AlephaContext.Provider value={alepha}>
+          <DialogProvider>
+            <QuestView quest={{ ...fake.quest(), tags }} />
+          </DialogProvider>
+        </AlephaContext.Provider>,
+      );
+      // The composer's own button: the page has mounted it.
+      await screen.findByRole("button", { name: "Comment" });
+      return view;
+    };
+
+    const tagged = await mount(["needs-answer"]);
+    // Nothing typed yet, so there is nothing to answer with.
+    const answer = screen.getByRole("button", { name: "Answer" });
+    expect((answer as HTMLButtonElement).disabled).toBe(true);
+    tagged.unmount();
+    await alepha?.stop();
+
+    await mount(["bug"]);
+    expect(screen.queryByRole("button", { name: "Answer" })).toBeNull();
+  });
+
   it("offers no Unassigned entry on a quest nobody holds", async () => {
     alepha = Alepha.create()
       .with(AlephaLogger)

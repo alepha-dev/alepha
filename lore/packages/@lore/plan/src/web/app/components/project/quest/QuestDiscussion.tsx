@@ -23,6 +23,11 @@ export interface QuestDiscussionProps {
    * refresh while one is being written (#Q3860).
    */
   onDraftChange?: (drafting: boolean) => void;
+  /**
+   * An answer was posted and the `needs-answer` tag went with it: the page
+   * reads the quest again (#Q4348).
+   */
+  onAnswered?: () => void;
 }
 
 /**
@@ -130,6 +135,7 @@ const QuestDiscussion = (props: QuestDiscussionProps) => {
           // the renderer and the notifier about what `@nfo` is.
           members={users.map((user) => mentionHandle(user))}
           onDraftChange={props.onDraftChange}
+          onAnswered={props.onAnswered}
           // Written into the thread's cache: the server already answered
           // with the row.
           onPosted={(comment) => {

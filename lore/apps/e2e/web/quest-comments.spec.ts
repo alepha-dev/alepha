@@ -234,6 +234,59 @@ test.describe("Quest comments", () => {
   });
 
   /**
+   * Answer (#Q4348): on a quest tagged `needs-answer`, the composer's second
+   * button posts the comment and the tag goes with it.
+   */
+  test("Answer posts the comment and removes the needs-answer tag", async ({
+    page,
+  }) => {
+    test.setTimeout(60_000);
+
+    const t = Date.now();
+    const email = `answer${t}@example.com`;
+    const password = "AnswerTest123!";
+    const projectTitle = `AN${t}`.slice(0, 20);
+
+    await registerAndVerify(page, email, password);
+    const { id: projectId, slug: projectSlug } = await createProjectViaWizard(
+      page,
+      projectTitle,
+    );
+    const { id: questId, shortId } = await apiPost<{
+      id: number;
+      shortId: number;
+    }>(page, "createQuest", {
+      projectId,
+      title: `Asked${t}`,
+      description: "An agent left a question here",
+      area: "Main",
+      priority: "medium",
+      objectives: [],
+      attachments: [],
+      tags: ["needs-answer"],
+    });
+
+    await page.goto(`/${projectSlug}/quests/${shortId}`);
+    await page.waitForLoadState("networkidle");
+
+    const answer = page.getByRole("button", { name: /^answer$/i });
+    await expect(answer).toBeVisible();
+
+    await fillMarkdownEditor(page, "Take the second option.");
+    await answer.click();
+
+    await expect(page.getByText("Take the second option.")).toBeVisible();
+    // The tag is gone, so the page stops offering Answer.
+    await expect(answer).toHaveCount(0);
+    const read = await callWithId<{ tags?: string[] }>(
+      page,
+      "getQuestById",
+      questId,
+    );
+    expect(read.data.tags ?? []).not.toContain("needs-answer");
+  });
+
+  /**
    * The composer (quest #1237). Writing a comment from the page is the half
    * that closes the loop the MCP tools open.
    */

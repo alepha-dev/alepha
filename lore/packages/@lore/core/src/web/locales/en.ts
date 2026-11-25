@@ -1022,6 +1022,7 @@ export default {
   "quest.discussion.composer.placeholder":
     "Leave a comment. Mention a member with @, link a folio with [[…]], or point at another quest with #Q1204.",
   "quest.discussion.composer.submit": "Comment",
+  "quest.discussion.composer.answer": "Answer",
   "quest.discussion.commented": "commented",
   "quest.discussion.edited": "edited",
   "quest.discussion.author.unknown": "A former member",

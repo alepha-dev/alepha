@@ -97,6 +97,12 @@ The Discussion mixes the quest's comments with its history (taken, put on hold,
 completed, ...). Mention a member with `@` and the comment lands in their inbox.
 A comment written by an AI agent carries an **agent** mark.
 
+A quest tagged `needs-answer` waits on you: an agent stopped on a question and
+left it in the Discussion. The composer then shows **Answer** beside
+**Comment**. Answer posts your comment and removes the tag, so the quest
+leaves **Asks** and the next agent run works it. Use Comment for a reply that
+is not the answer yet.
+
 Anywhere Lore renders Markdown (descriptions, comments, folios), `[[#Q12]]`
 links to quest 12 of the same project. The same syntax reaches the other kinds:
 `[[#F3]]` a folio, `[[#E4]]` an epic, `[[#R2]]` a release, `[[#P120]]` a

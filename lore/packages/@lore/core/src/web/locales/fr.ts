@@ -1017,6 +1017,7 @@ export default {
   "quest.discussion.composer.placeholder":
     "Laissez un commentaire. Mentionnez un membre avec @, liez un folio avec [[…]], ou pointez une autre quête avec #Q1204.",
   "quest.discussion.composer.submit": "Commenter",
+  "quest.discussion.composer.answer": "Répondre",
   "quest.discussion.commented": "a commenté",
   "quest.discussion.edited": "modifié",
   "quest.discussion.author.unknown": "Un ancien membre",
