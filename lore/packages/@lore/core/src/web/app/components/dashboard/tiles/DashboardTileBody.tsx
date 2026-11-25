@@ -109,7 +109,7 @@ const DashboardTileBody = (props: DashboardTileBodyProps) => {
     const Icon = EMPTY_ICONS[value.empty] ?? Sparkles;
     return (
       <div
-        className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1.5 py-2 text-center text-[12.5px]"
+        className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-1.5 self-stretch py-2 text-center text-[12.5px]"
         data-testid="tile-empty"
         data-reason={value.empty}
       >
