@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { QuestController } from "../src/api/index.ts";
 import { LorePlanApi } from "../src/api/index.ts";
+import { questPresetQuery } from "../src/api/schemas/questPresets.ts";
 import { questComments } from "../src/schemas/index.ts";
 import {
   createTestProject,
@@ -640,6 +641,10 @@ describe("QuestController hold", () => {
       await createTestQuest(ctx.alepha, project, {
         tags: ["needs-answer"],
       });
+      // Waiting on a hand rather than a reply: Asks too (#Q4335).
+      await createTestQuest(ctx.alepha, project, {
+        tags: ["needs-human"],
+      });
       await createTestQuest(ctx.alepha, project, {
         completedAt: daysAgo(1),
       });
@@ -653,13 +658,17 @@ describe("QuestController hold", () => {
       expect(presets.counts).toEqual({
         mine: 1,
         urgent: 1,
-        // Pending, taken or not: the taken quest and the asking one.
-        open: 2,
+        // Pending, taken or not: the taken quest and the two asking ones.
+        open: 3,
         done: 1,
-        asks: 1,
+        asks: 2,
         stale: 1,
         next: 1,
       });
+      // And the list it opens holds both (#Q4335).
+      expect(
+        await list(project, questPresetQuery("asks") as Record<string, string>),
+      ).toHaveLength(2);
     });
   });
 });

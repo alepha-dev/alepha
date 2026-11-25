@@ -904,7 +904,7 @@ export default {
   "quest.presets.done.hint": "Terminées ces 7 derniers jours",
   "quest.presets.asks": "Questions",
   "quest.presets.asks.hint":
-    "Étiquetées needs-answer : quelqu'un attend une réponse",
+    "Étiquetées needs-answer ou needs-human : quelqu'un attend une réponse ou un coup de main",
   "quest.presets.stale": "Figées",
   "quest.presets.stale.hint": "En cours depuis plus de 14 jours",
   "quest.presets.next": "Prochaine",
