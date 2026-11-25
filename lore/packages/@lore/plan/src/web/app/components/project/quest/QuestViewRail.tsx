@@ -287,7 +287,7 @@ const QuestViewRail = (props: QuestViewRailProps) => {
         </QuestViewRailRow>
       </div>
 
-      <QuestViewRailTags quest={quest} />
+      <QuestViewRailTags quest={quest} onUpdate={props.onUpdate} />
 
       {/* Ruled off from the tags above, the same way the action rows below
           are: reminder is a control and tags are a readout. The rule is the

@@ -1,31 +1,57 @@
 import { Badge } from "@alepha/ui";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
-import { useStore } from "alepha/react";
+import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Tags as TagsIcon } from "lucide-react";
+import { Tags as TagsIcon, X } from "lucide-react";
 
+import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import { tagTone } from "../../shared/areaColor.ts";
 import QuestViewRailRow from "./QuestViewRailRow.tsx";
 
 export interface QuestViewRailTagsProps {
   quest: QuestResource;
+  /**
+   * The quest as the server answered a tag's removal.
+   */
+  onUpdate: (quest: QuestResource) => void;
 }
 
 /**
- * The rail's tags block: monospace chips, read-only.
+ * The rail's tags block: monospace chips, each removable from the rail.
  *
- * Editing lives in the edit drawer alone. The rail used to carry an inline
- * `+ tag` that swapped in the create form's chip input, on the argument that
- * a one-value edit with nothing to validate should not need a round trip.
- * That put a second, differently-shaped editor on a surface whose whole job
- * is to be read, and left the quest with two places to change the same
- * field. One editor, in the drawer.
+ * **Removing is the rail's, adding is the drawer's** (#Q4285, at the owner's
+ * request). Hovering or focusing a chip shows an "x" drawn over its own
+ * text, absolutely positioned, so neither the chip's width nor the row's
+ * wrapping moves; a click removes the tag at once. The server takes `tags`
+ * on a completed quest too, so this works whatever the status.
+ *
+ * Adding stays in the edit drawer alone. The rail used to carry an inline
+ * `+ tag` that swapped in the create form's chip input, which put a second,
+ * differently-shaped editor on a surface whose job is to be read. A removal
+ * is one click on what is already there, and needs no editor.
  */
 const QuestViewRailTags = (props: QuestViewRailTagsProps) => {
   const { tr } = useI18n<I18n, "en">();
+  const questApi = useClient<QuestController>();
   const [project] = useStore(currentProjectAtom);
   const tags = props.quest.tags ?? [];
+  const canUpdate = questApi.updateQuestById.can();
+
+  // A refusal reaches the root `ActionErrorToaster`, and the chip stays:
+  // only the server's answer changes the quest.
+  const remove = useAction<[tag: string], void>(
+    {
+      handler: async (_ctx, tag) => {
+        const updated = await questApi.updateQuestById({
+          params: { id: props.quest.id },
+          body: { tags: tags.filter((it) => it !== tag) },
+        });
+        props.onUpdate(updated);
+      },
+    },
+    [questApi, props.quest.id, tags.join(",")],
+  );
 
   if (tags.length === 0) {
     return null;
@@ -57,8 +83,24 @@ const QuestViewRailTags = (props: QuestViewRailTagsProps) => {
               key={tag}
               variant="tint"
               tone={tagTone(project?.tagColors?.[tag])}
+              className="group/tag relative"
+              data-testid="quest-rail-tag"
             >
               {tag}
+              {canUpdate && (
+                // Over the chip's own text, never beside it: shown on hover
+                // or focus, it changes no width and no wrapping.
+                <button
+                  type="button"
+                  aria-label={tr("quest.rail.tags.remove", { args: [tag] })}
+                  disabled={remove.loading}
+                  onClick={() => void remove.run(tag)}
+                  className="bg-card/90 text-foreground absolute inset-0 flex items-center justify-center rounded-[inherit] opacity-0 transition-opacity group-hover/tag:opacity-100 focus-visible:opacity-100 disabled:cursor-wait"
+                  data-testid="quest-rail-tag-remove"
+                >
+                  <X className="size-3" />
+                </button>
+              )}
             </Badge>
           ))}
         </span>
