@@ -91,7 +91,7 @@ picked in the creation wizard and switched in Settings ▸ General ▸ Capabilit
 
 | capability                    | what it brings                                                                                                                                                                                  |
 | ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `feedback`                                                           |
+| `plan`                        | quests, areas, epics, releases, the board, feedback - options `epics` / `releases` / `estimate` / `chrono` / `reminder` / `feedback`                                                            |
 | `remember`                    | folios, their directories and attachments - no option since #Q3704                                                                                                                              |
 | `ship`                        | deployed copies, sigils, errors, artifacts, deploys - options `track` / `uptime` / `deploy` / `stacks` (#Q4006)                                                                                 |
 | `chat`, `activity`, `reports` | the General group (#Q4007): Chat's rooms; the Activity page and Reports, each a switch on by default that hides its page (404) and sidebar entry; Reports' option `quality` (#Q4217) is Quality |
@@ -135,15 +135,15 @@ wizard is asking a question and "none" is not an answer to it.
 
 A **prompt** is what Lore hands a coding agent: copied into a session, or run on the project's Agent host as an agent job. One table, `prompts`, holds a project's rows.
 
-| piece        | where                                                                                                                                                                    |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| built-ins    | `PromptRegistry` (server): registered by the module that owns them, Plan's ten in `PlanPrompts` (texts in `@lore/plan`'s `api/prompts/`). A built-in's text is frozen |
-| a row        | configures a built-in (source, trigger, pins, enabled) without copying its words, or is a custom prompt with its own text and typed args                              |
-| args         | `epic`, `quest`, `feedback`, `pullRequest`, `member`, each with the statuses it accepts; a resolver per type reads the item with the caller's permissions              |
-| render, run  | `PromptService.render` (Copy), `PromptRunService.run` (an agent job recording prompt, args, cause and the agent's final reply)                                          |
-| triggers     | `PromptTriggers`: events that fill an arg, a schedule, `check`, ceilings, pause                                                                                         |
-| pins         | `prompts.pins`, page keys registered with `PromptRegistry.registerPage`; the web's `PinnedPromptsButton` and `usePinnedPrompts().rowGroup` show what is pinned        |
-| the page     | Settings > Prompts: the Prompts tab (`ProjectSettingsPromptsPage`) and the Jobs tab (`ProjectSettingsPromptJobsPage`, with `host:read`)                                |
+| piece       | where                                                                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| built-ins   | `PromptRegistry` (server): registered by the module that owns them, Plan's ten in `PlanPrompts` (texts in `@lore/plan`'s `api/prompts/`). A built-in's text is frozen |
+| a row       | configures a built-in (source, trigger, pins, enabled) without copying its words, or is a custom prompt with its own text and typed args                              |
+| args        | `epic`, `quest`, `feedback`, `pullRequest`, `member`, each with the statuses it accepts; a resolver per type reads the item with the caller's permissions             |
+| render, run | `PromptService.render` (Copy), `PromptRunService.run` (an agent job recording prompt, args, cause and the agent's final reply)                                        |
+| triggers    | `PromptTriggers`: events that fill an arg, a schedule, `check`, ceilings, pause                                                                                       |
+| pins        | `prompts.pins`, page keys registered with `PromptRegistry.registerPage`; the web's `PinnedPromptsButton` and `usePinnedPrompts().rowGroup` show what is pinned        |
+| the page    | Settings > Prompts: the Prompts tab (`ProjectSettingsPromptsPage`) and the Jobs tab (`ProjectSettingsPromptJobsPage`, with `host:read`)                               |
 
 Rules a change keeps:
 

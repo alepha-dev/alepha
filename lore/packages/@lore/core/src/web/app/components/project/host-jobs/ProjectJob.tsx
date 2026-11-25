@@ -1,36 +1,52 @@
-import { Button, cn } from "@alepha/ui";
+import { Button, useToast } from "@alepha/ui";
+import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useState } from "react";
+import { useRouter } from "alepha/react/router";
+import { Copy, Download, Play, Square } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { HostJobController } from "../../../../../api/controllers/HostJobController.ts";
 import type { PromptController } from "../../../../../api/controllers/PromptController.ts";
+import { AgentTranscript } from "../../../../../api/schemas/AgentTranscript.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
 import { type I18n } from "../../../services/I18n.ts";
-import JobHistoryRail from "./JobHistoryRail.tsx";
+import { usePromptActions } from "../prompts/run/usePromptActions.ts";
 import JobLogViewer from "./JobLogViewer.tsx";
-import JobStatusBadge from "./JobStatusBadge.tsx";
 import { jobInFlight } from "./jobStatusIcon.ts";
-import ProjectJobRun from "./ProjectJobRun.tsx";
+import ProjectJobAside from "./ProjectJobAside.tsx";
+import ProjectJobTranscript from "./ProjectJobTranscript.tsx";
 
 export interface ProjectJobProps {
   jobId: string;
 }
 
+type TabKey = "transcript" | "log" | "prompt";
+
 /**
- * One host job (#Q3984), laid out as Chat is since #Q4207: the project's job
- * history on the left, the open job's header, its details and its log on
- * the right, the log in a viewer that follows the output while it runs.
+ * One job (#Q4286), on the detail shell every detail page shares: the job
+ * titled by its prompt and args in the aside, and three tabs, kept in the
+ * URL: Transcript (the reply, then what the agent said and did), Raw log,
+ * and the Prompt it received. The toolbar downloads the log, copies the
+ * prompt, and runs it again or cancels it. No rail of other jobs: the list
+ * is the Jobs tab of Settings > Prompts, which the crumb leads back to.
  *
  * The log is read by byte offsets: each poll asks for what lies past what
  * the page already holds, every two seconds while the job is in flight,
  * and stops once it has ended.
  */
-const ProjectJob = ({ jobId }: ProjectJobProps) => {
-  const { tr, l } = useI18n<I18n, "en">();
+const ProjectJob = (props: ProjectJobProps) => {
+  const { tr } = useI18n<I18n, "en">();
+  const jobId = props.jobId;
   const api = useClient<HostJobController>();
   const promptApi = useClient<PromptController>();
+  const toaster = useToast();
+  // A page name another router declares: the Jobs tab is core's own.
+  const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
+  const slug = project?.slug ?? String(project?.id ?? "");
+  const [tab, setTab] = useDetailTab<TabKey>("transcript");
+  const { run } = usePromptActions(project?.id, slug);
   // Keyed by the job it holds, so moving to another job starts it empty.
   const [held, setLog] = useState({ jobId, stdout: "", stderr: "" });
   const log = held.jobId === jobId ? held : { stdout: "", stderr: "" };
@@ -80,18 +96,7 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
     };
   }, [jobId]);
 
-  const cancel = useAction<[], void>(
-    {
-      handler: async () => {
-        await api.cancelJob({ params: { jobId } });
-        await job.refetch();
-      },
-    },
-    [jobId],
-  );
-
   const row = job.data?.id === jobId ? job.data : undefined;
-  // The prompt's title, when the project still has it (#Q4281).
   const prompts = useQuery(
     {
       enabled: Boolean(project) && Boolean(row?.prompt),
@@ -104,160 +109,161 @@ const ProjectJob = ({ jobId }: ProjectJobProps) => {
     },
     [promptApi, project?.id, row?.prompt],
   );
-  const inFlight = row ? jobInFlight(row.status) : false;
-  const slug = project?.slug ?? String(project?.id ?? "");
+  const prompt = prompts.data?.items.find((it) => it.name === row?.prompt);
+  const transcript = useMemo(
+    () => AgentTranscript.parse(log.stdout, row?.input.agent),
+    [log.stdout, row?.input.agent],
+  );
 
-  const details: Array<[string, string | number]> = row
-    ? [
-        [tr("jobs.field.host"), row.hostSlug ?? ""],
-        // What it ran and where (#Q4222): the agent CLI, its model (the
-        // CLI's own default when none is named) and the workspace.
-        ...(row.input.agent
-          ? ([[tr("jobs.field.agent"), row.input.agent]] as Array<
-              [string, string]
-            >)
-          : []),
-        ...(row.input.model
-          ? ([[tr("jobs.field.model"), row.input.model]] as Array<
-              [string, string]
-            >)
-          : []),
-        ...(row.input.workspace
-          ? ([[tr("jobs.field.workspace"), row.input.workspace]] as Array<
-              [string, string]
-            >)
-          : []),
-        // The code it found (#E173): the source, its ref or branch, and the
-        // commit the host resolved.
-        ...(row.input.source
-          ? ([
-              [
-                tr("jobs.field.source"),
-                {
-                  none: tr("jobs.source.none"),
-                  read: tr("jobs.source.read"),
-                  write: tr("jobs.source.write"),
-                }[row.input.source.mode],
-              ],
-            ] as Array<[string, string]>)
-          : []),
-        ...(row.input.source?.ref
-          ? ([[tr("jobs.field.ref"), row.input.source.ref]] as Array<
-              [string, string]
-            >)
-          : []),
-        ...(row.input.source?.branch
-          ? ([[tr("jobs.field.branch"), row.input.source.branch]] as Array<
-              [string, string]
-            >)
-          : []),
-        ...(row.commit
-          ? ([[tr("jobs.field.commit"), row.commit.slice(0, 12)]] as Array<
-              [string, string]
-            >)
-          : []),
-        ...(row.subjectType
-          ? ([
-              [
-                tr("jobs.field.subject"),
-                `${row.subjectType} ${row.subjectId ?? ""}`,
-              ],
-            ] as Array<[string, string]>)
-          : []),
-        [tr("jobs.field.queued"), l(row.queuedAt, { date: "lll" })],
-        ...(row.endedAt
-          ? ([
-              [tr("jobs.field.ended"), l(row.endedAt, { date: "lll" })],
-            ] as Array<[string, string]>)
-          : []),
-        ...(row.exitCode !== undefined
-          ? ([[tr("jobs.field.exit"), row.exitCode]] as Array<[string, number]>)
-          : []),
-        // A write worktree the host kept with work not pushed (#Q4247).
-        ...(row.warning
-          ? ([[tr("jobs.field.warning"), row.warning]] as Array<
-              [string, string]
-            >)
-          : []),
-      ]
-    : [];
+  const cancel = useAction<[], void>(
+    {
+      handler: async () => {
+        await api.cancelJob({ params: { jobId } });
+        await job.refetch();
+      },
+    },
+    [jobId],
+  );
+
+  const inFlight = row ? jobInFlight(row.status) : true;
+  const tabs: DetailTab[] = [
+    {
+      value: "transcript",
+      label: tr("jobs.tab.transcript"),
+      count: transcript.entries.length || undefined,
+    },
+    { value: "log", label: tr("jobs.tab.log") },
+    { value: "prompt", label: tr("jobs.tab.prompt") },
+  ];
+
+  const download = () => {
+    const blob = new Blob(
+      [log.stdout, log.stderr ? `\n--- stderr ---\n${log.stderr}` : ""],
+      { type: "text/plain" },
+    );
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `job-${jobId}.log`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const copyPrompt = useAction<[], void>(
+    {
+      handler: async () => {
+        await navigator.clipboard.writeText(row?.input.prompt ?? "");
+        toaster.success(tr("prompts.copied"));
+      },
+    },
+    [row?.input.prompt],
+  );
+
+  const actions = row && (
+    <>
+      <Button variant="outlined" size="lg" onClick={download}>
+        <Download className="size-4" />
+        {tr("jobs.downloadLog")}
+      </Button>
+      {row.input.prompt && (
+        <Button
+          variant="outlined"
+          size="lg"
+          onClick={() => void copyPrompt.run()}
+        >
+          <Copy className="size-4" />
+          {tr("jobs.copyPrompt")}
+        </Button>
+      )}
+      {inFlight ? (
+        <Button
+          variant="outlined"
+          size="lg"
+          disabled={cancel.loading}
+          onClick={() => void cancel.run()}
+          data-testid="job-cancel"
+        >
+          <Square className="size-4" />
+          {tr("jobs.cancel")}
+        </Button>
+      ) : (
+        prompt && (
+          <Button
+            size="lg"
+            disabled={run.loading}
+            onClick={() =>
+              void run.run(prompt.name, {
+                args: Object.fromEntries(
+                  (row.args ?? []).map((arg) => [arg.name, arg.value]),
+                ),
+                ...(row.hostSlug ? { host: row.hostSlug } : {}),
+              })
+            }
+            data-testid="job-run-again"
+          >
+            <Play className="size-4" />
+            {tr("jobs.runAgain")}
+          </Button>
+        )
+      )}
+    </>
+  );
 
   return (
-    <div
-      className="grid h-full min-h-0 md:grid-cols-[18rem_1fr]"
-      data-testid="project-job"
-    >
-      {project && (
-        <JobHistoryRail
-          projectId={project.id}
-          projectSlug={slug}
-          selectedId={jobId}
-          className="hidden md:flex"
-        />
-      )}
-      <div className="bg-card flex min-h-0 min-w-0 flex-col">
-        {/* The rail header's twin: 46px and a bottom rule. */}
-        <div className="flex h-[46px] shrink-0 items-center gap-2 border-b px-4">
-          {row && (
-            <>
-              <h1 className="truncate text-sm font-semibold">{row.kind}</h1>
-              <JobStatusBadge status={row.status} />
-              {inFlight && (
-                <Button
-                  variant="outlined"
-                  size="sm"
-                  className="ms-auto"
-                  disabled={cancel.loading}
-                  onClick={() => void cancel.run()}
-                  data-testid="job-cancel"
-                >
-                  {tr("jobs.cancel")}
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-        {row && (
-          <dl className="grid shrink-0 grid-cols-[max-content_1fr] gap-x-4 gap-y-1 border-b px-4 py-3 text-sm sm:grid-cols-[max-content_1fr_max-content_1fr]">
-            {details.map(([label, value]) => (
-              <div key={label} className="contents">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="min-w-0 truncate">{value}</dd>
-              </div>
-            ))}
-            {row.reason && (
-              <div className="contents">
-                <dt className="text-muted-foreground">
-                  {tr("jobs.field.reason")}
-                </dt>
-                <dd
-                  className={cn(
-                    "font-mono text-xs sm:col-span-3",
-                    "break-words",
-                  )}
-                >
-                  {row.reason}
-                </dd>
-              </div>
-            )}
-          </dl>
-        )}
-        {row && (
-          <ProjectJobRun
-            job={row}
-            projectSlug={slug}
-            promptTitle={
-              prompts.data?.items.find((it) => it.name === row.prompt)?.title
+    <div className="flex h-full min-h-0 flex-col" data-testid="project-job">
+      <DetailLayout
+        loading={!row && job.loading}
+        {...(!row && job.error
+          ? {
+              notFound: {
+                message: tr("jobs.notFound"),
+                backLabel: tr("jobs.title"),
+                onBack: () =>
+                  void router.push("projectSettingsPromptJobs", {
+                    params: { projectSlug: slug },
+                  }),
+              },
             }
+          : {})}
+        aside={
+          row && (
+            <ProjectJobAside
+              job={row}
+              projectSlug={slug}
+              promptTitle={prompt?.title}
+              totals={transcript.totals}
+            />
+          )
+        }
+        tabs={tabs}
+        tab={tab}
+        onTabChange={(next) => setTab(next as TabKey)}
+        actions={actions}
+      >
+        {row && tab === "transcript" && (
+          <ProjectJobTranscript
+            job={row}
+            transcript={transcript}
+            live={live && inFlight}
           />
         )}
-        <JobLogViewer
-          stdout={log.stdout}
-          stderr={log.stderr}
-          live={live && (row ? inFlight : true)}
-          truncated={row?.logTruncated}
-        />
-      </div>
+        {row && tab === "log" && (
+          <JobLogViewer
+            stdout={log.stdout}
+            stderr={log.stderr}
+            live={live && inFlight}
+            truncated={row.logTruncated}
+          />
+        )}
+        {row && tab === "prompt" && (
+          <pre
+            className="min-h-0 flex-1 overflow-auto p-4 font-mono text-xs break-words whitespace-pre-wrap"
+            data-testid="job-prompt-text"
+          >
+            {row.input.prompt ?? ""}
+          </pre>
+        )}
+      </DetailLayout>
     </div>
   );
 };

@@ -1,0 +1,271 @@
+/*
+ * Browser-loadable: the job page parses a job's log with it (#Q4286). Pure,
+ * no I/O, so its spec feeds it recorded logs of real jobs.
+ */
+
+/**
+ * One tool call of a run, as the job page and the chat traces draw it: its
+ * name, the short of its input, the input in full and its result.
+ */
+export interface AgentTranscriptTool {
+  id: string;
+  name: string;
+  /**
+   * The command, the file path, or the Lore tool's main argument.
+   */
+  detail?: string;
+  input: string;
+  result?: string;
+  state: "running" | "done" | "failed";
+}
+
+export type AgentTranscriptEntry =
+  | { kind: "session"; model?: string; cwd?: string }
+  | { kind: "text"; text: string }
+  | { kind: "tools"; tools: AgentTranscriptTool[] }
+  | { kind: "limit"; text: string }
+  | { kind: "raw"; line: string };
+
+/**
+ * What the run reported at its end: turns, tokens and cost, and its error.
+ */
+export interface AgentTranscriptTotals {
+  turns?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  costUsd?: number;
+  error?: string;
+}
+
+export interface AgentTranscriptResult {
+  entries: AgentTranscriptEntry[];
+  /**
+   * Bookkeeping events left out, by type: shown on demand.
+   */
+  hidden: number;
+  totals?: AgentTranscriptTotals;
+  /**
+   * Whether the agent CLI has a parser: without one, every line is raw.
+   */
+  parsed: boolean;
+}
+
+/**
+ * A job's log as a conversation (#Q4286): what the agent said, each tool
+ * call on one line with its folded result, the session's start, and the
+ * run's totals. One parser per agent CLI, keyed by the job's agent; a CLI
+ * with none shows its lines as text.
+ *
+ * - **Hidden**: bookkeeping events, from {@link HIDDEN}, counted. A rate
+ *   limit that stopped the run is shown.
+ * - **Never dropped**: a line that is not JSON, or an event type the parser
+ *   does not know, comes back as a raw line.
+ */
+export class AgentTranscript {
+  /**
+   * Claude Code's bookkeeping events, left out of the transcript.
+   */
+  public static readonly HIDDEN = new Set([
+    "rate_limit_event",
+    "thinking_tokens",
+    "stream_event",
+    "keep_alive",
+  ]);
+
+  public static parse(log: string, agent?: string): AgentTranscriptResult {
+    if (agent && agent !== "claude") {
+      return {
+        entries: AgentTranscript.lines(log).map((line) => ({
+          kind: "raw" as const,
+          line,
+        })),
+        hidden: 0,
+        parsed: false,
+      };
+    }
+    return AgentTranscript.claude(log);
+  }
+
+  protected static lines(log: string): string[] {
+    return log.split("\n").filter((line) => line.trim() !== "");
+  }
+
+  /**
+   * Claude Code's `--output-format stream-json`: one event per line.
+   */
+  protected static claude(log: string): AgentTranscriptResult {
+    const entries: AgentTranscriptEntry[] = [];
+    const byId = new Map<string, AgentTranscriptTool>();
+    let hidden = 0;
+    let totals: AgentTranscriptTotals | undefined;
+    const tools = (): AgentTranscriptTool[] => {
+      const last = entries.at(-1);
+      if (last?.kind === "tools") return last.tools;
+      const fresh: AgentTranscriptEntry = { kind: "tools", tools: [] };
+      entries.push(fresh);
+      return fresh.tools;
+    };
+
+    for (const line of AgentTranscript.lines(log)) {
+      let event: Record<string, any>;
+      try {
+        event = JSON.parse(line);
+      } catch {
+        entries.push({ kind: "raw", line });
+        continue;
+      }
+      if (!event || typeof event !== "object" || Array.isArray(event)) {
+        entries.push({ kind: "raw", line });
+        continue;
+      }
+      const type = String(event.type ?? "");
+      if (type === "rate_limit_event") {
+        const status = event.rate_limit_info?.status;
+        if (status && status !== "allowed") {
+          entries.push({
+            kind: "limit",
+            text: `Rate limit: ${status}`,
+          });
+        } else {
+          hidden++;
+        }
+        continue;
+      }
+      if (AgentTranscript.HIDDEN.has(type)) {
+        hidden++;
+        continue;
+      }
+      if (type === "system") {
+        if (event.subtype === "init") {
+          entries.push({
+            kind: "session",
+            ...(event.model ? { model: String(event.model) } : {}),
+            ...(event.cwd ? { cwd: String(event.cwd) } : {}),
+          });
+        } else {
+          hidden++;
+        }
+        continue;
+      }
+      if (type === "assistant") {
+        const content = Array.isArray(event.message?.content)
+          ? event.message.content
+          : [];
+        for (const part of content) {
+          if (part?.type === "text" && String(part.text ?? "").trim()) {
+            entries.push({ kind: "text", text: String(part.text) });
+          } else if (part?.type === "tool_use") {
+            const tool: AgentTranscriptTool = {
+              id: String(part.id ?? ""),
+              name: String(part.name ?? "tool"),
+              input: JSON.stringify(part.input ?? {}, null, 2),
+              state: "running",
+            };
+            const detail = AgentTranscript.detailOf(part.input);
+            if (detail) tool.detail = detail;
+            tools().push(tool);
+            if (tool.id) byId.set(tool.id, tool);
+          }
+          // A thinking block carries no readable text: nothing to show.
+        }
+        continue;
+      }
+      if (type === "user") {
+        const content = Array.isArray(event.message?.content)
+          ? event.message.content
+          : [];
+        for (const part of content) {
+          if (part?.type !== "tool_result") continue;
+          const tool = byId.get(String(part.tool_use_id ?? ""));
+          if (!tool) continue;
+          tool.result = AgentTranscript.textOf(part.content);
+          tool.state = part.is_error ? "failed" : "done";
+        }
+        continue;
+      }
+      if (type === "result") {
+        totals = {
+          ...(typeof event.num_turns === "number"
+            ? { turns: event.num_turns }
+            : {}),
+          ...(typeof event.usage?.input_tokens === "number"
+            ? {
+                inputTokens:
+                  event.usage.input_tokens +
+                  (event.usage.cache_creation_input_tokens ?? 0) +
+                  (event.usage.cache_read_input_tokens ?? 0),
+              }
+            : {}),
+          ...(typeof event.usage?.output_tokens === "number"
+            ? { outputTokens: event.usage.output_tokens }
+            : {}),
+          ...(typeof event.total_cost_usd === "number"
+            ? { costUsd: event.total_cost_usd }
+            : {}),
+          ...(event.is_error
+            ? { error: String(event.result ?? event.subtype ?? "error") }
+            : {}),
+        };
+        continue;
+      }
+      entries.push({ kind: "raw", line });
+    }
+    return {
+      entries,
+      hidden,
+      ...(totals ? { totals } : {}),
+      parsed: true,
+    };
+  }
+
+  /**
+   * The short of a tool's input: its command, its path, or its first short
+   * string argument.
+   */
+  protected static detailOf(input: unknown): string | undefined {
+    if (!input || typeof input !== "object") return undefined;
+    const record = input as Record<string, unknown>;
+    for (const key of [
+      "command",
+      "file_path",
+      "path",
+      "pattern",
+      "url",
+      "query",
+      "description",
+    ]) {
+      const value = record[key];
+      if (typeof value === "string" && value.trim()) {
+        return AgentTranscript.shorten(value);
+      }
+    }
+    const first = Object.entries(record).find(
+      ([, value]) => typeof value === "string" || typeof value === "number",
+    );
+    return first
+      ? AgentTranscript.shorten(`${first[0]}: ${String(first[1])}`)
+      : undefined;
+  }
+
+  protected static shorten(text: string): string {
+    const line = text.replace(/\s+/g, " ").trim();
+    return line.length > 120 ? `${line.slice(0, 117)}...` : line;
+  }
+
+  /**
+   * A tool result's text: a string, or a list of text blocks.
+   */
+  protected static textOf(content: unknown): string {
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      return content
+        .map((it) =>
+          it && typeof it === "object" && "text" in it
+            ? String((it as { text: unknown }).text)
+            : JSON.stringify(it),
+        )
+        .join("\n");
+    }
+    return content === undefined ? "" : JSON.stringify(content);
+  }
+}
