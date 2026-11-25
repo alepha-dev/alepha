@@ -79,6 +79,15 @@ through the app's own sign-up, with a password they generate and never write
 down. What a new account cannot reach is recorded as not run, with the reason.
 They never play the app against production.
 
+**Dependency update** is written to run unattended, every day if you schedule
+it. It uses the package manager the lockfile at the repository's root names,
+and that one only, under the repository's own configuration (an age gate on
+new releases included). It never writes a second lockfile. It takes patches
+and minors only, and only patches for a `0.x` package. It skips prereleases
+and deprecated versions, and leaves alone what is pinned on purpose. Once the
+checks are green it opens the pull request, and turns on auto-merge, as a
+rebase merge, when the repository's agent instructions allow it.
+
 A prompt that works a quest, an epic or a feedback item never leaves the quest
 half done: it completes it, or, when it stops on a question for you, it says
 why in a comment, tags the quest **`needs-answer`** and hands it back, so it
