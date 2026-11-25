@@ -97,6 +97,62 @@ describe("InfraOrchestrator", () => {
     });
   });
 
+  describe("an environment's `name`", () => {
+    const resources = {
+      hasDatabase: true,
+      hasBucket: false,
+      hasAnalytics: false,
+      hasKV: false,
+      hasQueue: false,
+      hasCron: false,
+    };
+
+    test("names the environment's resources without the -<env> suffix", async ({
+      expect,
+    }) => {
+      const { alepha, orchestrator } = createTestEnv();
+      alepha.set(infraOptions, {
+        environments: {
+          production: cloudflare({ name: "My App" }),
+          staging: cloudflare(),
+        },
+      });
+
+      const production = await orchestrator.plan({
+        root: "/project",
+        env: "production",
+        resources,
+      });
+      const staging = await orchestrator.plan({
+        root: "/project",
+        env: "staging",
+        resources,
+      });
+
+      expect(production.naming.worker()).toBe("my-app");
+      expect(production.naming.d1()).toBe("my-app");
+      expect(staging.naming.worker()).toBe("my-app-staging");
+    });
+
+    test("refuses two environments that resolve to the same name", async ({
+      expect,
+    }) => {
+      const { alepha, orchestrator } = createTestEnv();
+      alepha.set(infraOptions, {
+        environments: {
+          production: cloudflare({ name: "my-app-staging" }),
+          staging: cloudflare(),
+        },
+      });
+
+      await expect(
+        orchestrator.plan({ root: "/project", env: "staging", resources }),
+      ).rejects.toThrow(
+        /"staging" and "production" both name their resources "my-app-staging"/,
+      );
+    });
+  });
+
   describe("resolveAdapter", () => {
     test("returns the instance of the class the descriptor names", async ({
       expect,

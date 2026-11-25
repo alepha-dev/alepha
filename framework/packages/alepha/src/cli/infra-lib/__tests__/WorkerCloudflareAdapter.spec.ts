@@ -37,14 +37,15 @@ describe("the worker-side Cloudflare adapter", () => {
   const context = (
     naming: NamingService,
     resources: Partial<InfraContext["resources"]> = {},
+    name?: string,
   ): InfraContext<any> =>
     ({
       project: "my-app",
       env: "staging",
-      options: {},
+      options: name ? { name } : {},
       root: "/deploy",
       entry: { root: "/deploy", server: "" },
-      naming: naming.forContext("my-app", "staging"),
+      naming: naming.forContext("my-app", "staging", name),
       resources: {
         hasDatabase: false,
         hasBucket: false,
@@ -166,6 +167,50 @@ describe("the worker-side Cloudflare adapter", () => {
       // The dead-letter queue is a real queue, and a consumer naming one
       // Cloudflare does not have is refused at bind time.
       "queue:my-app-staging-dlq",
+    ]);
+  });
+
+  it("names every resource after the environment's `name`, without the -<env> suffix", async ({
+    expect,
+  }) => {
+    const { adapter, naming } = setup();
+    const calls: string[] = [];
+    const provisioner = {
+      ensureD1: async (name: string) => {
+        calls.push(`d1:${name}`);
+        return { uuid: "db-uuid", name };
+      },
+      ensureR2: async (name: string) => {
+        calls.push(`r2:${name}`);
+      },
+      ensureKV: async (title: string) => {
+        calls.push(`kv:${title}`);
+        return { id: "kv-id", title };
+      },
+      ensureQueue: async (name: string) => {
+        calls.push(`queue:${name}`);
+        return { queue_id: "q", queue_name: name };
+      },
+    };
+    Object.assign(adapter as unknown as Record<string, unknown>, {
+      credential,
+      provisioner: () => provisioner,
+    });
+
+    const ctx = context(
+      naming,
+      { hasDatabase: true, hasBucket: true, hasKV: true, hasQueue: true },
+      "shop",
+    );
+    await adapter.provision(ctx, run);
+
+    expect(ctx.naming.worker()).toBe("shop");
+    expect([...calls].sort()).toEqual([
+      "d1:shop",
+      "kv:shop",
+      "queue:shop",
+      "queue:shop-dlq",
+      "r2:shop",
     ]);
   });
 

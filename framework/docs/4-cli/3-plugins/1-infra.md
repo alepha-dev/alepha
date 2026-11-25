@@ -81,6 +81,7 @@ From `alepha/cli/infra`. Node only.
 | Option         | Type                          | Description                                                                                                                 |
 | -------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | `domain`       | `string`                      | Custom domain, attached as a Cloudflare Custom Domain. A plain host: a wildcard is refused. Omit to use `*.workers.dev`.    |
+| `name`         | `string`                      | The name this environment's resources take instead of `<app>-<env>`. See [Resource Naming](#resource-naming).               |
 | `services`     | `Array<{ binding, service }>` | Worker-to-worker service bindings, exposed on the runtime `env`.                                                            |
 | `jurisdiction` | `"eu" \| "us" \| "fedramp"`   | Cloudflare data jurisdiction for R2 buckets, D1 databases, KV namespaces and queues. See [Jurisdictions](#jurisdictions).   |
 | `accountId`    | `string`                      | Cloudflare account ID. Falls back to `CLOUDFLARE_ACCOUNT_ID`, then to the token's account when it is scoped to exactly one. |
@@ -165,6 +166,10 @@ Names are slugified - lowercase, alphanumeric and dashes, max 63 characters.
 When several apps share one Cloudflare account, `project` keeps their names apart. With `infra({ project: "alepha", name: "docs" })`, the Worker is `alepha-docs-production`. It only prefixes names; nothing else reads it.
 
 ⚠️ Adding or removing `project` renames every resource of the app. The next `alepha deploy` provisions fresh ones under the new names, an empty database included, and leaves the old ones in place. Read `alepha infra plan` before the first `alepha deploy` after the change.
+
+An environment's own `name` replaces the whole prefix, so one environment can go without the `-<env>` suffix. With `production: cloudflare({ name: "acme" })`, the Worker answers on `acme.<subdomain>.workers.dev`, and its D1 database, R2 bucket, KV namespace, queues and Hyperdrive are all named `acme`; a KV namespace or a queue under a jurisdiction keeps its suffix (`acme-eu`). The name is slugified like the rest, and two environments of the app that resolve to the same name are refused. `bay()` accepts `name` too and changes nothing: Bay keys an app by its name and environment.
+
+⚠️ Setting `name` on an environment already deployed does not rename it. The next `alepha deploy` provisions fresh resources under the new name, an empty database included, and leaves the old ones in place. Read `alepha infra plan` first.
 
 ## Commands
 

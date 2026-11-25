@@ -141,6 +141,18 @@ export default defineConfig({
     return typeof domain === "string" && domain ? domain : undefined;
   }
 
+  /**
+   * The `name` an environment's options carry, when its adapter takes one:
+   * what its resources are named instead of `<project>-<env>`. Read
+   * structurally, as {@link domainOf} reads `domain`.
+   */
+  public nameOf(
+    descriptor: EnvironmentDescriptor | undefined,
+  ): string | undefined {
+    const name = (descriptor?.options as { name?: unknown } | undefined)?.name;
+    return typeof name === "string" && name ? name : undefined;
+  }
+
   protected async resolveProjectName(
     root: string,
     configName?: string,

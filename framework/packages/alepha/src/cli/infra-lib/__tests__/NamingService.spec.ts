@@ -16,6 +16,50 @@ describe("NamingService", () => {
   // slugify
   // ─────────────────────────────────────────────────────────────────────────────
 
+  describe("an environment's own name", () => {
+    it("replaces the whole <project>-<env> prefix, slugified", () => {
+      const naming = createService().forContext(
+        "my-app",
+        "production",
+        "My Shop",
+      );
+
+      expect(naming.worker()).toBe("my-shop");
+      expect(naming.d1()).toBe("my-shop");
+      expect(naming.r2()).toBe("my-shop");
+      expect(naming.hyperdrive()).toBe("my-shop");
+      expect(naming.kv()).toBe("my-shop");
+      expect(naming.queue()).toBe("my-shop");
+    });
+
+    it("keeps the jurisdiction suffix of a KV namespace and a queue", () => {
+      const naming = createService().forContext("my-app", "production", "shop");
+
+      expect(naming.kv("eu")).toBe("shop-eu");
+      expect(naming.queue("eu")).toBe("shop-eu");
+    });
+
+    it("falls back to <project>-<env> when it is empty or slugifies to nothing", () => {
+      const service = createService();
+
+      expect(service.forContext("my-app", "production", "").worker()).toBe(
+        "my-app-production",
+      );
+      expect(service.forContext("my-app", "production", "!!").worker()).toBe(
+        "my-app-production",
+      );
+      expect(service.prefixOf("my-app", "production")).toBe(
+        "my-app-production",
+      );
+    });
+
+    it("is cut at 63 characters", () => {
+      const naming = createService().forContext("a", "b", "x".repeat(80));
+
+      expect(naming.worker()).toHaveLength(63);
+    });
+  });
+
   describe("slugify", () => {
     it("should lowercase the input", () => {
       const naming = createService();
