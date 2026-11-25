@@ -25,9 +25,10 @@ export class LoreAiAssistant {
   protected readonly access = $inject(LoreAiToolAccess);
 
   /**
-   * The model that answers, or none when the provider picks (Anthropic
-   * without `AI_MODEL` refuses to start). The panel's header names it
-   * (#Q4269).
+   * The model that answers when the `api.ai` parameter names none, or none
+   * when the provider picks (Anthropic without `AI_MODEL` refuses to start).
+   * A model an operator saved there runs ahead of it (#Q4383), and the
+   * panel's header names whichever runs (#Q4269, `LoreAiStatusController`).
    */
   public readonly model = this.defaultModel();
 

@@ -18,6 +18,7 @@ import type { AiResumeBody } from "../schemas/aiResumeBodySchema.ts";
 import type { AiStreamEvent } from "../schemas/aiStreamEventSchema.ts";
 import { AiBudgetService } from "./AiBudgetService.ts";
 import { AiConversationService } from "./AiConversationService.ts";
+import { AiSettings } from "./AiSettings.ts";
 
 /**
  * Drives one step of a conversation through the app's `$ai`, persisting
@@ -31,6 +32,7 @@ export class AiChatService {
   protected readonly alepha = $inject(Alepha);
   protected readonly conversations = $inject(AiConversationService);
   protected readonly budget = $inject(AiBudgetService);
+  protected readonly settings = $inject(AiSettings);
 
   /**
    * The `$ai` a request talks to.
@@ -138,7 +140,7 @@ export class AiChatService {
         context: body.context,
         user,
         tokenBudget: await this.budget.remaining(user.id),
-        ...this.overridden(overrides),
+        ...(await this.overridden(overrides)),
       }),
     );
   }
@@ -204,18 +206,36 @@ export class AiChatService {
         resume,
         context,
         tokenBudget: await this.budget.remaining(user.id),
-        ...this.overridden(overrides),
+        ...(await this.overridden(overrides)),
       }),
     );
   }
 
-  protected overridden(overrides: AiTurnOverrides): AiTurnOverrides {
+  /**
+   * What a turn runs with beyond the request. The model is the server's
+   * override (a persona's), else the one an operator saved in `api.ai`,
+   * else none, which leaves the `$ai`'s option and `AI_MODEL`. Read through
+   * `load()`: on a serverless runtime `current` is the compiled default.
+   */
+  protected async overridden(
+    overrides: AiTurnOverrides,
+  ): Promise<AiTurnOverrides> {
+    const model =
+      overrides.model?.trim() || (await this.savedModel()) || undefined;
     return {
-      ...(overrides.model ? { model: overrides.model } : {}),
+      ...(model ? { model } : {}),
       ...(overrides.instructions
         ? { instructions: overrides.instructions }
         : {}),
     };
+  }
+
+  /**
+   * The model an operator saved in `api.ai`, or undefined.
+   */
+  public async savedModel(): Promise<string | undefined> {
+    const saved = (await this.settings.load()).model?.trim();
+    return saved || undefined;
   }
 
   /**

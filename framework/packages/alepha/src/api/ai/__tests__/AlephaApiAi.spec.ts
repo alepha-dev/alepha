@@ -328,6 +328,46 @@ describe("alepha/api/ai", () => {
     expect(ai.requests[2]!.model).not.toBe("expensive-model");
   });
 
+  it("runs a turn on the model saved in api.ai, a server override ahead of it, and the default once it is cleared", async ({
+    expect,
+  }) => {
+    const { alepha, chat, read, ai, settings, member } = await boot();
+    ai.script([{ type: "text", text: "a" }]);
+    await read(await chat("u1", { message: "one" }));
+    // Unset: the `$ai` option, else `AI_MODEL`; here neither, so none.
+    expect(ai.requests[0]!.model).toBeUndefined();
+
+    await settings.parameter.set({ ...settings.current, model: "saved-model" });
+    ai.script([{ type: "text", text: "b" }]);
+    await read(await chat("u1", { message: "two" }));
+    expect(ai.requests[1]!.model).toBe("saved-model");
+
+    // A persona's model, set by the server, keeps its own.
+    const service = alepha.inject(AiChatService);
+    const conversation = await service.conversationFor("u1", {
+      message: "three",
+    });
+    ai.script([{ type: "text", text: "c" }]);
+    await read(
+      Object.assign(
+        service.chat(
+          conversation,
+          member("u1"),
+          { message: "three" },
+          { model: "persona-model" },
+        ),
+        { status: 200 },
+      ),
+    );
+    expect(ai.requests[2]!.model).toBe("persona-model");
+
+    const { model: _saved, ...cleared } = settings.current;
+    await settings.parameter.set(cleared);
+    ai.script([{ type: "text", text: "d" }]);
+    await read(await chat("u1", { message: "four" }));
+    expect(ai.requests[3]!.model).toBeUndefined();
+  });
+
   it("refuses a wrong callId, a second approval, and another user's conversation, before the stream opens", async ({
     expect,
   }) => {
@@ -550,7 +590,7 @@ describe("alepha/api/ai settings saved by another isolate", () => {
         use: ForgetfulParameterProvider,
       }),
     );
-    const saved = async (patch: Record<string, number>) => {
+    const saved = async (patch: Record<string, number | string>) => {
       await booted.settings.parameter.set({
         ...booted.settings.current,
         ...patch,
@@ -579,6 +619,15 @@ describe("alepha/api/ai settings saved by another isolate", () => {
     await read(await chat("u1", { message: "two" }));
 
     expect((await chat("u1", { message: "three" })).status).toBe(429);
+  });
+
+  it("runs on the model read from the database", async ({ expect }) => {
+    const { chat, read, ai, saved } = await fresh();
+    await saved({ model: "saved-model" });
+    ai.script([{ type: "text", text: "a" }]);
+    await read(await chat("u1", { message: "one" }));
+
+    expect(ai.requests[0]!.model).toBe("saved-model");
   });
 
   it("purges with the retention read from the database", async ({ expect }) => {

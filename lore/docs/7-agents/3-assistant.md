@@ -108,8 +108,12 @@ The model comes from one of two vendors, picked by the environment:
 - **No key, anywhere else:** no model to talk to. Lore refuses to start with
   `AI_ASSISTANT_ENABLED` set.
 
-The budget, the rate and the retention are the `api.ai` parameter, which an
-administrator edits at runtime from the admin console's parameters.
+The model, the budget, the rate and the retention are the `api.ai` parameter,
+which an administrator edits at runtime from the admin console's parameters.
+A `model` saved there replaces the one the environment names, without a
+redeploy, and the assistant's panel names it; a chat agent with a model of its
+own keeps it. Clear it to go back to the environment's. `AI_MODEL` is still
+needed with Anthropic, for Lore to start.
 
 ## Next
 

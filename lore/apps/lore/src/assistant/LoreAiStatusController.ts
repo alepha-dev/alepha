@@ -1,4 +1,5 @@
 import { $inject, z } from "alepha";
+import { AiChatService } from "alepha/api/ai";
 import { $secure } from "alepha/security";
 import { $action } from "alepha/server";
 
@@ -8,11 +9,13 @@ import { LoreAiSwitch } from "./LoreAiSwitch.ts";
 /**
  * Whether the assistant answers on this copy, for the web: the header button
  * shows only when it does (#Q3207, #Q3211), and the panel names the model
- * that answers (#Q4269).
+ * that answers (#Q4269), the `api.ai` parameter's when one is saved
+ * (#Q4383).
  */
 export class LoreAiStatusController {
   protected readonly assistantSwitch = $inject(LoreAiSwitch);
   protected readonly assistant = $inject(LoreAiAssistant);
+  protected readonly chat = $inject(AiChatService);
 
   public readonly aiAssistantStatus = $action({
     method: "GET",
@@ -26,11 +29,12 @@ export class LoreAiStatusController {
         model: z.text().optional(),
       }),
     },
-    handler: () => ({
-      enabled: this.assistantSwitch.enabled,
-      ...(this.assistantSwitch.enabled && this.assistant.model
-        ? { model: this.assistant.model }
-        : {}),
-    }),
+    handler: async () => {
+      if (!this.assistantSwitch.enabled) return { enabled: false };
+      // The model a turn runs on (#Q4383): the one an operator saved in
+      // `api.ai`, else the assistant's own.
+      const model = (await this.chat.savedModel()) ?? this.assistant.model;
+      return { enabled: true, ...(model ? { model } : {}) };
+    },
   });
 }
