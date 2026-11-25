@@ -105,7 +105,7 @@ lists: what you set with one shows on the other.
 
 The **Notifications** tab is a table of who is notified of what in the
 project: one row per subscription, with its **Event**, the **Member** (or
-channel) told, its filter in a column with no header, the **Channel** and its
+channel) told, its filter under **Only for**, the **Channel** and its
 **Status**. The rows are grouped
 by resource; the picker beside the search groups them by recipient instead,
 or not at all. The counters above the table (**Mine**, **Paused**) are quick

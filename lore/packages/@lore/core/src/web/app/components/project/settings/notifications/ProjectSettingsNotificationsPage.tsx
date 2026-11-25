@@ -626,10 +626,11 @@ const ProjectSettingsNotificationsPage = () => {
                 </span>
               ),
             },
-            // No header (#Q4193): the cell says what it narrows to, and a
-            // header with no name has no sort button either.
+            // Named again (#Q4336): a nameless column was an empty row in
+            // the Columns picker, toggled and moved blind. The cell still
+            // says what it narrows to.
             filter: {
-              label: "",
+              label: tr("notifications.table.filter"),
               cell: (row) =>
                 row.filterLabel ? (
                   <span className="truncate">{row.filterLabel}</span>
