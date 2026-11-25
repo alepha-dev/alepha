@@ -59,7 +59,12 @@ export interface AgentTranscriptResult {
  * - **Hidden**: bookkeeping events, from {@link HIDDEN}, counted. A rate
  *   limit that stopped the run is shown.
  * - **Never dropped**: a line that is not JSON, or an event type the parser
- *   does not know, comes back as a raw line.
+ *   does not know, comes back as a raw line. The one exception is the
+ *   log's last line while it has no newline: a running job's log is read by
+ *   byte offsets, so that line is an event still arriving, and printed raw
+ *   it was a wall of base64 from a tool result's image (#Q4323).
+ * - **Never binary**: an image or any other non-text block in a tool
+ *   result reads as `[image]`, never as its base64.
  */
 export class AgentTranscript {
   /**
@@ -133,11 +138,15 @@ export class AgentTranscript {
       return fresh.tools;
     };
 
-    for (const line of AgentTranscript.lines(log)) {
+    const lines = AgentTranscript.lines(log);
+    const arriving = !log.endsWith("\n");
+    for (const [index, line] of lines.entries()) {
       let event: Record<string, any>;
       try {
         event = JSON.parse(line);
       } catch {
+        // The last line, cut where the read stopped: the next read ends it.
+        if (arriving && index === lines.length - 1) continue;
         entries.push({ kind: "raw", line });
         continue;
       }
@@ -280,17 +289,21 @@ export class AgentTranscript {
   }
 
   /**
-   * A tool result's text: a string, or a list of text blocks.
+   * A tool result's text: a string, or a list of text blocks. A block with
+   * no text (an image, a document) is named by its type, never printed:
+   * its base64 is not something a person reads (#Q4323).
    */
   protected static textOf(content: unknown): string {
     if (typeof content === "string") return content;
     if (Array.isArray(content)) {
       return content
-        .map((it) =>
-          it && typeof it === "object" && "text" in it
-            ? String((it as { text: unknown }).text)
-            : JSON.stringify(it),
-        )
+        .map((it) => {
+          if (!it || typeof it !== "object") return JSON.stringify(it);
+          const block = it as { type?: unknown; text?: unknown };
+          if (typeof block.text === "string") return block.text;
+          if (typeof block.type === "string") return `[${block.type}]`;
+          return JSON.stringify(it);
+        })
         .join("\n");
     }
     return content === undefined ? "" : JSON.stringify(content);

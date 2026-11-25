@@ -113,6 +113,70 @@ describe("AgentTranscript", () => {
     expect(out.totals?.error).toBe("error_max_turns");
   });
 
+  it("names an image in a tool result instead of printing its base64, and waits for a last line still arriving (#Q4323)", ({
+    expect,
+  }) => {
+    const base64 = "iVBORw0KGgo".repeat(2000);
+    const use = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "mcp__lore__feedback_attachment_get",
+            input: { id: 7 },
+          },
+        ],
+      },
+    });
+    const result = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "t1",
+            content: [
+              { type: "text", text: "screenshot.png" },
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: base64,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const whole = AgentTranscript.parse(`${use}\n${result}\n`, "claude");
+    const [tools] = whole.entries;
+    expect(whole.entries).toHaveLength(1);
+    expect(tools?.kind === "tools" && tools.tools[0]?.result).toBe(
+      "screenshot.png\n[image]",
+    );
+
+    // Read while the result's line was still being written: it is not
+    // shown until it ends.
+    const cut = AgentTranscript.parse(
+      `${use}\n${result.slice(0, 5000)}`,
+      "claude",
+    );
+    expect(cut.entries.map((it) => it.kind)).toEqual(["tools"]);
+    expect(JSON.stringify(cut.entries)).not.toContain("iVBORw0KGgo");
+
+    // Ended, a line that is not JSON is still kept.
+    const ended = AgentTranscript.parse(
+      `${use}\n${result.slice(0, 5000)}\n`,
+      "claude",
+    );
+    expect(ended.entries.map((it) => it.kind)).toEqual(["tools", "raw"]);
+  });
+
   it("shows every line as text for an agent CLI with no parser", ({
     expect,
   }) => {

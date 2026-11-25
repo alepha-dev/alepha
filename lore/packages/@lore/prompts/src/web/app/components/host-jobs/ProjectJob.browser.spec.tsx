@@ -326,6 +326,24 @@ describe("ProjectJob", () => {
     expect(page.textContent).not.toContain("$9.99");
   });
 
+  it("cuts a long line it cannot read at 500 characters, with a button for the rest (#Q4323)", async ({
+    expect,
+  }) => {
+    const blob = "iVBORw0KGgo".repeat(200);
+    world.jobs = [job({ status: "succeeded" })];
+    world.logs = {
+      [RUNNING]: { stdout: `${blob}\n`, stderr: "", live: false },
+    };
+    await show(RUNNING);
+    const raw = await screen.findByTestId("job-raw-line");
+    expect(raw.textContent).toHaveLength(501);
+    fireEvent.click(
+      screen.getByText(`Show ${blob.length - 500} more characters`),
+    );
+    expect(screen.getByTestId("job-raw-line").textContent).toBe(blob);
+    expect(screen.getByText("Show less")).toBeTruthy();
+  });
+
   it("puts a failed job's reason first", async ({ expect }) => {
     world.jobs = [
       job({ status: "failed", reason: "The agent exited with status 1" }),

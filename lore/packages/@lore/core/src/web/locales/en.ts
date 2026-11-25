@@ -3169,6 +3169,8 @@ export default {
   "jobs.field.tokens": "Tokens in / out",
   "jobs.field.cost": "Cost",
   "jobs.field.id": "Job id",
+  "jobs.transcript.rawMore": "Show $1 more characters",
+  "jobs.transcript.rawLess": "Show less",
   "jobs.transcript.title": "What the agent did",
   "jobs.transcript.failed": "The job failed",
   "jobs.transcript.timedOut": "The job ran past its timeout",
