@@ -5,6 +5,7 @@ import { useId, useState } from "react";
 import { Spinner } from "../core/Spinner.tsx";
 import { cn } from "../core/utils.ts";
 import type { AiChatToolLabel } from "./AiChatMessage.tsx";
+import { AiChatToolStepDetails } from "./AiChatToolStepDetails.tsx";
 
 export interface AiChatToolTraceProps {
   /**
@@ -21,6 +22,10 @@ export interface AiChatToolTraceProps {
    * 1 folio". Return undefined to keep the default.
    */
   summary?: AiChatToolSummary;
+  /**
+   * Open on mount: an agent job's transcript shows its calls unfolded.
+   */
+  defaultOpen?: boolean;
 }
 
 /**
@@ -29,6 +34,16 @@ export interface AiChatToolTraceProps {
 export interface AiChatToolStep {
   name: string;
   state: "running" | "done" | "failed" | "denied";
+  /**
+   * The short of the call's input (a command, a path), shown beside its
+   * name. An agent job's transcript sets it; a chat answer has none.
+   */
+  detail?: string;
+  /**
+   * The call's full input and its result: the step opens on them.
+   */
+  input?: string;
+  result?: string;
 }
 
 /**
@@ -46,7 +61,7 @@ export type AiChatToolSummary = (
  */
 export const AiChatToolTrace = (props: AiChatToolTraceProps) => {
   const { tr } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(props.defaultOpen ?? false);
   const listId = useId();
   if (props.tools.length === 0) {
     return null;
@@ -133,10 +148,16 @@ export const AiChatToolTrace = (props: AiChatToolTraceProps) => {
                   aria-hidden="true"
                 />
               )}
-              <span>{labelOf(step)}</span>
-              <code className="bg-muted rounded px-1 font-mono text-[10px]">
-                {step.name}
-              </code>
+              {step.input !== undefined || step.result !== undefined ? (
+                <AiChatToolStepDetails step={step} label={labelOf(step)} />
+              ) : (
+                <>
+                  <span>{labelOf(step)}</span>
+                  <code className="bg-muted rounded px-1 font-mono text-[10px]">
+                    {step.name}
+                  </code>
+                </>
+              )}
             </li>
           ))}
         </ol>

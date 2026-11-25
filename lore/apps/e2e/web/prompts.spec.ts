@@ -272,20 +272,25 @@ test.describe("Settings > Prompts", () => {
       await expect(page.getByText("Page not found")).toHaveCount(0);
     });
 
-    await test.step("the job page shows its prompt, cause and reply, and its crumb leads to the Jobs tab", async () => {
-      const run = page.getByTestId("job-run");
-      await expect(run.getByTestId("job-run-prompt")).toHaveText(
+    await test.step("the job page reads as a transcript with its reply, and its crumb leads to the Jobs tab", async () => {
+      await expect(page.getByTestId("job-run-prompt")).toHaveText(
         "Security check",
         { timeout: 15_000 },
       );
-      await expect(run.getByText("By hand", { exact: false })).toBeVisible();
+      await expect(page.getByTestId("job-aside")).toBeVisible();
+      await expect(
+        page.getByText("By hand", { exact: false }).first(),
+      ).toBeVisible();
       await expect(page.getByTestId("job-reply")).toContainText("All clear", {
         timeout: 15_000,
       });
       await expect(page.getByTestId("job-reply").locator("strong")).toHaveText(
         "no",
       );
-      await page.getByRole("link", { name: "Jobs", exact: true }).first().click();
+      await page
+        .getByRole("link", { name: "Jobs", exact: true })
+        .first()
+        .click();
       await page.waitForURL(`**/${project.slug}/settings/prompts/jobs`);
       await expect(page.getByTestId("job-prompt").first()).toHaveText(
         "Security check",

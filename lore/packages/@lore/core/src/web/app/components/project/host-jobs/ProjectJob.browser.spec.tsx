@@ -1,4 +1,10 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -71,8 +77,9 @@ class FakeLinks extends LinkProvider {
 }
 
 /**
- * The job page (#Q4207): the project's job history on the left, as Chat's
- * rooms, the open job's log in a viewer, and an animation while it runs.
+ * The job page (#Q4286): the job titled by its prompt in the aside, its
+ * transcript with the reply first, the raw log one tab away with an
+ * animation while it runs, and no rail of other jobs.
  */
 describe("ProjectJob", () => {
   beforeAll(() => {
@@ -110,28 +117,93 @@ describe("ProjectJob", () => {
     await screen.findByTestId("project-job");
   };
 
-  it("lists the project's jobs in a rail, the open one current", async ({
+  it("reads a finished run as a transcript: the reply first, then what the agent said and did, and no rail", async ({
     expect,
   }) => {
     world.jobs = [
-      job({}),
-      job({ id: DONE, status: "succeeded", subjectId: "11", exitCode: 0 }),
+      job({
+        id: DONE,
+        status: "succeeded",
+        exitCode: 0,
+        prompt: "work-quest",
+        args: [
+          {
+            name: "quest",
+            type: "quest",
+            value: "12",
+            reference: "#Q12",
+            title: "Fix the cart",
+          },
+        ],
+        cause: { kind: "hand" },
+        result: "Shipped **the fix**.",
+        input: { agent: "claude", prompt: "Work on quest #Q12" } as never,
+      }),
     ];
-    world.logs = {};
-    await show(RUNNING);
+    world.logs = {
+      [DONE]: {
+        stdout: [
+          JSON.stringify({ type: "system", subtype: "init", model: "m-1" }),
+          JSON.stringify({
+            type: "assistant",
+            message: {
+              content: [
+                {
+                  type: "tool_use",
+                  id: "t1",
+                  name: "Bash",
+                  input: { command: "yarn test" },
+                },
+              ],
+            },
+          }),
+          JSON.stringify({
+            type: "user",
+            message: {
+              content: [
+                { type: "tool_result", tool_use_id: "t1", content: "ok" },
+              ],
+            },
+          }),
+          JSON.stringify({ type: "rate_limit_event", rate_limit_info: {} }),
+          JSON.stringify({
+            type: "assistant",
+            message: { content: [{ type: "text", text: "All green." }] },
+          }),
+        ].join("\n"),
+        stderr: "",
+        live: false,
+      },
+    };
+    await show(DONE);
 
-    const rows = await screen.findAllByTestId("job-history-row");
-    expect(rows.map((row) => row.getAttribute("data-job"))).toEqual([
-      RUNNING,
-      DONE,
-    ]);
-    expect(rows[0].getAttribute("aria-current")).toBe("page");
-    expect(rows[1].getAttribute("aria-current")).toBeNull();
-    expect(rows[1].getAttribute("href")).toBe(`/acme/jobs/${DONE}`);
-    // Each row's status glyph; the running one spins.
-    expect(rows[0].querySelector("svg")?.getAttribute("class")).toContain(
-      "animate-spin",
+    const title = await screen.findByTestId("job-title");
+    expect(title.textContent).toContain("work-quest");
+    expect(title.querySelector("a")?.getAttribute("href")).toBe(
+      "/acme/quests/12",
     );
+    await waitFor(() =>
+      expect(screen.getByTestId("job-reply").textContent).toContain("Shipped"),
+    );
+    expect(screen.getByTestId("job-reply").querySelector("strong")).not.toBe(
+      null,
+    );
+    const events = screen.getByTestId("job-events");
+    await waitFor(() => expect(events.textContent).toContain("All green."));
+    expect(screen.getByTestId("ai-chat-tool-trace")).toBeTruthy();
+    expect(events.textContent).toContain("yarn test");
+    expect(events.textContent).toContain("1 bookkeeping events hidden");
+    expect(screen.queryAllByTestId("job-history-row")).toHaveLength(0);
+  });
+
+  it("puts a failed job's reason first", async ({ expect }) => {
+    world.jobs = [
+      job({ status: "failed", reason: "The agent exited with status 1" }),
+    ];
+    world.logs = { [RUNNING]: { stdout: "", stderr: "", live: false } };
+    await show(RUNNING);
+    const failure = await screen.findByTestId("job-failure");
+    expect(failure.textContent).toContain("The agent exited with status 1");
   });
 
   it("animates a running job and follows its log, one numbered line per line with stderr marked", async ({
@@ -146,6 +218,7 @@ describe("ProjectJob", () => {
       },
     };
     await show(RUNNING);
+    fireEvent.click(await screen.findByText("Raw log"));
 
     const badge = await screen.findByTestId("job-status");
     expect(badge.getAttribute("data-status")).toBe("running");
@@ -175,6 +248,7 @@ describe("ProjectJob", () => {
     world.jobs = [job({}), job({ id: DONE, status: "succeeded", exitCode: 0 })];
     world.logs = { [RUNNING]: { stdout: "", stderr: "", live: true } };
     await show(RUNNING);
+    fireEvent.click(await screen.findByText("Raw log"));
     const waiting = await screen.findByTestId("job-log-empty");
     expect(waiting.textContent).toBe("Waiting for the first line...");
     expect(waiting.querySelector("svg")).not.toBeNull();
@@ -183,6 +257,7 @@ describe("ProjectJob", () => {
     await alepha?.stop();
     world.logs = { [DONE]: { stdout: "", stderr: "", live: false } };
     await show(DONE);
+    fireEvent.click(await screen.findByText("Raw log"));
     await waitFor(() =>
       expect(screen.getByTestId("job-log-empty").textContent).toBe(
         "Nothing was printed.",
