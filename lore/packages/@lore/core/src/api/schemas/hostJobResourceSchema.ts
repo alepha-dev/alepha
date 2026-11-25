@@ -47,6 +47,12 @@ export const hostJobResourceSchema = z.object({
    * ended with no reply says to upgrade Bay there.
    */
   hostReturnsResult: z.boolean().optional(),
+  /**
+   * The model that ran (#Q4304): the one the run named, or, when it named
+   * none, the one the agent CLI reported at its start. Answered by one job's
+   * read once the job has ended, never by a list.
+   */
+  model: z.string().optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

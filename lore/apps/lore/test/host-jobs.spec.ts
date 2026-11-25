@@ -312,6 +312,36 @@ describe("HostJobService", () => {
     expect((await w.service.readLog(job.id)).stdout).toBe("one\ntwo\nthree\n");
   });
 
+  it("names the model a run took by default once it ended, from its agent CLI's init line (#Q4304)", async ({
+    expect,
+  }) => {
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    await w.service.appendLog(w.host, {
+      type: "log",
+      id: command.id,
+      stream: "stdout",
+      offset: 0,
+      data: `${JSON.stringify({ type: "system", subtype: "init", model: "m-default" })}\n`,
+    });
+    // While it runs, nothing reads its log for a model.
+    const running = await w.repos.jobs.getOne({
+      where: { id: { eq: job.id } },
+    });
+    expect(await w.service.modelOf(running)).toBe(undefined);
+
+    await w.commands.ack(w.host.id, { id: command.id, status: "done" });
+    const ended = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+    expect(await w.service.modelOf(ended)).toBe("m-default");
+    // The run's own model wins over the log's.
+    expect(
+      await w.service.modelOf({
+        ...ended,
+        input: { ...(ended.input as object), model: "m-named" },
+      } as typeof ended),
+    ).toBe("m-named");
+  });
+
   it("ignores a log frame for another host's command", async ({ expect }) => {
     const job = await start(w);
     const command = await commandOf(w, job.id);

@@ -70,8 +70,10 @@ export class HostJobController {
       response: hostJobResourceSchema,
     },
     handler: async () => {
-      const [job] = await this.present([this.owned.get<HostJob>()]);
-      return job;
+      const row = this.owned.get<HostJob>();
+      const [job] = await this.present([row]);
+      const model = await this.service.modelOf(row);
+      return model ? { ...job, model } : job;
     },
   });
 
