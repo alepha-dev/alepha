@@ -1,3 +1,5 @@
+import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
+
 /**
  * `work-epic` (#E174): an epic worked to completion, one pull request,
  * one commit per quest. Its arg accepts a ready or in-progress epic.
@@ -19,6 +21,8 @@ The epic: {{epic.url}}
 - Order the quests by their dependencies and by the order the epic's description gives.
 
 ## Each quest, one at a time
+
+An epic is worked whole: every quest of the epic is worked, whatever its tags.
 
 1. \`quest_accept\` it. Its objectives and its discussion are the contract.
 2. Do the work. Tick each objective with \`quest_objective_set\` as it is met, not at the end.
@@ -48,4 +52,6 @@ The outcome folio is the record; your reply is what the person who started this 
 - **What shipped**, in a few lines: the quests completed, the pull request, and whether it has merged.
 - **Every quest you could not do as written**, numbered, one block each: what it asked, what stopped you, and the two or three ways forward with the one you would take. A pointer to the comment you left on that quest is not this. The decision is the owner's, and they are reading here.
 
-If nothing was blocked, say so in one line rather than padding the list.`;
+If nothing was blocked, say so in one line rather than padding the list.
+
+${unfinishedQuestRule}`;

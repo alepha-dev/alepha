@@ -6,6 +6,8 @@
  * ⚠️ English, never localized: its words name the tools it calls. No
  * secret ever goes in: it leaves Lore on a clipboard or in a job.
  */
+import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
+
 export const triagePromptText = `Triage the whole feedback inbox of the Lore project "{{project}}", until nothing is pending.
 
 The inbox: {{projectUrl}}/feedback
@@ -23,7 +25,7 @@ For each pending item:
 
 Accept it when it names something the project should change: a defect you can locate in the code, or a request that fits what this project is for. \`feedback_accept\`, then \`quest_create\` with \`feedback_shortId\` set to its number, a title, a description of what will change, an area from \`project_context\`, and objectives. One quest per accepted item, linked back to it.
 
-**Tag a quest \`needs-human\` when an agent should not build it alone**: you are not sure what it asks, it touches security, a migration or money, or it came from a report you could not reproduce in the code. A Build automation builds every new quest without that tag into a pull request, so leave the tag off only when the quest is clear and safe for an agent to carry to a merge.
+**Tag a quest \`needs-human\` when an agent should not build it alone**: you are not sure what it asks, it touches security, a migration or money, or it came from a report you could not reproduce in the code. A prompt triggered on a new quest never works one carrying that tag, so leave the tag off only when the quest is clear and safe for an agent to carry to a merge. It is not \`${QUEST_NEEDS_ANSWER_TAG}\`, which says a question to the owner is open.
 
 Reject it when it is a duplicate of an item already accepted, when it asks for something outside what this project does, or when it cannot be acted on as written and the reporter has not answered a question already asked in its discussion. \`feedback_reject\`.
 

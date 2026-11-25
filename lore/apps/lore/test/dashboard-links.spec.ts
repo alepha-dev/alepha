@@ -55,7 +55,7 @@ describe("dashboard drill-through links", () => {
     env: "production",
     epicNumber: "46",
     releaseTag: "0.28.0",
-    tag: "need-answer",
+    tag: "needs-answer",
   };
 
   it("resolves every metric's link to a real path", ({ expect }) => {
@@ -156,7 +156,7 @@ describe("dashboard drill-through links", () => {
       .get("tagCompletion")
       .link(
         { kind: "projects", projectIds: [1] },
-        { projectSlug: "demo", tag: "need-answer" },
+        { projectSlug: "demo", tag: "needs-answer" },
       );
 
     // ⚠️ Deliberately disagrees with the count, like the active-quests tile:
@@ -165,10 +165,10 @@ describe("dashboard drill-through links", () => {
     expect(link).toEqual({
       route: "projectQuests",
       params: { projectSlug: "demo" },
-      query: { tag: "need-answer", status: "todo,in_progress" },
+      query: { tag: "needs-answer", status: "todo,in_progress" },
     });
     expect(router.path(link!.route, { params, query: link!.query })).toBe(
-      "/demo/quests?tag=need-answer&status=todo%2Cin_progress",
+      "/demo/quests?tag=needs-answer&status=todo%2Cin_progress",
     );
   });
 

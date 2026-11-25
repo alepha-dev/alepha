@@ -638,7 +638,7 @@ describe("QuestController hold", () => {
         releaseId: next.id,
       });
       await createTestQuest(ctx.alepha, project, {
-        tags: ["need-answer"],
+        tags: ["needs-answer"],
       });
       await createTestQuest(ctx.alepha, project, {
         completedAt: daysAgo(1),

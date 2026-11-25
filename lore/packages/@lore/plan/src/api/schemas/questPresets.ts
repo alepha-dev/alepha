@@ -53,7 +53,7 @@ export const QUEST_DONE_DAYS = 7;
 /**
  * The tag a quest carries while it waits on somebody's answer.
  */
-export const QUEST_NEED_ANSWER_TAG = "need-answer";
+export const QUEST_NEEDS_ANSWER_TAG = "needs-answer";
 
 /**
  * The query each preset opens. `next` needs the next release's id, which only
@@ -76,7 +76,7 @@ export const questPresetQuery = (
     case "done":
       return { status: "completed", completed: String(QUEST_DONE_DAYS) };
     case "asks":
-      return { tag: QUEST_NEED_ANSWER_TAG, status: OPEN };
+      return { tag: QUEST_NEEDS_ANSWER_TAG, status: OPEN };
     case "stale":
       return { status: "in_progress", stale: String(QUEST_STALE_DAYS) };
     case "next":

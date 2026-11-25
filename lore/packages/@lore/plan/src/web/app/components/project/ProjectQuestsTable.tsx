@@ -901,7 +901,7 @@ const ProjectQuestsTable = () => {
           fields: filterFields,
           /**
            * Every filter on this table is linkable: `?status=todo,in_progress`,
-           * `?tag=need-answer&tagOp=none`, `?search=auth`. DataTable reads
+           * `?tag=needs-answer&tagOp=none`, `?search=auth`. DataTable reads
            * every key of the fields once on arrival, operator keys included;
            * a value a schema refuses is dropped, so a stale bookmark lands on
            * the unfiltered list rather than an error page.
