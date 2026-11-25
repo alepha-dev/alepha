@@ -81,6 +81,12 @@ type jobSource struct {
 	// Trust is `pr-author-writes` on a job at `pull/<n>/head` whose author
 	// must be able to write to the repository.
 	Trust string `json:"trust,omitempty"`
+	// Resume is a write job continuing one that ended unfinished (#Q4340):
+	// the worktree that job kept on Branch is run in as it stands, its
+	// uncommitted changes and unpushed commits included, instead of being
+	// refused. Sent only by a Lore that continues a job; a bay before it
+	// refuses the field, so the spec, and never runs over the worktree.
+	Resume bool `json:"resume,omitempty"`
 }
 
 // mode is the source's mode: a spec without a source is `none`.
@@ -166,6 +172,8 @@ func (s *jobSource) validate() error {
 		return errors.New("a write source names its branch")
 	case s.Mode == sourceRead && s.Branch != "":
 		return errors.New("a read source names no branch")
+	case s.Resume && (s.Mode != sourceWrite || s.Branch == ""):
+		return errors.New("only a write source on a named branch resumes")
 	case s.Branch != "" && (!validRefName(s.Branch) || strings.HasPrefix(s.Branch, "pull/")):
 		return fmt.Errorf("%q is not a branch name this bay makes", s.Branch)
 	}
@@ -766,7 +774,9 @@ The worktree shares the mirror's `origin`, so `git push` and `gh pr create`
 work as the jobs user, with `gh` as the credential helper.
 
 A workspace already there is a worktree kept with unpushed work, or a clone
-from before sources: the job is refused, never run over it.
+from before sources: the job is refused, never run over it. The one exception
+is a source that resumes (#Q4340): a worktree of this project's mirror on the
+source's own branch is run in as the job that kept it left it.
 */
 func (r *processRunner) prepareWrite(ctx context.Context, u *user.User, spec jobSpec, log *jobLog) (string, preparedSource, error) {
 	src := spec.Source
@@ -779,6 +789,21 @@ func (r *processRunner) prepareWrite(ctx context.Context, u *user.User, spec job
 		return "", preparedSource{}, err
 	}
 	dir := filepath.Join(r.base(u), spec.Project, spec.Workspace)
+	if src.Resume {
+		if start, ok := r.keptWorktree(ctx, u, spec.Project, dir, src.Branch); ok {
+			log.Step(fmt.Sprintf("worktree %s/%s on %s, resumed as the last job kept it", spec.Project, spec.Workspace, src.Branch))
+			if status, err := r.git(ctx, u, dir, "status", "--porcelain"); err == nil && status != "" {
+				log.Step(fmt.Sprintf("%d uncommitted change(s) found", len(strings.Split(status, "\n"))))
+			}
+			release := func() string {
+				defer unlock()
+				cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 2*time.Minute)
+				defer cancel()
+				return r.finishWrite(cctx, u, spec.Project, spec.Workspace, dir, src.Branch, log)
+			}
+			return dir, preparedSource{Commit: start, release: release}, nil
+		}
+	}
 	if err := r.refuseOccupied(u, spec.Project, spec.Workspace, dir); err != nil {
 		return fail(err)
 	}
@@ -834,6 +859,36 @@ func (r *processRunner) prepareWrite(ctx context.Context, u *user.User, spec job
 		return r.finishWrite(cctx, u, spec.Project, spec.Workspace, dir, src.Branch, log)
 	}
 	return dir, preparedSource{Commit: start, release: release}, nil
+}
+
+/*
+keptWorktree answers the commit a kept worktree is at, when dir is one of the
+project's mirror on branch: what a resumed write job runs in (#Q4340). Anything
+else there, or nothing, answers false, and the job is prepared as any other.
+*/
+func (r *processRunner) keptWorktree(ctx context.Context, u *user.User, project, dir, branch string) (string, bool) {
+	if dotgit, err := os.Lstat(filepath.Join(dir, ".git")); err != nil || !dotgit.Mode().IsRegular() {
+		return "", false
+	}
+	common, err := r.git(ctx, u, dir, "rev-parse", "--path-format=absolute", "--git-common-dir")
+	if err != nil {
+		return "", false
+	}
+	mirror, err := filepath.EvalSymlinks(r.mirrorDir(u, project))
+	if err != nil {
+		return "", false
+	}
+	if resolved, err := filepath.EvalSymlinks(common); err != nil || resolved != mirror {
+		return "", false
+	}
+	if head, err := r.git(ctx, u, dir, "symbolic-ref", "--quiet", "--short", "HEAD"); err != nil || head != branch {
+		return "", false
+	}
+	sha, err := r.git(ctx, u, dir, "rev-parse", "--verify", "HEAD^{commit}")
+	if err != nil || !commitPattern.MatchString(sha) {
+		return "", false
+	}
+	return sha, true
 }
 
 /*

@@ -310,6 +310,11 @@ export class PromptController {
         model: agentRunSchema.shape.model,
         fix: z.boolean().optional(),
         trust: z.boolean().optional(),
+        /**
+         * A run of this prompt that ended unfinished, continued in its
+         * workspace and on its branch (#Q4340).
+         */
+        continue: z.uuid().optional(),
       }),
       response: z.object({
         jobId: z.uuid(),

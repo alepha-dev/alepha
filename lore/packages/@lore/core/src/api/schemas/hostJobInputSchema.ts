@@ -36,6 +36,13 @@ export const hostJobSourceSchema = z.object({
     .optional(),
   /** A pull request whose author must be able to write (#Q4251). */
   trust: z.enum(["pr-author-writes"]).optional(),
+  /**
+   * A write job continuing one that ended unfinished (#Q4340): Bay runs it
+   * in the worktree that job kept on `branch`, its uncommitted changes
+   * included, instead of refusing it. Sent on a continued run only, since a
+   * Bay before it refuses the field.
+   */
+  resume: z.boolean().optional(),
 });
 
 export type HostJobSource = Infer<typeof hostJobSourceSchema>;

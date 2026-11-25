@@ -10,7 +10,7 @@ import { type I18n, currentProjectAtom } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Copy, Download, Play, Square } from "lucide-react";
+import { Copy, Download, Play, RotateCcw, Square } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
@@ -162,6 +162,21 @@ const ProjectJob = (props: ProjectJobProps) => {
     [row?.input.prompt],
   );
 
+  // A job that ended unfinished is continued by Run again, in its
+  // workspace and on its branch (#Q4340); Start fresh is the other choice.
+  const unfinished =
+    row !== undefined && ProjectJob.CONTINUABLE.includes(row.status);
+  const runAgain = (continued: boolean) =>
+    row &&
+    prompt &&
+    run.run(prompt.name, {
+      args: Object.fromEntries(
+        (row.args ?? []).map((arg) => [arg.name, arg.value]),
+      ),
+      ...(row.hostSlug ? { host: row.hostSlug } : {}),
+      ...(continued ? { continue: row.id } : {}),
+    });
+
   const actions = row && (
     <>
       <Button variant="outlined" size="lg" onClick={download}>
@@ -191,22 +206,29 @@ const ProjectJob = (props: ProjectJobProps) => {
         </Button>
       ) : (
         prompt && (
-          <Button
-            size="lg"
-            disabled={run.loading}
-            onClick={() =>
-              void run.run(prompt.name, {
-                args: Object.fromEntries(
-                  (row.args ?? []).map((arg) => [arg.name, arg.value]),
-                ),
-                ...(row.hostSlug ? { host: row.hostSlug } : {}),
-              })
-            }
-            data-testid="job-run-again"
-          >
-            <Play className="size-4" />
-            {tr("jobs.runAgain")}
-          </Button>
+          <>
+            {unfinished && (
+              <Button
+                variant="outlined"
+                size="lg"
+                disabled={run.loading}
+                onClick={() => void runAgain(false)}
+                data-testid="job-start-fresh"
+              >
+                <RotateCcw className="size-4" />
+                {tr("jobs.startFresh")}
+              </Button>
+            )}
+            <Button
+              size="lg"
+              disabled={run.loading}
+              onClick={() => void runAgain(unfinished)}
+              data-testid="job-run-again"
+            >
+              <Play className="size-4" />
+              {tr("jobs.runAgain")}
+            </Button>
+          </>
         )
       )}
     </>
@@ -300,5 +322,11 @@ ProjectJob.totalsOf = (
           : { outputTokens: job.outputTokens }),
         ...(job.costUsd === undefined ? {} : { costUsd: job.costUsd }),
       };
+
+/**
+ * The statuses Run again continues rather than starts afresh (#Q4340): the
+ * server's `PromptRunService.CONTINUABLE`.
+ */
+ProjectJob.CONTINUABLE = ["failed", "timed_out", "cancelled"] as string[];
 
 export default ProjectJob;

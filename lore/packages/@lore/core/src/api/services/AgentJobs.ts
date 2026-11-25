@@ -56,6 +56,10 @@ export interface AgentJobRequest {
      * repository (#Q4251); absent is a member's trust.
      */
     trust?: "pr-author-writes";
+    /**
+     * A write job continuing an ended one in its kept worktree (#Q4340).
+     */
+    resume?: boolean;
   };
   /**
    * What the job needs when the request names no source: `write` for a

@@ -3167,6 +3167,7 @@ export default {
   "jobs.downloadLog": "Download log",
   "jobs.copyPrompt": "Copy prompt",
   "jobs.runAgain": "Run again",
+  "jobs.startFresh": "Start fresh",
   "jobs.notFound": "This job does not exist, or you cannot see it.",
   "jobs.runOf": "Run of",
   "jobs.field.started": "Started",

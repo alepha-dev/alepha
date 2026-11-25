@@ -3178,6 +3178,7 @@ export default {
   "jobs.downloadLog": "Télécharger le journal",
   "jobs.copyPrompt": "Copier l'invite",
   "jobs.runAgain": "Relancer",
+  "jobs.startFresh": "Repartir de zéro",
   "jobs.notFound": "Cette tâche n'existe pas, ou vous ne pouvez pas la voir.",
   "jobs.runOf": "Exécution de",
   "jobs.field.started": "Démarrée",

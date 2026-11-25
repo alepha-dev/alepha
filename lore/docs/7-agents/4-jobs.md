@@ -221,6 +221,14 @@ and the turns, tokens and cost the agent CLI reports at its end. Three tabs:
 **Run again** runs the same prompt on the same items; **Cancel** stops a
 running job. The page follows a running job as it goes.
 
+On a job that failed, timed out or was cancelled, **Run again** continues
+it: the new job runs on the same host, in the same workspace and on the same
+branch, so it finds the uncommitted changes and unpushed commits the first
+one left there, and its pull request. When the agent CLI keeps its sessions
+(Claude Code does), the conversation is resumed too. **Start fresh** is the
+other choice: a new workspace, a new branch and a new session, as for a job
+started from its prompt.
+
 A job's final reply is kept with the job, up to 32 KB. An Agent host whose
 Bay predates it returns none: upgrade Bay on that host to see replies.
 
@@ -243,6 +251,13 @@ lore prompt run review-pr --pr 118
 `--host`, `--agent` and `--model` pick the host, the agent CLI and its model.
 Without them, the project's only host, its first agent CLI and that CLI's own
 default model apply.
+
+`--continue <job>` is **Run again** on a job that ended unfinished: the same
+host, workspace, branch and items, and its session resumed.
+
+```bash
+lore prompt run work-loose-quests --continue <job-id>
+```
 
 ```bash
 lore job list

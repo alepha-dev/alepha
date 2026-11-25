@@ -293,6 +293,9 @@ export class HostJobService {
       ...(source.ref ? { ref: source.ref } : {}),
       ...(source.branch ? { branch: source.branch } : {}),
       ...(source.trust ? { trust: source.trust } : {}),
+      // A continued write job (#Q4340): sent only then, since a Bay before
+      // it refuses the field.
+      ...(source.resume ? { resume: true } : {}),
     };
   }
 

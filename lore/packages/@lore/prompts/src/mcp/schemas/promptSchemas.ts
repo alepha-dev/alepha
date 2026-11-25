@@ -133,6 +133,12 @@ export const promptRunParamsSchema = projectParamsSchema.extend({
     .boolean()
     .describe("review-pr: you trust the pull request's author.")
     .optional(),
+  continue: z
+    .uuid()
+    .describe(
+      "A run of this prompt that failed, timed out or was cancelled: the new run continues it on its host, in its workspace and on its branch, with the work it left, and resumes its agent session. Its args stand when set is absent.",
+    )
+    .optional(),
 });
 
 export const promptListResultSchema = z.object({

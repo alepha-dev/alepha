@@ -530,6 +530,12 @@ export class PromptCommand {
         .boolean()
         .describe("review-pr: you trust the pull request's author")
         .optional(),
+      continue: z
+        .text({
+          description:
+            "A job of this prompt that failed, timed out or was cancelled: continue it in its workspace and on its branch, resuming its agent session",
+        })
+        .optional(),
       wait: z
         .boolean()
         .describe(
@@ -545,10 +551,15 @@ export class PromptCommand {
           flags.project,
           context,
         );
+        const values = await this.valuesOf(projectId, args, flags);
         const started = await this.api.runPrompt({
           params: { projectId, name: args },
           body: {
-            args: await this.valuesOf(projectId, args, flags),
+            // A continued job's args stand when none are given (#Q4340).
+            ...(flags.continue && !Object.keys(values).length
+              ? {}
+              : { args: values }),
+            ...(flags.continue ? { continue: flags.continue } : {}),
             ...(flags.host ? { host: flags.host } : {}),
             ...(flags.agent ? { agent: flags.agent } : {}),
             ...(flags.model ? { model: flags.model } : {}),
