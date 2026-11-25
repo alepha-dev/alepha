@@ -9,6 +9,7 @@ import type {
   DashboardMetricResolver,
   DashboardResolvable,
 } from "./DashboardMetricResolver.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * The project's last recorded writes (#Q2659), as the Activity page lists
@@ -22,6 +23,7 @@ export class ActivityFeedMetric implements DashboardMetricResolver {
   protected readonly dashboard = $inject(DashboardMetricRegistry);
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly security = $inject(ProjectSecurityService);
 
   constructor() {
     this.dashboard.register(this);
@@ -95,9 +97,19 @@ export class ActivityFeedMetric implements DashboardMetricResolver {
         detail: {},
         link: this.catalog.get(this.metric).link(entry.card.scope, {
           projectSlug: project.slug,
+          activity: await this.activityOn(project.id),
         }),
       });
     }
     return out;
+  }
+
+  /**
+   * Whether the project's Activity page exists (#Q4413): the tile links to
+   * it only then. Memoised per request by the security service.
+   */
+  protected async activityOn(projectId: number): Promise<boolean> {
+    const set = await this.security.capabilitiesOf(projectId);
+    return this.security.hasCapability(set, "activity");
   }
 }

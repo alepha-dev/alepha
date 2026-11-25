@@ -42,8 +42,13 @@ export class CoreDashboardMetrics {
     });
 
     // The core tiles of #Q2659: always available, whatever the capabilities.
-    const toActivity = (_scope: unknown, target: { projectSlug?: string }) =>
-      target.projectSlug
+    // No link while the project's Activity switch is off (#Q4413): the page
+    // does not exist then, and the tile would drill into a 404.
+    const toActivity = (
+      _scope: unknown,
+      target: { projectSlug?: string; activity?: boolean },
+    ) =>
+      target.projectSlug && target.activity !== false
         ? {
             route: "projectActivity",
             params: { projectSlug: target.projectSlug },
