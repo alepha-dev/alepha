@@ -20,7 +20,7 @@ import { LorePlanMcp } from "@lore/plan/mcp";
 import { LorePlanWeb, WorkAccountSections, WorkRouter } from "@lore/plan/web";
 import { LorePromptsApi } from "@lore/prompts/api";
 import { LorePromptsMcp } from "@lore/prompts/mcp";
-import { LorePromptsWeb } from "@lore/prompts/web";
+import { LorePromptsWeb, PromptsRouter } from "@lore/prompts/web";
 import { LoreRememberApi } from "@lore/remember/api";
 import { LoreRememberMcp } from "@lore/remember/mcp";
 import { KnowledgeRouter, LoreRememberWeb } from "@lore/remember/web";
@@ -49,7 +49,8 @@ export type LoreRouter = CoreRouter &
   RequirementsRouter &
   KnowledgeRouter &
   QualityRouter &
-  DeployRouter;
+  DeployRouter &
+  PromptsRouter;
 
 /**
  * Boots Lore the way its entries do, for a scenario spec: one that spans
@@ -101,6 +102,7 @@ export const bootLore = (
     alepha.inject(QualityRouter);
     alepha.inject(DeployRouter);
     alepha.inject(ChatRouter);
+    alepha.inject(PromptsRouter);
     alepha.inject(LoreAccountSections);
     alepha.inject(WorkAccountSections);
   }

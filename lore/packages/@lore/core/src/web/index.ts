@@ -14,7 +14,6 @@ import { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.t
 import { userProjectsAtom } from "./app/atoms/userProjectsAtom.ts";
 import AccountDeleteWarning from "./app/components/account/AccountDeleteWarning.tsx";
 import { LoreAccountSections } from "./app/components/account/LoreAccountSections.ts";
-import { PromptsWebSlots } from "./app/components/project/prompts/PromptsWebSlots.ts";
 import { CoreRouter } from "./app/CoreRouter.ts";
 import { CoreWebBoot } from "./app/CoreWebBoot.ts";
 import { HostRouter } from "./app/HostRouter.ts";
@@ -85,10 +84,9 @@ export const LoreCoreWeb = $module({
     alepha.inject(HostConsoleRegistry);
     alepha.inject(HostTypeUiRegistry);
     // Core's web slots for Prompts (#E175), read by Plan's and Ship's pages
-    // and the spotlight whether or not anything fills them.
+    // and the spotlight whether or not `@lore/prompts` fills them.
     alepha.inject(PinnedPromptsSlot);
     alepha.inject(SpotlightSourceRegistry);
-    alepha.inject(PromptsWebSlots);
     // Core's boot work (the 401 redirect, the global head, the reports tab
     // and services), apart from its pages so the router holds pages only
     // (#Q3400).
@@ -181,7 +179,10 @@ export {
   default as PinnedPromptsButton,
   type PinnedPromptsButtonProps,
 } from "./app/components/project/prompts/pins/PinnedPromptsButton.tsx";
-export type { PinnedPromptItem } from "./app/components/project/prompts/pins/pinnedPromptItemSchema.ts";
+export {
+  type PinnedPromptItem,
+  pinnedPromptItemSchema,
+} from "./app/components/project/prompts/pins/pinnedPromptItemSchema.ts";
 export {
   type UsePinnedPromptsOptions,
   usePinnedPrompts,

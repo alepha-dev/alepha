@@ -543,34 +543,6 @@ export class CoreRouter {
       import("./components/project/settings/notifications/ProjectSettingsNotificationChannelsPage.tsx"),
   });
 
-  /**
-   * Settings > Prompts, its Prompts tab (#Q4280): the built-ins and the
-   * project's custom prompts, open to every member.
-   */
-  projectSettingsPrompts = $pageProjectSettings({
-    name: "projectSettingsPrompts",
-    path: "/prompts",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Prompts`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsPromptsPage.tsx"),
-  });
-
-  /**
-   * Settings > Prompts > Jobs (#Q4281): the project's jobs, filtered by
-   * prompt, status and host. Listed with `host:read`, the read it needs.
-   */
-  projectSettingsPromptJobs = $pageProjectSettings({
-    name: "projectSettingsPromptJobs",
-    path: "/prompts/jobs",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Jobs`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsPromptJobsPage.tsx"),
-  });
-
   notFound = $page({
     path: "/*",
     component: NotFoundPage,
