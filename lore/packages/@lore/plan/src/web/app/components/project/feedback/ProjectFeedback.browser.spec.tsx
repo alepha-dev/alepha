@@ -1,7 +1,13 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
 import { currentProjectAtom } from "@lore/core/web";
-import { act, cleanup, render, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -381,11 +387,13 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     const fake = alepha.inject(FakeLinkProvider);
     const rendered = view(alepha);
     const root = rendered.container as HTMLElement;
-    // No locale is loaded here, so a label renders as its key.
-    const segment = (label: string) =>
-      Array.from(root.querySelectorAll("button, [role=radio]")).find(
-        (el) => el.textContent?.trim() === label,
-      ) as HTMLElement | undefined;
+    // The status is a select (#Q4289). No locale is loaded here, so a label
+    // renders as its key.
+    const segment = async (label: string) => {
+      const trigger = await rendered.findByTestId("feedback-status-filter");
+      fireEvent.keyDown(trigger, { key: "ArrowDown" });
+      fireEvent.click(await rendered.findByRole("option", { name: label }));
+    };
 
     let release: () => void = () => {};
     fake.held = {
@@ -394,13 +402,13 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
         release = resolve;
       }),
     };
-    await act(async () => segment("feedback.filter.rejected")?.click());
+    await act(async () => segment("feedback.filter.rejected"));
     await waitFor(() =>
       expect(fake.listCalls.some((call) => call.status === "rejected")).toBe(
         true,
       ),
     );
-    await act(async () => segment("feedback.filter.accepted")?.click());
+    await act(async () => segment("feedback.filter.accepted"));
     await waitFor(() =>
       expect(titles(root)).toEqual([`Report number ${ACCEPTED.shortId}`]),
     );

@@ -1,4 +1,4 @@
-import { Segmented, cn } from "@alepha/ui";
+import { cn } from "@alepha/ui";
 import {
   PinnedPromptsButton,
   SubscriptionBell,
@@ -14,14 +14,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import {
-  Circle,
-  CircleCheck,
-  CircleX,
-  Inbox,
-  type LucideIcon,
-  ShieldAlert,
-} from "lucide-react";
+import { Inbox, ShieldAlert } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
@@ -31,6 +24,7 @@ import { FEEDBACK_PAGE_SIZE } from "./feedbackPageSize.ts";
 import ProjectFeedbackCard from "./ProjectFeedbackCard.tsx";
 import ProjectFeedbackDetail from "./ProjectFeedbackDetail.tsx";
 import ProjectFeedbackEmptyState from "./ProjectFeedbackEmptyState.tsx";
+import ProjectFeedbackStatusSelect from "./ProjectFeedbackStatusSelect.tsx";
 
 /*
  * Exactly the entity's own three states, and deliberately derived rather than
@@ -312,39 +306,16 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
         >
           {/* `h-14`, the detail header's own height, so the two bands line up. */}
           <div className="border-border chrome flex h-14 shrink-0 items-center gap-2 border-b px-2">
-            <Segmented
-              className="bg-background"
+            <ProjectFeedbackStatusSelect
+              key={status}
               value={status}
               // The address goes with it: the open item belongs to the
               // filter being left, so keeping the query would drag the
               // reader straight back to it.
-              onChange={(v) => {
+              onChange={(next) => {
                 address(undefined);
-                showStatus(v as StatusFilter);
+                showStatus(next);
               }}
-              options={FILTERS.map((value) => {
-                const Icon = FILTER_ICONS[value];
-                return {
-                  value,
-                  label: (
-                    <span className="inline-flex items-center gap-1.5">
-                      {/*
-                        No colour of its own: the segment sets the text colour,
-                        and the active one is `text-primary-foreground` over
-                        the thumb. An emerald tick like the card's would be the
-                        one thing on the control not reading as selected when
-                        it is.
-                      */}
-                      <Icon className="size-3 shrink-0" />
-                      {tr(`feedback.filter.${value}` as const)}
-                    </span>
-                  ),
-                };
-              })}
-              // Small and only as wide as its labels (#Q3600): at `lg`, full
-              // width, the three segments overflowed the 380px pane and
-              // pushed the bell against the detail's title.
-              size="sm"
             />
             <div className="ms-auto shrink-0" />
             {/* The prompts pinned on the Feedback list (#Q4284). The open
@@ -455,22 +426,3 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
 };
 
 export default ProjectFeedback;
-
-/*
- * Order is the triage order, which is also why "all" is gone: the inbox is a
- * queue, and a segment that mixes the three states back together answers a
- * reporting question on a screen built for acting on one item at a time.
- */
-const FILTERS = ["pending", "accepted", "rejected"] as const;
-
-/*
- * The same three glyphs `ProjectFeedbackCard.statusIcon` puts on each row,
- * `ProjectFeedbackEmptyState` puts in its tile and the detail's status chip
- * carries, so the segment, the rows it filters to and the pane beside them
- * are one vocabulary.
- */
-const FILTER_ICONS: Record<StatusFilter, LucideIcon> = {
-  pending: Circle,
-  accepted: CircleCheck,
-  rejected: CircleX,
-};
