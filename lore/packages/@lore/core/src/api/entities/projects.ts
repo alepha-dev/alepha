@@ -98,6 +98,17 @@ export const projects = $entity({
      */
     coverageTarget: z.integer().min(0).max(100).optional(),
     /**
+     * Whether a server error group is trusted on arrival (#Q4257), so agents
+     * read it at once; off, it waits for a member's trust like a browser
+     * one. Absent means on, the default: the stricter setting is opt-in, for
+     * a project that wants a member's say on everything an agent reads. It
+     * decides new groups only: turning it off un-trusts nothing.
+     *
+     * A column rather than a capability option because options default to
+     * off. Optional with no `db.default(...)`, for the reason above.
+     */
+    trustServerErrors: z.boolean().optional(),
+    /**
      * The Kanban board's configurable column NAMES, in order. The board is
      * always there with Work. Capped at 5 by the
      * controller. Default is a single "In Progress" lane so existing

@@ -1,0 +1,1 @@
+ALTER TABLE `projects` ADD `trust_server_errors` integer;

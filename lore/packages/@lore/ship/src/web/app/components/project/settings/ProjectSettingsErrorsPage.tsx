@@ -12,10 +12,12 @@ import { Ban } from "lucide-react";
 import { useState } from "react";
 
 import ProjectErrorRulesDialog from "../errors/ProjectErrorRulesDialog.tsx";
+import ProjectSettingsTrustServerErrors from "./ProjectSettingsTrustServerErrors.tsx";
 
 /**
- * Plan > Errors (#Q3703): the error Ignore rules, where the Errors inbox's
- * settings belong, beside the other Plan tabs. The page is Ship's, since the
+ * Plan > Errors (#Q3703): whether server errors are trusted on arrival
+ * (#Q4257) and the error Ignore rules, where the Errors inbox's settings
+ * belong, beside the other Plan tabs. The page is Ship's, since the
  * rules and their dialog are, and Ship adds the tab to Plan's section.
  *
  * Ignore rules are standing configuration, not triage: the inbox is where
@@ -32,6 +34,7 @@ const ProjectSettingsErrorsPage = () => {
 
   return (
     <div className="flex flex-col gap-6">
+      <ProjectSettingsTrustServerErrors />
       <SettingsSection>
         <SettingsRow
           label={tr("errors.rules.title")}

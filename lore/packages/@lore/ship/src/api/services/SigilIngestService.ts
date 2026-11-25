@@ -319,6 +319,11 @@ export class SigilIngestService {
     if (folded.length === 0) {
       return;
     }
+    // On unless the project turned it off (#Q4257).
+    const project = await this.projects.findOne({
+      where: { id: { eq: sigil.projectId } },
+    });
+    const trustServer = project?.trustServerErrors !== false;
 
     await this.errorGroups.upsertMany(
       folded.map((error) => ({
@@ -374,7 +379,9 @@ export class SigilIngestService {
         // never arrive. A browser group still waits for a member (#Q4233).
         // Insert only: `set` below leaves the trust alone, so a group
         // reported again keeps the state it has, a withdrawn trust included.
-        trustedAt: error.origin === "server" ? now : undefined,
+        // Unless the project asked for a member's say on every group
+        // (`trustServerErrors` off, #Q4257).
+        trustedAt: error.origin === "server" && trustServer ? now : undefined,
       })),
       {
         target: ["projectId", "fingerprint"],

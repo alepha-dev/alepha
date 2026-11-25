@@ -2804,6 +2804,9 @@ export default {
   "errors.toast.deletedMany": "$1 errors deleted",
   "errors.deleteConfirm": "Delete this error permanently?",
   "errors.deleteSelectedConfirm": "Delete $1 selected errors permanently?",
+  "errors.trustServer.title": "Trust server errors on arrival",
+  "errors.trustServer.description":
+    "On, an error your app's server reports is trusted at once, so agents read it. Off, it waits for a member's trust, like an error from a browser. Groups already trusted stay trusted.",
   "errors.rules.title": "Ignore rules",
   "errors.rules.description":
     "Drop incoming crashes whose message contains one of these substrings (case-insensitive). Rules apply to future ingest only; existing errors stay until you delete them.",
