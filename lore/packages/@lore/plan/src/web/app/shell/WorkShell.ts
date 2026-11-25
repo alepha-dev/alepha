@@ -11,7 +11,6 @@ import {
   hasCapability,
   canInProject,
   AssistantSuggestionRegistry,
-  CapabilityRowRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
 import {
@@ -48,7 +47,6 @@ import {
   useReportReleaseOptions,
   useReportTagOptions,
 } from "../components/project/reports/useReportFilterOptions.ts";
-import ProjectSettingsRoadmapSwitch from "../components/project/settings/ProjectSettingsRoadmapSwitch.tsx";
 
 /**
  * Work's part of the project shell, registered on core's
@@ -67,17 +65,8 @@ export class WorkShell {
   protected readonly deletion = $inject(AccountDeletionRegistry);
   protected readonly reports = $inject(ReportsTabRegistry);
   protected readonly suggestions = $inject(AssistantSuggestionRegistry);
-  protected readonly capabilityRows = $inject(CapabilityRowRegistry);
 
   constructor() {
-    // The Roadmap switch on General > Capabilities, under Plan after
-    // Requirements (#Q4184): a project column, not a capability option.
-    this.capabilityRows.register({
-      key: "plan.roadmap",
-      capability: "plan",
-      after: "requirements",
-      component: ProjectSettingsRoadmapSwitch,
-    });
     // The assistant's prompts on Work's pages (#Q3585).
     this.suggestions.register({
       routes: (name) => name === "projectQuest",
@@ -191,12 +180,6 @@ export class WorkShell {
         {
           route: "projectSettingsTagColors",
           labelKey: "project.settings.tab.tagColors",
-        },
-        {
-          // Listed while the roadmap is on (#Q4060), the switch on Features.
-          route: "projectSettingsRoadmap",
-          labelKey: "project.settings.tab.roadmap",
-          visible: (project) => (project?.roadmapVisibility ?? "off") !== "off",
         },
         {
           // What Requirements adds to Plan (#Q4259), out of the Quests tab.

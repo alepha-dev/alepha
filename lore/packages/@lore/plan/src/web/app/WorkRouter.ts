@@ -24,15 +24,13 @@ import type { EpicController } from "../../api/controllers/EpicController.ts";
 import type { FeedbackController } from "../../api/controllers/FeedbackController.ts";
 import type { ProjectReportsController } from "../../api/controllers/ProjectReportsController.ts";
 import type { QuestController } from "../../api/controllers/QuestController.ts";
-import type { RoadmapController } from "../../api/controllers/RoadmapController.ts";
 import { currentAreaAtom } from "./atoms/currentAreaAtom.ts";
 import { currentEpicAtom } from "./atoms/currentEpicAtom.ts";
 import { currentQuestAtom } from "./atoms/currentQuestAtom.ts";
-import { roadmapNotFoundAtom } from "./atoms/roadmapNotFoundAtom.ts";
 import { FEEDBACK_PAGE_SIZE } from "./components/project/feedback/feedbackPageSize.ts";
 
 /**
- * Work's pages (#E75): quests, the board, epics, releases, the roadmap, feedback, the Work settings tabs and Reports' Overview, Quests and Members tabs.
+ * Work's pages (#E75): quests, the board, epics, releases, feedback, the Work settings tabs and Reports' Overview, Quests and Members tabs.
  * Each page mounts under core with `$pageProject` or `parent:`, so no
  * router names another module's page.
  */
@@ -46,9 +44,6 @@ export class WorkRouter {
   feedbackApi = $client<FeedbackController>();
   epicApi = $client<EpicController>();
   areaApi = $client<AreaController>();
-  // The framework's inbox, not a Lore controller: the read side of the
-  // notification channel lives in `alepha/api/notifications`.
-  roadmapApi = $client<RoadmapController>();
   /**
    * The quest list.
    *
@@ -523,20 +518,6 @@ export class WorkRouter {
   });
 
   /**
-   * Plan > Roadmap (#Q4060): who may read the roadmap, and its link. Listed
-   * while the roadmap is on (the switch on Features).
-   */
-  projectSettingsRoadmap = $pageProjectSettings({
-    name: "projectSettingsRoadmap",
-    path: "/work/roadmap",
-    head: (_props, previous) => ({
-      title: `${previous?.title ?? ""} › Roadmap`,
-    }),
-    lazy: () =>
-      import("./components/project/settings/ProjectSettingsRoadmapSection.tsx"),
-  });
-
-  /**
    * Quests > Board: the kanban columns. Its tab is listed while the `board`
    * option is on; the route is not guarded, like every settings route.
    */
@@ -691,114 +672,5 @@ export class WorkRouter {
     // mount is `useEffect`-only and survives hydration.
     lazy: () =>
       import("./components/project/feedback/ProjectFeedbackRequest.tsx"),
-  });
-
-  /**
-   * The roadmap: a project's open releases and the epics inside them, read
-   * only, for an audience the project owner chooses.
-   *
-   * ⚠️ **Top-level, and unguarded, and both are load-bearing.**
-   *
-   * `/:projectSlug` carries a guard (`projectAccess`) and a loader that
-   * member-gate its whole subtree, and the guard puts it in CSR - so a child
-   * route there would render no HTML
-   * a crawler could ever read, which is most of what this page is for. Two
-   * routes cannot own one path either, so there is exactly ONE route here and
-   * the members view (#1561) renders into it rather than beside it.
-   *
-   * `projectFeedbackRequest` escapes the same guard the same way, and this
-   * route shares its tree position. The param MUST therefore be named
-   * `projectSlug`: `RouterProvider.push` keeps one param name per position,
-   * and two routes naming it differently collapse onto one, the outer wins,
-   * and the inner value arrives missing.
-   *
-   * Being unguarded is also what makes it server-render, since Lore derives
-   * the mode from the guard rather than setting it (`test/app-ssr-mode.spec.ts`
-   * pins that, and pins this route as public).
-   *
-   * The gate is `projects.roadmapVisibility`, applied by the endpoint: `off`
-   * and a project whose slug does not exist both 404 with the same message,
-   * because a 403 would confirm the project exists.
-   */
-  projectRoadmap = $page({
-    parent: this.core.layout,
-    name: "projectRoadmap",
-    path: "/:projectSlug/roadmap",
-    schema: {
-      params: z.object({ projectSlug: z.string() }),
-    },
-    head: (props) => {
-      const roadmap = (
-        props as { roadmap?: { project?: { title?: string } } } | undefined
-      )?.roadmap;
-      return {
-        title: `${roadmap?.project?.title ?? "Roadmap"} › Roadmap`,
-      };
-    },
-    lazy: () => import("./components/project/roadmap/ProjectRoadmap.tsx"),
-    /*
-     * ⚠️ Buffered, so the page can answer a real 404.
-     *
-     * A streamed page flushes its `<head>` before the loader runs, which
-     * commits the status. This route can legitimately not exist - the slug
-     * may be nobody's, or the roadmap may be off - and it is the ONE page in
-     * Lore a crawler reaches, so a 200 carrying an error would be indexed as
-     * a real page. `/:projectSlug/roadmap` matches any root segment, so that
-     * would be an unbounded surface of soft 404s rather than one.
-     *
-     * The cost is the first byte waiting for the whole render, which for a
-     * page this small is what the correct status is worth.
-     */
-    stream: false,
-    onServerResponse: ({ reply }) => {
-      if (this.alepha.store.get(roadmapNotFoundAtom)?.missing) {
-        reply.status = 404;
-      }
-    },
-    errorHandler: (error) => {
-      // Same shape as the `project` route's: a 404 renders the real
-      // not-found page rather than the layout's generic ErrorPage.
-      if (isHttpError(error, 404)) {
-        return createElement(NotFound, { style: { height: "100%" } });
-      }
-    },
-    loader: async ({ params, user }) => {
-      try {
-        /*
-         * Which endpoint answers is decided by whether there is a session,
-         * and NOT by the project's visibility - which the client has no way
-         * to know before asking, and must not be told.
-         *
-         * The member action also serves a `public` roadmap, so a signed-in
-         * stranger takes that path and gets `member: false` rather than a
-         * refusal. Only a visitor with no session at all reaches the
-         * anonymous one, which is what keeps its guarantee - a body that
-         * cannot depend on who is asking - intact.
-         */
-        if (user) {
-          const { member, ...roadmap } = await this.roadmapApi.getMemberRoadmap(
-            {
-              params: { slug: params.projectSlug },
-            },
-          );
-          return { roadmap, member };
-        }
-
-        const roadmap = await this.roadmapApi.getPublicRoadmap({
-          params: { slug: params.projectSlug },
-        });
-        // A visitor with no session is never a member, so the page offers no
-        // links into the member-gated release pages.
-        return { roadmap, member: false };
-      } catch (error) {
-        if (isHttpError(error, 404)) {
-          // The only way to tell `onServerResponse` what happened: it gets
-          // the request and nothing about the loader. See
-          // `roadmapNotFoundAtom`.
-          this.alepha.store.set(roadmapNotFoundAtom, { missing: true });
-        }
-        throw error;
-      }
-    },
   });
 }

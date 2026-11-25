@@ -116,9 +116,9 @@ export const epics = $entity({
      * `EpicWorkflowService.assertQuestWorkable`: the first quest of a `ready`
      * epic cannot be accepted or assigned while the predecessor is not
      * `completed`, so the epic cannot START. Evaluated at the start and only
-     * there: the field stays writable in every phase because the roadmap
-     * draws it, and a predecessor written after the start is an ordering
-     * statement rather than a constraint that was ever checked. A deleted
+     * there: the field stays writable in every phase, and a predecessor
+     * written after the start is an ordering statement rather than a
+     * constraint that was ever checked. A deleted
      * predecessor is `SET NULL` and unblocks.
      *
      * It gates the start and NOT `ready`, since #Q2223: a chain of epics can

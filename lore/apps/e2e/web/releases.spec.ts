@@ -284,7 +284,7 @@ test.describe("Releases", () => {
 
     // The endpoint itself sorts by version now (#1745). It used to answer in
     // `number` order and leave every consumer to re-sort, which is how the
-    // roadmap, the release filter and both release controls all ended up
+    // release filter and both release controls all ended up
     // showing creation order.
     expect(releases.map((r) => r.tag)).toEqual(["0.9.0", "0.10.0"]);
 

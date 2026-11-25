@@ -3,9 +3,9 @@ import type { ComponentType } from "react";
 
 /**
  * Rows a module adds to General > Capabilities beside a capability's own
- * options (#Q4184): Plan's Roadmap switch, after Requirements, is a column of
- * the project rather than a capability option, and the page is core's, which
- * may not import Plan.
+ * options (#Q4184): a setting of the project that reads as part of a
+ * capability without being one of its options, on a page that is core's and
+ * may not import the module.
  *
  * The page renders each option's row, then the rows registered `after` it,
  * nested as options are; a row whose option is not listed comes after the

@@ -138,7 +138,6 @@ export {
   reportsPeriodFiguresSchema,
   reportsQuestsSchema,
 } from "../api/schemas/reportsSchemas.ts";
-export { type RoadmapVisibility } from "../api/schemas/roadmapVisibilitySchema.ts";
 export { attachmentPushResultSchema } from "../mcp/schemas/attachmentPushResultSchema.ts";
 export { DIAGRAM_CAPABILITY } from "../mcp/schemas/diagramCapability.ts";
 export { diagramWarningsShape } from "../mcp/schemas/diagramWarningsSchema.ts";

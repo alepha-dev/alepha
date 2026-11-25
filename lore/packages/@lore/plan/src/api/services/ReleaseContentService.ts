@@ -36,9 +36,9 @@ export interface ReleaseContents {
  * The single answer to "what is in this release".
  *
  * A release contains two overlapping sets: the quests attached to it directly,
- * and the quests of the epics attached to it. Four surfaces need that answer -
- * the progress rollup, the changelog, the release detail page and the roadmap
- * - and **they must never disagree**.
+ * and the quests of the epics attached to it. Three surfaces need that answer -
+ * the progress rollup, the changelog and the release detail page - and
+ * **they must never disagree**.
  *
  * That is the whole reason this is a service, and not that the query is hard.
  * The failure mode of inlining it is silent: the progress bar and the
@@ -192,9 +192,10 @@ export class ReleaseContentService {
    * excludes both of the others.
    *
    * ⚠️ It lives on this service rather than on `ReleaseController` (where it
-   * was written) because the roadmap needs the same answer and a second copy
-   * of it is exactly the silent disagreement this service exists to prevent:
-   * two surfaces counting different things with nothing going red.
+   * was written) because the progress metric needs the same answer, and a
+   * second copy of it is exactly the silent disagreement this service exists
+   * to prevent: two surfaces counting different things with nothing going
+   * red.
    */
   progressOf(
     release: Release,

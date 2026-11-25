@@ -50,9 +50,8 @@ export interface SettingsTab {
    */
   fullWidth?: boolean;
   /**
-   * A last say on the project's own state, for a tab no option or permission
-   * decides: Plan's Roadmap is listed while `roadmapVisibility` is not off
-   * (#Q4060).
+   * A last say on the project's own state, for a tab no single option or
+   * permission decides.
    */
   visible?: (project: ProjectResource | undefined) => boolean;
 }

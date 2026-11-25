@@ -137,7 +137,7 @@ describe("theme fonts", () => {
   it.each(ALL_THEMES)("%s can actually load the faces it names", (theme) => {
     // `ColorScheme` swaps a SINGLE <link> to the active theme's stylesheet,
     // so a face missing from it is a silent fallback down the stack - which
-    // is exactly what the roadmap page shipped for months.
+    // is exactly what a page with no theme picker once shipped for months.
     const sheet = readFileSync(
       join(LORE_ROOT, `public/fonts/${theme}.css`),
       "utf8",

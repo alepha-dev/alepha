@@ -21,7 +21,7 @@ export type EpicStatusLabelKey =
 
 /**
  * Badge copy for an epic's current status. Shared by every surface that
- * draws the chip (the list, the aside, the roadmap, the release page, the
+ * draws the chip (the list, the aside, the release page, the
  * dashboard's scope step) so none of them drifts on wording.
  *
  * The keys are camelCase while `in_progress` is not: the map is the one

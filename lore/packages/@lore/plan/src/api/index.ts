@@ -14,7 +14,6 @@ import { QuestAuthorshipController } from "./controllers/QuestAuthorshipControll
 import { QuestCommentController } from "./controllers/QuestCommentController.ts";
 import { QuestController } from "./controllers/QuestController.ts";
 import { ReleaseController } from "./controllers/ReleaseController.ts";
-import { RoadmapController } from "./controllers/RoadmapController.ts";
 import { QuestMemberRemoval } from "./hooks/QuestMemberRemoval.ts";
 import { EpicJobs } from "./jobs/EpicJobs.ts";
 import { QuestReminderNotifications } from "./notifications/QuestReminderNotifications.ts";
@@ -77,7 +76,6 @@ import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
 import { ReleasePublishGuards } from "./services/ReleasePublishGuards.ts";
 import { ReleasesToPublishMetric } from "./services/ReleasesToPublishMetric.ts";
 import { RemindersDueMetric } from "./services/RemindersDueMetric.ts";
-import { RoadmapService } from "./services/RoadmapService.ts";
 import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UnfinishedJobQuests } from "./services/UnfinishedJobQuests.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
@@ -98,7 +96,7 @@ import { WorkYourDashboardMetrics } from "./services/WorkYourDashboardMetrics.ts
 import { YourQuestsMetric } from "./services/YourQuestsMetric.ts";
 
 /**
- * The server half of `@lore/plan`, Lore as Jira: quests, epics, releases, areas, the kanban, the roadmap and feedback.
+ * The server half of `@lore/plan`, Lore as Jira: quests, epics, releases, areas, the kanban and feedback.
  *
  * It depends on `@lore/core` only: a feature that spans two modules goes through a core registry or a core link, never through an import of another feature module (`check:conventions`).
  *
@@ -143,7 +141,6 @@ export const LorePlanApi = $module({
     ReleaseAttachmentService,
     ReleasePublishGuards,
     ReleaseContentService,
-    RoadmapService,
     EpicDependencyService,
     // The epic rollup, on a service rather than on the controller now that
     // five surfaces read it: the Epics list, `epic_list`, `project_context`,
@@ -233,7 +230,6 @@ export const LorePlanApi = $module({
     QuestCommentController,
     FeedbackCommentController,
     ReleaseController,
-    RoadmapController,
     EpicController,
     EpicReviewController,
     AreaController,
@@ -283,7 +279,6 @@ export { QuestCommentController } from "./controllers/QuestCommentController.ts"
 export { QuestController } from "./controllers/QuestController.ts";
 export { QuestReminders } from "./services/QuestReminders.ts";
 export { ReleaseController } from "./controllers/ReleaseController.ts";
-export { RoadmapController } from "./controllers/RoadmapController.ts";
 export { AreaService } from "./services/AreaService.ts";
 export { BoardRank } from "./services/BoardRank.ts";
 export { EpicDependencyService } from "./services/EpicDependencyService.ts";

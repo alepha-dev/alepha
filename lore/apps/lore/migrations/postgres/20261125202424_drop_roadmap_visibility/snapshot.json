@@ -1,0 +1,25 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "054c40e9-8e26-4d35-99bd-819db752c914",
+  "prevIds": ["98e9dd32-4291-4fe6-b3c1-7f0d8049a5c4"],
+  "footprints": [
+    {
+      "statementType": "drop_column",
+      "statementTarget": ["column", "public", "projects", "roadmap_visibility"],
+      "writes": [
+        "s|col|public.projects.roadmap_visibility",
+        "n|col|public.projects.roadmap_visibility",
+        "e|col|public.projects.roadmap_visibility"
+      ],
+      "reads": ["n|tbl|public.projects", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"projects\",\"roadmap_visibility\"]"
+    }
+  ]
+}

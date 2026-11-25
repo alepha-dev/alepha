@@ -119,8 +119,8 @@ export class ProjectTools {
       // `assertMember` answers `ForbiddenError`, which confirms the project
       // EXISTS; this surface has never distinguished "no such project" from
       // "not yours", and `EpicTools.spec.ts` pins that on the most
-      // destructive tool here. Same reasoning as the public roadmap's
-      // 404-never-403. Keeping the read cheap must not widen what a
+      // destructive tool here: a 404, never a 403, since a 403 confirms the
+      // project exists. Keeping the read cheap must not widen what a
       // non-member can learn, so both refusals collapse into the message
       // this resolver has always returned. Anything else is a real failure
       // and propagates untouched.

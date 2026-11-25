@@ -59,8 +59,8 @@ export class CoreRouter {
       this.resetPassword,
       this.projectRouter.project,
       this.projectCreate,
-      // A module's top-level page (the feedback request form, the public
-      // roadmap) mounts here with `parent: core.layout`.
+      // A module's top-level page (the feedback request form) mounts here
+      // with `parent: core.layout`.
       this.notFound,
     ],
     // No `ssr` here on purpose. The shell is shared by anonymous pages (home,

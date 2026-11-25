@@ -50,9 +50,9 @@ export const epicResourceSchema = epics.schema.extend({
    *
    * The column stores an id, because that is what a foreign key is; every
    * surface that names an epic to a human names it `#7`. Resolving it once
-   * here, rather than at each call site, is what lets the roadmap, the MCP
-   * tools and the epic page all say "after Epic 7" without any of them
-   * holding the epic list to translate with.
+   * here, rather than at each call site, is what lets the MCP tools and the
+   * epic page both say "after Epic 7" without either holding the epic list
+   * to translate with.
    *
    * Absent when the epic has no predecessor, and also when the predecessor
    * row has gone - the FK is `ON DELETE SET NULL`, so that second case does
@@ -74,17 +74,13 @@ export const epicResourceSchema = epics.schema.extend({
    * predecessor row for its number (`buildEpicResource` fetches it,
    * `getEpics` has every predecessor in hand), so it costs no query and no
    * migration.
-   *
-   * ⚠️ NOT picked into `roadmapEpicSchema`. The roadmap draws order, may be
-   * public, and its key set is pinned; the predecessor may sit in no release
-   * at all, and its status is not the roadmap's to disclose.
    */
   dependsOnStatus: epics.schema.shape.status.optional(),
   /**
    * How many review questions are still open on this epic (#E121): the
    * Review tab's count, the epic list's, and what `epic_set_status` reports
    * beside a move to `ready`. Optional so a surface that builds a resource
-   * without it (the roadmap picks its own keys) stays valid.
+   * without it stays valid.
    */
   openQuestions: z.integer().optional(),
   /**

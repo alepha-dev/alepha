@@ -19,7 +19,7 @@ import { WorkShell } from "./app/shell/WorkShell.ts";
 import { WorkRouter } from "./app/WorkRouter.ts";
 
 /**
- * The browser-safe half of `@lore/plan`, Lore as Jira: quests, epics, releases, areas, the kanban, the roadmap and feedback: its pages, atoms and
+ * The browser-safe half of `@lore/plan`, Lore as Jira: quests, epics, releases, areas, the kanban and feedback: its pages, atoms and
  * dictionaries.
  *
  * Registered by BOTH entries, `main.server.ts` and `main.browser.ts`: the

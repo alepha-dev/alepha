@@ -54,7 +54,6 @@ import {
   type ProjectUserResource,
   projectUserSchema,
 } from "../schemas/projectUserSchema.ts";
-import { roadmapVisibilitySchema } from "../schemas/roadmapVisibilitySchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { LoreActivityPermissions } from "../security/LoreActivityPermissions.ts";
 import { ProjectPermissions } from "../security/ProjectPermissions.ts";
@@ -1153,9 +1152,6 @@ export class ProjectController {
         coverageTarget: z.integer().min(0).max(100).nullable().optional(),
         // Server errors trusted on arrival (#Q4257). `null` clears it → on.
         trustServerErrors: z.boolean().nullable().optional(),
-        // Who may read `/:projectSlug/roadmap`. `null` clears the override →
-        // `ProjectSecurityService.roadmapVisibilityOf` reads it as `off`.
-        roadmapVisibility: roadmapVisibilitySchema.nullable().optional(),
         // Colour token per quest tag. Sent whole, not merged: the settings
         // picker holds the full map, and a partial merge gives no way to
         // clear one tag's colour without inventing a "none" token.
@@ -1206,10 +1202,6 @@ export class ProjectController {
 
       if ("trustServerErrors" in body) {
         project.trustServerErrors = body.trustServerErrors ?? undefined;
-      }
-
-      if ("roadmapVisibility" in body) {
-        project.roadmapVisibility = body.roadmapVisibility ?? undefined;
       }
 
       if ("tagColors" in body) {

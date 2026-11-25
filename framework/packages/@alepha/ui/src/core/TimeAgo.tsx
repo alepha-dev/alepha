@@ -45,10 +45,9 @@ export interface TimeAgoProps {
  *
  * The server renders the EXACT datetime rather than nothing. A crawler, a
  * reader with no JavaScript and the first paint all get a true answer instead
- * of a blank, which matters on `/:projectSlug/roadmap` - the one page Lore
- * server-renders for an audience that may never run the client. The visible
- * swap on hydration is the price, and it is a swap from correct to more
- * readable.
+ * of a blank, which matters on a page server-rendered for an audience that
+ * may never run the client. The visible swap on hydration is the price, and
+ * it is a swap from correct to more readable.
  *
  * ## Where NOT to use it
  *

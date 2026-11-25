@@ -1397,8 +1397,7 @@ test.describe("Epics — the release control", () => {
      * it, "No release" after a reload is what a LOST write and a genuine
      * detach both look like, so the detach step asserted nothing at all.
      *
-     * Matched on the BODY rather than the URL. `roadmap.spec.ts` warns that
-     * action calls are multiplexed through `POST /api/_batch`, where a
+     * Matched on the BODY rather than the URL: action calls are multiplexed through `POST /api/_batch`, where a
      * per-action URL never fires; one pick is one call in its own tick so it
      * does reach `/api/updateEpic` today, but `releaseId` is in the payload
      * either way and nothing else in this window writes that key.
