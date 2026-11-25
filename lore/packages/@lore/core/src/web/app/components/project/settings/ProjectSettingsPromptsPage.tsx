@@ -29,7 +29,6 @@ import type { HostJobController } from "../../../../../api/controllers/HostJobCo
 import type { PromptController } from "../../../../../api/controllers/PromptController.ts";
 import type { PromptResource } from "../../../../../api/schemas/promptResourceSchema.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
-import { loreDocsUrl } from "../../../services/docsUrl.ts";
 import { type I18n } from "../../../services/I18n.ts";
 import { useRank } from "../../shared/useRank.ts";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
@@ -389,34 +388,30 @@ const ProjectSettingsPromptsPage = () => {
           }}
         />
       )}
-      <p className="text-muted-foreground px-4 pb-4 text-xs md:px-6">
-        {!ready && can("host:read") && (
-          <>
-            {tr("prompts.needsHost")}{" "}
-            <Link
-              href={`/${slug}/settings/hosts`}
-              className={textLinkUnderlineClassName}
-            >
-              {tr("project.settings.nav.hosts")}
-            </Link>
-            {" · "}
-          </>
-        )}
-        <a
-          href={loreDocsUrl("agents-prompts")}
-          target="_blank"
-          rel="noreferrer"
-          className={textLinkUnderlineClassName}
-        >
-          {tr("prompts.docs")}
-        </a>
-        {pausedAt && (
-          <>
-            {" · "}
-            {tr("prompts.paused")} <TimeAgo value={pausedAt} />
-          </>
-        )}
-      </p>
+      {/* What the table cannot say: a missing Agent host and a pause. The
+      guide link that sat between them went at the owner's request (#Q4291),
+      so the separator only falls between two items that are both there. */}
+      {((!ready && can("host:read")) || pausedAt) && (
+        <p className="text-muted-foreground px-4 pb-4 text-xs md:px-6">
+          {!ready && can("host:read") && (
+            <span data-testid="prompts-needs-host">
+              {tr("prompts.needsHost")}{" "}
+              <Link
+                href={`/${slug}/settings/hosts`}
+                className={textLinkUnderlineClassName}
+              >
+                {tr("project.settings.nav.hosts")}
+              </Link>
+            </span>
+          )}
+          {!ready && can("host:read") && pausedAt && " · "}
+          {pausedAt && (
+            <span data-testid="prompts-paused">
+              {tr("prompts.paused")} <TimeAgo value={pausedAt} />
+            </span>
+          )}
+        </p>
+      )}
       {projectId !== undefined &&
         (open?.kind === "copy" || open?.kind === "run") && (
           <PromptRunDialog

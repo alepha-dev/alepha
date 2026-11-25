@@ -43,6 +43,7 @@ const prompt = (over: Partial<PromptResource> = {}): PromptResource => ({
 const world = {
   items: [] as PromptResource[],
   pausedAt: undefined as string | undefined,
+  hosts: [] as { slug: string }[],
 };
 
 class FakeLinkProvider extends LinkProvider {
@@ -54,7 +55,7 @@ class FakeLinkProvider extends LinkProvider {
         pausedAt: world.pausedAt,
         pages: [],
       }),
-      listPromptHosts: async () => ({ hosts: [] }),
+      listPromptHosts: async () => ({ hosts: world.hosts }),
       listProjectJobs: async () => ({ items: [] }),
     });
   }
@@ -73,6 +74,7 @@ describe("ProjectSettingsPromptsPage", () => {
   afterEach(async () => {
     world.items = [];
     world.pausedAt = undefined;
+    world.hosts = [];
     cleanup();
     await alepha?.stop();
     alepha = undefined;
@@ -123,5 +125,38 @@ describe("ProjectSettingsPromptsPage", () => {
     await waitFor(() =>
       expect(labels()).toEqual(["Resume triggers", "New prompt"]),
     );
+  });
+
+  it("has no guide link under the table, and a separator only between a missing host and a pause (#Q4291)", async ({
+    expect,
+  }) => {
+    world.items = [prompt()];
+    world.pausedAt = "2026-11-25T07:00:00.000Z";
+    await show();
+
+    expect(screen.queryByText("How prompts work")).toBeNull();
+    const paused = await screen.findByTestId("prompts-paused");
+    const footer = paused.parentElement as HTMLElement;
+    // No Agent host in this project, so both items show, one dot apart.
+    expect(screen.getByTestId("prompts-needs-host")).toBeTruthy();
+    expect(footer.textContent?.split(" · ")).toHaveLength(2);
+    expect(footer.textContent?.trim().startsWith("·")).toBe(false);
+    expect(footer.textContent?.trim().endsWith("·")).toBe(false);
+  });
+
+  it("shows a pause alone, with no dot, once an Agent host is ready (#Q4291)", async ({
+    expect,
+  }) => {
+    world.items = [prompt()];
+    world.pausedAt = "2026-11-25T07:00:00.000Z";
+    world.hosts = [{ slug: "desktop" }];
+    await show();
+
+    await waitFor(() =>
+      expect(screen.queryByTestId("prompts-needs-host")).toBeNull(),
+    );
+    const footer = screen.getByTestId("prompts-paused")
+      .parentElement as HTMLElement;
+    expect(footer.textContent).not.toContain("·");
   });
 });

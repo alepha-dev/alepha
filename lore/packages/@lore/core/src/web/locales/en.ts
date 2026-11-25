@@ -5199,7 +5199,6 @@ export default {
   "prompts.skipped": "Skipped: $1",
   "prompts.never": "Never run",
   "prompts.needsHost": "Run needs an Agent host that is ready:",
-  "prompts.docs": "How prompts work",
   "prompts.pin": "Pin",
   "prompts.table.pins": "Pinned on",
   "prompts.pins.none": "Nowhere",
