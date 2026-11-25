@@ -6,17 +6,15 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "../core/DropdownMenu.tsx";
+import {
+  DataTableRowActionGroupItem,
+  hasRowAction,
+  isRowActionGroup,
+} from "./DataTableRowActionGroupItem.tsx";
 import { DataTableRowActionItem } from "./DataTableRowActionItem.tsx";
-import type {
-  RowActionContext,
-  RowActionEntry,
-  RowActionGroup,
-} from "./dataTableTypes.ts";
+import type { RowActionContext, RowActionEntry } from "./dataTableTypes.ts";
 
 export interface DataTableRowActionsMenuProps<T> {
   actions: RowActionEntry<T>[];
@@ -25,8 +23,9 @@ export interface DataTableRowActionsMenuProps<T> {
 }
 
 /**
- * The three-dots menu at the end of a row, with one level of submenus for
- * groups. Renders nothing when no entry survives.
+ * The three-dots menu at the end of a row, a group drawn as a submenu (and
+ * a group inside it as a submenu of that). Renders nothing when no entry
+ * survives.
  */
 export const DataTableRowActionsMenu = <T,>(
   props: DataTableRowActionsMenuProps<T>,
@@ -35,9 +34,7 @@ export const DataTableRowActionsMenu = <T,>(
   // ⚠️ Effective entries, not entries: a group is one entry however many
   // children it has, so a lone empty group would otherwise render the
   // three-dots trigger over an empty menu.
-  const effective = props.actions.filter((action) =>
-    isRowActionGroup(action) ? action.children.length > 0 : true,
-  );
+  const effective = props.actions.filter(hasRowAction);
   if (effective.length === 0) return null;
   return (
     <DropdownMenu>
@@ -56,25 +53,14 @@ export const DataTableRowActionsMenu = <T,>(
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {effective.map((action, idx) => {
-          const Icon = action.icon;
           if (isRowActionGroup(action)) {
             return (
-              <DropdownMenuSub key={action.label}>
-                <DropdownMenuSubTrigger>
-                  {Icon && <Icon className="me-2 size-4" />}
-                  {action.label}
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  {action.children.map((child) => (
-                    <DataTableRowActionItem
-                      key={child.label}
-                      action={child}
-                      item={props.item}
-                      ctx={props.ctx}
-                    />
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
+              <DataTableRowActionGroupItem
+                key={action.label}
+                group={action}
+                item={props.item}
+                ctx={props.ctx}
+              />
             );
           }
           // A group is never destructive, so the previous entry being one
@@ -99,9 +85,3 @@ export const DataTableRowActionsMenu = <T,>(
     </DropdownMenu>
   );
 };
-
-function isRowActionGroup<T>(
-  entry: RowActionEntry<T>,
-): entry is RowActionGroup<T> {
-  return "children" in entry;
-}

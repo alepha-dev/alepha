@@ -84,7 +84,8 @@ export interface DataTableBaseProps<
    * item. Each `onClick` receives `(item, { refresh, clearSelection })`.
    *
    * An entry may also be a {@link RowActionGroup}: a label, an icon and
-   * the actions it holds, rendered as a submenu one level deep.
+   * the actions it holds, rendered as a submenu; a group inside a group is a
+   * submenu inside it.
    */
   rowActions?: (item: T) => RowActionEntry<T>[];
   /**

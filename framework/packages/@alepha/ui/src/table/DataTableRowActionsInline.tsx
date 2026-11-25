@@ -5,6 +5,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../core/Tooltip.tsx";
+import { hasRowAction } from "./DataTableRowActionGroupItem.tsx";
 import { DataTableRowActionsMenu } from "./DataTableRowActionsMenu.tsx";
 import type {
   RowAction,
@@ -35,7 +36,8 @@ export const DataTableRowActionsInline = <T,>(
     (entry): entry is RowAction<T> => !("children" in entry),
   );
   const groups = props.actions.filter(
-    (entry): entry is RowActionGroup<T> => "children" in entry,
+    (entry): entry is RowActionGroup<T> =>
+      "children" in entry && hasRowAction(entry),
   );
   if (actions.length === 0 && groups.length === 0) return null;
   return (

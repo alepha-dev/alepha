@@ -138,7 +138,8 @@ export interface RowAction<T> {
 
 /**
  * A row action that is a submenu: a label, an icon, and the actions it
- * holds. One level only: a group's children are actions, never groups.
+ * holds. A child may be a group itself, drawn as a submenu inside the
+ * submenu: `Agent prompts > Review Epic > Copy`.
  *
  * The discriminant is the presence of `children`, so every caller that
  * returns a plain `RowAction[]` keeps compiling unchanged.
@@ -146,12 +147,13 @@ export interface RowAction<T> {
  * ⚠️ A group with no children renders nothing, and does not count towards
  * the row menu existing at all: a row whose only entry is an empty group
  * gets no three-dots trigger. That lets a caller build `children`
- * conditionally without checking whether anything survived.
+ * conditionally without checking whether anything survived. A group whose
+ * children are all empty groups is empty too, at any depth.
  */
 export interface RowActionGroup<T> {
   label: string;
   icon?: IconType;
-  children: RowAction<T>[];
+  children: RowActionEntry<T>[];
 }
 
 export type RowActionEntry<T> = RowAction<T> | RowActionGroup<T>;

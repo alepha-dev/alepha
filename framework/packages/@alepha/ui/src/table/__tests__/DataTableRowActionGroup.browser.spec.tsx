@@ -20,7 +20,7 @@ const columns = {
 
 /**
  * A row action may be a group: a label, an icon and the actions it holds,
- * rendered as a submenu one level deep.
+ * rendered as a submenu, and a group inside a group as a submenu inside it.
  *
  * Two behaviours are guarded here. The submenu itself, and the rule that a
  * group with no children does not count towards the menu existing: a row
@@ -198,5 +198,78 @@ describe("DataTable (row action groups)", () => {
     fireEvent.click(child);
     await waitFor(() => expect(clicked).toBeTruthy());
     expect(clicked?.id).toBe(7);
+  });
+
+  const menuItem = (label: string) =>
+    waitFor(() => {
+      const found = Array.from(
+        document.querySelectorAll('[role="menuitem"]'),
+      ).find((it) => (it.textContent ?? "").trim() === label);
+      expect(found).toBeTruthy();
+      return found as HTMLElement;
+    });
+
+  it("opens a group inside a group and calls the inner action with the row", async () => {
+    let clicked: Row | undefined;
+    await mount(
+      <DataTable<Row>
+        data={[{ id: 3, title: "Alpha" }]}
+        columns={columns}
+        rowActions={() => [
+          {
+            label: "Agent prompts",
+            icon: Bot,
+            children: [
+              {
+                label: "Review Epic",
+                children: [
+                  { label: "Copy", onClick: () => {} },
+                  {
+                    label: "Run",
+                    onClick: (row) => {
+                      clicked = row;
+                    },
+                  },
+                ],
+              },
+              // Empty: left out of the submenu, as an empty group is.
+              { label: "Nothing", children: [] },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    await openRowMenu();
+    fireEvent.click(await menuItem("Agent prompts"));
+    fireEvent.click(await menuItem("Review Epic"));
+    expect(
+      Array.from(document.querySelectorAll('[role="menuitem"]')).some(
+        (it) => (it.textContent ?? "").trim() === "Nothing",
+      ),
+    ).toBe(false);
+    fireEvent.click(await menuItem("Run"));
+    await waitFor(() => expect(clicked?.id).toBe(3));
+  });
+
+  it("renders no menu when a group holds only empty groups", async () => {
+    await mount(
+      <DataTable<Row>
+        data={[{ id: 1, title: "Alpha" }]}
+        columns={columns}
+        rowActions={() => [
+          {
+            label: "Agent prompts",
+            icon: Bot,
+            children: [{ label: "Review Epic", children: [] }],
+          },
+        ]}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText("Alpha")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: "Open row actions" })).toBe(
+      null,
+    );
   });
 });
