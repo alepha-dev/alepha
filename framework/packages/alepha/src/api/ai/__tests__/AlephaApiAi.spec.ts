@@ -703,6 +703,23 @@ describe("alepha/api/ai entities", () => {
       expect(await service.tokensSince("u2", "2000-01-01T00:00:00.000Z")).toBe(
         0,
       );
+      // A cache read weighs a tenth: 1000 in, 900 of them read from the
+      // cache, 20 out is 1000 - 810 + 20.
+      await service.append(
+        conversation,
+        3,
+        { role: "assistant", content: "cached" },
+        {
+          usage: {
+            inputTokens: 1000,
+            outputTokens: 20,
+            cachedInputTokens: 900,
+          },
+        },
+      );
+      expect(await service.tokensSince("u1", "2000-01-01T00:00:00.000Z")).toBe(
+        15 + 210,
+      );
 
       await service.pause(conversation.id, {
         callId: "c9",

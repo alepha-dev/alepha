@@ -1,0 +1,1 @@
+ALTER TABLE `ai_messages` ADD `cached_input_tokens` integer;

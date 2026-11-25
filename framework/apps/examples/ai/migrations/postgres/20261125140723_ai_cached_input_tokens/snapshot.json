@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c1c407d3-57e0-43f9-92dc-c2999f31df8e",
+  "prevIds": ["f07f4724-1668-404e-b84d-faaa3ca7e070"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "ai_messages",
+        "cached_input_tokens"
+      ],
+      "writes": [
+        "s|col|public.ai_messages.cached_input_tokens",
+        "n|col|public.ai_messages.cached_input_tokens",
+        "e|col|public.ai_messages.cached_input_tokens"
+      ],
+      "reads": ["n|tbl|public.ai_messages", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ai_messages",
+        "name": "cached_input_tokens",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

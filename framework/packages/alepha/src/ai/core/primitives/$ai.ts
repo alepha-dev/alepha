@@ -529,6 +529,9 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
           usage = {
             inputTokens: event.inputTokens,
             outputTokens: event.outputTokens,
+            ...(event.cachedInputTokens
+              ? { cachedInputTokens: event.cachedInputTokens }
+              : {}),
           };
         } else if (event.type === "vendor") {
           vendor = { provider: event.provider, data: event.data };

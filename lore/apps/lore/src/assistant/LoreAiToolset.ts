@@ -55,13 +55,183 @@ import { LoreAiDocsController } from "./LoreAiDocsController.ts";
  * runs the tool as the turn's user, and the action's gate decides.
  *
  * Declaration order is what the vendor sees, and it stays stable so the
- * vendor caches it. Twenty-five read tools and eight writes: the eight
+ * vendor caches it. Twenty-five read tools and sixteen writes: the eight
  * operations reads (#Q4235) went past the ~25 a small model handles, on
  * purpose, since an agent asked to watch the house had nothing to watch it
- * with.
+ * with, and #Q4297 added eight writes, deletes among them, each behind its
+ * card. Every other MCP tool is listed in {@link LoreAiToolset.EXCLUDED}
+ * with the reason it is not offered, and `assistant-mcp-parity.spec.ts`
+ * fails on a tool that is in neither.
  */
 export class LoreAiToolset {
   protected readonly alepha = $inject(Alepha);
+
+  /*
+   * Why an MCP tool is not offered to a chat agent (#Q4297). The goal is
+   * parity with the MCP, so each exclusion states its reason, for the owner
+   * to revise.
+   */
+  public static readonly HOST =
+    "Deploys, undeploys or reaches into a host: stays on its page.";
+  public static readonly SECRET =
+    "Mints, rotates or deletes a credential, or lists them: never through a chat.";
+  public static readonly TOO_BIG =
+    "Its result is past the 32 KB `$ai` keeps of a tool result: project_info and getEpicRefs are offered in its place, until a paged variant exists.";
+  public static readonly CROSS =
+    "Spans projects, and a run is pinned to its room's project.";
+  public static readonly AGENTS =
+    "Changes how agents, prompts and notifications run: kept off the agents themselves, on the settings pages.";
+  public static readonly ROOM =
+    "The agent answers in its room and reads that room already: another room is out of its reach by design.";
+  public static readonly FILES =
+    "Moves a file: a chat turn has no file to hand a tool, and a file's bytes pass the 32 KB result cap.";
+  public static readonly REPORTER =
+    "Writes to an outside reporter, and its gate checks no project rank: stays on the Feedback page.";
+  public static readonly LATER =
+    "Not offered yet: waits for the tool search, which loads a rare tool's schema on demand rather than on every turn.";
+
+  /**
+   * Every MCP tool a chat agent is not offered, with the reason.
+   * `assistant-mcp-parity.spec.ts` fails on a tool that is neither offered
+   * nor listed here, so a new `$tool` is a decision, never a silent gap.
+   */
+  public static readonly EXCLUDED: Record<string, string> = {
+    agent_hosts: LoreAiToolset.HOST,
+    app_instance_create: LoreAiToolset.HOST,
+    app_instance_delete: LoreAiToolset.HOST,
+    app_instance_get: LoreAiToolset.LATER,
+    app_instance_list: LoreAiToolset.LATER,
+    app_instance_update: LoreAiToolset.HOST,
+    area_delete: LoreAiToolset.LATER,
+    artifact_get: LoreAiToolset.LATER,
+    artifact_list: LoreAiToolset.LATER,
+    channel_delete: LoreAiToolset.AGENTS,
+    channel_update: LoreAiToolset.AGENTS,
+    chat_agent_create: LoreAiToolset.AGENTS,
+    chat_agent_delete: LoreAiToolset.AGENTS,
+    chat_agent_get: LoreAiToolset.LATER,
+    chat_agent_list: LoreAiToolset.LATER,
+    chat_agent_update: LoreAiToolset.AGENTS,
+    chat_message_list: LoreAiToolset.ROOM,
+    chat_message_send: LoreAiToolset.ROOM,
+    chat_room_list: LoreAiToolset.ROOM,
+    criterion_verify_link: LoreAiToolset.LATER,
+    dashboard_card_remove: LoreAiToolset.LATER,
+    dashboard_card_reorder: LoreAiToolset.LATER,
+    deploy_rollback: LoreAiToolset.HOST,
+    deploy_start: LoreAiToolset.HOST,
+    directory_create: LoreAiToolset.LATER,
+    directory_delete: LoreAiToolset.LATER,
+    directory_list: LoreAiToolset.LATER,
+    directory_move: LoreAiToolset.LATER,
+    directory_rename: LoreAiToolset.LATER,
+    epic_delete: LoreAiToolset.LATER,
+    epic_list: LoreAiToolset.TOO_BIG,
+    epic_pull_request_add: LoreAiToolset.LATER,
+    epic_review_answer: LoreAiToolset.LATER,
+    epic_review_create: LoreAiToolset.LATER,
+    epic_set_status: LoreAiToolset.LATER,
+    epic_shelve: LoreAiToolset.LATER,
+    epic_unshelve: LoreAiToolset.LATER,
+    epic_update: LoreAiToolset.LATER,
+    error_forward: LoreAiToolset.LATER,
+    error_resolve: LoreAiToolset.LATER,
+    event_catalog: LoreAiToolset.LATER,
+    event_list: LoreAiToolset.LATER,
+    feedback_attachment_get: LoreAiToolset.FILES,
+    feedback_comment_add: LoreAiToolset.REPORTER,
+    folio_attachment_add: LoreAiToolset.FILES,
+    folio_attachment_delete: LoreAiToolset.LATER,
+    folio_attachment_list: LoreAiToolset.LATER,
+    folio_attachment_rename: LoreAiToolset.LATER,
+    folio_column_set: LoreAiToolset.LATER,
+    folio_history: LoreAiToolset.LATER,
+    folio_list: LoreAiToolset.LATER,
+    folio_revert: LoreAiToolset.LATER,
+    folio_row_add: LoreAiToolset.LATER,
+    folio_row_delete: LoreAiToolset.LATER,
+    folio_row_list: LoreAiToolset.LATER,
+    folio_row_update: LoreAiToolset.LATER,
+    folio_update: LoreAiToolset.LATER,
+    host_stats: LoreAiToolset.HOST,
+    inbox_list: LoreAiToolset.LATER,
+    inbox_read: LoreAiToolset.LATER,
+    insights_read: LoreAiToolset.LATER,
+    job_cancel: LoreAiToolset.HOST,
+    monitor_create: LoreAiToolset.LATER,
+    monitor_delete: LoreAiToolset.LATER,
+    monitor_pause: LoreAiToolset.LATER,
+    monitor_resume: LoreAiToolset.LATER,
+    monitor_update: LoreAiToolset.LATER,
+    persona_comment_add: LoreAiToolset.LATER,
+    persona_create: LoreAiToolset.LATER,
+    persona_delete: LoreAiToolset.LATER,
+    persona_get: LoreAiToolset.LATER,
+    persona_list: LoreAiToolset.LATER,
+    persona_update: LoreAiToolset.LATER,
+    project_activity: LoreAiToolset.LATER,
+    project_context: LoreAiToolset.TOO_BIG,
+    project_list: LoreAiToolset.CROSS,
+    project_merge: LoreAiToolset.CROSS,
+    project_report: LoreAiToolset.LATER,
+    prompt_create: LoreAiToolset.AGENTS,
+    prompt_delete: LoreAiToolset.AGENTS,
+    prompt_duplicate: LoreAiToolset.AGENTS,
+    prompt_get: LoreAiToolset.LATER,
+    prompt_list: LoreAiToolset.LATER,
+    prompt_pause_all: LoreAiToolset.AGENTS,
+    prompt_render: LoreAiToolset.LATER,
+    prompt_resume_all: LoreAiToolset.AGENTS,
+    prompt_run: LoreAiToolset.AGENTS,
+    prompt_update: LoreAiToolset.AGENTS,
+    quest_attachment_add: LoreAiToolset.FILES,
+    quest_attachment_get: LoreAiToolset.FILES,
+    quest_commit_add: LoreAiToolset.LATER,
+    quest_hold: LoreAiToolset.LATER,
+    quest_objective_set: LoreAiToolset.LATER,
+    quest_pull_request_add: LoreAiToolset.LATER,
+    quest_reminder_set: LoreAiToolset.LATER,
+    quest_tags: LoreAiToolset.LATER,
+    quest_unassign: LoreAiToolset.LATER,
+    quest_unhold: LoreAiToolset.LATER,
+    quest_unshelve: LoreAiToolset.LATER,
+    release_attach: LoreAiToolset.LATER,
+    release_changelog: LoreAiToolset.LATER,
+    release_create: LoreAiToolset.LATER,
+    release_delete: LoreAiToolset.LATER,
+    release_detach: LoreAiToolset.LATER,
+    release_set_default: LoreAiToolset.LATER,
+    release_update: LoreAiToolset.LATER,
+    requirement_coverage: LoreAiToolset.LATER,
+    requirement_create: LoreAiToolset.LATER,
+    requirement_delete: LoreAiToolset.LATER,
+    requirement_get: LoreAiToolset.LATER,
+    requirement_list: LoreAiToolset.LATER,
+    requirement_set_release: LoreAiToolset.LATER,
+    requirement_update: LoreAiToolset.LATER,
+    sigil_create: LoreAiToolset.SECRET,
+    sigil_delete: LoreAiToolset.SECRET,
+    sigil_list: LoreAiToolset.SECRET,
+    sigil_rotate: LoreAiToolset.SECRET,
+    stack_deploy: LoreAiToolset.HOST,
+    stack_logs: LoreAiToolset.HOST,
+    stack_rollback: LoreAiToolset.HOST,
+    subscription_list: LoreAiToolset.LATER,
+    subscription_set: LoreAiToolset.AGENTS,
+    threshold_get: LoreAiToolset.LATER,
+    threshold_set: LoreAiToolset.AGENTS,
+    usecase_comment_add: LoreAiToolset.LATER,
+    usecase_create: LoreAiToolset.LATER,
+    usecase_delete: LoreAiToolset.LATER,
+    usecase_get: LoreAiToolset.LATER,
+    usecase_link_epic: LoreAiToolset.LATER,
+    usecase_list: LoreAiToolset.LATER,
+    usecase_prompt: LoreAiToolset.LATER,
+    usecase_run_attachment_add: LoreAiToolset.FILES,
+    usecase_run_record: LoreAiToolset.LATER,
+    usecase_update: LoreAiToolset.LATER,
+    usecase_validate: LoreAiToolset.LATER,
+  };
 
   /**
    * The three tables, built on first read and kept (#Q3398).
@@ -93,8 +263,9 @@ export class LoreAiToolset {
   /**
    * The writes a member does most from the web (#Q3210), offered like the
    * reads and each paused on a confirmation card: none declares
-   * `readOnlyHint: true`, which is what makes `$ai` wait for the user. Nothing
-   * that deletes, shelves, deploys or touches a host.
+   * `readOnlyHint: true`, which is what makes `$ai` wait for the user. Since
+   * #Q4297 a delete or a shelve is offered too, behind its card; nothing
+   * that deploys or touches a host.
    *
    * `quest_update` is offered whole, every field of its schema: the card
    * shows each one the call sets. A comment needs `quest:update`, not
@@ -305,6 +476,49 @@ export class LoreAiToolset {
         tool: folioTools.folio_create,
         permissions: ["folio:write"],
         gate: folioController.create,
+      },
+      // #Q4297: the actions a member asked the chat for and was sent back
+      // to the page, each still paused on its card. The no-delete rule
+      // became deletes behind a card, as the owner decided.
+      {
+        tool: questTools.quest_accept,
+        permissions: ["quest:update"],
+        gate: questController.acceptQuest,
+      },
+      {
+        tool: questTools.quest_shelve,
+        permissions: ["quest:update"],
+        gate: questController.shelveQuest,
+      },
+      {
+        tool: questTools.quest_delete,
+        permissions: ["quest:delete"],
+        gate: questController.deleteQuest,
+      },
+      {
+        tool: epicTools.epic_create,
+        permissions: ["epic:write"],
+        gate: epicController.createEpic,
+      },
+      {
+        tool: releaseTools.release_publish,
+        permissions: ["release:manage"],
+        gate: releaseController.publishRelease,
+      },
+      {
+        tool: feedbackTools.feedback_accept,
+        permissions: ["feedback:triage"],
+        gate: feedbackController.acceptFeedback,
+      },
+      {
+        tool: feedbackTools.feedback_reject,
+        permissions: ["feedback:triage"],
+        gate: feedbackController.rejectFeedback,
+      },
+      {
+        tool: folioTools.folio_delete,
+        permissions: ["folio:write"],
+        gate: folioController.delete,
       },
       {
         // A card added or changed on a dashboard (#Q4213), shared by every

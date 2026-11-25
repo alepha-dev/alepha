@@ -100,6 +100,9 @@ export abstract class AiProvider {
         completion.usage = {
           inputTokens: event.inputTokens,
           outputTokens: event.outputTokens,
+          ...(event.cachedInputTokens
+            ? { cachedInputTokens: event.cachedInputTokens }
+            : {}),
         };
       } else if (event.type === "vendor") {
         completion.vendor = { provider: event.provider, data: event.data };
@@ -302,7 +305,12 @@ export type AiEvent =
       name: string;
       input: Record<string, unknown>;
     }
-  | { type: "usage"; inputTokens: number; outputTokens: number }
+  | {
+      type: "usage";
+      inputTokens: number;
+      outputTokens: number;
+      cachedInputTokens?: number;
+    }
   | { type: "vendor"; provider: string; data: unknown }
   | { type: "end"; reason: AiEndReason };
 
@@ -327,4 +335,10 @@ export interface AiCompletion {
 export interface AiUsage {
   inputTokens: number;
   outputTokens: number;
+  /**
+   * The part of `inputTokens` read from the vendor's prompt cache, billed
+   * at a fraction of the input price (a tenth on Anthropic). Absent when
+   * the vendor caches nothing or does not say.
+   */
+  cachedInputTokens?: number;
 }

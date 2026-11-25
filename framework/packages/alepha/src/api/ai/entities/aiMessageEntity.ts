@@ -30,6 +30,11 @@ export const aiMessageEntity = $entity({
     model: z.text({ maxLength: 128 }).nullable().optional(),
     inputTokens: z.integer().nullable().optional(),
     outputTokens: z.integer().nullable().optional(),
+    /**
+     * The part of `inputTokens` read from the vendor's prompt cache: the
+     * budget counts it at {@link AiConversationService.CACHE_READ_WEIGHT}.
+     */
+    cachedInputTokens: z.integer().nullable().optional(),
   }),
   indexes: [
     // The budget sum: one user's rows over a window.
