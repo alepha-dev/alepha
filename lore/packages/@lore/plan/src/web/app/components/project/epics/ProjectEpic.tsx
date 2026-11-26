@@ -28,7 +28,7 @@ import {
   SquareCheckBig,
   Workflow,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
 import type { EpicReviewController } from "../../../../../api/controllers/EpicReviewController.ts";
@@ -322,6 +322,9 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     {
       key: reviewsKey,
       enabled: !!project,
+      // A refetch never empties the tab (#Q4510): the reviews it has stay
+      // drawn while the new ones load.
+      keepPreviousData: true,
       handler: async () => ({
         epicId: epic.id,
         result: await reviewApi.getEpicReviews({ params: { id: epic.id } }),
@@ -333,8 +336,11 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     reviewsQuery.data?.epicId === epic.id ? reviewsQuery.data.result : null;
 
   /**
-   * Answer, pick, waive or overturn one review item. The epic is read back
-   * after, so its `openQuestions`, which the ready confirm reads, follows.
+   * Answer, pick, waive or overturn one review item. The reviews and the
+   * epic are read back after, so its `openQuestions`, which the ready
+   * confirm reads, follows. The reviews are written into their key rather
+   * than invalidated (#Q4510): an invalidation emptied the key, and the tab
+   * with it, until the refetch landed, which flickered the whole tab.
    */
   const answerAction = useAction<
     [number: number, answer: EpicReviewAnswer],
@@ -346,16 +352,41 @@ const ProjectEpic = (props: ProjectEpicProps) => {
           params: { id: epic.id, number },
           body: answer,
         });
-        setEpic(
-          await epicApi.getEpicByNumber({
+        const [result, updated] = await Promise.all([
+          reviewApi.getEpicReviews({ params: { id: epic.id } }),
+          epicApi.getEpicByNumber({
             params: { projectId: epic.projectId, number: epic.number },
           }),
-        );
+        ]);
+        queries.setData(reviewsKey, { epicId: epic.id, result });
+        setEpic(updated);
       },
-      invalidates: [reviewsKey],
     },
     [reviewApi, epicApi, epic.id, epic.projectId, epic.number],
   );
+  // The item being answered, the only one that shows it (#Q4510), and the
+  // answers in order: one given while another is in flight waits for it
+  // rather than being dropped.
+  const [answering, setAnswering] = useState<{
+    number: number;
+    answer: EpicReviewAnswer;
+  }>();
+  const answerChain = useRef<Promise<void>>(Promise.resolve());
+  // An item already answered or waiting its turn takes no second answer: a
+  // double click would queue one the server then refuses.
+  const queued = useRef(new Set<number>());
+  const answerItem = (number: number, given: EpicReviewAnswer) => {
+    if (queued.current.has(number)) return;
+    queued.current.add(number);
+    const previous = answerChain.current;
+    answerChain.current = (async () => {
+      await previous;
+      setAnswering({ number, answer: given });
+      await answerAction.run(number, given);
+      setAnswering(undefined);
+      queued.current.delete(number);
+    })();
+  };
 
   // Page-wide: every membership control waits while any write runs, since
   // `run()` drops a call made while its own is in flight.
@@ -530,8 +561,8 @@ const ProjectEpic = (props: ProjectEpicProps) => {
             reviewApi.answerEpicReviewItem.can() &&
             (epic.status === "draft" || epic.status === "ready")
           }
-          busy={answerAction.loading}
-          onAnswer={(number, answer) => void answerAction.run(number, answer)}
+          answering={answering}
+          onAnswer={answerItem}
         />
       )}
 

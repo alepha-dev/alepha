@@ -1,7 +1,7 @@
 import { DialogProvider } from "@alepha/ui";
 import { projectFixture, virtualClientFake } from "@lore/core/testing";
 import { currentProjectAtom, I18n } from "@lore/core/web";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -118,20 +118,32 @@ describe("ProjectEpicReview", () => {
     );
 
     const answers: Array<[number, EpicReviewAnswer]> = [];
-    const view = render(
+    const tree = (
+      next: {
+        reviews?: EpicReviewsResult | null;
+        answering?: { number: number; answer: EpicReviewAnswer };
+      } = {},
+    ) => (
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
           <ProjectEpicReview
             epicId={7}
-            reviews={props.reviews === undefined ? reviews : props.reviews}
+            reviews={
+              next.reviews !== undefined
+                ? next.reviews
+                : props.reviews === undefined
+                  ? reviews
+                  : props.reviews
+            }
             writable={props.writable ?? true}
-            busy={false}
+            {...(next.answering ? { answering: next.answering } : {})}
             onAnswer={(number, answer) => answers.push([number, answer])}
           />
         </DialogProvider>
-      </AlephaContext.Provider>,
+      </AlephaContext.Provider>
     );
-    return { alepha, view, answers };
+    const view = render(tree());
+    return { alepha, view, answers, tree };
   };
 
   it("lists the open question with its number, suggestions and pick", async ({
@@ -162,6 +174,84 @@ describe("ProjectEpicReview", () => {
       [1, { suggestion: 1 }],
       [1, { waive: true }],
     ]);
+
+    await alepha.stop();
+  });
+
+  it("shows an answer in flight on its own item only, the clicked control spinning (#Q4510)", async ({
+    expect,
+  }) => {
+    const second = {
+      ...reviews,
+      reviews: [
+        {
+          ...reviews.reviews[0]!,
+          items: [
+            ...reviews.reviews[0]!.items,
+            item({
+              number: 6,
+              kind: "question",
+              title: "Ship it?",
+              state: "open",
+            }),
+          ],
+        },
+      ],
+    } as unknown as EpicReviewsResult;
+    const { alepha, view, tree } = await mount({ reviews: second });
+    await screen.findByTestId("epic-review-question-6");
+    view.rerender(
+      tree({ answering: { number: 1, answer: { suggestion: 1 } } }),
+    );
+
+    const first = screen.getByTestId("epic-review-question-1");
+    const picks = [...first.querySelectorAll("button")].filter(
+      (it) => it.textContent === "Take this",
+    );
+    expect(picks[1]!.getAttribute("aria-busy")).toBe("true");
+    expect(picks[0]!.getAttribute("aria-busy")).not.toBe("true");
+    expect(picks[0]!.hasAttribute("disabled")).toBe(true);
+    // The other question is untouched.
+    const other = screen.getByTestId("epic-review-question-6");
+    for (const button of other.querySelectorAll("button")) {
+      expect(button.hasAttribute("disabled")).toBe(false);
+      expect(button.getAttribute("aria-busy")).not.toBe("true");
+    }
+
+    await alepha.stop();
+  });
+
+  it("keeps the tab mounted while answering, and collapses the answered item out of the open list (#Q4510)", async ({
+    expect,
+  }) => {
+    const { alepha, view, tree } = await mount();
+    const heading = await screen.findByText("Open questions (1)");
+    const answered = {
+      ...reviews,
+      openQuestions: 0,
+      reviews: [
+        {
+          ...reviews.reviews[0]!,
+          items: reviews.reviews[0]!.items.map((it) =>
+            it.number === 1 ? { ...it, state: "answered", answer: "Two" } : it,
+          ),
+        },
+      ],
+    } as unknown as EpicReviewsResult;
+    view.rerender(tree({ reviews: answered }));
+
+    // Same heading node, its count updated: the tab was never torn down.
+    expect(heading.isConnected).toBe(true);
+    expect(heading.textContent).toBe("Open questions (0)");
+    // Drawn while it collapses, then gone.
+    const card = screen.getByTestId("epic-review-question-1");
+    expect(card.closest("[data-leaving]")).not.toBeNull();
+    await waitFor(() =>
+      expect(screen.queryByTestId("epic-review-question-1")).toBeNull(),
+    );
+    expect(screen.getByTestId("epic-review-log-1").textContent).toContain(
+      "Two",
+    );
 
     await alepha.stop();
   });

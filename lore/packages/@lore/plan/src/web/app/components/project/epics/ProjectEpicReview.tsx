@@ -13,6 +13,7 @@ import { currentProjectAtom, formatReference, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import type { EpicReviewAnswer } from "../../../../../api/schemas/epicReviewAnswerSchema.ts";
 import type { EpicReviewItemResource } from "../../../../../api/schemas/epicReviewItemResourceSchema.ts";
@@ -28,7 +29,11 @@ export interface ProjectEpicReviewProps {
    */
   reviews: EpicReviewsResult | null;
   writable: boolean;
-  busy: boolean;
+  /**
+   * The item whose answer is in flight, and the answer (#Q4510): only that
+   * item shows it; the rest of the tab stays as it is.
+   */
+  answering?: { number: number; answer: EpicReviewAnswer };
   onAnswer: (number: number, answer: EpicReviewAnswer) => void;
 }
 
@@ -45,6 +50,10 @@ export interface ProjectEpicReviewProps {
  *
  * Writable only while the epic is `draft` or `ready`; past that the record
  * is read-only and the server refuses anyway.
+ *
+ * Answering keeps the tab still (#Q4510): only the item answered shows it is
+ * busy, and once answered it collapses out of the open list, kept drawn for
+ * the length of the transition (none under reduced motion).
  */
 const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
   const { tr, l } = useI18n<I18n, "en">();
@@ -52,19 +61,17 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
 
-  if (!props.reviews) return null;
-
-  const items = props.reviews.reviews
+  const items = (props.reviews?.reviews ?? [])
     .flatMap((review) => review.items)
     .sort((a, b) => a.number - b.number);
   // Blockers first (#Q3634), then questions, each by number.
-  const open = items
-    .filter((item) => item.state === "open")
-    .sort(
-      (a, b) =>
-        Number(b.kind === "blocker") - Number(a.kind === "blocker") ||
-        a.number - b.number,
-    );
+  const byKind = (a: EpicReviewItemResource, b: EpicReviewItemResource) =>
+    Number(b.kind === "blocker") - Number(a.kind === "blocker") ||
+    a.number - b.number;
+  const open = items.filter((item) => item.state === "open").sort(byKind);
+  const leaving = useLeavingItems(open);
+
+  if (!props.reviews) return null;
   const openBlockers = open.filter((item) => item.kind === "blocker").length;
   const log = items
     .filter((item) =>
@@ -141,21 +148,43 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
               })
             : tr("epic.review.open", { args: [String(open.length)] })}
         </h3>
-        {open.length === 0 ? (
+        {open.length === 0 && leaving.items.length === 0 ? (
           <p className="text-muted-foreground text-sm italic">
             {tr("epic.review.open.none")}
           </p>
         ) : (
-          open.map((item) => (
-            <EpicReviewQuestion
-              key={item.id}
-              epicId={props.epicId}
-              item={item}
-              writable={props.writable}
-              busy={props.busy}
-              onAnswer={props.onAnswer}
-            />
-          ))
+          [...open, ...leaving.items].sort(byKind).map((item) => {
+            const gone = leaving.has(item.id);
+            return (
+              // Collapses its height through grid rows, without measuring.
+              <div
+                key={item.id}
+                data-leaving={gone || undefined}
+                className={cn(
+                  "grid transition-[grid-template-rows,opacity] duration-200 ease-out motion-reduce:transition-none",
+                  gone && leaving.collapsed
+                    ? "grid-rows-[0fr] opacity-0"
+                    : "grid-rows-[1fr] opacity-100",
+                )}
+              >
+                {/* Clipped only while it collapses: a card's ring would be
+                    cut otherwise. */}
+                <div className={cn("min-h-0", gone && "overflow-hidden")}>
+                  <EpicReviewQuestion
+                    epicId={props.epicId}
+                    item={item}
+                    writable={props.writable && !gone}
+                    answering={
+                      props.answering?.number === item.number
+                        ? props.answering.answer
+                        : undefined
+                    }
+                    onAnswer={props.onAnswer}
+                  />
+                </div>
+              </div>
+            );
+          })
         )}
       </section>
 
@@ -209,7 +238,8 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
                     <Button
                       size="sm"
                       variant="minimal"
-                      disabled={props.busy}
+                      disabled={props.answering?.number === item.number}
+                      loading={props.answering?.number === item.number}
                       onClick={() => void overturn(item)}
                     >
                       {tr("epic.review.overturn")}
@@ -261,6 +291,58 @@ const ProjectEpicReview = (props: ProjectEpicReviewProps) => {
       </Card>
     </div>
   );
+};
+
+/**
+ * The open items that just left the open list (#Q4510), kept for the
+ * length of their collapse: drawn expanded once, collapsed on the next
+ * frame, then dropped.
+ */
+const useLeavingItems = (open: EpicReviewItemResource[]) => {
+  const previous = useRef<EpicReviewItemResource[]>(open);
+  const [items, setItems] = useState<EpicReviewItemResource[]>([]);
+  const [collapsed, setCollapsed] = useState(false);
+  // The collapse's timers live apart from the effect: a list that changes
+  // again before they fire (a refetch, an overturn) must not cancel them
+  // and leave an item collapsed for good. Replaced by the next item that
+  // leaves, cleared on unmount.
+  const timers = useRef<{
+    frame?: number;
+    done?: ReturnType<typeof setTimeout>;
+  }>({});
+  const ids = open.map((item) => item.id).join(",");
+  // Before paint: the item never blinks out before it collapses.
+  useLayoutEffect(() => {
+    const now = new Set(open.map((item) => item.id));
+    const left = previous.current.filter((item) => !now.has(item.id));
+    previous.current = open;
+    if (left.length === 0) return;
+    if (timers.current.frame !== undefined) {
+      cancelAnimationFrame(timers.current.frame);
+    }
+    clearTimeout(timers.current.done);
+    setItems(left);
+    setCollapsed(false);
+    timers.current = {
+      frame: requestAnimationFrame(() => setCollapsed(true)),
+      done: setTimeout(() => setItems([]), 220),
+    };
+  }, [ids]);
+  useLayoutEffect(
+    () => () => {
+      if (timers.current.frame !== undefined) {
+        cancelAnimationFrame(timers.current.frame);
+      }
+      clearTimeout(timers.current.done);
+    },
+    [],
+  );
+  const leavingIds = new Set(items.map((item) => item.id));
+  return {
+    items: items.filter((item) => !open.some((it) => it.id === item.id)),
+    collapsed,
+    has: (id: EpicReviewItemResource["id"]) => leavingIds.has(id),
+  };
 };
 
 export default ProjectEpicReview;
