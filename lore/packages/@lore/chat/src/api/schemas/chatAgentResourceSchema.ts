@@ -18,6 +18,11 @@ export const chatAgentResourceSchema = z.object({
    * Its model id; none means the instance default.
    */
   model: z.text().optional(),
+  /**
+   * The tools it declares; absent means every tool the member who mentions
+   * it may be offered.
+   */
+  tools: z.array(z.text()).optional(),
   createdBy: z.uuid().optional(),
   createdAt: z.datetime().optional(),
   deletedAt: z.datetime().optional(),
@@ -44,6 +49,12 @@ export const chatAgentBodySchema = z.object({
    * the agent runs.
    */
   model: z.text({ maxLength: 120 }).nullable().optional(),
+  /**
+   * The tools it uses, by name, so a run sends those definitions alone. An
+   * empty list is every tool the member may be offered. A name the assistant
+   * does not have is refused.
+   */
+  tools: z.array(z.text({ maxLength: 100 })).optional(),
   /**
    * Markdown: the persona and its playbook.
    */

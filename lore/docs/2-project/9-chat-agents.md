@@ -28,6 +28,7 @@ list; creating, editing and deleting agents needs the
 | **Name**                 | How the room shows it: Jarvis.                                                                                                                             |
 | **Avatar**               | An image of up to 2 MB. Without one, the agent's initials are drawn on a colour.                                                                           |
 | **Model**                | The model it runs on. Empty uses your Lore's default model.                                                                                                |
+| **Tools**                | The tools its playbook uses. Empty offers every tool. See [Choosing its tools](#choosing-its-tools).                                                       |
 | **Persona and playbook** | Markdown: who it is, what it does, how it answers.                                                                                                         |
 
 A member who later picks an agent's handle as their own loses to the agent,
@@ -56,10 +57,35 @@ Be brief. Never file a quest without saying why first.
 An agent reads in rounds: it runs one or several tools, looks at what came
 back, and decides what to run next. One message gets it up to nine rounds,
 then it answers from what it has read. Keep a playbook's steps under that:
-a check that needs more is two messages, or two agents.
+a check that needs more is two messages, or two agents. Nine is what a model
+that caches its instructions gets; on one that does not, an agent offered
+every tool gets two, and [choosing its tools](#choosing-its-tools) gives it
+the rest back.
 
 ⚠️ Every member who reads chat can read an agent's playbook. Keep secrets
 out of it.
+
+## Choosing its tools
+
+Every step of a run sends the model the description of each tool the agent
+may use: about forty of them, which is most of what a run costs. An agent
+whose playbook lists quests and reads one needs two.
+
+**Tools** is the list of tools the agent uses. Pick them, and each run sends
+those descriptions alone: the first step costs a fraction of what it did, and
+on a model that does not cache its instructions the agent gets its rounds
+back, nine with a short list, instead of two. Leave it empty and the agent
+is offered every tool, as `@lore` is.
+
+- Name every tool the playbook needs, the ones it reaches for without saying
+  so included: `search` to find something by its name, `quest_get` to read
+  what `quest_list` found. An agent asked for something its tools cannot do
+  says so; it does not get the tool.
+- The list only narrows. An agent is still offered only what the member who
+  mentions it may use: a tool of a capability the project has off, or one
+  that member's rank does not allow, is left out for that run, whatever the
+  list says.
+- A write the agent declares still waits on its card.
 
 ## Choosing a model
 
@@ -141,10 +167,14 @@ See [Members](/lore/docs/project-members).
 `lore chat agent create`, `lore chat agent update <handle>` and
 `lore chat agent delete <handle>` do what the page does. The playbook comes
 from `--pre-prompt`: inline, `@playbook.md` for a file, or `@-` for stdin;
-`--avatar <image>` uploads an avatar and `--no-avatar` removes it.
+`--avatar <image>` uploads an avatar and `--no-avatar` removes it. `--tool`,
+once per tool, sets the tools it uses: on an update it replaces the whole
+list, and `--tool '[]'` goes back to every tool.
+`lore chat agent list --output json` names the tools an agent may declare.
 
 ```bash
 lore chat agent create --handle jarvis --name Jarvis --pre-prompt @jarvis.md --avatar jarvis.png
+lore chat agent update jarvis --tool quest_list --tool quest_get --tool search
 ```
 
 See the [CLI reference](/lore/docs/reference-cli).
@@ -153,6 +183,8 @@ See the [CLI reference](/lore/docs/reference-cli).
 
 Over MCP, `chat_agent_list`, `chat_agent_get`, `chat_agent_create`,
 `chat_agent_update` and `chat_agent_delete` do the same, the avatar aside,
-which only the command line uploads. A message sent with `chat_message_send`
+which only the command line uploads. `tools` on a create or an update is the
+list of tools the agent uses, and `chat_agent_list` answers the names it may
+hold. A message sent with `chat_message_send`
 that mentions an agent starts it, as from the page. See
 [MCP tools](/lore/docs/reference-mcp-tools).

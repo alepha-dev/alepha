@@ -308,6 +308,12 @@ persona's `model` in `AiChatService.chat`'s overrides) keeps it. Unset, a turn r
 `model` option, else `AI_MODEL`. The parameter overrides a default model and does not replace
 one: a vendor provider still needs `AI_MODEL`, or a `model` on every `$ai`, to start.
 
+The same overrides carry a persona's `instructions`, appended after the assistant's prompt, and
+its `tools`: the names offered on the turn, so a persona that uses three tools sends three
+definitions, not the whole list. A turn's `tools` wins over the `allow` option, so pass what
+`allow` grants this user narrowed to the persona's list, never the list as it was saved. The
+overrides are the server's: no request body carries them, and a resume is given the same ones.
+
 The budget is checked before a turn from the stored token counts, and the turn is handed what is
 left as its `tokenBudget`, so it wraps up with an answer and overshoots by one model call at most. Retention is a daily `$job` that reads the parameter at every tick. Page data and tool
 results live in the messages, so retention is a privacy setting as much as a storage one.

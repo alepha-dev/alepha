@@ -205,6 +205,7 @@ export class ChatAgentRunner {
       name: agent.name,
       instructions: agent.prePrompt,
       ...(agent.model ? { model: agent.model } : {}),
+      ...(agent.tools?.length ? { tools: agent.tools } : {}),
     };
   }
 

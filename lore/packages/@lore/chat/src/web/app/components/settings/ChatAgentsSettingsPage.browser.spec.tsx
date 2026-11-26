@@ -43,7 +43,9 @@ const LORE: ChatAgentResource = {
 class FakeLinkProvider extends LinkProvider {
   public static enabled = true;
   public static items: ChatAgentResource[] = [LORE, JARVIS];
+  public static tools: string[] = ["quest_list", "quest_get", "search"];
   public created: unknown[] = [];
+  public updated: unknown[] = [];
   public deleted: string[] = [];
 
   // matches the real client's own loose virtual-action shape
@@ -52,9 +54,15 @@ class FakeLinkProvider extends LinkProvider {
       listChatAgents: async () => ({
         items: FakeLinkProvider.items,
         enabled: FakeLinkProvider.enabled,
+        tools: FakeLinkProvider.tools,
       }),
       getProjectUsers: async () => [],
-      getChatAgent: async () => JARVIS,
+      getChatAgent: async () =>
+        FakeLinkProvider.items.find((it) => it.id === JARVIS.id) ?? JARVIS,
+      updateChatAgent: async (config: { body: Record<string, unknown> }) => {
+        this.updated.push(config.body);
+        return { ...JARVIS, ...config.body };
+      },
       getChatAgentBudget: async () => ({
         tokens: 50_000,
         spent: 12_500,
@@ -171,6 +179,30 @@ describe("Settings > Chat > Agents", () => {
       ),
     );
     expect(fake.created).toEqual([]);
+  });
+
+  it("shows the tools an agent declares on its row, and saves them with the form (#Q4430)", async ({
+    expect,
+  }) => {
+    FakeLinkProvider.items = [
+      LORE,
+      { ...JARVIS, tools: ["quest_list", "quest_get"] },
+    ];
+    const fake = await mount();
+
+    expect(screen.getAllByTestId("chat-agent-row")[1]!.textContent).toContain(
+      "2 tools",
+    );
+    fireEvent.click(screen.getByTestId("chat-agent-edit"));
+    const field = await screen.findByTestId("chat-agent-tools");
+    expect(field.textContent).toContain("Tools");
+    expect(field.textContent).toContain("2 tools");
+    fireEvent.click(screen.getByTestId("chat-agent-save"));
+
+    await waitFor(() => expect(fake.updated).toHaveLength(1));
+    expect(fake.updated[0]).toMatchObject({
+      tools: ["quest_list", "quest_get"],
+    });
   });
 
   it("asks before deleting, saying past answers stay and the handle is freed", async ({

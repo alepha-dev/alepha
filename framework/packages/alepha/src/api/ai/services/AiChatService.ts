@@ -110,9 +110,10 @@ export class AiChatService {
   /**
    * One new turn in `conversation`.
    *
-   * `overrides` is the server's, never the request's: a persona's model and
-   * instructions (`AiTurnInput.model`, `instructions`). `AiChatBody` has no
-   * such field on purpose, since its values come from the browser.
+   * `overrides` is the server's, never the request's: a persona's model,
+   * instructions and tools (`AiTurnInput.model`, `instructions`, `tools`).
+   * `AiChatBody` has no such field on purpose, since its values come from
+   * the browser.
    */
   public async *chat(
     conversation: AiConversationEntity,
@@ -169,7 +170,8 @@ export class AiChatService {
    * the page the user answered from: it is appended to nothing, only handed
    * to the assistant's `allow`, so the resume offers what the paused turn
    * offered. `overrides` must be the paused turn's: without them a resumed
-   * persona finishes on the default model, without its instructions.
+   * persona finishes on the default model, without its instructions, and
+   * with every tool `allow` grants rather than its own.
    */
   public async *resume(
     conversation: AiConversationEntity,
@@ -227,6 +229,8 @@ export class AiChatService {
       ...(overrides.instructions
         ? { instructions: overrides.instructions }
         : {}),
+      // An empty list is a narrowing too: it offers no tool at all.
+      ...(overrides.tools ? { tools: overrides.tools } : {}),
     };
   }
 
@@ -308,7 +312,15 @@ export class AiChatService {
 }
 
 /**
- * What the server sets on a turn beyond the request: a persona's model and
- * instructions, appended after the assistant's system prompt.
+ * What the server sets on a turn beyond the request: a persona's model, its
+ * instructions, appended after the assistant's system prompt, and the tools
+ * it is offered, by name.
+ *
+ * ⚠️ `tools` wins over the assistant's `allow`, so it must already be
+ * narrowed to what this user may be offered: intersect a persona's list with
+ * `allow`'s answer, never pass it as it was saved.
  */
-export type AiTurnOverrides = Pick<AiTurnInput, "model" | "instructions">;
+export type AiTurnOverrides = Pick<
+  AiTurnInput,
+  "model" | "instructions" | "tools"
+>;

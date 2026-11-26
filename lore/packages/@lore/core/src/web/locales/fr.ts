@@ -1273,6 +1273,8 @@ export default {
   "chat.agents.builtin": "intégré",
   "chat.agents.defaultModel": "modèle par défaut",
   "chat.agents.by": "par $1",
+  "chat.agents.toolCount.one": "$1 outil",
+  "chat.agents.toolCount.other": "$1 outils",
   "chat.agents.form.createTitle": "Nouvel agent",
   "chat.agents.form.editTitle": "Modifier @$1",
   "chat.agents.form.handle": "Identifiant",
@@ -1284,6 +1286,10 @@ export default {
   "chat.agents.form.modelHint":
     "Vide, il utilise le modèle par défaut de l'instance. Le budget IA compte les jetons, quel que soit le modèle.",
   "chat.agents.form.modelPlaceholder": "Modèle par défaut",
+  "chat.agents.form.tools": "Outils",
+  "chat.agents.form.toolsHint":
+    "Les outils dont son mode opératoire se sert. Chaque exécution n'envoie alors que ceux-là, ce qui coûte moins et lui laisse plus de tours. Vide, tous les outils sont proposés. Il ne reçoit jamais que ceux que peut utiliser le membre qui le mentionne.",
+  "chat.agents.form.toolsPlaceholder": "Tous les outils",
   "chat.agents.form.prePrompt": "Personnage et mode opératoire",
   "chat.agents.form.prePromptHint":
     "Markdown, ajouté après les instructions de Lore. Tout membre qui lit la discussion peut le lire : n'y mettez aucun secret.",

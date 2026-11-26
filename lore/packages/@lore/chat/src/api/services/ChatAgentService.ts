@@ -23,6 +23,10 @@ import { ChatResponderRegistry } from "./ChatResponderRegistry.ts";
  * built-in's (`lore`), never a member's mention handle. A member who takes
  * an agent's handle later loses to the agent, as with `@lore`.
  *
+ * An agent may declare the tools it uses (#Q4430), each a name the
+ * assistant has (`ChatResponderRegistry.toolNames`): a typo is refused when
+ * the agent is saved, not found out when a run offers nothing.
+ *
  * Who may call what is the controller's (`chat:agent` for writes); this
  * checks what a row may hold.
  */
@@ -80,12 +84,20 @@ export class ChatAgentService {
     return this.toResource(await this.live(projectId, agentId), true);
   }
 
+  /**
+   * Every tool name an agent may declare.
+   */
+  public toolNames(): string[] {
+    return this.registry.toolNames();
+  }
+
   public async create(
     projectId: number,
     user: UserAccountToken,
     body: ChatAgentBody,
   ): Promise<ChatAgentResource> {
     const handle = await this.assertHandle(projectId, body.handle);
+    const tools = this.assertTools(body.tools ?? []);
     if (body.avatar) await this.assertAvatar(body.avatar, user);
     const agent = await this.agents.create({
       projectId,
@@ -94,6 +106,7 @@ export class ChatAgentService {
       prePrompt: body.prePrompt ?? "",
       ...(body.avatar ? { avatar: body.avatar } : {}),
       ...(body.model?.trim() ? { model: body.model.trim() } : {}),
+      ...(tools.length ? { tools } : {}),
       createdBy: user.id,
     });
     return this.toResource(agent, true);
@@ -101,7 +114,7 @@ export class ChatAgentService {
 
   /**
    * Only the fields given change; `avatar` and `model` set to `null` are
-   * removed.
+   * removed, and an empty `tools` goes back to every tool.
    */
   public async update(
     projectId: number,
@@ -118,6 +131,10 @@ export class ChatAgentService {
     if (body.prePrompt !== undefined) patch.prePrompt = body.prePrompt;
     if (body.model !== undefined) {
       patch.model = body.model?.trim() ? body.model.trim() : null;
+    }
+    if (body.tools !== undefined) {
+      const tools = this.assertTools(body.tools);
+      patch.tools = tools.length ? tools : null;
     }
     let replaced: string | undefined;
     if (body.avatar !== undefined && body.avatar !== (agent.avatar ?? null)) {
@@ -160,6 +177,7 @@ export class ChatAgentService {
         ? { avatarId: agent.avatar, avatarUrl: `/api/files/${agent.avatar}` }
         : {}),
       ...(agent.model ? { model: agent.model } : {}),
+      ...(agent.tools?.length ? { tools: agent.tools } : {}),
       ...(agent.createdBy ? { createdBy: agent.createdBy } : {}),
       createdAt: agent.createdAt,
       ...(agent.deletedAt ? { deletedAt: agent.deletedAt } : {}),
@@ -219,6 +237,28 @@ export class ChatAgentService {
       throw refuse(`A member of the project is already @${handle}`);
     }
     return handle;
+  }
+
+  /**
+   * The declared tools, trimmed and without repeats, in the order given, or
+   * a refusal on the `tools` field naming the first one the assistant does
+   * not have, with the names it does.
+   */
+  protected assertTools(raw: string[]): string[] {
+    const tools = [...new Set(raw.map((name) => name.trim()).filter(Boolean))];
+    if (!tools.length) return tools;
+    const known = this.registry.toolNames();
+    const unknown = tools.find((name) => !known.includes(name));
+    if (unknown) {
+      const message = known.length
+        ? `No tool is named '${unknown}'. An agent may declare: ${known.join(", ")}`
+        : `No tool is named '${unknown}': this Lore's assistant has no tools`;
+      throw new ValidationError(
+        { part: "body", issues: [{ path: "/tools", message }] },
+        { message },
+      );
+    }
+    return tools;
   }
 
   /**

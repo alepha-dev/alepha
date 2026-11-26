@@ -170,12 +170,19 @@ export class ChatTools {
     builtin: z.boolean(),
     model: z.text().optional(),
     avatar: z.boolean(),
+    tools: z.array(z.text()).optional(),
     pre_prompt: z.text({ size: "rich" }).optional(),
   });
 
+  /**
+   * What `tools` is on a create and on an update, in one wording.
+   */
+  protected static readonly TOOLS =
+    "The tools it uses, by name, from `tools` in chat_agent_list: a run then sends those definitions alone instead of every tool, which is cheaper and leaves it more rounds. It is still offered only those the member who mentions it may use.";
+
   chat_agent_list = $tool({
     description:
-      "List the project's chat agents a message can mention: the built-in `lore` (when AI is on) and the project's own, each with its handle, name and model (none means the instance default). `enabled` is false when AI is off: no agent answers then.",
+      "List the project's chat agents a message can mention: the built-in `lore` (when AI is on) and the project's own, each with its handle, name, model (none means the instance default) and the tools it declares (none means every tool the member who mentions it may be offered). `enabled` is false when AI is off: no agent answers then. `tools` is every tool name an agent may declare.",
     title: "List chat agents",
     annotations: { readOnlyHint: true },
     schema: {
@@ -183,6 +190,7 @@ export class ChatTools {
       result: z.object({
         agents: z.array(this.agentSchema),
         enabled: z.boolean(),
+        tools: z.array(z.text()),
       }),
     },
     handler: async ({ params }) => {
@@ -194,6 +202,7 @@ export class ChatTools {
       return {
         agents: page.items.map((agent) => this.toAgent(agent)),
         enabled: page.enabled,
+        tools: page.tools,
       };
     },
   });
@@ -220,7 +229,7 @@ export class ChatTools {
 
   chat_agent_create = $tool({
     description:
-      "Create a chat agent in the project (needs chat:agent): a handle members mention (2 to 32 lowercase letters, digits or dashes, not `lore`, not a member's), a display name, its pre-prompt (Markdown: what it does and how it answers, added after Lore's own instructions; every chat reader can read it, so keep secrets out), and an optional model id (empty is the instance default; the AI budget counts tokens whatever the model). An avatar is uploaded with `lore chat agent create --avatar <image>`: MCP carries no file.",
+      "Create a chat agent in the project (needs chat:agent): a handle members mention (2 to 32 lowercase letters, digits or dashes, not `lore`, not a member's), a display name, its pre-prompt (Markdown: what it does and how it answers, added after Lore's own instructions; every chat reader can read it, so keep secrets out), an optional model id (empty is the instance default; the AI budget counts tokens whatever the model), and optionally the tools it uses (`tools`; none means every tool the member may be offered). An avatar is uploaded with `lore chat agent create --avatar <image>`: MCP carries no file.",
     title: "Create a chat agent",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -234,6 +243,10 @@ export class ChatTools {
         model: z
           .string()
           .describe("A model id; omit for the instance default.")
+          .optional(),
+        tools: z
+          .array(z.string())
+          .describe(`${ChatTools.TOOLS} Omit for every tool.`)
           .optional(),
         ...this.projectParams,
       }),
@@ -252,6 +265,7 @@ export class ChatTools {
             name: params.name,
             prePrompt: params.pre_prompt ?? "",
             ...(params.model ? { model: params.model } : {}),
+            ...(params.tools ? { tools: params.tools } : {}),
           },
         }),
       );
@@ -260,7 +274,7 @@ export class ChatTools {
 
   chat_agent_update = $tool({
     description:
-      "Edit a chat agent by its handle (needs chat:agent): only the fields given change. `new_handle` renames what members mention; `model` set to an empty string goes back to the instance default. The avatar changes with `lore chat agent update --avatar <image>` or `--no-avatar`.",
+      "Edit a chat agent by its handle (needs chat:agent): only the fields given change. `new_handle` renames what members mention; `model` set to an empty string goes back to the instance default; `tools` REPLACES the tools it declares, and an empty list goes back to every tool the member may be offered. The avatar changes with `lore chat agent update --avatar <image>` or `--no-avatar`.",
     title: "Edit a chat agent",
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: {
@@ -275,6 +289,12 @@ export class ChatTools {
         model: z
           .string()
           .describe("A model id, or an empty string for the default.")
+          .optional(),
+        tools: z
+          .array(z.string())
+          .describe(
+            `${ChatTools.TOOLS} REPLACES the whole list: pass every tool it should keep, or [] for every tool.`,
+          )
           .optional(),
         ...this.projectParams,
       }),
@@ -294,6 +314,7 @@ export class ChatTools {
             ...(params.model !== undefined
               ? { model: params.model.trim() ? params.model : null }
               : {}),
+            ...(params.tools !== undefined ? { tools: params.tools } : {}),
           },
         }),
       );
@@ -326,6 +347,7 @@ export class ChatTools {
       builtin: agent.builtin,
       ...(agent.model ? { model: agent.model } : {}),
       avatar: !!agent.avatarId,
+      ...(agent.tools?.length ? { tools: agent.tools } : {}),
       ...(agent.prePrompt !== undefined ? { pre_prompt: agent.prePrompt } : {}),
     };
   }

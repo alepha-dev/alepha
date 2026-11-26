@@ -1,0 +1,1 @@
+ALTER TABLE "chat_agents" ADD COLUMN "tools" text[];
