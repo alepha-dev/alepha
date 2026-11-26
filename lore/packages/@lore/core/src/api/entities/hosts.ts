@@ -263,6 +263,12 @@ export const hosts = $entity({
      */
     statsIntervalSeconds: db.default(z.integer().min(60).max(86_400), 1800),
     /**
+     * The systemd units the machine reports (#Q4422), sent on the `welcome`
+     * and `config` frames: Bay reads their state and reports every change,
+     * read only. Absent watches none. Normalised by `HostUnitEvents`.
+     */
+    watchUnits: z.array(z.string().max(200)).max(20).optional(),
+    /**
      * Liveness, as two stamps. The HTTP list runs in the Worker and cannot
      * see sockets that live in a Durable Object, so the endpoint stamps the
      * row instead (#1782). `online` is `connectedAt > disconnectedAt` and

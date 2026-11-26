@@ -38,6 +38,7 @@ import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 import { HostTokenService } from "../services/HostTokenService.ts";
 import { HostTypeRegistry } from "../services/HostTypeRegistry.ts";
+import { HostUnitEvents } from "../services/HostUnitEvents.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 
@@ -402,6 +403,11 @@ export class HostController {
         agentHost: z.boolean().optional(),
         statsIntervalSeconds: z.integer().min(60).max(86_400).optional(),
         /**
+         * The systemd units the machine reports (#Q4422); an empty list
+         * watches none. A bare name is a `.service`.
+         */
+        watchUnits: z.array(z.string().max(200)).max(20).optional(),
+        /**
          * How long from now the host is meant to live, in seconds (#Q3138);
          * `null` clears the expiry. Either way the overdue notification is
          * re-armed.
@@ -417,6 +423,16 @@ export class HostController {
     },
     handler: async ({ params, body, user }) => {
       const host = this.host();
+      let watchUnits: string[] | undefined;
+      if (body.watchUnits !== undefined) {
+        try {
+          watchUnits = HostUnitEvents.normalize(body.watchUnits);
+        } catch (error) {
+          throw new BadRequestError(
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+      }
 
       await this.hosts.updateById(host.id, {
         ...(body.label === undefined
@@ -434,6 +450,7 @@ export class HostController {
         ...(body.statsIntervalSeconds === undefined
           ? {}
           : { statsIntervalSeconds: body.statsIntervalSeconds }),
+        ...(watchUnits === undefined ? {} : { watchUnits }),
         ...(body.ttlSeconds === undefined
           ? {}
           : {
@@ -470,7 +487,8 @@ export class HostController {
         switched.type === "bay" &&
         (body.deployAllowed !== undefined ||
           body.jobsAllowed !== undefined ||
-          body.statsIntervalSeconds !== undefined)
+          body.statsIntervalSeconds !== undefined ||
+          body.watchUnits !== undefined)
       ) {
         await this.transport.push(
           switched,

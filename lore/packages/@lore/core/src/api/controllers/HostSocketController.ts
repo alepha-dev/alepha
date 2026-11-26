@@ -14,6 +14,7 @@ import { HostJobService } from "../services/HostJobService.ts";
 import { HostService } from "../services/HostService.ts";
 import { HostStatsService } from "../services/HostStatsService.ts";
 import { HostTokenService } from "../services/HostTokenService.ts";
+import { HostUnitEvents } from "../services/HostUnitEvents.ts";
 
 /**
  * The websocket a Bay machine dials into and holds open.
@@ -77,6 +78,7 @@ export class HostSocketController {
   protected readonly stats = $inject(HostStatsService);
   protected readonly inventories = $inject(HostInventoryService);
   protected readonly events = $inject(HostEventService);
+  protected readonly unitEvents = $inject(HostUnitEvents);
   protected readonly jobs = $inject(HostJobService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -163,7 +165,11 @@ export class HostSocketController {
         return;
       }
       if (message.type === "event") {
-        await this.events.record(host, message);
+        // A watched unit that failed or recovered is also a project event
+        // (#Q4422), raised once: a duplicate frame is not stored again.
+        if (await this.events.record(host, message)) {
+          await this.unitEvents.handle(host, message);
+        }
         return;
       }
       if (message.type === "log") {

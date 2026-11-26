@@ -131,6 +131,8 @@ export class HostService {
       jobsAllowed: host.jobsAllowed,
       statsIntervalSeconds: host.statsIntervalSeconds,
       features: [...HOST_FEATURES],
+      // Absent clears: Bay reads a missing list as "watch nothing".
+      ...(host.watchUnits?.length ? { watchUnits: host.watchUnits } : {}),
     };
   }
 

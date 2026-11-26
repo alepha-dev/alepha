@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "7df5a879-8cf7-4d58-9a47-c9d4805bf8fa",
+  "prevIds": ["061c4db5-3141-4387-b99d-26a470909fb6"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "watch_units"],
+      "writes": [
+        "s|col|public.hosts.watch_units",
+        "n|col|public.hosts.watch_units",
+        "e|col|public.hosts.watch_units"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "watch_units",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 1,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
