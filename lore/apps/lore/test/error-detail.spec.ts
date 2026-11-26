@@ -1,5 +1,6 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
 import { QuestController } from "@lore/plan/api";
+import { quests } from "@lore/plan/schemas";
 import {
   ProjectErrorController,
   ProjectErrorThreadController,
@@ -22,6 +23,7 @@ import {
 
 class Probe {
   projectErrors = $repository(projectErrors);
+  quests = $repository(quests);
 }
 
 const setup = async () => {
@@ -68,6 +70,7 @@ const setup = async () => {
   });
   return {
     alepha,
+    probe,
     owner,
     project,
     projectId: project.id,
@@ -232,6 +235,49 @@ describe("an error's thread and its quest", () => {
     const handedBack = (await read(w)).error;
     expect(handedBack.status).toBe("open");
     expect(handedBack.resolvedAt).toBeUndefined();
+  });
+
+  it("forwards to a new quest carrying a comment of the thread as its finding, and takes no comment of another error", async ({
+    expect,
+  }) => {
+    const finding = await w.thread.createProjectErrorComment.run(
+      {
+        ...at(),
+        body: {
+          body: "The cart is read before it loads: `cart.items`.",
+          source: { kind: "mcp", client: "claude" },
+        },
+      },
+      { user: w.owner },
+    );
+    // A finding goes into a new quest, never onto one already filed.
+    await expect(
+      w.errors.forwardProjectErrorToQuest.run(
+        { ...at(), body: { questShortId: 1, findingCommentId: finding.id } },
+        { user: w.owner },
+      ),
+    ).rejects.toThrow("not both");
+    // A comment that is not of this error's thread is no finding of it.
+    await expect(
+      w.errors.forwardProjectErrorToQuest.run(
+        { ...at(), body: { findingCommentId: finding.id + 1000 } },
+        { user: w.owner },
+      ),
+    ).rejects.toThrow("Comment not found");
+    expect((await read(w)).error.status).toBe("open");
+
+    const forwarded = await w.errors.forwardProjectErrorToQuest.run(
+      { ...at(), body: { findingCommentId: finding.id } },
+      { user: w.owner },
+    );
+    const quest = await w.probe.quests.getOne({
+      where: { id: { eq: forwarded.questId } },
+    });
+    expect(quest.description).toContain("Forwarded from error #");
+    expect(quest.description).toContain(
+      "## Finding\n\nThe cart is read before it loads: `cart.items`.",
+    );
+    expect((await read(w)).error.status).toBe(`quest:${forwarded.questId}`);
   });
 
   it("records a link to a quest already filed, and hides the quest once Plan is off", async ({

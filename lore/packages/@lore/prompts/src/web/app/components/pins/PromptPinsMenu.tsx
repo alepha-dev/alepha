@@ -8,6 +8,9 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@alepha/ui";
 import type { I18n, PinnedPromptsButtonProps } from "@lore/core/web";
 import { useStore } from "alepha/react";
@@ -23,7 +26,8 @@ import { usePromptPins } from "./usePromptPins.tsx";
  * The robot button of a pinnable page (#Q4284): one entry per prompt the
  * project pinned on it, each with Copy and, with a ready Agent host and the
  * prompt's permission, Run; for a member who manages prompts, a last entry
- * to Settings > Prompts. Absent when it has nothing to offer: a page no
+ * to Settings > Prompts. Disabled, with its reason, on an item no prompt
+ * may run on (`blocked`). Absent when it has nothing to offer: a page no
  * built-in is pinned to by default (#Q4339), until someone pins one there.
  *
  * It also publishes the page and its item for the spotlight, which mounts
@@ -55,6 +59,34 @@ const PromptPinsMenu = (props: PinnedPromptsButtonProps) => {
   }, [props.page, itemKey, publish, setPage]);
 
   if (entries.length === 0) return pins.dialog;
+
+  // Nothing runs on this item, and the page says why: the button stays, so
+  // its absence is not read as "no prompt here".
+  if (props.blocked) {
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <span
+              className="inline-flex"
+              data-testid="pinned-prompts-blocked"
+            />
+          }
+        >
+          <Button
+            variant="minimal"
+            size="icon"
+            aria-label={props.blocked}
+            data-testid="pinned-prompts"
+            disabled
+          >
+            <Bot className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{props.blocked}</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   return (
     <>

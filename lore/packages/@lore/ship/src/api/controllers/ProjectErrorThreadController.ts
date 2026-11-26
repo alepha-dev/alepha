@@ -20,6 +20,7 @@ import {
 
 import type { ProjectError } from "../entities/projectErrors.ts";
 import { projectErrorThreadEntrySchema } from "../schemas/projectErrorThreadEntrySchema.ts";
+import { projectErrorThreadJobSchema } from "../schemas/projectErrorThreadJobSchema.ts";
 import { ProjectErrorAccess } from "../services/ProjectErrorAccess.ts";
 import { ProjectErrorKinds } from "../services/ProjectErrorKinds.ts";
 import { ProjectErrorThread } from "../services/ProjectErrorThread.ts";
@@ -60,6 +61,10 @@ export class ProjectErrorThreadController {
       }),
       response: z.object({
         entries: z.array(projectErrorThreadEntrySchema),
+        /**
+         * The agent runs on this error that have not answered (#Q4471).
+         */
+        jobs: z.array(projectErrorThreadJobSchema),
       }),
     },
     handler: async ({ params, user }) => {
@@ -69,7 +74,11 @@ export class ProjectErrorThreadController {
         this.owned.authority<Project>(),
         user,
       );
-      return { entries: await this.thread.list(error, { quests }) };
+      const [entries, jobs] = await Promise.all([
+        this.thread.list(error, { quests }),
+        this.thread.jobs(error),
+      ]);
+      return { entries, jobs };
     },
   });
 
@@ -210,19 +219,11 @@ export class ProjectErrorThreadController {
   protected mentionSubject(error: ProjectError): MentionSubject {
     const project = this.owned.authority<Project>();
     const slug = project.slug || `project-${project.id}`;
-    const kind = this.kinds.of(error);
     return {
       projectId: error.projectId,
       projectTitle: project.title,
       reference: `Error ${error.id}`,
-      title:
-        kind === "uptime"
-          ? "Monitor outage"
-          : kind === "run"
-            ? "Use case run error"
-            : error.origin === "server"
-              ? "Server error"
-              : "Browser error",
+      title: this.kinds.title(error),
       href: `/${slug}/errors/${error.id}`,
     };
   }

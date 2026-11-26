@@ -357,6 +357,7 @@ export default defineConfig({
         // tr(`errors.thread.event.${kind}`): one line of an error's timeline
         // per kind of triage event (#E185).
         "errors.thread.event.",
+        "errors.thread.job.",
         // tr(`language.${code}`) — @alepha/ui button-language picker labels.
         "language.",
         // tr(`quest.create.estimate.unit.${unit}`) and its `.one` singular —

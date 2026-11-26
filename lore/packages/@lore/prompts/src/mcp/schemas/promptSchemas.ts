@@ -22,7 +22,7 @@ const args = z
   .array(z.text({ maxLength: 200 }))
   .max(4)
   .describe(
-    "The prompt's args, each `name:type` or `name:type:status|status` (the statuses it accepts). Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio, choice. A `choice` lists its options instead, `name:choice:a|b` (at least two slugs), read as `{{name.value}}`; a triggered run takes the first. Custom prompts only.",
+    "The prompt's args, each `name:type` or `name:type:status|status` (the statuses it accepts). Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio, error, choice. A `choice` lists its options instead, `name:choice:a|b` (at least two slugs), read as `{{name.value}}`; a triggered run takes the first. Custom prompts only.",
   );
 
 const set = z

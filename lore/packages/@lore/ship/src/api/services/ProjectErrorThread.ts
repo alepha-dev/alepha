@@ -2,9 +2,11 @@ import {
   BestEffort,
   BoundParameters,
   CommentService,
+  HostJobs,
   ResourceRegistry,
 } from "@lore/core/api";
 import type { Comment } from "@lore/core/schemas";
+import { displayName } from "@lore/core/web";
 import { $inject } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
@@ -16,6 +18,7 @@ import {
 import type { ProjectError } from "../entities/projectErrors.ts";
 import type { ProjectErrorEventKind } from "../schemas/projectErrorEventKindSchema.ts";
 import type { ProjectErrorThreadEntry } from "../schemas/projectErrorThreadEntrySchema.ts";
+import type { ProjectErrorThreadJob } from "../schemas/projectErrorThreadJobSchema.ts";
 import { ProjectErrorAccess } from "./ProjectErrorAccess.ts";
 
 /**
@@ -34,6 +37,7 @@ export class ProjectErrorThread {
   public static readonly SUBJECT = "error";
 
   protected readonly comments = $inject(CommentService);
+  protected readonly hostJobs = $inject(HostJobs);
   protected readonly access = $inject(ProjectErrorAccess);
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly bound = $inject(BoundParameters);
@@ -123,6 +127,40 @@ export class ProjectErrorThread {
   }
 
   /**
+   * The agent runs on an error that have not answered (#Q4471): queued,
+   * running, or ended without an answer (failed, timed out), oldest first.
+   * A run that succeeded left its comment, a cancelled one was stopped by a
+   * member: neither shows.
+   */
+  public async jobs(error: ProjectError): Promise<ProjectErrorThreadJob[]> {
+    const jobs = await this.hostJobs.ofSubject(
+      error.projectId,
+      ProjectErrorThread.SUBJECT,
+      String(error.id),
+    );
+    const shown: ProjectErrorThreadJob[] = [];
+    for (const job of jobs) {
+      if (
+        job.status !== "queued" &&
+        job.status !== "running" &&
+        job.status !== "failed" &&
+        job.status !== "timed_out"
+      ) {
+        continue;
+      }
+      shown.push({
+        id: job.id,
+        status: job.status,
+        ...(job.prompt ? { prompt: job.prompt } : {}),
+        queuedAt: job.queuedAt,
+        ...(job.startedAt ? { startedAt: job.startedAt } : {}),
+        ...(job.endedAt ? { endedAt: job.endedAt } : {}),
+      });
+    }
+    return shown.toReversed();
+  }
+
+  /**
    * One comment as the thread shows it.
    */
   public async entryOf(comment: Comment): Promise<ProjectErrorThreadEntry> {
@@ -184,7 +222,9 @@ export class ProjectErrorThread {
   }
 
   /**
-   * The display names of these accounts, by id.
+   * The display names of these accounts, by id, as the quest and feedback
+   * threads show them (first and last name, else the handle, else the
+   * e-mail). An account with none of them has no entry.
    */
   protected async names(
     ids: ReadonlyArray<string | null | undefined>,
@@ -193,14 +233,7 @@ export class ProjectErrorThread {
     const found = await this.bound.collect(unique, (batch) =>
       this.users.findMany({ where: { id: { inArray: batch } } }),
     );
-    return new Map(
-      found.map((it) => [
-        it.id,
-        (it as { name?: string }).name ??
-          (it as { username?: string }).username ??
-          "",
-      ]),
-    );
+    return new Map(found.map((it) => [it.id, displayName(it, "")]));
   }
 
   /**

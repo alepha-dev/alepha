@@ -84,6 +84,9 @@ export class PromptCommand {
     folio: z
       .text({ description: "The folio arg: #F12, F12 or 12." })
       .optional(),
+    error: z
+      .text({ description: "The error arg, by its id: B42 or 42." })
+      .optional(),
     set: z
       .array(z.text())
       .describe("A value by the arg's name, arg=reference; repeat it.")
@@ -104,7 +107,7 @@ export class PromptCommand {
     arg: z
       .array(z.text())
       .describe(
-        "An arg, name:type or name:type:status|status (the statuses it accepts); repeat it. Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio, choice. A choice lists its options instead, name:choice:a|b, read as {{name.value}}; a triggered run takes the first.",
+        "An arg, name:type or name:type:status|status (the statuses it accepts); repeat it. Types: epic, quest, feedback, pullRequest, member, useCase, persona, requirement, folio, error, choice. A choice lists its options instead, name:choice:a|b, read as {{name.value}}; a triggered run takes the first.",
       )
       .optional(),
     source: z
@@ -222,6 +225,7 @@ export class PromptCommand {
       persona?: string;
       requirement?: string;
       folio?: string;
+      error?: string;
       set?: string[];
     },
   ): Promise<Record<string, string>> {
@@ -235,6 +239,7 @@ export class PromptCommand {
       ["persona", flags.persona],
       ["requirement", flags.requirement],
       ["folio", flags.folio],
+      ["error", flags.error],
     ];
     const values = this.setOf(flags.set);
     if (typed.some(([, value]) => value)) {

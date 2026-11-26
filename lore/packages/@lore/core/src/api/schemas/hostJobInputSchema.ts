@@ -82,6 +82,7 @@ export const hostJobInputSchema = z.object({
       feedbackId: z.integer().optional(),
       feedbackIds: z.array(z.integer()).max(50).optional(),
       epicId: z.integer().optional(),
+      errorId: z.integer().optional(),
     })
     .optional(),
 });

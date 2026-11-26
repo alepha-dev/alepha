@@ -67,6 +67,19 @@ prompt itself asks for (working a quest needs to update quests).
 | **Security check**             | nothing                              | read-only  | runs each package manager's audit, and files one quest per real vulnerability |
 | **Dependency update**          | nothing                              | read-write | updates what is a minor or a patch behind, and opens a pull request if green  |
 
+With **Ship** on, one more:
+
+| Prompt                | Takes           | Code      | What it does                                                                     |
+| --------------------- | --------------- | --------- | -------------------------------------------------------------------------------- |
+| **Investigate error** | a trusted error | read-only | reads one error against the code, answers on its thread, and forwards a real fix |
+
+**Investigate error** answers with a comment on the error's page: the likely
+cause, the evidence and a proposed fix. When a fix is needed it files a quest
+carrying that finding and forwards the error to it, but only if the member who
+started the run may triage errors; otherwise the comment is the whole answer.
+It changes no code, and never resolves, trusts or deletes an error. Its key
+reaches that one error, and no agent runs on an error no member trusted.
+
 With **Requirements** on, seven more:
 
 | Prompt                        | Takes                                 | Code       | What it does                                                           |
@@ -165,6 +178,7 @@ The built-ins come pinned to their pages, until you change where they show:
 | Work on feedback                  | Feedback view |
 | Triage feedback and errors        | Feedback list |
 | Work on loose quests              | Quest list    |
+| Investigate error                 | Error view    |
 | Weekly status, Review PR          | nowhere       |
 | Security check, Dependency update | nowhere       |
 
@@ -258,7 +272,7 @@ words. **Duplicate** starts from any prompt, a
 built-in included; the copy no longer follows the built-in.
 
 An arg has a name, a type (epic, quest, feedback item, pull request,
-member, use case, persona, requirement, folio or choice) and, for an epic, a
+member, use case, persona, requirement, folio, error or choice) and, for an epic, a
 quest, a feedback item or a use case, the statuses it accepts. A **choice**
 takes no item: its list is its options instead, at least two, each lowercase
 letters, digits and dashes (`minor, patch, major`, or

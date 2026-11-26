@@ -1,6 +1,7 @@
 import type { ProjectErrorDetail } from "../../../../../api/schemas/projectErrorDetailSchema.ts";
 import type { ProjectErrorEventKind } from "../../../../../api/schemas/projectErrorEventKindSchema.ts";
 import type { ProjectErrorThreadEntry } from "../../../../../api/schemas/projectErrorThreadEntrySchema.ts";
+import type { ProjectErrorThreadJob } from "../../../../../api/schemas/projectErrorThreadJobSchema.ts";
 
 /**
  * One line of an error's timeline, as the page draws it.
@@ -22,15 +23,23 @@ export type ProjectErrorTimelineEntry =
       type: "comment";
       at: string;
       entry: ProjectErrorThreadEntry;
+    }
+  | {
+      key: string;
+      type: "job";
+      at: string;
+      job: ProjectErrorThreadJob;
     };
 
 /**
- * The timeline of an error: what its thread holds, between the two entries
+ * The timeline of an error: what its thread holds, after the two entries
  * the row itself tells (first reported, trusted on arrival), oldest first.
+ * An agent run that has not answered (#Q4471) sits where it was asked for.
  */
 export const buildProjectErrorTimeline = (
   detail: ProjectErrorDetail,
   thread: ProjectErrorThreadEntry[],
+  jobs: ProjectErrorThreadJob[] = [],
 ): ProjectErrorTimelineEntry[] => {
   const { error } = detail;
   const head: ProjectErrorTimelineEntry[] = [
@@ -55,18 +64,31 @@ export const buildProjectErrorTimeline = (
       at: error.trustedAt,
     });
   }
-  return [
-    ...head,
-    ...thread.map((entry): ProjectErrorTimelineEntry =>
-      entry.type === "comment"
-        ? { key: `comment-${entry.id}`, type: "comment", at: entry.at, entry }
-        : {
-            key: `event-${entry.id}`,
-            type: "event",
-            kind: entry.kind ?? "resolved",
-            at: entry.at,
-            entry,
-          },
-    ),
-  ];
+  const told = thread.map((entry): ProjectErrorTimelineEntry =>
+    entry.type === "comment"
+      ? { key: `comment-${entry.id}`, type: "comment", at: entry.at, entry }
+      : {
+          key: `event-${entry.id}`,
+          type: "event",
+          kind: entry.kind ?? "resolved",
+          at: entry.at,
+          entry,
+        },
+  );
+  const runs = jobs.map((job): ProjectErrorTimelineEntry => ({
+    key: `job-${job.id}`,
+    type: "job",
+    at: job.queuedAt,
+    job,
+  }));
+  // The thread arrives in order; the runs are placed in it by their time,
+  // after what was said at the same instant.
+  const body = [...told, ...runs]
+    .map((entry, index) => ({ entry, index }))
+    .sort(
+      (a, b) =>
+        Date.parse(a.entry.at) - Date.parse(b.entry.at) || a.index - b.index,
+    )
+    .map(({ entry }) => entry);
+  return [...head, ...body];
 };

@@ -124,6 +124,8 @@ export const hostJobs = $entity({
     // The project's job list, newest first.
     { columns: ["projectId", "queuedAt"] },
     { columns: ["commandId"] },
+    // A subject's jobs (#Q4471): the one still going, and the newest.
+    { columns: ["projectId", "subjectType", "subjectId"] },
     // A prompt's runs (#Q4275): its single flight per arg value.
     { columns: ["projectId", "prompt", "status"] },
   ],

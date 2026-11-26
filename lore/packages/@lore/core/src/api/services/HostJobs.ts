@@ -94,7 +94,7 @@ export interface HostJobInput {
 
 /**
  * The pins of a job key (#Q3995): one project always, and optionally one
- * quest, a set of feedback items or one epic. The key reaches Lore's MCP
+ * quest, a set of feedback items, one epic or one error. The key reaches Lore's MCP
  * only, and any tool its owner's rank allows within those pins (#Q4222).
  */
 export interface HostJobKeyScope {
@@ -110,6 +110,11 @@ export interface HostJobKeyScope {
    * creates file under it, quest writes touch its quests only.
    */
   epicId?: number;
+  /**
+   * One error of the inbox (#Q4471), by id: the error tools that name one
+   * reach it only.
+   */
+  errorId?: number;
 }
 
 export interface HostJobSummary {
@@ -167,6 +172,15 @@ export interface HostJobQueue {
     subjectType: string,
     subjectId: string,
   ): Promise<HostJobSummary | undefined>;
+  /**
+   * The project's newest jobs on a subject, whatever their status (#Q4471):
+   * what an error's thread reads to show the runs that have not answered.
+   */
+  ofSubject(
+    projectId: number,
+    subjectType: string,
+    subjectId: string,
+  ): Promise<HostJobSummary[]>;
   cancel(jobId: string, by?: string): Promise<HostJobSummary>;
   /** Whether the chain behind a job already holds a job of this kind. */
   chainHolds(jobId: string, kind: HostJobKind): Promise<boolean>;
@@ -335,6 +349,16 @@ export class HostJobs {
     subjectId: string,
   ): Promise<HostJobSummary | undefined> {
     return this.queue?.active(projectId, subjectType, subjectId);
+  }
+
+  public async ofSubject(
+    projectId: number,
+    subjectType: string,
+    subjectId: string,
+  ): Promise<HostJobSummary[]> {
+    return (
+      (await this.queue?.ofSubject(projectId, subjectType, subjectId)) ?? []
+    );
   }
 
   public async cancel(jobId: string, by?: string): Promise<HostJobSummary> {

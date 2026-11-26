@@ -63,6 +63,11 @@ export class HostJobService {
    */
   public static readonly MAX_CHAIN = 20;
 
+  /**
+   * How many of a subject's jobs `ofSubject` answers, the newest first.
+   */
+  public static readonly SUBJECT_JOBS = 20;
+
   protected readonly log = $logger();
   protected readonly jobs = $repository(hostJobs);
   protected readonly logs = $repository(hostJobLogs);
@@ -95,6 +100,18 @@ export class HostJobService {
           },
         });
         return job ? this.summary(job) : undefined;
+      },
+      ofSubject: async (projectId, subjectType, subjectId) => {
+        const rows = await this.jobs.findMany({
+          where: {
+            projectId: { eq: projectId },
+            subjectType: { eq: subjectType },
+            subjectId: { eq: subjectId },
+          },
+          orderBy: [{ column: "queuedAt", direction: "desc" }],
+          limit: HostJobService.SUBJECT_JOBS,
+        });
+        return rows.map((job) => this.summary(job));
       },
       cancel: async (id, by) => this.summary(await this.cancel(id, by)),
       chainHolds: (id, kind) => this.chainHolds(id, kind),

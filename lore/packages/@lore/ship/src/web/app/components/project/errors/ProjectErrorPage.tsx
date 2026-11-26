@@ -1,8 +1,13 @@
-import { currentProjectAtom, hasCapability, type I18n } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  hasCapability,
+  type I18n,
+  useRank,
+} from "@lore/core/web";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import type { ProjectErrorController } from "../../../../../api/controllers/ProjectErrorController.ts";
 import type { ProjectErrorDetail } from "../../../../../api/schemas/projectErrorDetailSchema.ts";
@@ -44,6 +49,7 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
   const [project] = useStore(currentProjectAtom);
   const api = useClient<ProjectErrorController>();
   const queries = useQueryClient();
+  const { can } = useRank();
   const [ignoring, setIgnoring] = useState(false);
 
   const projectId = project?.id ?? 0;
@@ -87,13 +93,15 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
       params: { projectSlug, shortId: String(shortId) },
     });
 
+  const refresh = useCallback(() => {
+    queries.invalidate(["project-error", projectId, errorId]);
+    queries.invalidate(["project-error-thread", projectId, errorId]);
+  }, [queries, projectId, errorId]);
+
   const verbs = useProjectErrorVerbs({
     projectId,
     errorId,
-    onChanged: () => {
-      queries.invalidate(["project-error", projectId, errorId]);
-      queries.invalidate(["project-error-thread", projectId, errorId]);
-    },
+    onChanged: refresh,
     onDeleted: () =>
       void router.push("projectErrors", { params: { projectSlug } }),
   });
@@ -133,6 +141,22 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
             questHref={questHref}
             busy={verbs.busy}
             onTrust={verbs.canTriage ? () => void verbs.trust.run() : undefined}
+            onForwardFinding={
+              verbs.canTriage && canForward
+                ? (commentId) => void verbs.forwardFinding.run(commentId)
+                : undefined
+            }
+            // The job's page is Prompts' (`projectJob`), read with
+            // `host:read`: without it the run is named and not linked.
+            jobHref={
+              can("host:read")
+                ? (jobId) =>
+                    router.path("projectJob", {
+                      params: { projectSlug, jobId },
+                    })
+                : undefined
+            }
+            onRunEnded={refresh}
           />
         </div>
       </div>

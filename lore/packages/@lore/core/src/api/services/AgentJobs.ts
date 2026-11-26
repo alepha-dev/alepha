@@ -81,6 +81,10 @@ export interface AgentJobRequest {
   feedbackNumbers?: number[];
   /** An epic review's epic (#Q4214), by number: the key is pinned to it. */
   epicNumber?: number;
+  /**
+   * One error of the inbox (#Q4471), by id: the key is pinned to it.
+   */
+  errorId?: number;
   startedBy?: string;
   /**
    * The job whose output started this one. Set on its own when a job key

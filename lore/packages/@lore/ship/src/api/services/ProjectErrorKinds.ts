@@ -20,6 +20,19 @@ export class ProjectErrorKinds {
   }
 
   /**
+   * What an error is called where its own text must not go (#E185): an
+   * inbox message, a prompt's text, a job's record. Its kind and origin,
+   * never its `name` or `message`, which anyone reaching the application
+   * writes.
+   */
+  public title(row: Pick<ProjectError, "origin" | "fingerprint">): string {
+    const kind = this.of(row);
+    if (kind === "uptime") return "Monitor outage";
+    if (kind === "run") return "Use case run error";
+    return row.origin === "server" ? "Server error" : "Browser error";
+  }
+
+  /**
    * The monitor of an uptime error, from its fingerprint. `undefined` for
    * any other error, and for a fingerprint that names none.
    */
