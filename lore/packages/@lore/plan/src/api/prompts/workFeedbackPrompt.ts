@@ -1,3 +1,4 @@
+import { reviewStepRule } from "./reviewStepRule.ts";
 import { unfinishedQuestRule } from "./unfinishedQuestRule.ts";
 import { visualCheckRule } from "./visualCheckRule.ts";
 
@@ -26,12 +27,14 @@ The report: {{feedback.url}}
 5. Commit it as one commit, its message naming the quest and {{feedback.reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
 6. Push the branch and open a pull request into main. Its title names the quest and {{feedback.reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
 7. If the project verifies on CI, the run on the pull request is the source of truth and a green local check is not: fix and push again until it is green.
-8. Turn on auto-merge as a rebase merge (\`gh pr merge --auto --rebase\`) if the project's AGENTS.md or CLAUDE.md lets an agent do so: that is how the pull request lands, once CI is green. Otherwise it waits for review. Never merge it at once without CI (\`gh pr merge\` without \`--auto\`), and never push to main.
+8. Review it first (below), then, once the review's fixes are pushed, turn on auto-merge as a rebase merge (\`gh pr merge --auto --rebase\`) if the project's AGENTS.md or CLAUDE.md lets an agent do so: that is how the pull request lands, once CI is green. Otherwise it waits for review. Never merge it at once without CI (\`gh pr merge\` without \`--auto\`), and never push to main.
 9. Complete the quest now, in this run: do not wait for the CI run or the merge. \`quest_complete\` with a short note: what changed, what was left out, and the pull request. Do not record the branch's sha: the rebase merge replaces it. A fix after that, for a red run or a review, still goes into the quest's one commit.
 10. Then tell the reporter in the feedback's discussion what changed, in one or two sentences: say it is on its way, never that it has shipped, since it lands when the pull request merges.
 11. If you are still there once it has merged, record the commit main received with \`quest_commit_add\` (find it in main's log by the quest's reference). Delete the branch locally, and on the remote if the merge did not, and remove the worktree.
 
 Never stop with the quest still accepted: complete it, or, when it waits on the owner's answer (below), hand it back with \`quest_unassign\` once the question is written. If the pull request has not merged when you stop, say so in your reply with its link: the quest is completed, and not on main yet.
+
+${reviewStepRule}
 
 ${visualCheckRule}
 

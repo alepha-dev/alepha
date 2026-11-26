@@ -210,6 +210,12 @@ describe("Requirements built-in prompts", () => {
 
     const spec = await render("write-use-case-spec", { useCase: "1" });
     expect(spec).toContain("tagged `@U1`");
+    // It lands like every work prompt: a sub-agent review, then auto-merge
+    // where allowed, never a merge that skips CI (#Q4533).
+    expect(spec).toContain("start a sub-agent to review the pull request");
+    expect(spec).toContain("`gh pr merge --auto --rebase`");
+    expect(spec).toContain("Never merge it at once without CI");
+    expect(spec).not.toContain("Never merge it yourself");
     const demo = await render("prepare-use-case-demo", { useCase: "1" }).catch(
       (error: Error) => error.message,
     );

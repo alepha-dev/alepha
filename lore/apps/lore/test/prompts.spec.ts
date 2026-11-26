@@ -378,7 +378,12 @@ describe("prompts", () => {
     const byName = Object.fromEntries(
       (await list()).map((it) => [it.name, it]),
     );
-    for (const name of ["work-quest", "work-epic", "work-loose-quests"]) {
+    for (const name of [
+      "work-quest",
+      "work-epic",
+      "work-loose-quests",
+      "work-feedback",
+    ]) {
       const text = byName[name]!.text;
       expect(text).toContain(
         "## The review, before the pull request may merge",
