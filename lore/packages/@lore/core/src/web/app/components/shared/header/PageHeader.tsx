@@ -17,6 +17,16 @@ const PageHeader = (props: PageHeaderProps) => {
 
   return (
     <>
+      {/* A band behind the two floating pieces (#Q4454): content a page
+          scrolls under them blurs there instead of running into the icons.
+          Its foot fades out, so on a page that does not scroll it is not a
+          stripe across the background pattern; it takes no pointer, so the
+          scrollbar under it still drags. */}
+      <div
+        aria-hidden
+        className="bg-background/70 pointer-events-none fixed inset-x-0 top-0 z-40 h-14 mask-b-from-60% backdrop-blur-md"
+        data-testid="page-header-band"
+      />
       {showHome && (
         <div className="fixed top-3 left-3 z-50">
           <Button
