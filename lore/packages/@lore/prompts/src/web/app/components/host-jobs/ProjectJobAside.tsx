@@ -103,15 +103,16 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
       tr("jobs.field.exit"),
       job.exitCode === undefined ? undefined : String(job.exitCode),
     ),
-    ...row(
-      tr("jobs.field.turns"),
-      totals?.turns === undefined ? undefined : String(totals.turns),
-    ),
+    // Tokens first (#Q4502): what a run spent, whatever the host pays.
     ...row(
       tr("jobs.field.tokens"),
       totals?.inputTokens === undefined && totals?.outputTokens === undefined
         ? undefined
         : `${(totals?.inputTokens ?? 0).toLocaleString()} / ${(totals?.outputTokens ?? 0).toLocaleString()}`,
+    ),
+    ...row(
+      tr("jobs.field.turns"),
+      totals?.turns === undefined ? undefined : String(totals.turns),
     ),
     ...row(
       tr("jobs.field.cost"),

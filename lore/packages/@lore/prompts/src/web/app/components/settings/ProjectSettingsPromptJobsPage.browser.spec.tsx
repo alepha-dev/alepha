@@ -34,12 +34,20 @@ const job = (id: number, over: Partial<HostJobResource>): HostJobResource =>
   }) as HostJobResource;
 
 const JOBS = [
-  job(1, { prompt: "triage", status: "succeeded", costUsd: 0.5 }),
+  job(1, {
+    prompt: "triage",
+    status: "succeeded",
+    costUsd: 0.5,
+    inputTokens: 530_412,
+    outputTokens: 8_150,
+  }),
   job(2, {
     prompt: "triage-errors",
     status: "failed",
     hostSlug: "laptop",
     costUsd: 2.25,
+    inputTokens: 1_234_000,
+    outputTokens: 950,
   }),
   job(3, { prompt: "work-quest", status: "succeeded" }),
 ];
@@ -170,17 +178,30 @@ describe("ProjectSettingsPromptJobsPage", () => {
     await waitFor(() => expect(prompts()).toEqual(["Triage errors"]));
   });
 
-  it("shows each job's cost, and sorts by it (#Q4293)", async ({ expect }) => {
+  it("shows each job's tokens compactly, blank when Bay sent none, and sorts by input (#Q4502)", async ({
+    expect,
+  }) => {
     await show();
     await waitFor(() => expect(prompts()).toHaveLength(3));
-    const costs = () =>
-      screen.getAllByTestId("job-cost").map((it) => it.textContent);
-    expect(costs()).toEqual(expect.arrayContaining(["$0.50", "$2.25", ""]));
+    const tokens = () =>
+      screen.getAllByTestId("job-tokens").map((it) => it.textContent);
+    expect(tokens()).toEqual(
+      expect.arrayContaining(["530k / 8.2k", "1.2M / 950", ""]),
+    );
 
-    const header = screen.getByRole("columnheader", { name: /Cost/ });
+    const header = screen.getByRole("columnheader", { name: /Tokens/ });
     fireEvent.click(header.querySelector("button") ?? header);
     await waitFor(() =>
-      expect(costs().filter(Boolean)).toEqual(["$0.50", "$2.25"]),
+      expect(tokens().filter(Boolean)).toEqual(["530k / 8.2k", "1.2M / 950"]),
     );
+  });
+
+  it("hides the cost by default, an estimate at API prices (#Q4502)", async ({
+    expect,
+  }) => {
+    await show();
+    await waitFor(() => expect(prompts()).toHaveLength(3));
+    expect(screen.queryAllByTestId("job-cost")).toHaveLength(0);
+    expect(screen.queryByRole("columnheader", { name: /Cost/ })).toBeNull();
   });
 });
