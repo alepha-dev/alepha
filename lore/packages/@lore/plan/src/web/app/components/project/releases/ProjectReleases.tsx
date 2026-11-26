@@ -213,6 +213,10 @@ const ProjectReleases = () => {
      */
     state: {
       schema: z.enum(["open", "released"]),
+      // On the bar from the first visit (#Q4451): it is what the Open and
+      // Released sections became, the page's main control. Still removable,
+      // and Reset filters brings it back.
+      mode: "default",
       label: tr("release.filter.state"),
       icon: CircleDot,
       items: [

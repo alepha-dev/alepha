@@ -254,11 +254,10 @@ describe("ProjectReleases - the row menu and the deletes", () => {
     it("does not move the offers when the table is filtered to Released", async () => {
       await mount();
 
-      // Optional, so off the bar until added (#E58); adding it opens its list.
-      fireEvent.keyDown(screen.getByRole("button", { name: "Add filters" }), {
+      // On the bar from the start (#Q4451): its trigger opens the list.
+      fireEvent.keyDown(screen.getByRole("combobox", { name: "State" }), {
         key: "ArrowDown",
       });
-      fireEvent.click(await screen.findByRole("menuitem", { name: /^State/ }));
       fireEvent.click(await screen.findByRole("option", { name: /Released/ }));
       await waitFor(() =>
         expect(screen.queryByRole("link", { name: "0.30.0" })).toBeNull(),
