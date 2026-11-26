@@ -32,7 +32,8 @@ export interface PromptJobsTableProps {
  * The project's prompt jobs (#Q4281), newest first, each with its prompt and
  * args, its cause, where it ran, how it ended and how long it took, filtered
  * by prompt, status and host on the table's own filter bar (#Q4305), each
- * offering what the loaded jobs hold. Polled every few seconds while one is
+ * offering what the loaded jobs hold, its tokens shown and its cost in the
+ * column picker (#Q4502). Polled every few seconds while one is
  * in flight. Settings > Prompts > Jobs draws it whole; a prompt's page draws
  * it on that prompt, with no prompt filter (#Q4355).
  */
@@ -245,8 +246,39 @@ const PromptJobsTable = (props: PromptJobsTableProps) => {
             </span>
           ),
         },
+        inputTokens: {
+          label: tr("jobs.col.tokens"),
+          // What a burst of heavy runs shows (#Q4502): the input tokens,
+          // compact, the output beside them; blank for an older Bay.
+          sortable: true,
+          sortValue: (job) => job.inputTokens,
+          align: "right",
+          cell: (job) => (
+            <span
+              className="text-muted-foreground text-xs tabular-nums"
+              data-testid="job-tokens"
+              title={
+                job.inputTokens === undefined && job.outputTokens === undefined
+                  ? undefined
+                  : tr("jobs.tokens.title", {
+                      args: [
+                        (job.inputTokens ?? 0).toLocaleString(),
+                        (job.outputTokens ?? 0).toLocaleString(),
+                      ],
+                    })
+              }
+            >
+              {job.inputTokens === undefined && job.outputTokens === undefined
+                ? ""
+                : `${tokensText(job.inputTokens ?? 0)} / ${tokensText(job.outputTokens ?? 0)}`}
+            </span>
+          ),
+        },
         costUsd: {
           label: tr("jobs.col.cost"),
+          // An estimate at API list prices, which a host signed in with a
+          // subscription is never billed (#Q4502): in the column picker.
+          defaultHidden: true,
           // What the run cost, as its agent CLI said and Bay sent with
           // its end (#Q4293); blank for an older Bay.
           sortable: true,
@@ -263,6 +295,17 @@ const PromptJobsTable = (props: PromptJobsTableProps) => {
       }}
     />
   );
+};
+
+/**
+ * A token count as a glance reads it: `950`, `12k`, `530k`, `1.2M`.
+ */
+const tokensText = (count: number): string => {
+  const short = (value: number, unit: string) =>
+    `${value < 10 ? Number(value.toFixed(1)) : Math.round(value)}${unit}`;
+  if (count < 1000) return String(count);
+  if (count < 999_500) return short(count / 1000, "k");
+  return short(count / 1_000_000, "M");
 };
 
 export default PromptJobsTable;
