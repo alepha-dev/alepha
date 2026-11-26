@@ -474,9 +474,16 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	// The reply is read from the stream as it passes, before the log's cap
 	// (#Q4288): an agent job's only, a check's answer is its exit.
 	var scanner *resultScanner
+	// An agent's stdout is spooled with its image bodies cut out (#Q4455),
+	// while the scanner reads the stream untouched.
+	var stripper *imageStripper
+	if spec.Kind == jobKindAgent {
+		stripper = newImageStripper(log.writer("stdout"))
+		cmd.Stdout = stripper
+	}
 	if spec.Kind == jobKindAgent && adapter.Result != nil {
 		scanner = newResultScanner(adapter.Result())
-		cmd.Stdout = teeWriter{log.writer("stdout"), scanner}
+		cmd.Stdout = teeWriter{stripper, scanner}
 	}
 	if spec.Kind == jobKindCheck {
 		// The check is the version first, then the one-line prompt.
@@ -488,6 +495,9 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 	}
 	log.Step("agent " + adapter.Name + " started")
 	code, err := r.wait(ctx, cmd)
+	if stripper != nil {
+		stripper.Flush()
+	}
 	if code != nil {
 		log.Step(fmt.Sprintf("agent exited with status %d", *code))
 	}

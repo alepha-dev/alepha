@@ -183,7 +183,16 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
               {tr("jobs.transcript.hiddenHint")}
             </p>
           )}
-          {job.logTruncated && (
+          {/* A running job past its log's cap goes on working (#Q4455): the
+              page says so, rather than reading as a job that stopped. */}
+          {job.logTruncated && job.status === "running" && (
+            <Alert data-testid="job-log-full">
+              <span className="text-sm">
+                {tr("jobs.transcript.truncatedRunning")}
+              </span>
+            </Alert>
+          )}
+          {job.logTruncated && job.status !== "running" && (
             <p className="text-muted-foreground text-xs">
               {tr("jobs.transcript.truncated")}
             </p>

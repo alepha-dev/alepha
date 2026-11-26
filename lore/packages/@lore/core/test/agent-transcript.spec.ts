@@ -188,6 +188,46 @@ describe("AgentTranscript", () => {
     ]);
   });
 
+  it("reads a line whose image body Bay replaced by a placeholder as an image, with no unknown line (#Q4455)", ({
+    expect,
+  }) => {
+    const use = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [{ type: "tool_use", id: "t1", name: "Read", input: {} }],
+      },
+    });
+    const result = JSON.stringify({
+      type: "user",
+      message: {
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "t1",
+            content: [
+              {
+                type: "image",
+                source: {
+                  type: "base64",
+                  media_type: "image/png",
+                  data: "[image/png, 855 KB]",
+                },
+              },
+            ],
+          },
+        ],
+      },
+      tool_use_result: {
+        type: "image",
+        file: { base64: "[image/png, 855 KB]", type: "image/png" },
+      },
+    });
+    const out = AgentTranscript.parse(`${use}\n${result}\n`, "claude");
+    const [tools] = out.entries;
+    expect(tools?.kind === "tools" && tools.tools[0]?.result).toBe("[image]");
+    expect(out.unknown).toBeUndefined();
+  });
+
   it("drops tool_progress heartbeats silently, and counts a repeated unknown kind once, with its first line as the sample (#Q4296)", ({
     expect,
   }) => {
