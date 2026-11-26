@@ -818,9 +818,11 @@ export default {
   "chat.room.new.name": "Name",
   "chat.room.new.nameHelp":
     "Lowercase letters, digits and hyphens: release-0-40.",
+  "chat.room.new.visibility": "Visibility",
+  "chat.room.new.visibilityHelp":
+    "Public: every member of the project sees it. Private: only its members do, and you are its first.",
+  "chat.room.new.public": "Public",
   "chat.room.new.private": "Private",
-  "chat.room.new.privateHelp":
-    "Only its members see it, and you are its first.",
   "chat.room.new.cancel": "Cancel",
   "chat.room.new.create": "Create room",
   "chat.room.panel": "Room details",
