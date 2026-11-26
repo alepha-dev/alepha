@@ -6,6 +6,7 @@ import {
   createProjectViaWizard,
   newUserContext,
   openAccount,
+  pickSelectOption,
   registerAndVerify,
 } from "./_helpers.ts";
 
@@ -233,11 +234,14 @@ test.describe("Chat", () => {
       const secretRow = (side: Page) =>
         side.locator('[data-testid="chat-room-row"][data-room="secret"]');
 
-      // The + above the list: a name, and private.
+      // The + above the list: a name, and the Visibility Private (#Q4484).
       await page.getByTestId("chat-new-room").click();
       const dialog = page.getByRole("dialog");
       await dialog.getByLabel("Name").fill("secret");
-      await dialog.getByLabel("Private", { exact: true }).first().click();
+      await expect(page.getByTestId("chat-new-room-visibility")).toContainText(
+        "Public",
+      );
+      await pickSelectOption(page, "chat-new-room-visibility", "Private");
       await dialog.getByRole("button", { name: "Create room" }).click();
       await page.waitForURL(`**/${slug}/chat/secret`);
       await expect(secretRow(page)).toBeVisible();

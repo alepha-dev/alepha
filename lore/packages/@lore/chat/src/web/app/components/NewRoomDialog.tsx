@@ -25,19 +25,26 @@ export interface NewRoomDialogProps {
 }
 
 /**
- * The `+` above the room list (#E161, #Q3955): a name, and open or private.
+ * The `+` above the room list (#E161, #Q3955): a name, and a Visibility,
+ * Public or Private (#Q4484, where it was a Private switch).
  * The creator is the room's first member.
  */
 const NewRoomDialog = (props: NewRoomDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<ChatRoomController>();
 
-  const create = useAction<[values: { name: string; private?: boolean }], void>(
+  const create = useAction<
+    [values: { name: string; visibility: "public" | "private" }],
+    void
+  >(
     {
       handler: async (_context, values) => {
         const room = await api.createChatRoom({
           params: { projectId: props.projectId },
-          body: { name: values.name, private: values.private === true },
+          body: {
+            name: values.name,
+            private: values.visibility === "private",
+          },
         });
         props.onOpenChange(false);
         props.onCreated(room);
@@ -51,7 +58,7 @@ const NewRoomDialog = (props: NewRoomDialogProps) => {
   const form = useForm(
     {
       schema: newRoomFormSchema,
-      initialValues: { name: "", private: false },
+      initialValues: { name: "", visibility: "public" as const },
       handler: async (values) => {
         await create.run(values);
       },
@@ -81,10 +88,16 @@ const NewRoomDialog = (props: NewRoomDialogProps) => {
             disabled={busy}
           />
           <Control
-            input={form.input.private}
-            label={tr("chat.room.new.private")}
-            description={tr("chat.room.new.privateHelp")}
+            input={form.input.visibility}
+            label={tr("chat.room.new.visibility")}
+            description={tr("chat.room.new.visibilityHelp")}
+            select
+            items={[
+              { value: "public", label: tr("chat.room.new.public") },
+              { value: "private", label: tr("chat.room.new.private") },
+            ]}
             disabled={busy}
+            inputProps={{ "data-testid": "chat-new-room-visibility" }}
           />
           <DialogFooter>
             <Button

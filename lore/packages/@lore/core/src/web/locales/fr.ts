@@ -716,9 +716,11 @@ export default {
   "chat.room.new.name": "Nom",
   "chat.room.new.nameHelp":
     "Lettres minuscules, chiffres et tirets : release-0-40.",
+  "chat.room.new.visibility": "Visibilité",
+  "chat.room.new.visibilityHelp":
+    "Public : tous les membres du projet le voient. Privé : seuls ses membres le voient, et vous êtes le premier.",
+  "chat.room.new.public": "Public",
   "chat.room.new.private": "Privé",
-  "chat.room.new.privateHelp":
-    "Seuls ses membres le voient, et vous êtes le premier.",
   "chat.room.new.cancel": "Annuler",
   "chat.room.new.create": "Créer le salon",
   "chat.room.panel": "Détails du salon",
