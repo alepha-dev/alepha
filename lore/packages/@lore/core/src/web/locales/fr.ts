@@ -4360,6 +4360,12 @@ export default {
   "dashboard.metric.appHealth": "Santé des applications",
   "dashboard.metric.appHealth.hint":
     "une pastille par copie : son dernier déploiement, et si elle remonte",
+  "dashboard.metric.hostStats": "Charge de l'hôte",
+  "dashboard.metric.hostStats.hint":
+    "le CPU, la mémoire, le disque ou la charge d'un hôte, et ses moyennes par jour",
+  "dashboard.metric.hostUnits": "Unités surveillées",
+  "dashboard.metric.hostUnits.hint":
+    "les unités systemd qu'un hôte surveille et leur état",
   "dashboard.metric.hosts": "Hôtes",
   "dashboard.metric.hosts.hint":
     "les hôtes du projet, les siens et ceux prêtés, en ligne ou non",

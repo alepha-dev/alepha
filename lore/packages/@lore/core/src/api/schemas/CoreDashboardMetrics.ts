@@ -3,6 +3,8 @@ import { $inject } from "alepha";
 import { activityFeedFiltersSchema } from "./activityFeedFiltersSchema.ts";
 import { DashboardMetricCatalog } from "./DashboardMetricCatalog.ts";
 import { hostsCardFiltersSchema } from "./hostsCardFiltersSchema.ts";
+import { hostStatsCardFiltersSchema } from "./hostStatsCardFiltersSchema.ts";
+import { hostUnitsCardFiltersSchema } from "./hostUnitsCardFiltersSchema.ts";
 import { momentumFiltersSchema } from "./momentumFiltersSchema.ts";
 import { needsYouFiltersSchema } from "./needsYouFiltersSchema.ts";
 import { noteFiltersSchema } from "./noteFiltersSchema.ts";
@@ -110,6 +112,49 @@ export class CoreDashboardMetrics {
       presentation: "list",
       scopeKinds: ["projects"],
       filters: hostsCardFiltersSchema,
+      requires: "host:read",
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectSettingsHosts",
+              params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
+    });
+    // One host's CPU, memory, disk or load over time, and the systemd units
+    // it watches (#Q4425). Core's, like `hosts`: no capability needed.
+    this.catalog.register({
+      key: "hostStats",
+      order: 85,
+      boards: ["project"],
+      group: "core",
+      labelKey: "dashboard.metric.hostStats",
+      hintKey: "dashboard.metric.hostStats.hint",
+      icon: "gauge",
+      presentation: "chart",
+      scopeKinds: ["projects"],
+      filters: hostStatsCardFiltersSchema,
+      requires: "host:read",
+      // The project's hosts; the resolver links the host's own page.
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectSettingsHosts",
+              params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
+    });
+    this.catalog.register({
+      key: "hostUnits",
+      order: 86,
+      boards: ["project"],
+      group: "core",
+      labelKey: "dashboard.metric.hostUnits",
+      hintKey: "dashboard.metric.hostUnits.hint",
+      icon: "server",
+      presentation: "status",
+      scopeKinds: ["projects"],
+      filters: hostUnitsCardFiltersSchema,
       requires: "host:read",
       link: (_scope, target) =>
         target.projectSlug

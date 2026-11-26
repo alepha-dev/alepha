@@ -108,9 +108,11 @@ import { HostProjectEvents } from "./services/HostProjectEvents.ts";
 import { HostProjectMerge } from "./services/HostProjectMerge.ts";
 import { HostService } from "./services/HostService.ts";
 import { HostsMetric } from "./services/HostsMetric.ts";
+import { HostStatsMetric } from "./services/HostStatsMetric.ts";
 import { HostStatsService } from "./services/HostStatsService.ts";
 import { HostTokenService } from "./services/HostTokenService.ts";
 import { HostTypeRegistry } from "./services/HostTypeRegistry.ts";
+import { HostUnitsMetric } from "./services/HostUnitsMetric.ts";
 import { HostUpgradeService } from "./services/HostUpgradeService.ts";
 import { HostUsageRegistry } from "./services/HostUsageRegistry.ts";
 import { HourlyChecks } from "./services/HourlyChecks.ts";
@@ -363,6 +365,8 @@ export const LoreCoreApi = $module({
     HostStatsService,
     HostOfflineJobs,
     HostsMetric,
+    HostStatsMetric,
+    HostUnitsMetric,
     // The host's HTTP, socket and pull surface (#E166, #Q4117): managing,
     // lending, enrolling and commanding a host, the machine's websocket and
     // the transport that pushes over it (substituted for
@@ -807,6 +811,8 @@ export { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTr
 export { HostOfflineJobs } from "./jobs/HostOfflineJobs.ts";
 export { HostStatsService } from "./services/HostStatsService.ts";
 export { HostsMetric } from "./services/HostsMetric.ts";
+export { HostStatsMetric } from "./services/HostStatsMetric.ts";
+export { HostUnitsMetric } from "./services/HostUnitsMetric.ts";
 export { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 export { HostUpgradeService } from "./services/HostUpgradeService.ts";
 export { HostInventoryService } from "./services/HostInventoryService.ts";

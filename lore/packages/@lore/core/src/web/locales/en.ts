@@ -4327,6 +4327,12 @@ export default {
   "dashboard.metric.hosts": "Hosts",
   "dashboard.metric.hosts.hint":
     "the project's hosts, its own and lent ones, online or offline",
+  "dashboard.metric.hostStats": "Host usage",
+  "dashboard.metric.hostStats.hint":
+    "one host's CPU, memory, disk or load now, and its daily means",
+  "dashboard.metric.hostUnits": "Watched units",
+  "dashboard.metric.hostUnits.hint":
+    "the systemd units a host watches and their state now",
   "dashboard.metric.runningJobs": "Running jobs",
   "dashboard.metric.runningJobs.hint":
     "the agent jobs queued or running now, their host and since when",
