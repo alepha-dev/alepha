@@ -227,6 +227,12 @@ describe("ProjectJob", () => {
     const pane = await screen.findByTestId("job-transcript");
     expect(pane.className).toContain("min-h-0");
     expect(pane.className).toContain("overflow-y-auto");
+    // The conversation sits in a centred reading column inside the
+    // full-width pane (#Q4416).
+    const column = screen.getByTestId("job-transcript-column");
+    expect(column.className).toContain("mx-auto");
+    expect(column.className).toContain("max-w-3xl");
+    expect(column.contains(screen.getByTestId("job-events"))).toBe(true);
 
     // Two tabs since #Q4403: the raw log is the toolbar's download.
     expect(screen.queryByText("Raw log")).toBeNull();
