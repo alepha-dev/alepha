@@ -210,9 +210,23 @@ describe("prompts", () => {
       expect(text, name).toContain("no visual check was made");
       expect(text, name).toContain("You cannot attach a screenshot");
     }
-    for (const name of ["triage", "review-epic", "security-check"]) {
+    for (const name of ["review-epic", "security-check"]) {
       expect(registry.get(name)?.text, name).not.toContain("playwright-cli");
     }
+  });
+
+  it("asks triage to look at a screen a report describes, and keeps needs-human for what a person must decide (#Q4428)", async ({
+    expect,
+  }) => {
+    const text = registry.get("triage")?.text ?? "";
+    expect(text).toContain("`command -v playwright-cli`");
+    expect(text).toContain("open the page at the viewport `context` names");
+    expect(text).toContain("the report was not reproduced");
+    expect(text).toContain(
+      "only when a person must decide before anyone builds it",
+    );
+    expect(text).toContain("a new table or column, a new API surface");
+    expect(text).not.toContain("a migration or money");
   });
 
   it("lists the ten built-ins with their args and accepted statuses, and leaves out one the project cannot use", async ({
