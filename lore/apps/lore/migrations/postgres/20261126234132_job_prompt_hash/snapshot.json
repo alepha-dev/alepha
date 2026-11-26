@@ -1,0 +1,113 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3cb0fda7-bf03-468c-9616-2c9218f0591c",
+  "prevIds": ["db9bdd6d-3337-4140-95b2-ac2aa018d453"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "prompt_hash"],
+      "writes": [
+        "s|col|public.host_jobs.prompt_hash",
+        "n|col|public.host_jobs.prompt_hash",
+        "e|col|public.host_jobs.prompt_hash"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "host_jobs",
+        "host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx",
+        "n|idx|public.host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx",
+        "e|idx|public.host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx",
+        "n|rel|public.host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.host_jobs",
+        "n|sch|public",
+        "n|col|public.host_jobs.project_id",
+        "n|col|public.host_jobs.prompt",
+        "n|col|public.host_jobs.prompt_hash",
+        "n|col|public.host_jobs.status",
+        "n|col|public.host_jobs.ended_at"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "prompt_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "prompt",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "prompt_hash",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "status",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "ended_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

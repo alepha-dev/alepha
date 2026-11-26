@@ -298,6 +298,12 @@ and half an hour for that last part pass the job's time limit, the job page
 and its row in the list warn that the steps left may not fit. The warning
 stops nothing: the job runs on until it ends or reaches its limit.
 
+A job that works no quest (a triage, a feedback run, an epic review) is timed
+instead against the last runs of the same prompt: once the prompt's words have
+run 5 times, its page shows a bar that fills toward the time most of those runs
+took, never quite full while the job runs, and **Usually 1 min to 2 min**
+beside it. Editing a prompt's words starts its history again.
+
 The jobs list shows the same bar, short, under each job's status (**2/5**),
 and hovering a quest's agent icon shows it in the card, with the quest you
 came from marked.

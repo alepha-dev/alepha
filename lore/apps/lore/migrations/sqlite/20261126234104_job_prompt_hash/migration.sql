@@ -1,0 +1,2 @@
+ALTER TABLE `host_jobs` ADD `prompt_hash` text;--> statement-breakpoint
+CREATE INDEX `host_jobs_project_id_prompt_prompt_hash_status_ended_at_idx` ON `host_jobs` (`project_id`,`prompt`,`prompt_hash`,`status`,`ended_at`);

@@ -99,6 +99,8 @@ export class HostJobController {
       const [job] = await this.present([row]);
       const model = await this.service.modelOf(row);
       const pokes = await this.pokesOf(row);
+      // A job with no steps reads its prompt's usual time (#Q4435).
+      const usual = job?.steps ? undefined : await this.service.usualOf(row);
       const [host] = await this.hostRows.findMany({
         where: { id: { eq: row.hostId } },
         columns: ["id", "jobsTools"],
@@ -111,6 +113,7 @@ export class HostJobController {
           ? { pokeable: true }
           : {}),
         ...(pokes.length ? { pokes } : {}),
+        ...(usual ? { usual } : {}),
       };
     },
   });

@@ -203,10 +203,30 @@ export class PromptRunService {
       // A time the project set wins over the one a built-in plans (#Q4344).
       ...(timeoutSet === undefined ? {} : { timeoutSeconds: timeoutSet }),
       ...resumed,
-      record: { prompt: name, args, cause },
+      // The text as written, before its args and the preamble (#Q4435).
+      record: {
+        prompt: name,
+        args,
+        cause,
+        promptHash: await this.hashOf(prompt.text),
+      },
     });
     await after?.(job.id);
     return { jobId: job.id, skipped: skipped ?? [] };
+  }
+
+  /**
+   * A prompt's text as a SHA-256 hex digest (#Q4435): what tells two runs
+   * of the same words from two runs of an edited prompt.
+   */
+  public async hashOf(text: string): Promise<string> {
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(text),
+    );
+    return Array.from(new Uint8Array(digest))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
   }
 
   /**

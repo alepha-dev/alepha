@@ -3379,6 +3379,8 @@ export default {
   "jobs.steps.objectives": "$1 objectifs sur $2",
   "jobs.steps.lastStep": "Dernière étape il y a $1",
   "jobs.steps.elapsedOf": "$1 sur $2",
+  "jobs.usual.text": "D'habitude $1 à $2",
+  "jobs.usual.aria": "Temps écoulé, comparé à la durée habituelle de ce prompt",
   "jobs.pace.quests":
     "Environ $1 à $2 pour les $3 quêtes restantes, sans la revue, les vérifications et la fusion",
   "jobs.pace.objectives":

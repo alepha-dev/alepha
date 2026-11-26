@@ -35,7 +35,17 @@ export interface AgentJobRequest {
    * started it, recorded on the job. A run gets a session id of its own,
    * never resumed, so "continue" can come later.
    */
-  record?: { prompt: string; args: PromptJobArg[]; cause: PromptJobCause };
+  record?: {
+    prompt: string;
+    args: PromptJobArg[];
+    cause: PromptJobCause;
+    /**
+     * A hash of the prompt's text as written, before its args and the
+     * preamble (#Q4435): a job's usual duration is read from the runs that
+     * share it.
+     */
+    promptHash?: string;
+  };
   /**
    * The workspace the job runs in on the host (#Q4218): `q<n>` for a
    * quest's work, `job-<id>` for another write job, `triage` otherwise,

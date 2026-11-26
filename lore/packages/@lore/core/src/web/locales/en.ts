@@ -3361,6 +3361,8 @@ export default {
   "jobs.steps.objectives": "$1 of $2 objectives",
   "jobs.steps.lastStep": "Last step $1 ago",
   "jobs.steps.elapsedOf": "$1 of $2",
+  "jobs.usual.text": "Usually $1 to $2",
+  "jobs.usual.aria": "Time run, against how long this prompt usually takes",
   "jobs.pace.quests":
     "About $1 to $2 for the $3 quests left, not counting review, checks and merge",
   "jobs.pace.objectives":

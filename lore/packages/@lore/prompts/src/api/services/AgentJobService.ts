@@ -169,6 +169,9 @@ export class AgentJobService {
             prompt: request.record.prompt,
             args: request.record.args,
             cause: request.record.cause,
+            ...(request.record.promptHash
+              ? { promptHash: request.record.promptHash }
+              : {}),
           }
         : {}),
       input: {

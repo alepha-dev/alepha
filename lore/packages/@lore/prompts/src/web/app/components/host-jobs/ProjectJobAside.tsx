@@ -10,6 +10,7 @@ import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 
 import JobStatusBadge from "./JobStatusBadge.tsx";
+import JobUsualBar from "./JobUsualBar.tsx";
 
 export interface ProjectJobAsideProps {
   job: HostJobResource;
@@ -174,6 +175,14 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
               className="mt-1"
             />
           )}
+          {/* A job with no steps, timed against its prompt's last runs
+              (#Q4435): nothing under 5 of them. */}
+          {!job.steps &&
+            job.status === "running" &&
+            job.usual &&
+            job.startedAt && (
+              <JobUsualBar usual={job.usual} startedAt={job.startedAt} />
+            )}
           {job.prompt && (
             <span className="text-muted-foreground text-xs">
               {tr("jobs.runOf")}{" "}

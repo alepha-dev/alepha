@@ -163,6 +163,18 @@ describe("prompt runs", () => {
     expect(row.input.prompt).toContain(`Investigate #E${epic.number} Cart in `);
     expect(row.input.timeoutSeconds).toBe(14_400);
     expect(row.prompt).toBe("crash");
+    // The text as written, before its args and the preamble (#Q4435).
+    const written =
+      "Investigate {{epic.reference}} {{epic.title}} in {{project}}.";
+    const digest = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(written),
+    );
+    expect(row.promptHash).toBe(
+      Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join(""),
+    );
   });
 
   it("runs for the time the project set on a prompt, custom or built-in, and back to the default once cleared", async ({
