@@ -1,3 +1,4 @@
+import { inboxUnreadAtom } from "@alepha/ui/shell";
 import {
   act,
   cleanup,
@@ -53,6 +54,15 @@ const dockApi = {
 const inboxApi = {
   unread: {} as Record<string, number>,
   calls: [] as string[][],
+  marked: [] as Array<string | undefined>,
+  markAllInboxRead: async (input: { query: { scope?: string } }) => {
+    inboxApi.marked.push(input.query.scope);
+    if (input.query.scope) delete inboxApi.unread[input.query.scope];
+    return { updated: 1 };
+  },
+  countInbox: async () => ({
+    unread: Object.values(inboxApi.unread).reduce((a, b) => a + b, 0),
+  }),
   countInboxScopes: async (input: { body: { scopes: string[] } }) => {
     inboxApi.calls.push(input.body.scopes);
     return {
@@ -69,6 +79,8 @@ class FakeLinkProvider extends LinkProvider {
   override client(): any {
     return virtualClientFake({
       countInboxScopes: inboxApi.countInboxScopes,
+      markAllInboxRead: inboxApi.markAllInboxRead,
+      countInbox: inboxApi.countInbox,
       reorderDock: dockApi.reorderDock,
       pinProject: dockApi.pinProject,
       unpinProject: dockApi.unpinProject,
@@ -122,6 +134,7 @@ describe("ProjectRail", () => {
     dockApi.fail = false;
     inboxApi.unread = {};
     inboxApi.calls = [];
+    inboxApi.marked = [];
     cleanup();
     await alepha?.stop();
     alepha = undefined;
@@ -457,6 +470,38 @@ describe("ProjectRail", () => {
       expect(screen.queryByTestId("project-rail-menu-pin")).toBeNull();
       expect(screen.getByTestId("project-rail-menu-new-tab")).toBeTruthy();
       expect(screen.getByTestId("project-rail-menu-copy")).toBeTruthy();
+    });
+
+    it("offers Mark all read only on a project with unread messages, and clears its badge and the bell (#Q4531)", async ({
+      expect,
+    }) => {
+      inboxApi.unread = { "project:2": 3, "project:3": 1 };
+      const app = await mount(
+        [row(1, "Lore", "2026-01-02"), row(2, "Club", "2026-01-01")],
+        1,
+        [1, 2],
+      );
+      await waitFor(() =>
+        expect(screen.getByTestId("project-rail-badge").textContent).toBe("3"),
+      );
+
+      fireEvent.contextMenu(item("Lore"));
+      await screen.findByTestId("project-rail-menu-unpin");
+      expect(screen.queryByTestId("project-rail-menu-mark-read")).toBeNull();
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+
+      fireEvent.contextMenu(item("Club, 3 unread"));
+      fireEvent.click(await screen.findByTestId("project-rail-menu-mark-read"));
+
+      await waitFor(() =>
+        expect(screen.queryByTestId("project-rail-badge")).toBeNull(),
+      );
+      expect(inboxApi.marked).toEqual(["project:2"]);
+      await waitFor(() =>
+        expect(app.store.get(inboxUnreadAtom)).toEqual({ count: 1 }),
+      );
     });
 
     it("unpinning the current project moves it to the temporary slot", async ({

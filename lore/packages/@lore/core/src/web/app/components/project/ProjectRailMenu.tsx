@@ -6,7 +6,13 @@ import {
 } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Link2, Pin, PinOff, SquareArrowOutUpRight } from "lucide-react";
+import {
+  CheckCheck,
+  Link2,
+  Pin,
+  PinOff,
+  SquareArrowOutUpRight,
+} from "lucide-react";
 
 import { USER_DOCK_CAP } from "../../../../api/schemas/userDockCap.ts";
 import type { I18n } from "../../services/I18n.ts";
@@ -27,10 +33,24 @@ export interface ProjectRailMenuProps {
   busy?: boolean;
   onPin: () => void;
   onUnpin: () => void;
+  /**
+   * The project's unread inbox messages: "Mark all read" is offered only
+   * when there are some (#Q4531).
+   */
+  unread?: number;
+  /**
+   * Read every inbox message of this project.
+   */
+  onMarkAllRead?: () => void;
+  /**
+   * A mark-all is in flight.
+   */
+  marking?: boolean;
 }
 
 /**
- * What right-clicking a dock icon offers (#E139, #Q3439): Unpin (Pin on the
+ * What right-clicking a dock icon offers (#E139, #Q3439): Mark all read
+ * while the project has unread messages (#Q4531), Unpin (Pin on the
  * temporary slot), Open in new tab, Copy link.
  *
  * Unpinning the project being looked at does not make it vanish: off the
@@ -46,6 +66,19 @@ export const ProjectRailMenu = (props: ProjectRailMenuProps) => {
 
   return (
     <ContextMenuContent data-testid="project-rail-menu">
+      {(props.unread ?? 0) > 0 && props.onMarkAllRead && (
+        <>
+          <ContextMenuItem
+            data-testid="project-rail-menu-mark-read"
+            disabled={props.marking}
+            onClick={props.onMarkAllRead}
+          >
+            <CheckCheck className="size-4" />
+            {tr("dock.menu.mark-all-read")}
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+        </>
+      )}
       {props.pinned ? (
         <ContextMenuItem
           data-testid="project-rail-menu-unpin"

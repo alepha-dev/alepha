@@ -2268,6 +2268,7 @@ export default {
   "dock.menu.open-new-tab": "Open in new tab",
   "dock.menu.copy-link": "Copy link",
   "dock.menu.copied": "Link copied",
+  "dock.menu.mark-all-read": "Mark all read",
   "dock.reorder.hint":
     "Press Space to move this project in the dock, then the arrow keys, and Space again to drop it.",
   "dock.reorder.picked": "Picked up $1.",
