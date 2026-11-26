@@ -2,7 +2,12 @@ import { Button } from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import type { HostJobController } from "@lore/core/api";
 import type { PromptResource } from "@lore/core/schemas";
-import { currentProjectAtom, type I18n, useRank } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  type I18n,
+  usePageCrumb,
+  useRank,
+} from "@lore/core/web";
 import {
   useAction,
   useClient,
@@ -83,6 +88,12 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
     [api, projectId],
   );
   const prompt = list.data?.items.find((it) => it.name === props.name);
+  // The trail ends with the prompt itself (#Q4536): "Alepha › Prompts ›
+  // Work on loose quests", in the breadcrumb and the tab's title.
+  usePageCrumb(
+    "projectPrompt",
+    prompt ? prompt.title || prompt.name : undefined,
+  );
   const last = useQuery(
     {
       enabled: !!prompt?.lastJobId && can("host:read"),
