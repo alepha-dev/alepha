@@ -19,6 +19,7 @@ The capability `prompts` (declared in core's `CapabilityRegistry`, off by defaul
 - **Triggers read the switch when they fire**, never only when they are set: `listening` answers nothing, `settled` drops a pending run, `tick` moves a due row to its next run and starts nothing.
 - **A job's end tells nobody** while it is off: `AgentJobProjectEvents` raises no `agent.job.*`, and `PromptReplyMail` sends nothing. A job already running finishes.
 - **The pages answer 404** (`PromptsRouter.gate`), Settings > Prompts is not listed, and the spotlight source and the pins slot show nothing.
+- **One page is not gated: `bayJobs`** (#Q4524), the Jobs tab of a host's console. The console is a page of the host's home project, which may have Prompts off while it lends the machine to a project that has it on. Its read, `HostJobController.listHostJobs`, is core's and gated on `host:read` in the home project; a job of a project the reader holds no `host:read` in is answered without what that project wrote (`hostMachineJobSchema`). Keep that schema built by hand, field by field.
 - **Turning it off deletes nothing**: prompts, triggers, pins and jobs stay. `apps/lore/test/prompts-capability.spec.ts` proves off and on.
 
 Core's test fixture (`createTestProject`) turns `prompts` on by default, like the other capabilities; a spec about Prompts off turns it off.

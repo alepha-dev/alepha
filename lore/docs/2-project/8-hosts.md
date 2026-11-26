@@ -276,12 +276,23 @@ has Ship on):
 | Overview  | Whether the server is online, when it last reported, its memory, disk and CPU, and its stacks. |
 | Processes | What runs on it, beside what Lore expected, with **Restart**, **Stop** and **Start**.          |
 | Commands  | What Lore has asked it to do, and how each went.                                               |
+| Jobs      | Every [agent job](/lore/docs/agents-jobs) that ran on it, whatever its project.                |
 | Settings  | The host's own settings.                                                                       |
 
 Every member of the home project can open the console and look. Acting on it
 (a restart, a switch, a rotation, reading logs) takes `host:update`. From a
 project that only borrows the host, the console opens for nobody but the
 members of its home.
+
+The **Jobs** tab lists the jobs of every project the server runs them for,
+newest first. A job belongs to its project, so what you see of one depends on
+that project: where your rank grants `host:read`, the row names the prompt, its
+items and what started it, and links to the job's page. For a project you are
+not a member of, the row keeps to what the server knows: the project's name,
+the status, the times and the tokens. With `host:update` you can **Cancel**
+any job that is queued or running, another project's included, to free the
+server. `lore host jobs <slug>` prints the same list, and `--cancel <job-id>`
+stops one.
 
 A stopped app stays stopped, across a reboot and a Bay upgrade: the way back
 is **Start**, or a deploy. A command sent while the server is offline waits
@@ -449,8 +460,8 @@ No MCP tool creates, moves, assigns or deletes a host, on purpose: those
 stay a person's acts. An agent deploys an app it names by app and environment,
 and the app already knows its host, so no deploy tool takes a machine.
 `app_instance_update` can point an app at a host lent to the project
-(`hostId`), `host_stats` reads a host's CPU and memory, and an agent
-never sees a host's secret. No tool upgrades Bay either: that is the button,
+(`hostId`), `host_stats` reads a host's CPU and memory, `host_jobs` lists
+the jobs that ran on it, and an agent never sees a host's secret. No tool upgrades Bay either: that is the button,
 or `lore host upgrade`. See
 [MCP tools](/lore/docs/reference-mcp-tools).
 

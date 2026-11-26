@@ -3,9 +3,11 @@ import {
   $pageProjectSettings,
   currentProjectAtom,
   hasCapability,
+  HostRouter,
   ProjectPageSkeleton,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
+import { $page } from "alepha/react/router";
 import { NotFoundError } from "alepha/server";
 
 /**
@@ -16,6 +18,7 @@ import { NotFoundError } from "alepha/server";
  */
 export class PromptsRouter {
   alepha = $inject(Alepha);
+  hosts = $inject(HostRouter);
 
   /**
    * Settings > Prompts, its Prompts tab (#Q4280): the built-ins and the
@@ -87,6 +90,26 @@ export class PromptsRouter {
       this.gate();
       return { name: params.name };
     },
+  });
+
+  /**
+   * A host's Jobs tab (#Q4524): every job of the machine, whatever its
+   * project, a tab of core's host console.
+   *
+   * ⚠️ No capability gate, unlike every other page here: the console is a
+   * page of the host's HOME project, which may have Prompts off while it
+   * lends the machine to a project that has it on. The read is gated
+   * server-side, on `host:read` in the home project.
+   */
+  bayJobs = $page({
+    parent: this.hosts.bay,
+    name: "bayJobs",
+    nav: { hidden: true, label: "Jobs" },
+    path: "/jobs",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Jobs`,
+    }),
+    lazy: () => import("./components/bay/BayJobs.tsx"),
   });
 
   /**

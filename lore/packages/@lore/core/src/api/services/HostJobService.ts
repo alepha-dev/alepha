@@ -675,6 +675,18 @@ export class HostJobService {
     });
   }
 
+  /**
+   * A machine's jobs, newest first, whatever their project (#Q4524): what
+   * its console lists.
+   */
+  public async listOn(hostId: string, limit = 100): Promise<HostJob[]> {
+    return this.jobs.findMany({
+      where: { hostId: { eq: hostId } },
+      orderBy: [{ column: "queuedAt", direction: "desc" }],
+      limit,
+    });
+  }
+
   public async getRow(jobId: string): Promise<HostJob> {
     const job = await this.jobs.findOne({ where: { id: { eq: jobId } } });
     if (!job) {

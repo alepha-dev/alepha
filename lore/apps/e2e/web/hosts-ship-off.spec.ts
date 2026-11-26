@@ -13,8 +13,8 @@ import {
  * Hosts with Ship off (#E166, #Q4058): a project with Plan and Remember only
  * finds Hosts under Settings > General, is offered both kinds, adds a Bay
  * host that connects and reports its stats, reads it offline once it
- * leaves, names it its default Agent host and opens the job that check
- * started. The offline ALERT waits five minutes of grace, so its proof is
+ * leaves, names it its default Agent host, opens the job that check
+ * started, and finds and cancels it on the console's Jobs tab (#Q4524). The offline ALERT waits five minutes of grace, so its proof is
  * `packages/@lore/core/test/host-monitor.spec.ts`, core alone.
  */
 const apiCall = async <T>(
@@ -143,6 +143,7 @@ test.describe("Hosts with Ship off", () => {
     await expect(tabs.getByText("Overview")).toBeVisible({ timeout: 15_000 });
     await expect(tabs.getByText("Commands")).toBeVisible();
     await expect(tabs.getByText("Processes")).toHaveCount(0);
+    await expect(tabs.getByText("Jobs", { exact: true })).toBeVisible();
 
     // An Agent host (no default since #Q4223): its check is a job.
     await apiCall(
@@ -167,5 +168,46 @@ test.describe("Hosts with Ship off", () => {
     );
     expect(response?.status()).toBe(200);
     await expect(page.getByText("Page not found")).toHaveCount(0);
+
+    // The console's Jobs tab (#Q4524): the machine's jobs, each with its
+    // project, a readable one linked to its page. The check was handed to
+    // the machine's queue, so it reads running, and the operator stops it
+    // from here: the machine is offline, so the job ends when it comes back.
+    await page.goto(`/${project.slug}/hosts/vps-ship-off/jobs`);
+    const row = page.getByRole("row").filter({
+      has: page.getByTestId("host-job-project"),
+    });
+    await expect(row).toHaveCount(jobs.items.length, { timeout: 15_000 });
+    await expect(row.first().getByTestId("host-job-project")).toHaveText(
+      "Hosts Ship Off",
+    );
+    await expect(row.first().getByRole("link")).toHaveAttribute(
+      "href",
+      `/${project.slug}/jobs/${jobs.items[0]!.id}`,
+    );
+    await expect(row.first().getByTestId("job-status")).toHaveAttribute(
+      "data-status",
+      "running",
+    );
+    const stopped = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response
+          .url()
+          .endsWith(`/hosts/${hostId}/jobs/${jobs.items[0]!.id}/cancel`),
+    );
+    await row.first().getByRole("button", { name: "Cancel" }).click();
+    await page
+      .getByRole("alertdialog")
+      .getByRole("button", { name: "Cancel the job" })
+      .click();
+    expect((await stopped).status()).toBe(200);
+    const commands = await apiCall<{ items: Array<{ kind: string }> }>(
+      page,
+      "listHostCommands",
+      "GET",
+      { hostId },
+    );
+    expect(commands.items.map((it) => it.kind)).toContain("job-cancel");
   });
 });

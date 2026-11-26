@@ -1,12 +1,13 @@
 import { z } from "alepha";
 
+import { HOST_JOB_STATUSES } from "../../api/schemas/hostJobValues.ts";
+import { hostMachineJobSchema } from "../../api/schemas/hostMachineJobSchema.ts";
 import { projectParamsSchema } from "./projectParamsSchema.ts";
 
-// -----------------------------------------------------------------------------
-// host_stats
-// -----------------------------------------------------------------------------
-
-export const hostStatsParamsSchema = projectParamsSchema.extend({
+/**
+ * How a tool names one host: its slug, among the hosts the caller can read.
+ */
+export const hostNameParamsSchema = projectParamsSchema.extend({
   host: z
     .string()
     .min(1)
@@ -21,6 +22,35 @@ export const hostStatsParamsSchema = projectParamsSchema.extend({
     .describe(
       "The host's home project, by slug or title, when two hosts you can read share the slug. A slug is unique per home project.",
     ),
+});
+
+// -----------------------------------------------------------------------------
+// host_jobs
+// -----------------------------------------------------------------------------
+
+export const hostJobsParamsSchema = hostNameParamsSchema.extend({
+  status: z
+    .enum(HOST_JOB_STATUSES)
+    .optional()
+    .describe("Only the jobs in this status."),
+  limit: z
+    .integer()
+    .min(1)
+    .max(500)
+    .optional()
+    .describe("How many jobs, newest first. Defaults to 50."),
+});
+
+export const hostJobsResultSchema = z.object({
+  host: z.string(),
+  jobs: z.array(hostMachineJobSchema),
+});
+
+// -----------------------------------------------------------------------------
+// host_stats
+// -----------------------------------------------------------------------------
+
+export const hostStatsParamsSchema = hostNameParamsSchema.extend({
   since: z
     .string()
     .max(40)

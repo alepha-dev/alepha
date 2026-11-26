@@ -1,0 +1,1 @@
+CREATE INDEX "host_jobs_host_id_queued_at_idx" ON "host_jobs" ("host_id","queued_at");

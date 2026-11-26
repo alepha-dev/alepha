@@ -293,6 +293,8 @@ export { hostJobLogSchema } from "../api/schemas/hostJobLogSchema.ts";
 export type { HostJobLogResource } from "../api/schemas/hostJobLogSchema.ts";
 export { hostJobResourceSchema } from "../api/schemas/hostJobResourceSchema.ts";
 export type { HostJobResource } from "../api/schemas/hostJobResourceSchema.ts";
+export { hostMachineJobSchema } from "../api/schemas/hostMachineJobSchema.ts";
+export type { HostMachineJob } from "../api/schemas/hostMachineJobSchema.ts";
 export {
   type HostJobPoke,
   hostJobPokeSchema,
