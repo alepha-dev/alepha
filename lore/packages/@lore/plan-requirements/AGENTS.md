@@ -24,6 +24,10 @@
 
 `verifies` is not a relation: a criterion is not a link kind, and `criteria.requirementId` holds that edge. Core's `ResourceLinkService.mirrorInbound` / `mirrorOutbound` rewrite a mirror, and `deleteMirrorsTo` drops the rows onto deleted targets.
 
+## Discussions are core's comments (#E185)
+
+A persona's and a use case's discussion are rows of core's `comments`, under the subjects `persona` and `usecase` that `RequirementsCommentService` registers (each `load` is the row of that project, or a 404). What a caller reads kept its shape: `subjectKind` is the row's `subjectType`, and `agentClient` / `byAgent` are read from its `source`. A subject's delete removes its thread by hand (`deleteOf`); a project merge moves the threads in core's step and rewrites their references in Plan's. ⚠️ The old `requirements_comments` table is still on disk, read by nothing: its rows were copied by `20261126215005_requirements_comments_to_comments`, its entity stays registered by `RetiredCommentTables`, and one later migration drops it with Plan's two retired comment tables once the counts are compared on production (the owner's call in #E185's review).
+
 ## No transaction (D1)
 
 Lore runs on D1, and `check:conventions` refuses `$transactional` in `packages/@lore` (read "No transactions in Lore" in core's `AGENTS.md`). The order is fixed: **the package's own table is written first**, then its mirror row through `BestEffort.run`, and every save of the source rewrites its mirror, so a lost row heals on the next save. A reader trusts the table, never the mirror.

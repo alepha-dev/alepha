@@ -71,6 +71,9 @@ const NOT_MOVED: Record<string, string> = {
   // A run waiting behind one of the source's jobs (#Q4354): that job stays
   // with the source, and its end starts the waiting run there.
   prompt_queue: "the source's waiting runs, behind the source's jobs",
+  // Retired (#E185): its rows were copied to core's `comments`, which core's
+  // step moves. Nothing reads this table; it waits for its drop.
+  requirements_comments: "retired, read by nothing: the threads are comments",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

@@ -13,7 +13,6 @@ import { $repository, type SQLLike } from "alepha/orm";
 import { personas } from "../entities/personas.ts";
 import { requirementMetricDays } from "../entities/requirementMetricDays.ts";
 import { requirements } from "../entities/requirements.ts";
-import { requirementsComments } from "../entities/requirementsComments.ts";
 import { requirementsCoverageDays } from "../entities/requirementsCoverageDays.ts";
 import { technicalEpics } from "../entities/technicalEpics.ts";
 import { useCaseRuns } from "../entities/useCaseRuns.ts";
@@ -31,7 +30,6 @@ export class RequirementsProjectMerge {
   protected readonly numbers = $inject(ProjectMergeNumbers);
   protected readonly references = $inject(ProjectMergeReferences);
   protected readonly personas = $repository(personas);
-  protected readonly comments = $repository(requirementsComments);
   protected readonly useCases = $repository(useCases);
   protected readonly requirements = $repository(requirements);
   protected readonly runs = $repository(useCaseRuns);
@@ -51,7 +49,6 @@ export class RequirementsProjectMerge {
         "personas",
         "use_cases",
         "requirements",
-        "requirements_comments",
         "use_case_runs",
         "requirement_metric_days",
         "requirement_technical_epics",
@@ -179,22 +176,15 @@ export class RequirementsProjectMerge {
         projectMergeWrite,
       ),
     );
-    plan.moved.requirements_comments = await this.comments.count({
-      projectId: { eq: context.sourceProjectId },
-    });
-    plan.statements.push(
-      this.comments.updateStatement(
-        { projectId: { eq: context.sourceProjectId } },
-        { projectId: context.targetProjectId },
-        projectMergeWrite,
-      ),
-    );
+    // The discussions are rows of core's `comments` (#E185): core's step
+    // moves them with every other thread of the project.
     return plan;
   }
 
   /**
-   * The bodies a reference can live in: a persona's three texts and every
-   * comment of the source project.
+   * The bodies a reference can live in: a persona's three texts and a use
+   * case's preconditions. Their comments are core's rows (#E185), rewritten
+   * by Plan's step with every other thread of the project.
    */
   protected async rewrite(
     context: ProjectMergeContext,
@@ -211,22 +201,12 @@ export class RequirementsProjectMerge {
       fields: ["preconditions"],
       where,
     });
-    const threads = await this.references.rewrite(rewriter, {
-      repository: this.comments,
-      fields: ["body"],
-      where,
-    });
     return {
       rewritten: {
         personas: people.rewritten,
         use_cases: scenarios.rewritten,
-        requirements_comments: threads.rewritten,
       },
-      statements: [
-        ...people.statements,
-        ...scenarios.statements,
-        ...threads.statements,
-      ],
+      statements: [...people.statements, ...scenarios.statements],
     };
   }
 }

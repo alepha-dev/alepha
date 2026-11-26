@@ -8,7 +8,6 @@
  * @module
  */
 export { personas } from "../api/entities/personas.ts";
-export { requirementsComments } from "../api/entities/requirementsComments.ts";
 export {
   type PersonaKind,
   personaKindSchema,
