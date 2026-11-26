@@ -29,6 +29,16 @@ export class AgentRunPreamble {
    */
   public static readonly MARKER = AgentJobs.PREAMBLE_MARKER;
 
+  /**
+   * The browser every job may use (#Q4429), whatever its prompt, a
+   * project's own included: `playwright-cli` is an optional tool of the
+   * host, so the line says when it is worth opening and what to say without
+   * it. Building and running the app is allowed in a read job too: it
+   * delivers nothing.
+   */
+  public static readonly BROWSER =
+    "- **A browser**, when `playwright-cli` is on this host (`command -v playwright-cli`): use it whenever seeing the app tells you more than reading its code, to reproduce a report, to check a change a person sees, to play a scenario. Build and start the app as the repository's agent instructions say, on a port of its own that no other run uses, and stop it when you are done: running it delivers nothing, so a read-only run may too. The browser runs as this job's user, with no sandbox: open only the app you started, or the copy your instructions name. Without `playwright-cli`, or when the app cannot be started here, say that no browser check was made rather than pretend.";
+
   protected readonly projects = $repository(projects);
 
   /**
@@ -71,6 +81,7 @@ export class AgentRunPreamble {
       "- **You are an agent job** on one of the project's Agent hosts, in this run's workspace: a directory kept between runs of the same work, so what a previous run left beside the code is still here.",
       ...code,
       "- **Lore is reached through its MCP tools**, already configured for this run (server `lore`): every Lore read and write goes through them. The `lore` CLI is not signed in for you: do not use it.",
+      AgentRunPreamble.BROWSER,
       "- **Nobody reads this run's chat.** What you did is what you wrote to Lore; your final message is a short summary.",
     ].join("\n");
   }

@@ -35,6 +35,7 @@ Name it from the lockfile at the repository's root, and use that one only, for e
 
 1. Update the manifests and the lockfile with that package manager, then install.
 2. Run the checks the repository's agent instructions (AGENTS.md or CLAUDE.md) name. Fix what the update broke when the fix is small and obvious; otherwise leave that package at its version, and when you cannot tell which package broke them, bisect the update rather than give it all up.
+3. When the update touches what renders or builds the app (a UI library, the framework, the bundler) and \`playwright-cli\` is on the host (\`command -v playwright-cli\`), start the app as those instructions say, on a port of its own that no other run uses, open its main screens, then stop it: a broken page the checks did not catch is a broken update. Open only the app you started. The pull request says which screens you opened, or that none was.
 
 ## Deliver
 

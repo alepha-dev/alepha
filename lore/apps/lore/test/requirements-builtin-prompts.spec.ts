@@ -203,6 +203,9 @@ describe("Requirements built-in prompts", () => {
       "create a fresh account through the app's own sign-up",
     );
     expect(text).toContain("Never play it against production");
+    // A run plays the app in a browser when the host has one (#Q4429).
+    expect(text).toContain("Play it in a real browser");
+    expect(text).toContain("`command -v playwright-cli`");
     expect(text).toContain("number 1");
 
     const spec = await render("write-use-case-spec", { useCase: "1" });
