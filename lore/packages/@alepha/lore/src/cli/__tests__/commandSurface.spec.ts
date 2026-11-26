@@ -145,7 +145,7 @@ describe("the Lore CLI command surface", () => {
       apps: ["build", "deploy", "redeploy", "destroy", "instance"],
       area: ["delete"],
       artifacts: ["push", "push-image", "list", "get"],
-      attachments: ["push"],
+      attachments: ["push", "pull"],
       chat: ["room", "message", "agent"],
       error: ["list", "resolve", "forward"],
       event: ["catalog", "list"],

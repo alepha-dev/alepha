@@ -1047,6 +1047,64 @@ describe("lore project, quest and folio, against Lore", () => {
     );
   });
 
+  it("pulls a folio's attachment by name or shortId, and a quest's, back to disk (#Q4513)", async () => {
+    const { lore } = await ownProject("Pull");
+    const quest = await newQuest(lore);
+    const folio = await newFolio(lore);
+    await lore.fs.writeFile("/work/mockup.html", "<html>the mockup</html>");
+    await lore.fs.writeFile("/work/probe.json", '{"p75": 1234}');
+    await lore.run("attachments push", ["mockup.html", "--folio", `${folio}`]);
+    await lore.run("attachments push", ["probe.json", "--quest", `${quest}`]);
+
+    await lore.run("attachments pull", [
+      "mockup.html",
+      "--folio",
+      `${folio}`,
+      "--out",
+      "pulled/",
+    ]);
+    expect(await lore.fs.readTextFile("/work/pulled/mockup.html")).toBe(
+      "<html>the mockup</html>",
+    );
+
+    const [listed] =
+      JSON.parse(
+        await lore.run("folio attachment list", [
+          `F${folio}`,
+          "--output",
+          "json",
+        ]),
+      ).attachments ?? [];
+    await lore.run("attachments pull", [
+      String(listed?.shortId ?? 1),
+      "--folio",
+      `${folio}`,
+      "--out",
+      "by-id.html",
+    ]);
+    expect(await lore.fs.readTextFile("/work/by-id.html")).toBe(
+      "<html>the mockup</html>",
+    );
+
+    await lore.run("attachments pull", [
+      "probe.json",
+      "--quest",
+      `${quest}`,
+      "--out",
+      "evidence/",
+    ]);
+    expect(await lore.fs.readTextFile("/work/evidence/probe.json")).toBe(
+      '{"p75": 1234}',
+    );
+
+    const refused = await lore.fail("attachments pull", [
+      "nope.png",
+      "--folio",
+      `${folio}`,
+    ]);
+    expect(refused.error?.message).toContain("mockup.html");
+  });
+
   it("creates a quest behind a predecessor", async () => {
     const { lore } = await ownProject("Predecessor");
     const first = await newQuest(lore, "Goes first");
