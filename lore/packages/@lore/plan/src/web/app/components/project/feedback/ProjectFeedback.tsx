@@ -1,4 +1,11 @@
-import { cn, PaneResizer } from "@alepha/ui";
+import {
+  Button,
+  cn,
+  PaneResizer,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@alepha/ui";
 import {
   PinnedPromptsButton,
   SubscriptionBell,
@@ -14,7 +21,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
-import { Inbox, ShieldAlert } from "lucide-react";
+import { Inbox, Plus, ShieldAlert } from "lucide-react";
 import {
   type CSSProperties,
   useEffect,
@@ -320,8 +327,13 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
           )}
           style={{ "--feedback-list-width": `${width}px` } as CSSProperties}
         >
-          {/* `h-14`, the detail header's own height, so the two bands line up. */}
-          <div className="border-border chrome flex h-14 shrink-0 items-center gap-2 border-b px-2">
+          {/* `h-14`, the detail header's own height, so the two bands line up.
+              One spacing for the whole band (#Q4449): every control in it is
+              32px tall (the select at its default size, the icon buttons at
+              `size="icon"`), so `px-3` leaves (56 - 32) / 2 = 12px above,
+              below and to the left of the select, and `gap-3` the same 12px
+              between the icon buttons on the right. */}
+          <div className="border-border chrome flex h-14 shrink-0 items-center gap-3 border-b px-3">
             <ProjectFeedbackStatusSelect
               key={status}
               value={status}
@@ -334,6 +346,30 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               }}
             />
             <div className="ms-auto shrink-0" />
+            {/* The feedback form, as the band's "+" (#Q4449): it was a
+                button on the empty Pending tab only. A real anchor, not a
+                `router.push`: the owner most often wants the URL itself, to
+                hand to somebody else, so it keeps middle-click. */}
+            {project && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="minimal"
+                      size="icon"
+                      href={router.path("projectFeedbackRequest", {
+                        params: { projectSlug: project.slug },
+                      })}
+                      aria-label={tr("feedback.list.openForm")}
+                      data-testid="feedback-open-form"
+                    />
+                  }
+                >
+                  <Plus className="size-4" />
+                </TooltipTrigger>
+                <TooltipContent>{tr("feedback.list.openForm")}</TooltipContent>
+              </Tooltip>
+            )}
             {/* The prompts pinned on the Feedback list (#Q4284). The open
                 item's panel has its own button, which tells the spotlight
                 the item; this one does not. */}

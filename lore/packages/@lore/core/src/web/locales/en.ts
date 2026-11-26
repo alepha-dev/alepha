@@ -3339,6 +3339,7 @@ export default {
   "account.hosts.toast.deleted": "Host deleted",
 
   "feedback.list.loadingMore": "Loading…",
+  "feedback.list.openForm": "Open the feedback form",
   "feedback.empty.pending": "No pending feedback.",
   "feedback.empty.status": "No $1 feedback.",
   "feedback.empty.selectOne": "Select an item from the list",
@@ -3351,7 +3352,6 @@ export default {
   "feedback.empty.detail.rejected.title": "Nothing rejected",
   "feedback.empty.detail.rejected.body":
     "Feedback you turn down is kept here as a record.",
-  "feedback.empty.detail.openForm": "Open the feedback form",
   "feedback.back": "Back",
   "release.subscription.label": "Notify me when a release is published",
   "release.subscription.description":
