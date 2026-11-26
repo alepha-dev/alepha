@@ -162,7 +162,7 @@ describe("usePromptPins rowGroup", () => {
     });
     fireEvent.click(await menuItem("Agent prompts"));
     fireEvent.click(await menuItem("Work on epic"));
-    await menuItem("Copy");
+    await menuItem("Copy prompt");
   };
 
   it("offers each pinned prompt as its own submenu under Agent prompts, and its Run opens the run dialog", async ({
@@ -170,7 +170,7 @@ describe("usePromptPins rowGroup", () => {
   }) => {
     await mount();
     await openSubmenu();
-    const run = await menuItem("Run");
+    const run = await menuItem("Run job");
     expect(run.hasAttribute("data-disabled")).toBe(false);
     fireEvent.click(run);
 
@@ -186,7 +186,7 @@ describe("usePromptPins rowGroup", () => {
     FakeLinks.hosts = [];
     await mount();
     await openSubmenu();
-    const run = await menuItem(/^Run/);
+    const run = await menuItem(/^Run job/);
     expect(run.textContent).toContain("No Agent host ready");
     expect(run.hasAttribute("data-disabled")).toBe(true);
     fireEvent.click(run);
@@ -201,7 +201,7 @@ describe("usePromptPins rowGroup", () => {
     });
     await mount();
     await openSubmenu();
-    fireEvent.click(await menuItem("Run"));
+    fireEvent.click(await menuItem("Run job"));
     const dialog = await screen.findByTestId("prompt-run-dialog");
     const epic = within(dialog).queryAllByRole("combobox")[0];
     if (epic) fireEvent.click(epic);
@@ -209,9 +209,9 @@ describe("usePromptPins rowGroup", () => {
 
     await waitFor(() =>
       expect(
-        within(dialog).getByTestId("prompt-run-submit").getAttribute(
-          "aria-busy",
-        ),
+        within(dialog)
+          .getByTestId("prompt-run-submit")
+          .getAttribute("aria-busy"),
       ).toBe("true"),
     );
     answer({ jobId: "00000000-0000-4000-8000-000000000009", skipped: [] });

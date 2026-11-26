@@ -81,7 +81,7 @@ const PromptPinsMenu = (props: PinnedPromptsButtonProps) => {
                   onClick={() => pins.start(prompt, "copy", props.item)}
                 >
                   <Copy />
-                  {tr("prompts.copy")}
+                  {tr("prompts.pinned.copy")}
                 </DropdownMenuItem>
                 {pins.mayRun(prompt) && (
                   <DropdownMenuItem
@@ -89,7 +89,7 @@ const PromptPinsMenu = (props: PinnedPromptsButtonProps) => {
                     onClick={() => pins.start(prompt, "run", props.item)}
                   >
                     <Play />
-                    {tr("prompts.run")}
+                    {tr("prompts.pinned.run")}
                     {pins.runBlocked() && (
                       <span className="text-muted-foreground ms-auto ps-3 text-xs">
                         {pins.runBlocked()}
