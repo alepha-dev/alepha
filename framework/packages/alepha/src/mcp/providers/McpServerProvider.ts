@@ -17,6 +17,12 @@ import {
   HttpError,
   ValidationError,
 } from "alepha/server";
+import {
+  type Span,
+  type SpanAttributes,
+  TraceparentCodec,
+  Tracer,
+} from "alepha/tracing";
 
 import {
   McpError,
@@ -94,6 +100,8 @@ export class McpServerProvider {
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly secrets = $inject(SecretProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly tracer = $inject(Tracer);
+  protected readonly traceparentCodec = $inject(TraceparentCodec);
 
   protected readonly actionToolSchema = $inject(ActionToolSchema);
 
@@ -772,16 +780,18 @@ export class McpServerProvider {
           if (this.alepha.context.als) {
             signal = this.alepha.context.signal;
           }
-          return this.handleRequest(request, {
-            ...context,
-            signal,
-            protocolVersion: modern?.protocolVersion,
-            clientInfo: modern?.clientInfo,
-            clientCapabilities: modern
-              ? modern.clientCapabilities
-              : context?.clientCapabilities,
-            ...(session ? { elicit: session.elicit as never } : {}),
-          });
+          return this.traced(request, context, modern, () =>
+            this.handleRequest(request, {
+              ...context,
+              signal,
+              protocolVersion: modern?.protocolVersion,
+              clientInfo: modern?.clientInfo,
+              clientCapabilities: modern
+                ? modern.clientCapabilities
+                : context?.clientCapabilities,
+              ...(session ? { elicit: session.elicit as never } : {}),
+            }),
+          );
         },
       );
       // The client has withdrawn the request. Answering it now would be a
@@ -834,6 +844,158 @@ export class McpServerProvider {
       if (cancellable) {
         this.inFlight.delete(key);
       }
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Tracing
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The methods that open an MCP span: the three that run an application
+   * handler. Lists, `server/discover` and `completion/complete` stay inside
+   * whatever span they arrive in.
+   */
+  protected readonly tracedMethods = new Set([
+    "tools/call",
+    "resources/read",
+    "prompts/get",
+  ]);
+
+  /**
+   * Run a request's handler inside its MCP span, named and attributed after
+   * the OpenTelemetry MCP semantic conventions: `{mcp.method.name} {target}`,
+   * kind `server`, the target being the tool or the prompt name (a resource
+   * URI stays an attribute, never the name: it is high-cardinality).
+   *
+   * Where the span hangs (both eras, both transports):
+   *
+   * - an HTTP `traceparent` header: a child of the request's root, which the
+   *   router already continued from that header. **The header wins** over
+   *   `_meta`;
+   * - `_meta.traceparent` and no header: a root continuing the caller's
+   *   trace, linked to the span the request arrived in (the HTTP request's
+   *   root; nothing on stdio);
+   * - neither: a child of the active span, or a new trace.
+   *
+   * A malformed `_meta.traceparent` is ignored (the codec parses nothing
+   * from it). `tracestate` and `baggage` are ignored: the tracer carries
+   * neither.
+   */
+  protected traced<R>(
+    request: JsonRpcRequest,
+    context: McpContext | undefined,
+    modern: McpRequestMeta | undefined,
+    fn: () => Promise<R>,
+  ): Promise<R> {
+    if (!this.tracedMethods.has(request.method)) {
+      return fn();
+    }
+    const header = context?.headers?.traceparent;
+    const raw = header ? undefined : this.requestMeta(request)?.traceparent;
+    // A malformed value is ignored, as if absent: the span then stays a
+    // child of the request it arrived in rather than starting a new trace.
+    const fromMeta =
+      typeof raw === "string" && this.traceparentCodec.parse(raw)
+        ? raw
+        : undefined;
+    if (!this.tracer.recording && fromMeta === undefined) {
+      return fn();
+    }
+
+    const target =
+      request.method === "resources/read" ? undefined : request.params?.name;
+    const name =
+      typeof target === "string" && target
+        ? `${request.method} ${target}`
+        : request.method;
+    const options = {
+      kind: "server" as const,
+      attributes: this.spanAttributes(request, modern),
+    };
+    const run = (span: Span) => this.settleSpan(span, fn);
+    const outcome =
+      typeof fromMeta === "string"
+        ? this.tracer.startRoot(
+            name,
+            {
+              ...options,
+              traceparent: fromMeta,
+              linkTo: [this.tracer.traceparent()],
+            },
+            run,
+          )
+        : this.tracer.startSpan(name, options, run);
+    // An unanswered `elicit` leaves the span as a result, so the tracer does
+    // not record it as a failure, and is thrown again out here.
+    return outcome.then((it) => {
+      if ("inputRequired" in it) {
+        throw it.inputRequired;
+      }
+      return it.value;
+    });
+  }
+
+  /**
+   * The span's attributes known before the handler runs.
+   */
+  protected spanAttributes(
+    request: JsonRpcRequest,
+    modern: McpRequestMeta | undefined,
+  ): SpanAttributes {
+    const attributes: SpanAttributes = {
+      "mcp.method.name": request.method,
+    };
+    if (request.id !== undefined && request.id !== null) {
+      attributes["jsonrpc.request.id"] = String(request.id);
+    }
+    if (modern) {
+      attributes["mcp.protocol.version"] = modern.protocolVersion;
+    }
+    const name = request.params?.name;
+    const uri = request.params?.uri;
+    if (request.method === "tools/call" && typeof name === "string") {
+      attributes["gen_ai.tool.name"] = name;
+      attributes["gen_ai.operation.name"] = "execute_tool";
+    } else if (request.method === "prompts/get" && typeof name === "string") {
+      attributes["gen_ai.prompt.name"] = name;
+    } else if (request.method === "resources/read" && typeof uri === "string") {
+      attributes["mcp.resource.uri"] = uri;
+    }
+    return attributes;
+  }
+
+  /**
+   * Run the handler, and record how it ended on the span: `error.type` and
+   * `rpc.status_code` for a JSON-RPC error, `error.type: "tool_error"` for a
+   * tool's `isError` result. An unanswered `elicit` is not a failure: the
+   * call goes on in its retry.
+   */
+  protected async settleSpan<R>(
+    span: Span,
+    fn: () => Promise<R>,
+  ): Promise<{ value: R } | { inputRequired: McpInputRequiredSignal }> {
+    try {
+      const value = await fn();
+      if (
+        span.recording &&
+        this.isPlainObject(value) &&
+        value.isError === true
+      ) {
+        span.setAttribute("error.type", "tool_error");
+        span.setStatus("error");
+      }
+      return { value };
+    } catch (error) {
+      if (error instanceof McpInputRequiredSignal) {
+        span.setAttribute("mcp.input_required", true);
+        return { inputRequired: error };
+      }
+      if (span.recording && error instanceof McpError) {
+        span.setAttribute("rpc.status_code", String(error.data.code));
+        span.setAttribute("error.type", String(error.data.code));
+      }
+      throw error;
     }
   }
 

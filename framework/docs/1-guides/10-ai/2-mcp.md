@@ -978,6 +978,28 @@ descriptor blob is what you are trying to keep out of the model's context:
 alepha.inject(McpServerProvider).pageSize = 25;
 ```
 
+### Tracing
+
+With `alepha/tracing` recording, every `tools/call`, `resources/read` and
+`prompts/get` opens a `server` span named after the OpenTelemetry MCP semantic
+conventions: `tools/call add`, `prompts/get greet`, `resources/read` (the URI is
+an attribute, `mcp.resource.uri`, never part of the name). It carries
+`mcp.method.name`, `jsonrpc.request.id`, `gen_ai.tool.name` or
+`gen_ai.prompt.name`, `mcp.protocol.version` on a modern request, and
+`error.type` when the call fails (`tool_error` for an `isError` result).
+
+A client can tie the call to its own trace by sending a W3C `traceparent` in
+the request's `params._meta`:
+
+| The request carries               | The MCP span                                                                       |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| an HTTP `traceparent` header      | a child of the HTTP request's span, which continues the header. The header wins.   |
+| `_meta.traceparent` and no header | continues the caller's trace, linked to the HTTP request's span (nothing on stdio) |
+| neither                           | a child of the active span, or the root of a new trace                             |
+
+A malformed `traceparent` is ignored, never an error. `_meta.tracestate` and
+`_meta.baggage` are ignored: the tracer carries neither.
+
 ### Observing tool calls
 
 Every `tools/call` emits `mcp:tool:call:end` once, with `{ name, outcome, context }`. `outcome` is `"ok"`, `"refused"` (bad arguments, a missing row, a caller who may not: usually a misleading description or schema) or `"error"` (a fault). `name` is what the client asked for, registered or not. It is awaited inside the call, so a subscriber must be fast and must not throw.
