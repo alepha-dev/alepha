@@ -170,6 +170,20 @@ export class JobCommand {
               job.steps?.current ? `#Q${job.steps.current}` : undefined,
             ],
             ["Last step", job.steps?.lastStepAt],
+            // The run's own pace (#Q4436): the steps left as a range, which
+            // leaves out the review, checks and merge after the last one.
+            [
+              "Pace",
+              job.pace
+                ? `about ${job.pace.low} to ${job.pace.high} min for the ${job.pace.left} ${job.steps?.unit === "objective" ? "objectives" : "quests"} left (review, checks and merge not counted)`
+                : undefined,
+            ],
+            [
+              "Pace warning",
+              job.pace?.warning
+                ? "the steps left may not fit before the job's timeout"
+                : undefined,
+            ],
           ],
           sections: [
             ...(job.steps && job.steps.quests.length + job.steps.pending.length

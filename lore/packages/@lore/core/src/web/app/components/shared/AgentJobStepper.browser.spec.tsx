@@ -124,6 +124,54 @@ describe("AgentJobStepper", () => {
     );
   });
 
+  it("gives the steps left as a range, and warns when they may not fit before the timeout (#Q4436)", async ({
+    expect,
+  }) => {
+    await show({
+      steps: steps({}),
+      pace: { left: 2, low: 20, high: 35, warning: false },
+      running: true,
+    });
+    expect(screen.getByTestId("job-pace-range").textContent).toBe(
+      "About 20 min to 35 min for the 2 quests left, not counting review, checks and merge",
+    );
+    expect(screen.queryByTestId("job-pace-warning")).toBeNull();
+    cleanup();
+    await alepha?.stop();
+    await show({
+      steps: steps({}),
+      pace: { left: 2, low: 90, high: 140, warning: true },
+      running: true,
+    });
+    expect(screen.getByTestId("job-pace-warning").textContent).toContain(
+      "may not fit before the job's timeout",
+    );
+    expect(screen.getByTestId("job-pace-range").textContent).toContain(
+      "1 h 30 min to 2 h 20 min",
+    );
+  });
+
+  it("flags the warning on a table row, and says nothing of pace once the job ended", async ({
+    expect,
+  }) => {
+    await show({
+      steps: steps({}),
+      pace: { left: 2, low: 90, high: 140, warning: true },
+      running: true,
+      compact: true,
+    });
+    expect(screen.getByTestId("job-pace-warning")).toBeTruthy();
+    cleanup();
+    await alepha?.stop();
+    await show({
+      steps: steps({}),
+      pace: { left: 2, low: 90, high: 140, warning: true },
+      running: false,
+    });
+    expect(screen.queryByTestId("job-pace-warning")).toBeNull();
+    expect(screen.queryByTestId("job-pace-range")).toBeNull();
+  });
+
   it("adds a work-epic job's pending quests as empty segments", async ({
     expect,
   }) => {

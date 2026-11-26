@@ -288,6 +288,16 @@ the last quest. Lore counts the steps itself, from the quests the job's key
 accepted and ticked, so the agent is never asked for them. An ended job keeps
 the count it ended with.
 
+Once two quests are done (two objectives, for a job working one quest), the
+bar gives the time the rest should take, from the job's own pace so far, as a
+range: **About 20 min to 35 min for the 4 quests left**. The low end is the
+pace up to the last completed step, the high end counts the time since it, so
+a job that stalls sees its range widen. The range leaves out the review, checks
+and merge that follow the last quest. When the time run so far, the low end
+and half an hour for that last part pass the job's time limit, the job page
+and its row in the list warn that the steps left may not fit. The warning
+stops nothing: the job runs on until it ends or reaches its limit.
+
 The jobs list shows the same bar, short, under each job's status (**2/5**),
 and hovering a quest's agent icon shows it in the card, with the quest you
 came from marked.

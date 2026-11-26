@@ -3361,6 +3361,12 @@ export default {
   "jobs.steps.objectives": "$1 of $2 objectives",
   "jobs.steps.lastStep": "Last step $1 ago",
   "jobs.steps.elapsedOf": "$1 of $2",
+  "jobs.pace.quests":
+    "About $1 to $2 for the $3 quests left, not counting review, checks and merge",
+  "jobs.pace.objectives":
+    "About $1 to $2 for the $3 objectives left, not counting review, checks and merge",
+  "jobs.pace.warning":
+    "The steps left may not fit before the job's timeout, with time for review, checks and merge after them",
   "jobs.field.workspace": "Workspace",
   "jobs.field.queued": "Queued",
   "jobs.field.ended": "Ended",

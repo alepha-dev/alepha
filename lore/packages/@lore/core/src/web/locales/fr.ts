@@ -3379,6 +3379,12 @@ export default {
   "jobs.steps.objectives": "$1 objectifs sur $2",
   "jobs.steps.lastStep": "Dernière étape il y a $1",
   "jobs.steps.elapsedOf": "$1 sur $2",
+  "jobs.pace.quests":
+    "Environ $1 à $2 pour les $3 quêtes restantes, sans la revue, les vérifications et la fusion",
+  "jobs.pace.objectives":
+    "Environ $1 à $2 pour les $3 objectifs restants, sans la revue, les vérifications et la fusion",
+  "jobs.pace.warning":
+    "Les étapes restantes risquent de ne pas tenir avant le délai du job, en comptant la revue, les vérifications et la fusion qui suivent",
   "jobs.field.workspace": "Espace de travail",
   "jobs.field.queued": "En file",
   "jobs.field.ended": "Terminée",

@@ -186,6 +186,7 @@ const QuestAssignee = (props: QuestAssigneeProps) => {
           {jobQuery.data?.steps && (
             <AgentJobStepper
               steps={jobQuery.data.steps}
+              {...(jobQuery.data.pace ? { pace: jobQuery.data.pace } : {})}
               running={status === "running"}
               {...(props.quest.shortId === undefined
                 ? {}

@@ -286,6 +286,57 @@ describe("an agent job's steps", () => {
     expect(await stepsOf(next.id)).toMatchObject({ total: 1, done: 1 });
   });
 
+  it("carries the pace and the ceiling warning once 2 quests are done, on job_get (#Q4436)", async ({
+    expect,
+  }) => {
+    const run = await job("work-loose-quests");
+    const quests = [];
+    for (let index = 0; index < 3; index += 1) {
+      const quest = await createTestQuest(alepha, project);
+      await accept(quest.shortId, run.apiKeyId);
+      quests.push(quest);
+    }
+    const read = async () =>
+      (await as(undefined, () => jobTools.job_get.execute({ id: run.id }))) as {
+        pace?: { left: number; low: number; high: number; warning: boolean };
+      };
+    await complete(quests[0]!.shortId, run.apiKeyId);
+    expect((await read()).pace).toBeUndefined();
+    await complete(quests[1]!.shortId, run.apiKeyId);
+    // A 10 minute ceiling: a minute in, plus the 30 minute allowance.
+    expect((await read()).pace).toMatchObject({ left: 1, warning: true });
+    await service.finish(run.id);
+    expect((await read()).pace).toBeUndefined();
+  });
+
+  it("leaves out of a work-quest job's pace the objectives ticked before it started (#Q4436)", async ({
+    expect,
+  }) => {
+    const run = await job("work-quest");
+    const before = new Date(now() - 3_600_000).toISOString();
+    const quest = await createTestQuest(alepha, project, {
+      objectives: Array.from({ length: 6 }, (_, id) => ({
+        id,
+        title: `step ${id}`,
+        completed: id < 2,
+      })),
+      history: [0, 1].map((objectiveId) => ({
+        at: before,
+        by: ownerId,
+        action: "objective_completed" as const,
+        objectiveId,
+      })),
+    });
+    await accept(quest.shortId, run.apiKeyId);
+    await tick(quest.shortId, 2, run.apiKeyId);
+    await tick(quest.shortId, 3, run.apiKeyId);
+    const read = (await as(undefined, () =>
+      jobTools.job_get.execute({ id: run.id }),
+    )) as { steps?: { done: number }; pace?: { left: number } };
+    expect(read.steps?.done).toBe(4);
+    expect(read.pace?.left).toBe(2);
+  });
+
   it("gives a work-epic job its epic's quests not shelved and not done before it started, the rest pending", async ({
     expect,
   }) => {
