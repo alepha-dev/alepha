@@ -347,12 +347,20 @@ export class PromptService {
    * Each arg of `prompt` read from `args` (a `member` left out is the
    * caller), with the values its placeholders take: what render and a run
    * share. A missing, unreadable or unaccepted item is a 400 naming its arg.
+   *
+   * `kept` is what a run that continues a job passes (#Q4440): that job's
+   * arg values, by name. An arg resolving to the item its job had is not
+   * refused for the status the item reached since: the job was let in once,
+   * and what it left (a red check, the commit to record, the branch to
+   * clean) is often left after its quest is completed. A gone item is still
+   * refused, and so is any other item.
    */
   public async resolveArgs(
     projectId: number,
     user: UserAccountToken,
     prompt: Pick<PromptResource, "args">,
     args: Record<string, string>,
+    kept: Record<string, string> = {},
   ): Promise<{
     values: Record<string, string | number>;
     items: Array<{ arg: PromptArg; value: string; item: PromptArgItem }>;
@@ -407,9 +415,15 @@ export class PromptService {
           `The arg '${arg.name}': no ${arg.type} ${value} in this project`,
         );
       }
+      const continued =
+        kept[arg.name] !== undefined &&
+        kept[arg.name] ===
+          String(item.fields.number ?? item.fields.id ?? value);
       if (
         item.gone ||
-        (arg.accepts?.length && !arg.accepts.includes(item.status ?? ""))
+        (!continued &&
+          arg.accepts?.length &&
+          !arg.accepts.includes(item.status ?? ""))
       ) {
         throw new BadRequestError(
           `The arg '${arg.name}' accepts a ${arg.type} ${

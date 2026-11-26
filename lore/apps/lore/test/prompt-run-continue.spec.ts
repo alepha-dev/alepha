@@ -108,6 +108,49 @@ describe("prompt runs that continue a job", () => {
     expect(next.input.session?.resume).toBeUndefined();
   });
 
+  it("continues a job whose quest was completed since, and refuses a fresh run, another quest or a deleted one", async ({
+    expect,
+  }) => {
+    const p = await w.entities.projects.getOne({
+      where: { id: { eq: w.projectId } },
+    });
+    const quest = await createTestQuest(w.alepha, p);
+    const other = await createTestQuest(w.alepha, p);
+    const args = { quest: String(quest.shortId) };
+    const first = await job((await run("work-quest", { args })).jobId);
+    // The job completed its quest, then timed out waiting for the merge.
+    const now = "2026-11-26T11:00:00.000Z";
+    await w.entities.quests.updateById(quest.id, { completedAt: now });
+    await w.entities.quests.updateById(other.id, { completedAt: now });
+    await w.repos.jobs.updateById(first.id, { status: "timed_out" });
+
+    // A fresh run still refuses a completed quest.
+    await expect(run("work-quest", { args })).rejects.toThrow(
+      `accepts a quest todo or in_progress, and ${quest.shortId} is completed`,
+    );
+    // So does a continue that names another completed quest.
+    await expect(
+      run("work-quest", {
+        continue: first.id,
+        args: { quest: String(other.shortId) },
+      }),
+    ).rejects.toThrow(`and ${other.shortId} is completed`);
+
+    // Run again, as the page sends it: the job's id and its own args.
+    const next = await job(
+      (await run("work-quest", { continue: first.id, args })).jobId,
+    );
+    expect(next.args).toEqual(first.args);
+    expect(next.input.workspace).toBe(first.input.workspace);
+
+    // A quest that is gone refuses it.
+    await w.repos.jobs.updateById(next.id, { status: "failed" });
+    await w.entities.quests.updateById(quest.id, { deletedAt: now });
+    await expect(run("work-quest", { continue: next.id })).rejects.toThrow(
+      "The arg 'quest'",
+    );
+  });
+
   it("refuses to continue a job that succeeded, is still running, or ran another prompt", async ({
     expect,
   }) => {
