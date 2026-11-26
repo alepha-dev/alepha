@@ -2,11 +2,17 @@ import { sigilScrubUrl } from "@alepha/lore/sigil";
 import {
   $ownsProject,
   BoundParameters,
+  CommentService,
   LoreAudits,
   ProjectController,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { type Project, projects, type User } from "@lore/core/schemas";
+import {
+  comments,
+  type Project,
+  projects,
+  type User,
+} from "@lore/core/schemas";
 import { displayName } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
 import { FileService, files } from "alepha/api/files";
@@ -26,7 +32,6 @@ import {
 import { FileSystemProvider } from "alepha/system";
 
 import { type Feedback, feedback } from "../entities/feedback.ts";
-import { feedbackComments } from "../entities/feedbackComments.ts";
 import type { Quest } from "../entities/quests.ts";
 import { workRelations } from "../relations/workRelations.ts";
 import { feedbackBodySchema } from "../schemas/feedbackBodySchema.ts";
@@ -42,6 +47,7 @@ import {
 } from "../schemas/myFeedbackResourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
+import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { WorkBuckets } from "../services/WorkBuckets.ts";
 import { WorkEventSources } from "../services/WorkEventSources.ts";
 
@@ -80,7 +86,8 @@ export class FeedbackController {
   protected feedbackWith = $repository(workRelations, "feedback");
   protected projects = $repository(projects);
   protected fileRepo = $repository(files);
-  protected feedbackComments = $repository(feedbackComments);
+  protected comments = $repository(comments);
+  protected commentService = $inject(CommentService);
 
   /**
    * What every feedback read needs alongside the row itself. Declared once so
@@ -970,6 +977,7 @@ export class FeedbackController {
         params.feedbackId,
       );
       await this.feedback.deleteById(feedback.id);
+      await this.deleteThread(feedback.id);
       return { ok: true };
     },
   });
@@ -1152,6 +1160,7 @@ export class FeedbackController {
         throw new BadRequestError("Only pending feedback can be deleted");
       }
       await this.feedback.deleteById(feedback.id);
+      await this.deleteThread(feedback.id);
       return { ok: true };
     },
   });
@@ -1355,6 +1364,17 @@ export class FeedbackController {
   }
 
   /**
+   * An item's thread goes with it, by hand (#E185): its comments are rows of
+   * core's table, and nothing cascades from a feedback item any more. After
+   * the row, so a refused delete never leaves an item without its thread.
+   */
+  protected async deleteThread(feedbackId: number): Promise<void> {
+    await this.commentService.deleteForSubjects(PlanCommentSubjects.FEEDBACK, [
+      feedbackId,
+    ]);
+  }
+
+  /**
    * Whether a comment on this feedback item carries the file. Reads the
    * thread's `attachments` columns only: a thread is capped by use, not by
    * schema, but its rows are small, and this runs on a member's explicit
@@ -1364,8 +1384,11 @@ export class FeedbackController {
     feedbackId: number,
     attachmentId: string,
   ): Promise<boolean> {
-    const rows = await this.feedbackComments.findMany({
-      where: { feedbackId: { eq: feedbackId } },
+    const rows = await this.comments.findMany({
+      where: {
+        subjectType: { eq: PlanCommentSubjects.FEEDBACK },
+        subjectId: { eq: feedbackId },
+      },
       columns: ["attachments"],
     });
     return rows.some((row) => (row.attachments ?? []).includes(attachmentId));

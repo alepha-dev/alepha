@@ -26,7 +26,6 @@ import { epicReviewItems } from "../entities/epicReviewItems.ts";
 import { epicReviews } from "../entities/epicReviews.ts";
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
-import { feedbackComments } from "../entities/feedbackComments.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 
@@ -63,7 +62,6 @@ export class WorkProjectMerge {
   protected readonly epicReviews = $repository(epicReviews);
   protected readonly epicReviewItems = $repository(epicReviewItems);
   protected readonly feedback = $repository(feedback);
-  protected readonly feedbackComments = $repository(feedbackComments);
   protected readonly releases = $repository(releases);
   protected readonly areas = $repository(areas);
 
@@ -131,15 +129,6 @@ export class WorkProjectMerge {
     });
     await rewrite(this.feedback, ["description"], {
       projectId: { eq: source },
-    });
-    await rewrite(this.feedbackComments, ["body"], {
-      feedbackId: {
-        inArray: this.feedback.subquery(
-          { projectId: { eq: source } },
-          "id",
-          force,
-        ),
-      },
     });
     await rewrite(this.releases, ["description", "changelog"], {
       projectId: { eq: source },

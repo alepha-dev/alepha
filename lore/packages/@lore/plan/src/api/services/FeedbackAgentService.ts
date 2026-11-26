@@ -1,18 +1,19 @@
 import {
   AgentJobs,
+  CommentService,
   HostJobs,
   ProjectSecurityService,
   PromptRegistry,
 } from "@lore/core/api";
-import { projects, renderPromptText } from "@lore/core/schemas";
+import { comments, projects, renderPromptText } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Feedback, feedback } from "../entities/feedback.ts";
-import { feedbackComments } from "../entities/feedbackComments.ts";
 import { globalTriagePrompt } from "../prompts/globalTriagePrompt.ts";
+import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 
 /**
  * Feedback to quest (#Q3988): the project's Triage prompt run as an agent
@@ -70,7 +71,8 @@ export class FeedbackAgentService {
 
   protected readonly alepha = $inject(Alepha);
   protected readonly rows = $repository(feedback);
-  protected readonly comments = $repository(feedbackComments);
+  protected readonly comments = $repository(comments);
+  protected readonly commentService = $inject(CommentService);
   protected readonly projects = $repository(projects);
   protected readonly registry = $inject(PromptRegistry);
   protected readonly agents = $inject(AgentJobs);
@@ -250,7 +252,11 @@ export class FeedbackAgentService {
     userId?: string,
   ): Promise<void> {
     const [existing] = await this.comments.findMany({
-      where: { feedbackId: { eq: item.id }, body: { eq: body } },
+      where: {
+        subjectType: { eq: PlanCommentSubjects.FEEDBACK },
+        subjectId: { eq: item.id },
+        body: { eq: body },
+      },
       columns: ["id"],
       limit: 1,
     });
@@ -270,8 +276,10 @@ export class FeedbackAgentService {
       userId ??
       (await this.projects.getOne({ where: { id: { eq: item.projectId } } }))
         .createdBy;
-    await this.comments.create({
-      feedbackId: item.id,
+    await this.commentService.add({
+      type: PlanCommentSubjects.FEEDBACK,
+      projectId: item.projectId,
+      subjectId: item.id,
       authorId: author,
       body,
     });
