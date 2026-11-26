@@ -8,6 +8,7 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { quests } from "../entities/quests.ts";
+import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import {
   type CreateQuestInput,
   QuestService,
@@ -26,6 +27,7 @@ export class QuestResourceKind {
   protected readonly questService = $inject(QuestService);
   protected readonly bound = $inject(BoundParameters);
   protected readonly search = $inject(SearchPreview);
+  protected readonly mapper = $inject(QuestResourceMapper);
 
   constructor() {
     this.resources.register({
@@ -48,13 +50,23 @@ export class QuestResourceKind {
         const rows = await this.bound.collect(this.integers(ids), (batch) =>
           this.quests.findMany({
             where: { id: { inArray: batch } },
-            columns: ["id", "shortId", "title"],
+            columns: [
+              "id",
+              "shortId",
+              "title",
+              "acceptedAt",
+              "completedAt",
+              "shelvedAt",
+              "heldAt",
+            ],
           }),
         );
         return rows.map((r) => ({
           id: String(r.id),
           shortId: r.shortId,
           title: r.title,
+          // What an error forwarded to it shows beside its number (#E185).
+          status: this.mapper.questStatus(r),
         }));
       },
       search: {

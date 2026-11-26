@@ -5,11 +5,13 @@ import {
   McpProjectScope,
   ProjectSecurityService,
 } from "@lore/core/api";
+import type { Project } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
+import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
-import type { UserAccountToken } from "alepha/security";
+import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
@@ -20,7 +22,12 @@ import {
 
 import type { ProjectErrorIgnoreRule } from "../entities/projectErrorIgnoreRules.ts";
 import { type ProjectError, projectErrors } from "../entities/projectErrors.ts";
+import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
+import {
+  type ProjectErrorDetail,
+  projectErrorDetailSchema,
+} from "../schemas/projectErrorDetailSchema.ts";
 import { QUEST_STATUS_PREFIX } from "../schemas/projectErrorQuestStatus.ts";
 import {
   type ProjectErrorResource,
@@ -32,6 +39,7 @@ import {
 } from "../schemas/projectErrorRuleResourceSchema.ts";
 import { projectErrorSigilSchema } from "../schemas/projectErrorSigilSchema.ts";
 import { ErrorTrustEvents } from "../services/ErrorTrustEvents.ts";
+import { ProjectErrorKinds } from "../services/ProjectErrorKinds.ts";
 import { ProjectErrorRuleService } from "../services/ProjectErrorRuleService.ts";
 
 /**
@@ -69,6 +77,10 @@ export class ProjectErrorController {
   protected scope = $inject(McpProjectScope);
   protected users = $repository(users);
   protected dateTime = $inject(DateTimeProvider);
+  protected errorGroups = $repository(sigilErrorGroups);
+  protected kinds = $inject(ProjectErrorKinds);
+  protected owned = $inject(OwnedResourceProvider);
+  protected ranks = $inject(RankService);
 
   /**
    * List errors for a project, newest-spread first (`count` desc).
@@ -102,9 +114,14 @@ export class ProjectErrorController {
       const every = (
         await this.currentProjectErrors.findMany({
           where: { projectId: { eq: params.projectId } },
-          orderBy: [{ column: "count", direction: "desc" }],
+          // `id` makes the order total, so the page's previous and next
+          // (`getProjectError`) walk the inbox in the order it shows.
+          orderBy: [
+            { column: "count", direction: "desc" },
+            { column: "id", direction: "asc" },
+          ],
         })
-      ).sort((a, b) => b.count - a.count);
+      ).sort((a, b) => b.count - a.count || a.id - b.id);
       const all = agent ? every.filter((b) => b.trustedAt) : every;
 
       // The inbox's filter options: which apps report here. Listed even when
@@ -171,6 +188,76 @@ export class ProjectErrorController {
       });
 
       return { count: open.length };
+    },
+  });
+
+  /**
+   * One error with everything Lore knows beside the row (#E185): its kind,
+   * the apps that reported it, the error on the other side of its request,
+   * the quest it was forwarded to, the ignore rules its message matches and
+   * its neighbours in the open inbox.
+   *
+   * One trip after the row is read: every block is one statement, issued
+   * together, never one per app or per rule.
+   *
+   * An agent is refused on an untrusted error, never handed a redacted row
+   * ({@link assertAgentMayRead}); an error of another project is a 404.
+   */
+  getProjectError = $action({
+    use: [$ownsProject({ requires: "error:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/errors/:errorId",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        errorId: z.integer(),
+      }),
+      response: projectErrorDetailSchema,
+    },
+    handler: async ({ params, user }): Promise<ProjectErrorDetail> => {
+      // Whether an agent reads does not wait on the row: one trip for both.
+      const [row, agent] = await Promise.all([
+        this.loadProjectError(params.projectId, params.errorId),
+        this.isAgent(user),
+      ]);
+      if (agent && !row.trustedAt) {
+        await this.assertAgentMayRead(row, user);
+      }
+      const kind = this.kinds.of(row);
+      const monitorId = this.kinds.monitorId(row);
+      const [apps, linkedError, quest, rules, neighbours, trusters] =
+        await Promise.all([
+          kind === "sigil" ? this.appsOf(row) : [],
+          this.linkedErrorOf(row, agent),
+          this.questOf(row, user),
+          this.ruleService.listForProject(row.projectId),
+          this.neighboursOf(row, agent),
+          this.trusters([row]),
+        ]);
+      return {
+        error: {
+          ...this.toResource(row, trusters),
+          ...(linkedError ? { linkedError } : {}),
+        },
+        kind,
+        apps,
+        ...(quest ? { quest } : {}),
+        ...(kind === "run"
+          ? {
+              run: {
+                ...(row.useCaseRunId != null
+                  ? { useCaseRunId: row.useCaseRunId }
+                  : {}),
+                ...(row.criterionKey ? { criterionKey: row.criterionKey } : {}),
+              },
+            }
+          : {}),
+        ...(monitorId ? { monitor: { id: monitorId } } : {}),
+        rules: rules
+          .filter((rule) => this.ruleService.matches(row.message, [rule]))
+          .map((rule) => this.toRuleResource(rule)),
+        ...neighbours,
+      };
     },
   });
 
@@ -668,6 +755,155 @@ export class ProjectErrorController {
   }
 
   /**
+   * The apps that reported this fingerprint, busiest first: one statement
+   * for the project's apps and one for their groups, whatever their number.
+   * The groups are scoped by a subquery on the project's sigils, never by a
+   * list of ids, which a project with many apps would push past D1's bound
+   * parameters.
+   */
+  protected async appsOf(
+    row: ProjectError,
+  ): Promise<ProjectErrorDetail["apps"]> {
+    const [names, groups] = await Promise.all([
+      this.sigils.findMany({
+        where: { projectId: { eq: row.projectId } },
+        columns: ["id", "name"],
+      }),
+      this.errorGroups.findMany({
+        where: {
+          fingerprint: { eq: row.fingerprint },
+          sigilId: {
+            inArray: this.sigils.subquery(
+              { projectId: { eq: row.projectId } },
+              "id",
+            ),
+          },
+        },
+        columns: ["sigilId", "count", "firstSeenAt", "lastSeenAt"],
+        orderBy: [
+          { column: "count", direction: "desc" },
+          { column: "id", direction: "asc" },
+        ],
+      }),
+    ]);
+    const labels = new Map(names.map((sigil) => [sigil.id, sigil.name]));
+    return groups.map((group) => ({
+      sigilId: group.sigilId,
+      label: labels.get(group.sigilId) ?? "",
+      count: group.count,
+      firstSeenAt: group.firstSeenAt,
+      lastSeenAt: group.lastSeenAt,
+    }));
+  }
+
+  /**
+   * The error on the other side of the same request (#Q4404), as the list
+   * pairs them: read over the groups naming this request, which is a few
+   * rows. An agent is never pointed at a group it may not read.
+   */
+  protected async linkedErrorOf(
+    row: ProjectError,
+    agent: boolean,
+  ): Promise<{ id: number; origin: ProjectError["origin"] } | undefined> {
+    if (!row.requestId) return undefined;
+    const sharing = await this.currentProjectErrors.findMany({
+      where: {
+        projectId: { eq: row.projectId },
+        requestId: { eq: row.requestId },
+      },
+      limit: 20,
+    });
+    const visible = agent ? sharing.filter((it) => it.trustedAt) : sharing;
+    return this.linkedErrors(visible).get(row.id);
+  }
+
+  /**
+   * The quest a forwarded error points at, through the `quest` kind of the
+   * resources registry: Ship never reads a quest (#E75). Absent while Plan
+   * is off or not registered, for a caller who may not read quests, and
+   * once the quest is gone.
+   */
+  protected async questOf(
+    row: ProjectError,
+    user: UserAccountToken,
+  ): Promise<ProjectErrorDetail["quest"]> {
+    if (!row.status.startsWith(QUEST_STATUS_PREFIX)) return undefined;
+    const kind = this.resources.get("quest");
+    if (!kind?.describe) return undefined;
+    const capabilities = await this.security.capabilitiesOf(row.projectId);
+    if (!capabilities.plan) return undefined;
+    const project = this.owned.authority<Project>();
+    if (
+      !(await this.ranks.can(project.organizationId!, kind.permission, user))
+    ) {
+      return undefined;
+    }
+    const id = row.status.slice(QUEST_STATUS_PREFIX.length);
+    const [ref] = await this.resources.describe("quest", row.projectId, [id]);
+    if (!ref) return undefined;
+    return {
+      id: Number(ref.id),
+      shortId: ref.shortId,
+      title: ref.title,
+      ...(ref.status ? { status: ref.status } : {}),
+    };
+  }
+
+  /**
+   * The errors before and after this one in the open inbox, in the list's
+   * order made total: `count` descending, then `id`. One row each, read by
+   * the order itself rather than by listing the inbox. Nothing for an error
+   * that is not open; an agent walks the trusted ones only.
+   */
+  protected async neighboursOf(
+    row: ProjectError,
+    agent: boolean,
+  ): Promise<{ previousId?: number; nextId?: number }> {
+    if (row.status !== "open") return {};
+    const scope = {
+      projectId: { eq: row.projectId },
+      status: { eq: "open" },
+      ...(agent ? { trustedAt: { isNotNull: true } } : {}),
+    };
+    const [previous, next] = await Promise.all([
+      this.currentProjectErrors.findMany({
+        where: {
+          ...scope,
+          or: [
+            { count: { gt: row.count } },
+            { count: { eq: row.count }, id: { lt: row.id } },
+          ],
+        },
+        columns: ["id"],
+        orderBy: [
+          { column: "count", direction: "asc" },
+          { column: "id", direction: "desc" },
+        ],
+        limit: 1,
+      }),
+      this.currentProjectErrors.findMany({
+        where: {
+          ...scope,
+          or: [
+            { count: { lt: row.count } },
+            { count: { eq: row.count }, id: { gt: row.id } },
+          ],
+        },
+        columns: ["id"],
+        orderBy: [
+          { column: "count", direction: "desc" },
+          { column: "id", direction: "asc" },
+        ],
+        limit: 1,
+      }),
+    ]);
+    return {
+      ...(previous[0] ? { previousId: previous[0].id } : {}),
+      ...(next[0] ? { nextId: next[0].id } : {}),
+    };
+  }
+
+  /**
    * Whether a model is reading (#Q4233, #Q4235): an agent job's key, or a
    * run pinned to one project, which is what a chat agent answering in a
    * room runs under (`McpProjectScope.pinned`). A member's own MCP client
@@ -792,6 +1028,8 @@ export class ProjectErrorController {
       ...(b.action ? { action: b.action } : {}),
       ...(b.route ? { route: b.route } : {}),
       ...(b.requestId ? { requestId: b.requestId } : {}),
+      ...(b.useCaseRunId != null ? { useCaseRunId: b.useCaseRunId } : {}),
+      ...(b.criterionKey ? { criterionKey: b.criterionKey } : {}),
     };
   }
 
