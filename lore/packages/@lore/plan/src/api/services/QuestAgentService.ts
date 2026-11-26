@@ -14,11 +14,6 @@ import { type Quest, quests } from "../entities/quests.ts";
  * `work-quest` prompt's run (#Q4275).
  */
 export class QuestAgentService {
-  /**
-   * A quest's work time.
-   */
-  public static readonly WORK_SECONDS = 60 * 60;
-
   protected readonly alepha = $inject(Alepha);
   protected readonly rows = $repository(quests);
   protected readonly projects = $repository(projects);

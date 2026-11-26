@@ -11,6 +11,7 @@ import {
 import {
   AGENT_JOB_MAX_TIMEOUT_SECONDS,
   AGENT_JOB_MIN_TIMEOUT_SECONDS,
+  AGENT_JOB_TIMEOUT_SECONDS,
   type HostJobSource,
   jobRepositoryOf,
   projects,
@@ -49,9 +50,10 @@ import { AgentRunPreamble } from "./AgentRunPreamble.ts";
  */
 export class AgentJobService {
   /**
-   * A job's time when the request names none.
+   * A job's time when the request names none: every agent job's 4 h
+   * (#Q4439).
    */
-  public static readonly DEFAULT_TIMEOUT_SECONDS = 30 * 60;
+  public static readonly DEFAULT_TIMEOUT_SECONDS = AGENT_JOB_TIMEOUT_SECONDS;
 
   /**
    * The most time a request gets, whatever it asks.

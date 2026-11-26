@@ -25,22 +25,13 @@ import { quests } from "../entities/quests.ts";
  * the owner's, silently.
  *
  * The run itself is the `review-epic` prompt's (#Q4275); what stays here is
- * the epic's membership for the job key, its subject and its time.
+ * the epic's membership for the job key and its subject.
  */
 export class EpicAgentService {
   /**
    * The job's subject, with the epic's number as its id.
    */
   public static readonly SUBJECT = "epic";
-
-  /**
-   * The review's time: a base, plus this much per quest of the epic. Agent
-   * jobs clamp it to their ceiling.
-   */
-  public static readonly TIME = {
-    baseSeconds: 15 * 60,
-    secondsPerQuest: 90,
-  };
 
   protected readonly alepha = $inject(Alepha);
   protected readonly epics = $repository(epics);

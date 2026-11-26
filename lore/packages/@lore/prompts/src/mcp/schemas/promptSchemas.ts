@@ -67,7 +67,7 @@ export const promptCreateParamsSchema = projectParamsSchema.extend({
     .min(0)
     .max(AGENT_JOB_MAX_TIMEOUT_SECONDS)
     .describe(
-      `A run's time in seconds, ${AGENT_JOB_MIN_TIMEOUT_SECONDS} to ${AGENT_JOB_MAX_TIMEOUT_SECONDS}; on prompt_update, 0 returns to the default (the built-in's, or 30 minutes for a custom prompt).`,
+      `A run's time in seconds, ${AGENT_JOB_MIN_TIMEOUT_SECONDS} to ${AGENT_JOB_MAX_TIMEOUT_SECONDS}; on prompt_update, 0 returns to the default (4 hours, or 12 for work-epic and work-loose-quests).`,
     )
     .optional(),
 });

@@ -100,8 +100,9 @@ export const prompts = $entity({
      */
     pins: z.array(z.string().max(32)).max(16).optional(),
     /**
-     * A run's time, set by `prompt_update` (#Q4344): absent, the built-in's
-     * own, or 30 minutes for a custom prompt. Clamped again at the run.
+     * A run's time, set by `prompt_update` (#Q4344): absent, 4 h, or the
+     * 12 h of a built-in that works a whole set (#Q4439). Clamped again at
+     * the run.
      */
     timeoutSeconds: z.integer().min(60).max(86_400).optional(),
     maxRunsPerHour: db.default(z.integer().min(1).max(60), 6),

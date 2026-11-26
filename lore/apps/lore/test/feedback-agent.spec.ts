@@ -217,7 +217,7 @@ describe("feedback triaged by an agent job", () => {
     expect(job.input.prompt).toContain(
       "1 other pending feedback item(s) were written outside the team",
     );
-    expect(job.input.timeoutSeconds).toBeGreaterThan(15 * 60);
+    expect(job.input.timeoutSeconds).toBe(14_400);
     for (const item of [a, b]) {
       const row = await w.repos.feedback.getOne({
         where: { id: { eq: item.id } },

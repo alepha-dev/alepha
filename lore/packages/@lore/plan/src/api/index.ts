@@ -54,7 +54,6 @@ import { ProjectPlanningReportService } from "./services/ProjectPlanningReportSe
 import { ProjectReportsService } from "./services/ProjectReportsService.ts";
 import { ProjectSupportReportService } from "./services/ProjectSupportReportService.ts";
 import { ProjectTeamReportService } from "./services/ProjectTeamReportService.ts";
-import { PullRequestAgentService } from "./services/PullRequestAgentService.ts";
 import { QuestAgentService } from "./services/QuestAgentService.ts";
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
@@ -119,7 +118,6 @@ export const LorePlanApi = $module({
     PlanOutsideText,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
     QuestAgentService,
-    PullRequestAgentService,
     QuestAgentController,
     // Epics reviewed by an agent job, its key pinned to the epic (#Q4214):
     // listed so the key's quest-in-epic lookup is registered at boot.
@@ -314,4 +312,3 @@ export { PlanPrompts } from "./services/PlanPrompts.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";
 export { EpicAgentService } from "./services/EpicAgentService.ts";
 export { QuestAgentService } from "./services/QuestAgentService.ts";
-export { PullRequestAgentService } from "./services/PullRequestAgentService.ts";

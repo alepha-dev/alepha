@@ -71,7 +71,7 @@ describe("prompt runs", () => {
     expect(row.automationId).toBeUndefined();
     expect(row.input).toMatchObject({
       workspace: `q${quest.shortId}`,
-      timeoutSeconds: 3600,
+      timeoutSeconds: 14_400,
       key: { questId: quest.shortId },
     });
     expect(row.input.session?.id).toMatch(/^[0-9a-f-]{36}$/);
@@ -138,7 +138,7 @@ describe("prompt runs", () => {
     expect(none.input.source).toEqual({ mode: "none" });
   });
 
-  it("runs a custom prompt under host:update, its args rendered, for 30 minutes", async ({
+  it("runs a custom prompt under host:update, its args rendered, for 4 hours", async ({
     expect,
   }) => {
     const epic = await createTestEpic(w.alepha, await project(), {
@@ -161,7 +161,7 @@ describe("prompt runs", () => {
       (await run("crash", { args: { epic: String(epic.number) } })).jobId,
     );
     expect(row.input.prompt).toContain(`Investigate #E${epic.number} Cart in `);
-    expect(row.input.timeoutSeconds).toBe(1800);
+    expect(row.input.timeoutSeconds).toBe(14_400);
     expect(row.prompt).toBe("crash");
   });
 
@@ -185,7 +185,11 @@ describe("prompt runs", () => {
     expect(first.input.timeoutSeconds).toBe(5400);
     await w.repos.jobs.updateById(first.id, { status: "succeeded" });
 
-    // Triage plans its own time; a time the project set wins over it.
+    // A built-in runs for 4 h, whatever it triages; a time the project set
+    // wins over it.
+    const plain = await job((await run("triage")).jobId);
+    expect(plain.input.timeoutSeconds).toBe(14_400);
+    await w.repos.jobs.updateById(plain.id, { status: "succeeded" });
     expect(
       (await update("triage", { timeoutSeconds: 7200 })).timeoutSeconds,
     ).toBe(7200);
@@ -194,7 +198,7 @@ describe("prompt runs", () => {
 
     expect(
       (await update("npm-update", { timeoutSeconds: null })).timeoutSeconds,
-    ).toBe(1800);
+    ).toBe(14_400);
     expect((await run("npm-update")).jobId).toBeDefined();
     await expect(
       update("npm-update", { timeoutSeconds: 30 * 3600 }),
@@ -265,7 +269,7 @@ describe("prompt runs", () => {
     );
     expect(pr.input).toMatchObject({
       workspace: "pr-42",
-      timeoutSeconds: 7200,
+      timeoutSeconds: 14_400,
     });
     await expect(run("work-quest", { fix: true })).rejects.toThrow(
       "Only review-pr takes fix and trust",

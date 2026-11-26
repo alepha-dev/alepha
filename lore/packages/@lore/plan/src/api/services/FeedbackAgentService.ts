@@ -60,21 +60,6 @@ export class FeedbackAgentService {
     "Not triaged by an agent: this feedback was written outside the team, and no member has trusted it yet. A member must read it, then trust it or triage it by hand.";
 
   /**
-   * One item's triage time.
-   */
-  public static readonly ITEM_SECONDS = 15 * 60;
-
-  /**
-   * The global triage's time: a base, plus this much per feedback item and
-   * once for the errors (#Q4183). Agent jobs clamp it.
-   */
-  public static readonly GLOBAL_TIME = {
-    baseSeconds: 15 * 60,
-    secondsPerItem: 120,
-    errorSeconds: 15 * 60,
-  };
-
-  /**
    * The paragraph every triage job reads, whatever the template says.
    */
   public static readonly TRUST_PARAGRAPH = [
@@ -122,7 +107,6 @@ export class FeedbackAgentService {
     run?: {
       prompt: string;
       feedbackNumbers: number[];
-      timeoutSeconds: number;
       mark: (jobId: string) => Promise<void>;
     };
   }> {
@@ -165,7 +149,6 @@ export class FeedbackAgentService {
     if (!trusted.length && !errors) {
       return { skipped };
     }
-    const t = FeedbackAgentService.GLOBAL_TIME;
     return {
       skipped,
       run: {
@@ -179,10 +162,6 @@ export class FeedbackAgentService {
         // An empty set pins nothing, so the key would reach every item:
         // with no feedback the job's feedback tools are refused by the pin.
         feedbackNumbers: trusted.length ? trusted.map((it) => it.shortId) : [0],
-        timeoutSeconds:
-          t.baseSeconds +
-          t.secondsPerItem * trusted.length +
-          (errors ? t.errorSeconds : 0),
         mark: async (jobId) => {
           const now = new Date(this.dateTime.nowMillis()).toISOString();
           for (const item of trusted) {
