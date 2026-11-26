@@ -302,6 +302,8 @@ export class HostController {
             day: z.string().max(40),
             cpuPercent: z.number(),
             memoryPercent: z.number(),
+            diskPercent: z.number().optional(),
+            load1: z.number().optional(),
             samples: z.integer().min(0),
           }),
         ),

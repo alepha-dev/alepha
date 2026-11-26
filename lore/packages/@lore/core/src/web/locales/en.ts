@@ -2887,6 +2887,7 @@ export default {
   "bay.chart.title": "Last 30 days",
   "bay.chart.cpu": "CPU %",
   "bay.chart.memory": "Memory %",
+  "bay.chart.disk": "Disk %",
   "bay.chart.off":
     "This machine is not recording a history. Its live gauges above are always kept; the series is a separate switch, and it starts from the day it is turned on.",
   "bay.chart.off.link": "Turn it on in Settings",

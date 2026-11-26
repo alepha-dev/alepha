@@ -2897,6 +2897,7 @@ export default {
   "bay.chart.title": "30 derniers jours",
   "bay.chart.cpu": "Processeur %",
   "bay.chart.memory": "Mémoire %",
+  "bay.chart.disk": "Disque %",
   "bay.chart.off":
     "Cette machine n'enregistre pas d'historique. Les jauges ci-dessus sont toujours conservées ; la série est un réglage à part, et elle démarre le jour où il est activé.",
   "bay.chart.off.link": "L'activer dans les paramètres",

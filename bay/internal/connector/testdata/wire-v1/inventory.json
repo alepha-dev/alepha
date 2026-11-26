@@ -16,7 +16,11 @@
         "subState": "start",
         "since": "2026-09-06T11:50:00Z"
       },
-      { "name": "caddy.service", "activeState": "active", "subState": "running" }
+      {
+        "name": "caddy.service",
+        "activeState": "active",
+        "subState": "running"
+      }
     ],
     "bayVersion": "0.31.0",
     "upgradeMode": "handoff"

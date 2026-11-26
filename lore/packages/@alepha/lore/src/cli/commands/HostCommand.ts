@@ -558,7 +558,7 @@ export class HostCommand {
               lines: stats.points.length
                 ? stats.points.map(
                     (point) =>
-                      `${point.day}  CPU ${this.percent(point.cpuPercent).padStart(4)}  RAM ${this.percent(point.memoryPercent).padStart(4)}  ${point.samples} samples`,
+                      `${point.day}  CPU ${this.percent(point.cpuPercent).padStart(4)}  RAM ${this.percent(point.memoryPercent).padStart(4)}${point.diskPercent === undefined ? "" : `  Disk ${this.percent(point.diskPercent).padStart(4)}`}${point.load1 === undefined ? "" : `  Load ${point.load1.toFixed(2)}`}  ${point.samples} samples`,
                   )
                 : ["No point in this window."],
             },

@@ -13,6 +13,10 @@ export interface HostStatsPoint {
   day: string;
   cpuPercent: number;
   memoryPercent: number;
+  /** Absent on a day no reading carried the disk (an older Bay). */
+  diskPercent?: number;
+  /** The mean one-minute load, absent like the disk. */
+  load1?: number;
   samples: number;
 }
 
@@ -93,6 +97,10 @@ export class HostStatsService {
       cpu: frame.cpuPercent,
       memory: frame.memoryPercent,
       samples: 1,
+      disk: frame.diskPercent ?? 0,
+      diskSamples: frame.diskPercent === undefined ? 0 : 1,
+      load: frame.load1 ?? 0,
+      loadSamples: frame.load1 === undefined ? 0 : 1,
     });
   }
 
@@ -108,18 +116,35 @@ export class HostStatsService {
       since,
       where: { hostId: { inArray: [hostId] } },
       groupBy: ["day"],
-      select: { cpu: "sum", memory: "sum", samples: "sum" },
+      select: {
+        cpu: "sum",
+        memory: "sum",
+        samples: "sum",
+        disk: "sum",
+        diskSamples: "sum",
+        load: "sum",
+        loadSamples: "sum",
+      },
     });
 
     const points = result.rows
       .map((row) => {
         const samples = Number(row.samples ?? 0);
-        return {
+        const diskSamples = Number(row.diskSamples ?? 0);
+        const loadSamples = Number(row.loadSamples ?? 0);
+        const point: HostStatsPoint = {
           day: String(row.day),
           cpuPercent: samples ? Number(row.cpu) / samples : 0,
           memoryPercent: samples ? Number(row.memory) / samples : 0,
           samples,
         };
+        if (diskSamples) {
+          point.diskPercent = Number(row.disk) / diskSamples;
+        }
+        if (loadSamples) {
+          point.load1 = Number(row.load) / loadSamples;
+        }
+        return point;
       })
       .sort((a, b) => a.day.localeCompare(b.day));
 

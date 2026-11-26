@@ -58,6 +58,11 @@ export const hostStatsResultSchema = z.object({
         day: z.string(),
         cpuPercent: z.number(),
         memoryPercent: z.number(),
+        diskPercent: z
+          .number()
+          .optional()
+          .describe("Mean disk use; absent when the host's Bay sends none."),
+        load1: z.number().optional().describe("Mean one-minute load."),
         samples: z.integer(),
       }),
     )
