@@ -1,4 +1,6 @@
+import { hostInventories } from "@lore/core/schemas";
 import { createTestProject } from "@lore/core/testing";
+import { createTestHost } from "@lore/core/testing/hosts";
 import { Alepha, AlephaError } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
@@ -25,6 +27,7 @@ class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
   incidents = $repository(monitorIncidents);
   beats = $repository(monitorHeartbeats);
+  inventories = $repository(hostInventories);
 }
 
 class MemoryProber extends UptimeProber {
@@ -360,5 +363,52 @@ describe("The uptime tick and state machine", () => {
     await expect
       .poll(async () => (await ctx.repos.incidents.findMany())[0]?.endedAt)
       .toBeDefined();
+  });
+  it("holds a failure while the named unit restarts, and counts it again past the grace", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const user = await ctx.repos.users.create({ email: "ops@example.com" });
+    const host = await createTestHost(
+      ctx.alepha,
+      { id: user.id, roles: ["user"] },
+      { slug: "api-box" },
+    );
+    const monitor = await ctx.repos.monitors.updateById(
+      (await ctx.seed("API", 2, host.projectId)).id,
+      { graceHost: "api-box", graceUnit: "api", graceSecs: 900 },
+    );
+    const state = ctx.alepha.inject(UptimeStateService);
+    const since = ctx.clock.nowISOString();
+    await ctx.repos.inventories.create({
+      hostId: host.id,
+      at: since,
+      reportedAt: since,
+      machine: {
+        units: [{ name: "api.service", activeState: "activating", since }],
+      },
+      apps: [],
+      appCount: 0,
+    });
+
+    // Restarting: three failures in a row are held, no outage opens.
+    let current = monitor;
+    for (let i = 0; i < 3; i++) {
+      await state.apply(current, down, ctx.clock.nowMillis(), null);
+      current = await ctx.repos.monitors.getById(monitor.id);
+    }
+    expect(current.failures).toBe(0);
+    expect(current.status).not.toBe("down");
+    expect(current.lastError).toContain("held: api.service is activating");
+    expect(await ctx.repos.incidents.count()).toBe(0);
+
+    // Past the grace the start is stuck: failures count again.
+    await ctx.clock.travel(16, "minutes");
+    await state.apply(current, down, ctx.clock.nowMillis(), null);
+    current = await ctx.repos.monitors.getById(monitor.id);
+    await state.apply(current, down, ctx.clock.nowMillis(), null);
+    current = await ctx.repos.monitors.getById(monitor.id);
+    expect(current.failures).toBe(2);
+    expect(current.status).toBe("down");
   });
 });

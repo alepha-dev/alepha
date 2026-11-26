@@ -18,6 +18,7 @@ import { type Monitor, monitors } from "../entities/monitors.ts";
 import type { ProbeResult } from "../schemas/probeResultSchema.ts";
 import { ShipProjectEvents } from "./ShipProjectEvents.ts";
 import { UptimeEventFields } from "./UptimeEventFields.ts";
+import { UptimeGrace } from "./UptimeGrace.ts";
 
 export interface UptimeTransition {
   kind: "opened" | "closed";
@@ -45,6 +46,7 @@ export class UptimeStateService {
   protected readonly projects = $repository(projects);
   protected readonly crypto = $inject(CryptoProvider);
   protected readonly fields = $inject(UptimeEventFields);
+  protected readonly grace = $inject(UptimeGrace);
 
   /**
    * Saves one probe's result and opens or closes the monitor's incident.
@@ -75,7 +77,16 @@ export class UptimeStateService {
       }
     }
     const at = new Date(checkedAt).toISOString();
-    const failures = result.ok ? 0 : monitor.failures + 1;
+    // A failure while the app's unit restarts on purpose is held (#Q4424):
+    // it neither counts toward the confirmations nor clears them.
+    const held = result.ok
+      ? undefined
+      : await this.grace.heldBy(monitor, checkedAt);
+    const failures = result.ok
+      ? 0
+      : held
+        ? monitor.failures
+        : monitor.failures + 1;
     const status = result.ok
       ? "up"
       : failures >= monitor.confirmations
@@ -98,7 +109,10 @@ export class UptimeStateService {
       lastCheckedAt: at,
       nextCheckAt,
       lastLatencyMs: result.latencyMs,
-      lastError: result.error,
+      lastError:
+        held && result.error
+          ? `${held}: ${result.error}`.slice(0, 4096)
+          : result.error,
       lastResult: result.result,
       certExpiresAt: result.certExpiresAt ?? monitor.certExpiresAt,
     };

@@ -7,4 +7,7 @@ export const monitorSettingsSchema = monitors.insertSchema.pick({
   timeoutSecs: true,
   confirmations: true,
   expect: true,
+  graceHost: true,
+  graceUnit: true,
+  graceSecs: true,
 });

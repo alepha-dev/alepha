@@ -4815,6 +4815,11 @@ export default {
   "uptime.interval": "Interval (seconds)",
   "uptime.timeout": "Timeout (seconds)",
   "uptime.confirmations": "Failures before down",
+  "uptime.graceHost": "Hold while host",
+  "uptime.graceUnit": "restarts unit",
+  "uptime.graceSecs": "for at most (s)",
+  "uptime.grace.description":
+    "A failed check is held while this watched unit starts or stops, so a deploy pages nobody.",
   "uptime.expectedStatus": "Expected status",
   "uptime.keyword": "Body keyword",
   "uptime.budget": "Latency budget in ms",

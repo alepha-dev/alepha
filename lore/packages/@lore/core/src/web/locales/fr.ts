@@ -4853,6 +4853,11 @@ export default {
   "uptime.interval": "Intervalle (secondes)",
   "uptime.timeout": "Délai (secondes)",
   "uptime.confirmations": "Échecs avant alerte",
+  "uptime.graceHost": "Patienter quand l'hôte",
+  "uptime.graceUnit": "redémarre l'unité",
+  "uptime.graceSecs": "au plus (s)",
+  "uptime.grace.description":
+    "Un échec est mis en attente tant que cette unité surveillée démarre ou s'arrête : un déploiement n'alerte personne.",
   "uptime.expectedStatus": "Statut attendu",
   "uptime.keyword": "Texte attendu",
   "uptime.budget": "Budget de latence en ms",

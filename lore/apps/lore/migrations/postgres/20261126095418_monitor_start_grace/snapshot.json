@@ -1,0 +1,89 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a6049df1-41c6-4823-b50e-6694661d44a9",
+  "prevIds": ["7df5a879-8cf7-4d58-9a47-c9d4805bf8fa"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "monitors", "grace_host"],
+      "writes": [
+        "s|col|public.monitors.grace_host",
+        "n|col|public.monitors.grace_host",
+        "e|col|public.monitors.grace_host"
+      ],
+      "reads": ["n|tbl|public.monitors", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "monitors", "grace_unit"],
+      "writes": [
+        "s|col|public.monitors.grace_unit",
+        "n|col|public.monitors.grace_unit",
+        "e|col|public.monitors.grace_unit"
+      ],
+      "reads": ["n|tbl|public.monitors", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "monitors", "grace_secs"],
+      "writes": [
+        "s|col|public.monitors.grace_secs",
+        "n|col|public.monitors.grace_secs",
+        "e|col|public.monitors.grace_secs"
+      ],
+      "reads": ["n|tbl|public.monitors", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "monitors",
+        "name": "grace_host",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "monitors",
+        "name": "grace_unit",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "monitors",
+        "name": "grace_secs",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "1500",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

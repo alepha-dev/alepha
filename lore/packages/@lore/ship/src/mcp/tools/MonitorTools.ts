@@ -141,6 +141,9 @@ export class MonitorTools {
           timeoutSecs: params.timeout_secs,
           confirmations: params.confirmations,
           expect: params.expect,
+          ...(params.grace_host ? { graceHost: params.grace_host } : {}),
+          ...(params.grace_unit ? { graceUnit: params.grace_unit } : {}),
+          ...(params.grace_secs ? { graceSecs: params.grace_secs } : {}),
         } as MonitorCreateBody,
       });
     },
@@ -227,6 +230,9 @@ export class MonitorTools {
       timeout_secs?: number;
       confirmations?: number;
       expect?: MonitorResource["expect"];
+      grace_host?: string;
+      grace_unit?: string;
+      grace_secs?: number;
     },
   ): MonitorConfig {
     return {
@@ -237,6 +243,16 @@ export class MonitorTools {
       timeoutSecs: params.timeout_secs ?? monitor.timeoutSecs,
       confirmations: params.confirmations ?? monitor.confirmations,
       expect: params.expect ?? monitor.expect,
+      // An empty string clears the grace; omitted keeps it.
+      graceHost:
+        params.grace_host === undefined
+          ? monitor.graceHost
+          : params.grace_host || undefined,
+      graceUnit:
+        params.grace_unit === undefined
+          ? monitor.graceUnit
+          : params.grace_unit || undefined,
+      graceSecs: params.grace_secs ?? monitor.graceSecs,
     };
   }
 }

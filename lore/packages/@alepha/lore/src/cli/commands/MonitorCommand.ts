@@ -22,6 +22,9 @@ type MonitorConfig = Pick<
   | "timeoutSecs"
   | "confirmations"
   | "expect"
+  | "graceHost"
+  | "graceUnit"
+  | "graceSecs"
 >;
 
 /**
@@ -130,6 +133,24 @@ export class MonitorCommand {
       .integer()
       .describe("Failed checks in a row before the monitor goes down.")
       .optional(),
+    "grace-host": z
+      .text({
+        description:
+          "A host of the project, by slug, whose watched unit --grace-unit this monitor follows: a failed check while that unit starts or stops is held, so a deploy pages nobody. Empty clears.",
+      })
+      .optional(),
+    "grace-unit": z
+      .text({
+        description:
+          "The watched unit on --grace-host (api.service). Empty clears.",
+      })
+      .optional(),
+    "grace-secs": z
+      .integer()
+      .describe(
+        "How long a start may last before a failure counts again, in seconds (default 1500).",
+      )
+      .optional(),
     "expect-status": z
       .integer()
       .describe("The HTTP status a passing check answers.")
@@ -215,6 +236,12 @@ export class MonitorCommand {
             ["Every", `${monitor.intervalSecs}s`],
             ["Timeout", `${monitor.timeoutSecs}s`],
             ["Down after", `${monitor.confirmations} failed checks`],
+            [
+              "Held while",
+              monitor.graceHost && monitor.graceUnit
+                ? `${monitor.graceUnit} on ${monitor.graceHost} starts, up to ${monitor.graceSecs} s`
+                : undefined,
+            ],
             ["Last check", monitor.lastCheckedAt],
             ["Last error", monitor.lastError],
             ["Certificate expires", monitor.certExpiresAt],
@@ -464,6 +491,9 @@ export class MonitorCommand {
       "interval-secs"?: number;
       "timeout-secs"?: number;
       confirmations?: number;
+      "grace-host"?: string;
+      "grace-unit"?: string;
+      "grace-secs"?: number;
       "expect-status"?: number;
       keyword?: string;
       "latency-budget"?: number;
@@ -488,6 +518,16 @@ export class MonitorCommand {
       timeoutSecs: flags["timeout-secs"] ?? base.timeoutSecs,
       confirmations: flags.confirmations ?? base.confirmations,
       expect,
+      // An empty flag clears the grace; omitted keeps it.
+      graceHost:
+        flags["grace-host"] === undefined
+          ? base.graceHost
+          : flags["grace-host"] || undefined,
+      graceUnit:
+        flags["grace-unit"] === undefined
+          ? base.graceUnit
+          : flags["grace-unit"] || undefined,
+      graceSecs: flags["grace-secs"] ?? base.graceSecs,
     } as MonitorConfig;
   }
 
