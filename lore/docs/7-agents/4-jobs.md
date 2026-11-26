@@ -252,10 +252,10 @@ and the turns, tokens and cost the agent CLI reports at its end. Two tabs:
   their count, and a line Lore cannot read is shown as it is.
 - **Prompt**: the words the agent received.
 
-**Download log**, in the toolbar, saves the whole log, stderr included.
-
-**Run again** runs the same prompt on the same items; **Cancel** stops a
-running job. The page follows a running job as it goes.
+**Run again**, in the toolbar, runs the same prompt on the same items. The
+**⋮** menu beside it holds the rest: **Download log** saves the whole log,
+stderr included, **Copy prompt** copies the words the agent received, and
+**Cancel** stops a running job. The page follows a running job as it goes.
 
 On a job that failed, timed out or was cancelled, **Run again** continues
 it: the new job runs on the same host, in the same workspace and on the same
