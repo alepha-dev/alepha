@@ -261,7 +261,13 @@ export class HostJobService {
           },
           next.startedBy,
         );
-        await this.jobs.updateById(next.id, { commandId: command.id });
+        // Only while it is still claimed (#Q4432): a busy ack can land before
+        // this write and send the job back to the queue, which must not keep
+        // the command it gave up.
+        await this.jobs.updateMany(
+          { id: { eq: next.id }, status: { eq: "running" } },
+          { commandId: command.id },
+        );
       } catch (error) {
         await this.end(next.id, {
           status: "failed",
@@ -860,9 +866,7 @@ export class HostJobService {
       totals,
     }) => {
       if (command.kind !== "job-run") return;
-      const job = await this.jobs.findOne({
-        where: { commandId: { eq: command.id } },
-      });
+      const job = await this.jobOf(command);
       if (!job || HOST_JOB_TERMINAL.includes(job.status)) return;
       if (command.status === "failed" && command.step === "busy") {
         // Not started yet, not failed (#Q4249): back to the queue, until a
@@ -902,6 +906,31 @@ export class HostJobService {
   });
 
   /**
+   * The job a `job-run` command carries (#Q4432). By `commandId` first;
+   * else by the job id in its payload, while the job is claimed and holds
+   * no command yet: {@link pump} pushes the frame before it writes
+   * `commandId`, and Bay acks `running` before it even pulls the spec, so
+   * that ack could beat the write and find no job, which left the job with
+   * no `startedAt`. A busy job back in the queue is `queued`, so a late ack
+   * of the command it gave up never matches it.
+   */
+  protected async jobOf(command: {
+    id: string;
+    payload: { jobId?: string };
+  }): Promise<HostJob | undefined> {
+    const job = await this.jobs.findOne({
+      where: { commandId: { eq: command.id } },
+    });
+    if (job || !command.payload.jobId) return job;
+    const claimed = await this.jobs.findOne({
+      where: { id: { eq: command.payload.jobId } },
+    });
+    return claimed && !claimed.commandId && claimed.status === "running"
+      ? claimed
+      : undefined;
+  }
+
+  /**
    * Ends a job: the log to the bucket, the key revoked, the event, and the
    * host's next job.
    */
@@ -919,9 +948,13 @@ export class HostJobService {
     },
   ): Promise<HostJob> {
     const job = await this.getRow(jobId);
+    const startedAt = job.startedAt
+      ? undefined
+      : await this.startOf(job, outcome.status);
     await this.jobs.updateById(job.id, {
       status: outcome.status,
       endedAt: this.now(),
+      ...(startedAt ? { startedAt } : {}),
       ...(outcome.reason ? { reason: outcome.reason.slice(0, 2000) } : {}),
       ...(outcome.exitCode === undefined ? {} : { exitCode: outcome.exitCode }),
       ...(outcome.commit ? { commit: outcome.commit } : {}),
@@ -965,6 +998,38 @@ export class HostJobService {
     );
     await this.pump(job.hostId);
     return ended;
+  }
+
+  /**
+   * When a job that ends with no `startedAt` started (#Q4432). The usual
+   * cause, a `running` ack that beat the job's `commandId`, is closed in
+   * {@link jobOf}. What remains: Bay sends that ack once, fire and forget
+   * (a failed send is a debug line), while its terminal ack is kept in its
+   * outcomes and replayed on the next connection, so a socket down at the
+   * pickup, or a redelivery to a Bay already running the job (which acks
+   * nothing until the end), still ends a job with no start. So, in this
+   * order: the command's `runningAt`, else its `sentAt` (the frame went to
+   * the host), else, for a job its host says ran (succeeded or timed out),
+   * its `queuedAt`. A job that never ran (cancelled while queued, refused
+   * at dispatch: no command, or one never sent) keeps none. The migration
+   * `20261126233657_job_started_at_backfill` applies the same order to the
+   * jobs that ended before this.
+   */
+  protected async startOf(
+    job: HostJob,
+    status: "succeeded" | "failed" | "cancelled" | "timed_out",
+  ): Promise<string | undefined> {
+    // A job ending from the queue never ran, whatever command it once held.
+    if (job.status === "queued") return undefined;
+    const command = job.commandId
+      ? await this.commandRows.findOne({
+          where: { id: { eq: job.commandId } },
+        })
+      : undefined;
+    const ran = status === "succeeded" || status === "timed_out";
+    return (
+      command?.runningAt ?? command?.sentAt ?? (ran ? job.queuedAt : undefined)
+    );
   }
 
   /**

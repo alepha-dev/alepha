@@ -326,6 +326,83 @@ describe("HostJobService", () => {
     ).rejects.toThrow("neither this project's nor lent to it");
   });
 
+  it("gives a job whose running ack never arrived a start time and a duration at its end (#Q4432)", async ({
+    expect,
+  }) => {
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    expect(command.sentAt).toBeDefined();
+    // Bay's running ack is fire and forget: lost here, the done arrives alone.
+    await w.commands.ack(w.host.id, {
+      id: command.id,
+      status: "done",
+      exitCode: 0,
+    });
+    const ended = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+    expect(ended.status).toBe("succeeded");
+    expect(ended.startedAt).toBe(command.sentAt);
+    expect(ended.endedAt).toBeDefined();
+    expect(
+      Date.parse(ended.endedAt ?? "") - Date.parse(ended.startedAt ?? ""),
+    ).toBeGreaterThanOrEqual(0);
+  });
+
+  it("stamps the start of a running ack that beat the job's command id (#Q4432)", async ({
+    expect,
+  }) => {
+    await w.repos.hosts.updateById(w.host.id, { jobsMaxJobs: 2 });
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    // The frame is pushed before `commandId` is written, and Bay acks
+    // running before it pulls the spec: the ack lands on a job that holds
+    // no command yet.
+    await w.repos.jobs.updateById(job.id, { commandId: null });
+    await w.commands.ack(w.host.id, { id: command.id, status: "running" });
+    const picked = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+    expect(picked.startedAt).toBeDefined();
+    // A busy job back in the queue is never stamped by its old command.
+    const other = await start(w);
+    const otherCommand = await commandOf(w, other.id);
+    await w.repos.jobs.updateById(other.id, {
+      status: "queued",
+      commandId: null,
+    });
+    await w.commands.ack(w.host.id, { id: otherCommand.id, status: "running" });
+    const requeued = await w.repos.jobs.getOne({
+      where: { id: { eq: other.id } },
+    });
+    expect(requeued.startedAt).toBeUndefined();
+    // Cancelled from the queue with a command it once held: still no start.
+    await w.repos.jobs.updateById(other.id, { commandId: otherCommand.id });
+    const cancelled = await w.service.cancel(other.id);
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.startedAt).toBeUndefined();
+  });
+
+  it("keeps the start the running ack stamped, and stamps a job cancelled while queued with none (#Q4432)", async ({
+    expect,
+  }) => {
+    const running = await start(w);
+    const queued = await start(w);
+    const command = await commandOf(w, running.id);
+    await w.commands.ack(w.host.id, { id: command.id, status: "running" });
+    const picked = await w.repos.jobs.getOne({
+      where: { id: { eq: running.id } },
+    });
+    expect(picked.startedAt).toBeDefined();
+    await w.service.cancel(queued.id);
+    await w.commands.ack(w.host.id, { id: command.id, status: "done" });
+    const ended = await w.repos.jobs.getOne({
+      where: { id: { eq: running.id } },
+    });
+    expect(ended.startedAt).toBe(picked.startedAt);
+    const cancelled = await w.repos.jobs.getOne({
+      where: { id: { eq: queued.id } },
+    });
+    expect(cancelled.status).toBe("cancelled");
+    expect(cancelled.startedAt).toBeUndefined();
+  });
+
   it("keeps a timeout and a cancel apart from a failure", async ({
     expect,
   }) => {
