@@ -6,15 +6,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
   Textarea,
 } from "@alepha/ui";
+import { ControlDate } from "@alepha/ui/form";
 import type { I18n } from "@lore/core/web";
+import { z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
+import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { PauseCircle } from "lucide-react";
-import { useState } from "react";
+import { type HTMLAttributes, useState } from "react";
 
 export interface QuestHoldDialogProps {
   open: boolean;
@@ -31,13 +33,27 @@ export interface QuestHoldDialogProps {
  * Put on hold (#Q4408): the reason, which is posted to the discussion, and
  * an optional day the hold lifts on its own, with quick picks for one and
  * two weeks. Without a day the hold waits for somebody to lift it.
+ *
+ * The day is the kit's `ControlDate` (#Q4446), never the browser's native
+ * `<input type="date">`, which drew an OS calendar that ignored the theme.
+ * The control needs a bound input, so the day lives in a one-field form; it
+ * stores `YYYY-MM-DD`, the local day, which is what the quick picks write.
+ * The control has no per-day lower bound, so a day that is not after today
+ * is refused inline on submit, as before.
  */
 const QuestHoldDialog = (props: QuestHoldDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dt = useInject(DateTimeProvider);
   const [reason, setReason] = useState("");
-  const [day, setDay] = useState("");
   const [touched, setTouched] = useState(false);
+  const form = useForm({
+    schema: z.object({ day: z.date().optional() }),
+    // Never submitted: the dialog's own button reads the value.
+    handler: () => {},
+  });
+  const values = useFormValues(form);
+  const day = typeof values.day === "string" ? values.day : "";
+  const setDay = (next: string) => form.input.day.set(next || undefined);
 
   const today = dt.now().format("YYYY-MM-DD");
   const inWeeks = (weeks: number) =>
@@ -48,7 +64,7 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
   const handleClose = (open: boolean) => {
     if (!open) {
       setReason("");
-      setDay("");
+      form.reset();
       setTouched(false);
     }
     props.onOpenChange(open);
@@ -89,20 +105,15 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
           )}
         </div>
         <div className="flex flex-col gap-2">
-          <label htmlFor="quest-hold-until" className="text-sm font-medium">
-            {tr("quest.view.hold.until")}
-          </label>
+          <ControlDate
+            input={form.input.day}
+            label={tr("quest.view.hold.until")}
+            date
+            clearable
+            disabled={props.submitting}
+            inputProps={UNTIL_TRIGGER_PROPS}
+          />
           <div className="flex flex-wrap items-center gap-2">
-            <Input
-              id="quest-hold-until"
-              data-testid="quest-hold-until"
-              type="date"
-              className="w-auto"
-              min={dt.now().add(1, "day").format("YYYY-MM-DD")}
-              value={day}
-              onChange={(event) => setDay(event.target.value)}
-              disabled={props.submitting}
-            />
             <Button
               type="button"
               variant="outlined"
@@ -165,5 +176,11 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
     </Dialog>
   );
 };
+
+// The kit types `inputProps` as `HTMLAttributes`, which declares no `data-*`
+// key, so the test id is asserted onto it.
+const UNTIL_TRIGGER_PROPS = {
+  "data-testid": "quest-hold-until",
+} as HTMLAttributes<HTMLElement>;
 
 export default QuestHoldDialog;
