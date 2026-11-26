@@ -79,6 +79,7 @@ ${input.trust}
 - **Feedback.** \`feedback_get\` each item above, and \`feedback_attachment_get\` its screenshots: a short title often means its screenshot carries the detail.${errorSteps}
 - **What is already planned.** \`project_context\` for the areas, and \`quest_list\` for the open quests: a report an open quest already covers is not a new quest.
 - **The code**, where a report or a stack names a screen, a route or a file: read enough to say where the fix lives.
+- **The screen**, where a report describes what a page shows or does and the code does not show it: look at it. You may build and run the app to understand a report: when \`playwright-cli\` is on the host (\`command -v playwright-cli\`), start the app as the repository's agent instructions say, on a port of its own that no other run uses, open the page at the viewport the item's \`context\` names, then stop the app. Open only the app you started. Without it, say in the quest that the report was not reproduced.
 
 Then group. A group is one problem: items that ask for the same change, report the same failure, or describe the visible side of the same error. Two items about the same screen asking different things are two groups.
 
