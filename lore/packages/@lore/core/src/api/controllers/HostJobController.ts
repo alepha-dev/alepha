@@ -1,5 +1,6 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
+import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import { $action, NotFoundError } from "alepha/server";
@@ -7,6 +8,7 @@ import { $action, NotFoundError } from "alepha/server";
 import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
 import { projects } from "../entities/projects.ts";
+import { AgentJobPace } from "../schemas/AgentJobPace.ts";
 import {
   type HostJobLogResource,
   hostJobLogSchema,
@@ -47,6 +49,7 @@ export class HostJobController {
   protected readonly projectRows = $repository(projects);
   protected readonly hostService = $inject(HostService);
   protected readonly owned = $inject(OwnedResourceProvider);
+  protected readonly dateTime = $inject(DateTimeProvider);
 
   protected ownsJob = (requires: string) =>
     $ownsProject({
@@ -325,6 +328,27 @@ export class HostJobController {
   }
 
   /**
+   * A running job's pace (#Q4436): `{ pace }` once it has one, else nothing.
+   */
+  protected paceOf(
+    row: HostJob,
+    steps: HostJobResource["steps"],
+    now: number,
+  ): { pace?: HostJobResource["pace"] } {
+    if (row.status !== "running" || !row.startedAt || !steps) return {};
+    const pace = AgentJobPace.of({
+      startedAt: row.startedAt,
+      now,
+      stepTimes: steps.stepTimes,
+      // Steps done before the job started (objectives a previous run of a
+      // `work-quest` ticked) are neither left nor part of this run's pace.
+      total: steps.total - Math.max(0, steps.done - steps.stepTimes.length),
+      ceilingSeconds: row.input.timeoutSeconds,
+    });
+    return pace ? { pace } : {};
+  }
+
+  /**
    * Rows as resources, the host slugs and starter names in one query each.
    */
   public async present(rows: HostJob[]): Promise<HostJobResource[]> {
@@ -347,8 +371,11 @@ export class HostJobController {
     // The steps of every row in one batch (#Q4433): an ended job's from its
     // row, a running one's read from its quests through the port.
     const steps = await this.service.stepsOf(rows);
+    const now = this.dateTime.nowMillis();
     return rows.map((row) => ({
       ...(steps.has(row.id) ? { steps: steps.get(row.id) } : {}),
+      // The pace of a running job's steps, and its ceiling warning (#Q4436).
+      ...this.paceOf(row, steps.get(row.id), now),
       id: row.id,
       projectId: row.projectId,
       hostId: row.hostId,

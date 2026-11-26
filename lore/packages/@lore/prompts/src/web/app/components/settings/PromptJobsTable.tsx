@@ -233,6 +233,7 @@ const PromptJobsTable = (props: PromptJobsTableProps) => {
                 <AgentJobStepper
                   compact
                   steps={job.steps}
+                  {...(job.pace ? { pace: job.pace } : {})}
                   running={job.status === "running"}
                 />
               )}

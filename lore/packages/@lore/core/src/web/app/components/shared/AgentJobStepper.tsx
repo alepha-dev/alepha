@@ -2,12 +2,19 @@ import { cn } from "@alepha/ui";
 import { DateTimeProvider } from "alepha/datetime";
 import { useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { TriangleAlert } from "lucide-react";
 
+import type { AgentJobPaceValue } from "../../../../api/schemas/agentJobPaceSchema.ts";
 import type { AgentJobStepsValue } from "../../../../api/schemas/agentJobStepsSchema.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 export interface AgentJobStepperProps {
   steps: AgentJobStepsValue;
+  /**
+   * The run's pace (#Q4436): the steps left as a range, and the warning
+   * when they may not fit before the timeout. Shown while it runs.
+   */
+  pace?: AgentJobPaceValue;
   /**
    * The job still runs: the current quest, the time since the last step,
    * the elapsed time and the wrapping up line show only then. An ended job
@@ -156,16 +163,33 @@ const AgentJobStepper = (props: AgentJobStepperProps) => {
     </div>
   );
 
+  const warning = props.running && props.pace?.warning;
+  const warningIcon = warning ? (
+    <TriangleAlert
+      className="size-3.5 shrink-0 text-amber-600 dark:text-amber-500"
+      aria-hidden
+    />
+  ) : null;
+
   if (props.compact) {
     return (
       <span
-        className={cn("flex w-24 items-center gap-1.5", props.className)}
+        className={cn("flex w-28 items-center gap-1.5", props.className)}
         data-testid="job-steps"
       >
         {bar}
         <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
           {steps.done}/{steps.total}
         </span>
+        {warning && (
+          <span
+            title={tr("jobs.pace.warning")}
+            aria-label={tr("jobs.pace.warning")}
+            data-testid="job-pace-warning"
+          >
+            {warningIcon}
+          </span>
+        )}
       </span>
     );
   }
@@ -244,6 +268,29 @@ const AgentJobStepper = (props: AgentJobStepperProps) => {
             })}
           </span>
         </div>
+      )}
+      {props.running && props.pace && !wrapping && (
+        <span
+          className="text-muted-foreground text-xs"
+          data-testid="job-pace-range"
+        >
+          {tr(byObjective ? "jobs.pace.objectives" : "jobs.pace.quests", {
+            args: [
+              shortDuration(props.pace.low * 60),
+              shortDuration(props.pace.high * 60),
+              String(props.pace.left),
+            ],
+          })}
+        </span>
+      )}
+      {warning && (
+        <p
+          className="text-foreground flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs"
+          data-testid="job-pace-warning"
+        >
+          <span className="mt-0.5">{warningIcon}</span>
+          <span>{tr("jobs.pace.warning")}</span>
+        </p>
       )}
       {(sinceLast !== undefined || elapsed !== undefined) && (
         <span

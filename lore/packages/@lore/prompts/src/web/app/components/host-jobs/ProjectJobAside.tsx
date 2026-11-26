@@ -167,6 +167,7 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
           {job.steps && (
             <AgentJobStepper
               steps={job.steps}
+              {...(job.pace ? { pace: job.pace } : {})}
               running={job.status === "running"}
               {...(job.startedAt ? { startedAt: job.startedAt } : {})}
               timeoutSeconds={job.input.timeoutSeconds}

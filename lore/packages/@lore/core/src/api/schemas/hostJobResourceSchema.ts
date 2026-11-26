@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 
+import { agentJobPaceSchema } from "./agentJobPaceSchema.ts";
 import { agentJobStepsSchema } from "./agentJobStepsSchema.ts";
 import { hostJobInputSchema } from "./hostJobInputSchema.ts";
 import { hostJobPokeSchema } from "./hostJobPokeSchema.ts";
@@ -77,6 +78,12 @@ export const hostJobResourceSchema = z.object({
    * job that accepted no quest (a triage, a review).
    */
   steps: agentJobStepsSchema.optional(),
+  /**
+   * What a running job's own pace says of the steps it has left (#Q4436):
+   * the range in minutes once 2 steps are done, and whether they may not
+   * fit before its timeout. Absent before that, and once it ended.
+   */
+  pace: agentJobPaceSchema.optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;
