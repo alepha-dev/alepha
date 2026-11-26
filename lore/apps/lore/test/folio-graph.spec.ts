@@ -91,4 +91,56 @@ describe("folioGraph", () => {
     expect(graph.data.edges).toEqual([{ from: spoke.id, to: hub.id }]);
     expect(graph.data.nodes.some((node) => node.id === lone.id)).toBe(true);
   });
+
+  it("answers a few hundred folios, hubs and unlinked ones, in one read", async () => {
+    // The size of a long-lived project's folio graph (#Q4438): three hubs,
+    // two hundred and seventy folios linking to one of them, and thirty
+    // linking to nothing.
+    const fake = alepha.inject(FakeProvider);
+    const created = await alepha
+      .inject(AdminUserController)
+      .createUser.fetch(
+        { body: { ...fake.generate(userDataSchema), roles: ["user"] } },
+        { user: adminUser },
+      );
+    const user = { id: created.data.id, roles: created.data.roles };
+    const project = await alepha.inject(ProjectController).createProject.fetch(
+      {
+        body: {
+          title: "Large graph",
+          capabilities: [{ key: "plan" }, { key: "remember" }],
+        },
+      },
+      { user },
+    );
+    const projectId = project.data.id;
+    const folios = alepha.inject(FolioController);
+    const make = async (title: string, content: string) =>
+      (
+        await folios.create.fetch(
+          { body: { projectId, title, content } },
+          { user },
+        )
+      ).data;
+
+    const hubs = [];
+    for (let h = 0; h < 3; h++) hubs.push(await make(`Hub ${h}`, "A hub."));
+    for (let i = 0; i < 270; i++) {
+      const hub = hubs[i % 3];
+      await make(`Spoke ${i}`, `Links [[#F${hub.shortId}]].`);
+    }
+    for (let i = 0; i < 30; i++) await make(`Lone ${i}`, "No link.");
+
+    const graph = await alepha
+      .inject(DirectoryController)
+      .folioGraph.fetch({ params: { projectId } }, { user });
+
+    expect(graph.data.nodes).toHaveLength(303);
+    expect(graph.data.edges).toHaveLength(270);
+    const degree = new Map<string, number>();
+    for (const edge of graph.data.edges) {
+      degree.set(edge.to, (degree.get(edge.to) ?? 0) + 1);
+    }
+    expect(hubs.map((hub) => degree.get(hub.id))).toEqual([90, 90, 90]);
+  }, 60_000);
 });
