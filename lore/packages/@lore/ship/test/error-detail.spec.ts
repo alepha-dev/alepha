@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { projectErrorIgnoreRules } from "../src/api/entities/projectErrorIgnoreRules.ts";
 import {
+  InsightsController,
   LoreShipApi,
   ProjectErrorController,
   SigilIngestService,
@@ -267,6 +268,38 @@ describe("getProjectError", () => {
 
     expect(detail.rules.map((rule) => rule.id)).toEqual([matching.id]);
     expect(detail.rules[0]?.pattern).toBe("resizeobserver");
+  });
+
+  it("gives each of an app's error groups the id of its project error, so the row opens its page", async ({
+    expect,
+  }) => {
+    await report(w, w.web, "cart is undefined");
+    await report(w, w.api, "cart is undefined");
+    await report(w, w.web, "since deleted");
+    const row = await group(w, "cart is undefined");
+    // A group outlives its project error: deleted, the row has no page.
+    await w.repos.errors.deleteById((await group(w, "since deleted")).id);
+
+    const insights = await w.alepha
+      .inject(InsightsController)
+      .getInsights.run(
+        { params: { projectId: w.projectId }, query: { range: "7d" } },
+        { user: w.owner },
+      );
+
+    const groups = insights.errorGroups.map((it) => [
+      it.message,
+      it.sigilLabel,
+      it.errorId,
+    ]);
+    expect(groups).toHaveLength(3);
+    expect(groups).toEqual(
+      expect.arrayContaining([
+        ["cart is undefined", "acme-api/production", row.id],
+        ["cart is undefined", "acme/production", row.id],
+        ["since deleted", "acme/production", undefined],
+      ]),
+    );
   });
 
   it("names no quest where no module registers one, whatever the status says", async ({

@@ -233,6 +233,12 @@ export {
 export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";
 export { default as CommitLink } from "./app/components/shared/CommitLink.tsx";
 export { default as StackTraceViewer } from "./app/components/shared/StackTraceViewer.tsx";
+// What `StackTraceViewer` injects at render: a spec mounting it outside
+// `LoreCoreWeb` injects this before `start()`.
+export { StackTraceParser } from "./app/services/StackTraceParser.ts";
+// The dashboard's chart tile, for a page that draws one series the same way
+// (an error's thirty days, #E185).
+export { default as DashboardTileChart } from "./app/components/dashboard/tiles/DashboardTileChart.tsx";
 export { OutboundLink } from "./app/components/shared/OutboundLink.tsx";
 export { ProjectIcon } from "./app/components/shared/ProjectIcon.tsx";
 export {

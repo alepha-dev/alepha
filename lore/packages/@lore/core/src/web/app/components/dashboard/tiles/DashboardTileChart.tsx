@@ -7,7 +7,11 @@ import { markerPosition, scaleSeries } from "./dashboardSeriesScale.ts";
 import DashboardSparkline from "./DashboardSparkline.tsx";
 
 export interface DashboardTileChartProps {
-  value: DashboardCardValue;
+  /**
+   * The series and its markers: all of a card's value this draws, so a page
+   * with one series of its own (an error's thirty days) passes just those.
+   */
+  value: Pick<DashboardCardValue, "series" | "markers">;
   /**
    * `bars` for discrete days (a count per day), `area` for a running total.
    * From the catalogue's `chartStyle`.

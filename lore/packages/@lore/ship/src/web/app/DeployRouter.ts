@@ -13,6 +13,7 @@ import {
   hasCapability,
 } from "@lore/core/web";
 import { $inject, Alepha, z } from "alepha";
+import { QueryCache } from "alepha/react";
 import { $page, NotFound, ReactRouter, Redirection } from "alepha/react/router";
 import { isHttpError, NotFoundError } from "alepha/server";
 import { $client } from "alepha/server/links";
@@ -21,6 +22,7 @@ import { createElement } from "react";
 import type { AppController } from "../../api/controllers/AppController.ts";
 import type { DeliveryReportsController } from "../../api/controllers/DeliveryReportsController.ts";
 import type { MonitorController } from "../../api/controllers/MonitorController.ts";
+import type { ProjectErrorController } from "../../api/controllers/ProjectErrorController.ts";
 import { defaultAppInstance } from "../../api/schemas/defaultAppInstance.ts";
 import { currentInstanceAtom } from "./atoms/currentInstanceAtom.ts";
 import { currentInstancesAtom } from "./atoms/currentInstancesAtom.ts";
@@ -43,6 +45,7 @@ export class DeployRouter {
   reportsTabs = $inject(ReportsTabRegistry);
   appApi = $client<AppController>();
   monitorApi = $client<MonitorController>();
+  errorApi = $client<ProjectErrorController>();
   lendingApi = $client<ProjectHostController>();
   router = $inject(ReactRouter);
   /**
@@ -166,6 +169,47 @@ export class DeployRouter {
       //
       // The rule: a route loader fetches only what the page cannot fetch for
       // itself.
+    },
+  });
+
+  /**
+   * One error's own page (#E185): its history, every triage verb and its
+   * thread, at an address a quest, a chat message or a mention can point at.
+   *
+   * The same gate as the inbox: the Ship capability. The loader reads the
+   * error, so an unknown id, or one of another project, is a 404 page
+   * rather than an empty shell.
+   */
+  projectError = $pageProject({
+    name: "projectError",
+    path: "/errors/:errorId",
+    schema: { params: z.object({ errorId: z.integer() }) },
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Error`,
+    }),
+    lazy: () => import("./components/project/errors/ProjectErrorPage.tsx"),
+    loader: async ({ params }) => {
+      const project = this.alepha.store.get(currentProjectAtom);
+      if (!project) {
+        throw new NotFoundError("Project not found");
+      }
+      if (!hasCapability(project, "ship")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+      const detail = await this.errorApi.getProjectError({
+        params: { projectId: project.id, errorId: params.errorId },
+      });
+      // Seeds the page's own query, so it starts on the error just read
+      // instead of asking for it a second time.
+      this.alepha
+        .inject(QueryCache)
+        .set(["project-error", project.id, params.errorId], detail);
+      return { detail };
+    },
+    errorHandler: (error) => {
+      if (isHttpError(error, 404)) {
+        return createElement(NotFound, { style: { height: "100%" } });
+      }
     },
   });
 

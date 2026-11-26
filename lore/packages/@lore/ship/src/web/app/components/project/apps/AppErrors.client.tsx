@@ -10,7 +10,7 @@ import {
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import { Bug, Inbox, Laptop, Server } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
@@ -201,7 +201,25 @@ const AppErrors = () => {
                     ? tr("insights.errors.origin.server")
                     : tr("insights.errors.origin.client")}
                 </span>
-                <span className="font-medium">{group.name}</span>
+                {/* The project's error this group belongs to, on its own
+                    page (#E185). A group whose error was deleted or purged
+                    has none to open, and stays text. */}
+                {project && group.errorId !== undefined ? (
+                  <Link
+                    href={router.path("projectError", {
+                      params: {
+                        projectSlug: project.slug,
+                        errorId: String(group.errorId),
+                      },
+                    })}
+                    className="font-medium hover:underline"
+                    data-testid="app-error-open"
+                  >
+                    {group.name}
+                  </Link>
+                ) : (
+                  <span className="font-medium">{group.name}</span>
+                )}
                 <span className="text-muted-foreground min-w-0 flex-1 truncate text-sm">
                   {group.message}
                 </span>

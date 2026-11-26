@@ -21,6 +21,12 @@ export interface ProjectErrorRulesDialogProps {
   open: boolean;
   projectId: number;
   onOpenChange: (open: boolean) => void;
+  /**
+   * What the pattern field starts with when the dialog opens: an error's
+   * message, from "Ignore errors like this one" on its page. Cut to what a
+   * pattern may hold; the member narrows it before adding.
+   */
+  initialPattern?: string;
 }
 
 /**
@@ -46,7 +52,7 @@ const ProjectErrorRulesDialog = (props: ProjectErrorRulesDialogProps) => {
   if (props.open !== wasOpen) {
     setWasOpen(props.open);
     if (props.open) {
-      setPattern("");
+      setPattern((props.initialPattern ?? "").slice(0, 200));
     }
   }
 

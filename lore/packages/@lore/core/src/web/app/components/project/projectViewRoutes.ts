@@ -151,6 +151,9 @@ export const ROUTES_FULL_WIDTH = new Set([
   "projectFoliosFolio",
   "projectFeedback",
   "projectErrors",
+  // One error's page (#E185): the quest view's two-column shell, a main
+  // column and a rail that each own their scroll.
+  "projectError",
   // The same shape as its two neighbours above, and it was missing
   // (feedback #P2129): capped, the message table sat in a ~900px column with
   // the project background down both sides while Message truncated inside
@@ -206,6 +209,7 @@ export const SECTION_HREF_ROUTES: Record<
   | "projectEpics"
   | "projectQuests"
   | "projectApps"
+  | "projectErrors"
   | "projectArtifacts"
   | "projectStacks"
   | "projectSettingsPromptJobs"
@@ -221,6 +225,8 @@ export const SECTION_HREF_ROUTES: Record<
   projectFoliosFolio: "projectFolios",
   projectEpic: "projectEpics",
   projectQuest: "projectQuests",
+  // An error's page climbs back to the inbox (#E185).
+  projectError: "projectErrors",
   projectQuestGraph: "projectQuests",
   projectRelease: "projectReleases",
   // A persona or a use case climbs back to the list page that holds it
@@ -317,6 +323,7 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectFoliosFolio: "project.menu.folios",
   projectFeedback: "project.menu.feedback",
   projectErrors: "project.menu.errors",
+  projectError: "project.menu.errors",
   projectApps: "project.menu.apps",
   appUptime: "project.menu.apps",
   projectApp: "project.menu.apps",

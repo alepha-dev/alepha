@@ -304,6 +304,12 @@ export const insightsResourceSchema = z.object({
    */
   errorGroups: z.array(
     z.object({
+      /**
+       * The project's error this group belongs to (`project_errors.id`), so
+       * the row can open its page. Absent once that error was deleted or
+       * purged: the group outlives it.
+       */
+      errorId: z.integer().optional(),
       sigilId: z.uuid(),
       /**
        * The sigil's display name, so the UI needs no second lookup. The wire
