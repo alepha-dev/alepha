@@ -14,7 +14,7 @@ import type {
   AgentTranscriptTotals,
   HostJobResource,
 } from "@lore/core/schemas";
-import { type I18n, currentProjectAtom } from "@lore/core/web";
+import { type I18n, currentProjectAtom, usePageCrumb } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
@@ -92,6 +92,12 @@ const ProjectJob = (props: ProjectJobProps) => {
     [promptApi, project?.id, row?.prompt],
   );
   const prompt = prompts.data?.items.find((it) => it.name === row?.prompt);
+  // The trail ends with the job, named by its prompt (#Q4536), or by its
+  // short id when it ran none.
+  usePageCrumb(
+    "projectJob",
+    row ? prompt?.title || row.prompt || row.id.slice(0, 8) : undefined,
+  );
   // Asked first (#Q4493): a cancel kills the agent mid-run, and the menu
   // item sits one row under harmless ones.
   const cancel = useAction<[], void>(

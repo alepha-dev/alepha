@@ -1,7 +1,7 @@
 import { DialogProvider } from "@alepha/ui";
 import type { PromptResource } from "@lore/core/schemas";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n } from "@lore/core/web";
+import { currentProjectAtom, I18n, pageCrumbAtom } from "@lore/core/web";
 import {
   cleanup,
   fireEvent,
@@ -285,6 +285,29 @@ describe("ProjectPrompt", () => {
     expect(
       within(settings).getByRole("combobox", { name: "Source" }),
     ).toBeTruthy();
+  });
+
+  it("ends the breadcrumb with the prompt's title, or its name without one (#Q4536)", async ({
+    expect,
+  }) => {
+    world.items = [prompt(), prompt({ name: "untitled", title: "" })];
+    await show("nightly");
+    await waitFor(() =>
+      expect(alepha?.store.get(pageCrumbAtom)).toEqual({
+        routeName: "projectPrompt",
+        label: "Nightly check",
+      }),
+    );
+    cleanup();
+    await alepha?.stop();
+
+    await show("untitled");
+    await waitFor(() =>
+      expect(alepha?.store.get(pageCrumbAtom)).toEqual({
+        routeName: "projectPrompt",
+        label: "untitled",
+      }),
+    );
   });
 
   it("says so for a name the project has no prompt for", async ({ expect }) => {
