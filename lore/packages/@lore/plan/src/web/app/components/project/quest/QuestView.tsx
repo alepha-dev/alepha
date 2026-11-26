@@ -592,9 +592,28 @@ const QuestView = (props: QuestViewProps) => {
     >
       {/* The scroll surface at `lg`: the LEFT column only, which is what
           makes the rail beside it stand still while this scrolls. Below
-          `lg` it owns no scroll at all and the root above does the work. */}
-      <div className="flex min-w-0 flex-1 flex-col overflow-x-hidden lg:overflow-y-auto">
-        <div className="flex flex-1 flex-col gap-6 px-10 pt-4 pb-14">
+          `lg`, on the page and in the dialog, it owns no scroll at all and
+          the root above does the work.
+
+          ⚠️ `overflow-x-clip` below `lg`, never `overflow-x-hidden`: CSS
+          turns a `hidden` x into an `auto` y, so the column became a
+          scroller of its own, and on a 411x845 phone it scrolled the body
+          inside 456px while the rail stood still under it, a third of the
+          screen (#Q4418). `clip` crops wide content the same way without
+          making a scroll container.
+
+          The card is the exception on purpose: its root does not scroll,
+          so this column is its scroll surface at every width. */}
+      <div
+        className={`flex min-w-0 flex-1 flex-col ${
+          context === "card"
+            ? "overflow-x-hidden overflow-y-auto"
+            : "overflow-x-clip lg:overflow-x-hidden lg:overflow-y-auto"
+        }`}
+      >
+        {/* `px-4` below `lg`: `px-10` cost a phone 80px of a 411px width,
+            and every line of the title it took back. */}
+        <div className="flex flex-1 flex-col gap-6 px-4 pt-4 pb-14 lg:px-10">
           {/* Chips: what this quest IS right now, above the title that says
               what it is about. Deliberately outside the sticky header below,
               so the one line worth pinning while the body scrolls stays one
@@ -613,7 +632,7 @@ const QuestView = (props: QuestViewProps) => {
               bottom edge off the status badge, the tallest thing here. The
               row paints above the header's empty top padding instead. */}
           <div
-            className={`relative z-20 -mx-10 -mt-4 -mb-7 flex flex-wrap items-center gap-2 px-10 pt-4 ${
+            className={`relative z-20 -mx-4 -mt-4 -mb-7 flex flex-wrap items-center gap-2 px-4 pt-4 lg:-mx-10 lg:px-10 ${
               context === "dialog" ? "pr-14 lg:pr-10" : ""
             }`}
           >
@@ -661,9 +680,10 @@ const QuestView = (props: QuestViewProps) => {
             </span>
           </div>
 
-          {/* Sticky header — stays visible as the quest body scrolls.
-              Works in both contexts: the route page and the kanban
-              drawer share this same scroll container.
+          {/* Sticky header — stays visible as the quest body scrolls, from
+              `lg` on the page and in the dialog and at every width in the
+              card; below `lg` the page and the dialog let it scroll away
+              (#Q4418, the className below says why).
               `-mx-5` spans the full width; the top offset now belongs to the
               chips row above, which is what sits flush with the top edge.
               Carries the title (prefixed with #shortId), the priority badge
@@ -679,7 +699,16 @@ const QuestView = (props: QuestViewProps) => {
             // alone under the top edge, and `pt-1.5 pb-3` left it sitting
             // high. The chips row's `-mb-7` takes the extra 4px back, so the
             // unscrolled spacing under the chips is unchanged.
-            className="bg-background border-border sticky top-0 z-10 -mx-10 flex items-start gap-3 border-b px-10 py-2.5"
+            //
+            // Pinned from `lg` only on the page and in the dialog (#Q4418):
+            // below it the title wraps over four or five lines on a phone,
+            // and a pinned row that tall left the body a strip. It scrolls
+            // away there with the chips above it. The card keeps it pinned
+            // at every width, since its back arrow is the drawer's only way
+            // out.
+            className={`bg-background border-border top-0 z-10 -mx-4 flex items-start gap-3 border-b px-4 py-2.5 lg:-mx-10 lg:px-10 ${
+              context === "card" ? "sticky" : "lg:sticky"
+            }`}
           >
             {/* Card mount only. On the page the breadcrumb already walks up
                 and the arrow was redundant beside it, but in the kanban
@@ -875,7 +904,12 @@ const QuestView = (props: QuestViewProps) => {
               outside as a standing sibling instead, so for them this column
               holds the body alone. */}
           <div className="flex flex-col gap-6">
-            <div className="flex min-w-0 flex-1 flex-col gap-6">
+            <div
+              // What the phone spec (#Q4418) measures: the share of the
+              // screen the body gets once it is scrolled into.
+              data-testid="quest-body"
+              className="flex min-w-0 flex-1 flex-col gap-6"
+            >
               <QuestViewQuestline quest={quest} questline={questline} />
 
               {/* Description (collapsible, default expanded) */}
@@ -1013,8 +1047,9 @@ const QuestView = (props: QuestViewProps) => {
 
           It carries its own `overflow-y-auto` because a long rail must still
           be reachable on a short viewport; it just does not move when the
-          quest does. Hidden below `lg`, where the viewport cannot afford
-          308px of chrome beside the prose. */}
+          quest does. Below `lg` it is a full-width section under the body,
+          in the root's one scroll, reached by scrolling past the body: the
+          viewport cannot afford 308px of chrome beside the prose. */}
       {/* `lg:pt-12` in the dialog only. From `lg` this panel IS the popup's
           top-right corner, and the close floats there over whatever the rail
           scrolls beneath it; without the reserve, Status and its value opened
@@ -1022,6 +1057,7 @@ const QuestView = (props: QuestViewProps) => {
           even `p-4`. */}
       {context !== "card" && (
         <aside
+          data-testid="quest-rail"
           className={`border-border bg-muted/20 w-full shrink-0 border-t p-4 lg:w-[308px] lg:overflow-y-auto lg:border-t-0 lg:border-l ${
             context === "dialog" ? "lg:pt-12" : ""
           }`}
