@@ -141,4 +141,52 @@ describe("QuestHoldDialog", () => {
     );
     expect(sent[1]?.until).toBe(expected.toISOString());
   });
+
+  it("offers 1D 1W 2W 3W 1M, named by their long form (#Q4447)", async ({
+    expect,
+  }) => {
+    await mount();
+    for (const [short, long] of [
+      ["1D", "1 day"],
+      ["1W", "1 week"],
+      ["2W", "2 weeks"],
+      ["3W", "3 weeks"],
+      ["1M", "1 month"],
+    ]) {
+      const button = await screen.findByRole("button", { name: long });
+      expect(button.textContent).toBe(short);
+      expect(button.getAttribute("title")).toBe(long);
+    }
+  });
+
+  it("sends tomorrow for 1D and one calendar month for 1M (#Q4447)", async ({
+    expect,
+  }) => {
+    const sent = await mount();
+    const now = new Date();
+
+    fireEvent.click(await screen.findByRole("button", { name: "1 day" }));
+    await screen.findByRole("button", { name: "No date" });
+    submit();
+    expect(sent[0]?.until).toBe(
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      ).toISOString(),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "1 month" }));
+    submit();
+    // A calendar month, clamped to the next month's last day (31 January
+    // gives the end of February), never four weeks.
+    const lastOfNext = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+    expect(sent[1]?.until).toBe(
+      new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        Math.min(now.getDate(), lastOfNext.getDate()),
+      ).toISOString(),
+    );
+  });
 });

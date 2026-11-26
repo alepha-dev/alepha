@@ -31,8 +31,10 @@ export interface QuestHoldDialogProps {
 
 /**
  * Put on hold (#Q4408): the reason, which is posted to the discussion, and
- * an optional day the hold lifts on its own, with quick picks for one and
- * two weeks. Without a day the hold waits for somebody to lift it.
+ * an optional day the hold lifts on its own, with quick picks for one day,
+ * one, two and three weeks and one calendar month, labelled 1D 1W 2W 3W 1M
+ * with the long form as their accessible name (#Q4447). Without a day the
+ * hold waits for somebody to lift it.
  *
  * The day is the kit's `ControlDate` (#Q4446), never the browser's native
  * `<input type="date">`, which drew an OS calendar that ignored the theme.
@@ -56,8 +58,8 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
   const setDay = (next: string) => form.input.day.set(next || undefined);
 
   const today = dt.now().format("YYYY-MM-DD");
-  const inWeeks = (weeks: number) =>
-    dt.now().add(weeks, "week").format("YYYY-MM-DD");
+  const inFuture = (pick: QuickPick) =>
+    dt.now().add(pick.amount, pick.unit).format("YYYY-MM-DD");
   const reasonMissing = !reason.trim();
   const dayInPast = !!day && day <= today;
 
@@ -114,24 +116,20 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
             inputProps={UNTIL_TRIGGER_PROPS}
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outlined"
-              size="sm"
-              onClick={() => setDay(inWeeks(1))}
-              disabled={props.submitting}
-            >
-              {tr("quest.view.hold.oneWeek")}
-            </Button>
-            <Button
-              type="button"
-              variant="outlined"
-              size="sm"
-              onClick={() => setDay(inWeeks(2))}
-              disabled={props.submitting}
-            >
-              {tr("quest.view.hold.twoWeeks")}
-            </Button>
+            {QUICK_PICKS.map((pick) => (
+              <Button
+                key={pick.label}
+                type="button"
+                variant="outlined"
+                size="sm"
+                onClick={() => setDay(inFuture(pick))}
+                disabled={props.submitting}
+                aria-label={tr(pick.long)}
+                title={tr(pick.long)}
+              >
+                {tr(pick.label)}
+              </Button>
+            ))}
             {day && (
               <Button
                 type="button"
@@ -176,6 +174,58 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
     </Dialog>
   );
 };
+
+interface QuickPick {
+  amount: number;
+  unit: "day" | "week" | "month";
+  label:
+    | "quest.view.hold.pick.1d"
+    | "quest.view.hold.pick.1w"
+    | "quest.view.hold.pick.2w"
+    | "quest.view.hold.pick.3w"
+    | "quest.view.hold.pick.1m";
+  long:
+    | "quest.view.hold.pick.1dLong"
+    | "quest.view.hold.pick.1wLong"
+    | "quest.view.hold.pick.2wLong"
+    | "quest.view.hold.pick.3wLong"
+    | "quest.view.hold.pick.1mLong";
+}
+
+// 1D is tomorrow, the earliest day the dialog accepts; 1M is one calendar
+// month, not four weeks.
+const QUICK_PICKS: QuickPick[] = [
+  {
+    amount: 1,
+    unit: "day",
+    label: "quest.view.hold.pick.1d",
+    long: "quest.view.hold.pick.1dLong",
+  },
+  {
+    amount: 1,
+    unit: "week",
+    label: "quest.view.hold.pick.1w",
+    long: "quest.view.hold.pick.1wLong",
+  },
+  {
+    amount: 2,
+    unit: "week",
+    label: "quest.view.hold.pick.2w",
+    long: "quest.view.hold.pick.2wLong",
+  },
+  {
+    amount: 3,
+    unit: "week",
+    label: "quest.view.hold.pick.3w",
+    long: "quest.view.hold.pick.3wLong",
+  },
+  {
+    amount: 1,
+    unit: "month",
+    label: "quest.view.hold.pick.1m",
+    long: "quest.view.hold.pick.1mLong",
+  },
+];
 
 // The kit types `inputProps` as `HTMLAttributes`, which declares no `data-*`
 // key, so the test id is asserted onto it.
