@@ -41,6 +41,9 @@ const NAV_ROUTE_NAMES = [
   "projectEpics",
   "projectEpic",
   "projectErrors",
+  // One error's own page, opened from the inbox, an app's Errors tab and
+  // the error page's own previous, next and linked error (#E185).
+  "projectError",
   "projectFeedback",
   "projectReleases",
   // Opening a release from the list — ProjectReleases.tsx
@@ -170,6 +173,13 @@ describe("the route table", () => {
     );
   });
 
+  it("puts one error at /errors/:errorId, beside the inbox", ({ expect }) => {
+    const params = { projectSlug: "demo", errorId: "42" };
+
+    expect(router.path("projectErrors", { params })).toBe("/demo/errors");
+    expect(router.path("projectError", { params })).toBe("/demo/errors/42");
+  });
+
   it("puts quests under /quests and drops the /p prefix", ({ expect }) => {
     const params = { projectSlug: "demo", shortId: "19" };
 
@@ -272,6 +282,7 @@ describe("the route table", () => {
       app,
       env,
       shortId: "3",
+      errorId: "42",
       epicNumber: "7",
       releaseTag: "0.28.0",
       artifactTag: "0.28.0",

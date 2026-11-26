@@ -1,7 +1,6 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
+import { Link } from "alepha/react/router";
 import { Link2 } from "lucide-react";
-
-import type { ProjectErrorResource } from "../../../../../api/schemas/projectErrorResourceSchema.ts";
 
 export interface ErrorLinkedLineProps {
   /**
@@ -10,43 +9,31 @@ export interface ErrorLinkedLineProps {
    */
   label: string;
   /**
-   * The linked group, when the inbox holds it: the line then opens its stack
-   * trace. Plain text otherwise.
+   * The linked error's own page (#E185).
    */
-  linked?: ProjectErrorResource;
-  onOpen: (error: ProjectErrorResource) => void;
+  href: string;
 }
 
 /**
  * The line tying a browser error to the server error of the same request,
- * and back (#Q4404).
+ * and back (#Q4404). It opens the other error's page.
  *
- * The click stops at the button, so it never fires the row underneath.
+ * The click stops at the link, so it never fires the row underneath.
  */
-const ErrorLinkedLine = (props: ErrorLinkedLineProps) => {
-  const linked = props.linked;
-  return (
-    <span
-      className="text-muted-foreground flex items-center gap-1 text-xs"
-      data-testid="error-linked"
+const ErrorLinkedLine = (props: ErrorLinkedLineProps) => (
+  <span
+    className="text-muted-foreground flex items-center gap-1 text-xs"
+    data-testid="error-linked"
+  >
+    <Link2 className="size-3 shrink-0" />
+    <Link
+      href={props.href}
+      className={cn(textLinkUnderlineClassName, "hover:text-foreground")}
+      onClick={(event) => event.stopPropagation()}
     >
-      <Link2 className="size-3 shrink-0" />
-      {linked ? (
-        <button
-          type="button"
-          className={cn(textLinkUnderlineClassName, "hover:text-foreground")}
-          onClick={(event) => {
-            event.stopPropagation();
-            props.onOpen(linked);
-          }}
-        >
-          {props.label}
-        </button>
-      ) : (
-        props.label
-      )}
-    </span>
-  );
-};
+      {props.label}
+    </Link>
+  </span>
+);
 
 export default ErrorLinkedLine;

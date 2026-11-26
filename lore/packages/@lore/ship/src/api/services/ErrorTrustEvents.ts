@@ -118,7 +118,8 @@ export class ErrorTrustEvents {
       error_name: error.name,
       origin: error.origin,
       ...(trustedBy ? { trusted_by: trustedBy } : {}),
-      url: `/${project.slug || `project-${project.id}`}/errors`,
+      // The error's own page (#E185): the event is about this one error.
+      url: `/${project.slug || `project-${project.id}`}/errors/${error.id}`,
     };
   }
 }

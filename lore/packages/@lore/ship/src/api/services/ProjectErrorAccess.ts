@@ -83,10 +83,23 @@ export class ProjectErrorAccess {
     project: { id: number; organizationId?: string | null },
     user: UserAccountToken,
   ): Promise<boolean> {
-    const kind = this.resources.get("quest");
-    if (!kind?.describe || !project.organizationId) return false;
     const capabilities = await this.security.capabilitiesOf(project.id);
     if (!capabilities.plan) return false;
+    return await this.kindReadable("quest", project, user);
+  }
+
+  /**
+   * Whether this caller is shown a resource of another module that an error
+   * points at (its quest, the use case of a run error): the kind is
+   * registered, and the caller's rank holds the kind's own read permission.
+   */
+  public async kindReadable(
+    kindName: string,
+    project: { id: number; organizationId?: string | null },
+    user: UserAccountToken,
+  ): Promise<boolean> {
+    const kind = this.resources.get(kindName);
+    if (!kind?.describe || !project.organizationId) return false;
     return await this.ranks.can(project.organizationId, kind.permission, user);
   }
 }

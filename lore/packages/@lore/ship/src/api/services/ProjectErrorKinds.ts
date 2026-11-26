@@ -9,6 +9,7 @@ import type { ProjectErrorKind } from "../schemas/projectErrorKindSchema.ts";
  */
 export class ProjectErrorKinds {
   protected readonly UPTIME_PREFIX = "uptime:";
+  protected readonly USE_CASE_PREFIX = "usecase:";
 
   public of(
     row: Pick<ProjectError, "origin" | "fingerprint">,
@@ -28,5 +29,18 @@ export class ProjectErrorKinds {
     if (this.of(row) !== "uptime") return undefined;
     const id = row.fingerprint.split(":")[2];
     return id || undefined;
+  }
+
+  /**
+   * The use case of a run error, by its global id, from its fingerprint
+   * (`usecase:<useCaseId>:<criterionKey>`). `undefined` for any other error.
+   */
+  public useCaseId(
+    row: Pick<ProjectError, "origin" | "fingerprint">,
+  ): number | undefined {
+    if (this.of(row) !== "run") return undefined;
+    if (!row.fingerprint.startsWith(this.USE_CASE_PREFIX)) return undefined;
+    const id = Number(row.fingerprint.split(":")[1]);
+    return Number.isInteger(id) && id > 0 ? id : undefined;
   }
 }

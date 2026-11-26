@@ -11,6 +11,7 @@ import { $repository } from "alepha/orm";
 import { $action, NotFoundError } from "alepha/server";
 
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
+import { projectErrors } from "../entities/projectErrors.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { sigils } from "../entities/sigils.ts";
 import {
@@ -232,6 +233,7 @@ export class InsightsController {
   protected visitors = $inject(DailyVisitorsService);
   protected sigils = $repository(sigils);
   protected errorGroups = $repository(sigilErrorGroups);
+  protected projectErrors = $repository(projectErrors);
 
   getInsights = $action({
     use: [$ownsProject({ requires: "app:read", param: "projectId" })],
@@ -684,6 +686,7 @@ export class InsightsController {
       }));
 
       const errorGroups = await this.readErrorGroups(
+        params.projectId,
         sigilIds,
         labels,
         since,
@@ -1114,6 +1117,7 @@ export class InsightsController {
    * collation, where `~` does not sort after the letters and digits.
    */
   protected async readErrorGroups(
+    projectId: number,
     sigilIds: string[],
     labels: Map<string, string>,
     since: string,
@@ -1154,7 +1158,25 @@ export class InsightsController {
       .sort((left, right) => (right.count ?? 1) - (left.count ?? 1))
       .slice(0, this.TOP_ERROR_GROUPS);
 
+    // The project's error each group belongs to (#E185), so a row opens its
+    // page: one statement for the whole list, bounded by `TOP_ERROR_GROUPS`,
+    // and none for an app that reported nothing.
+    const fingerprints = [...new Set(rows.map((row) => row.fingerprint))];
+    const errors = fingerprints.length
+      ? await this.projectErrors.findMany({
+          where: {
+            projectId: { eq: projectId },
+            fingerprint: { inArray: fingerprints },
+          },
+          columns: ["id", "fingerprint"],
+        })
+      : [];
+    const errorIds = new Map(errors.map((it) => [it.fingerprint, it.id]));
+
     return rows.map((row) => ({
+      ...(errorIds.has(row.fingerprint)
+        ? { errorId: errorIds.get(row.fingerprint) }
+        : {}),
       sigilId: row.sigilId,
       // The sigil is guaranteed present — the ids came from the same read, and
       // `sigil_error_groups.sigilId` cascades on delete.

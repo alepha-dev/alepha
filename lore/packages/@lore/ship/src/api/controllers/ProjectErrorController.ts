@@ -236,7 +236,7 @@ export class ProjectErrorController {
       }
       const kind = this.kinds.of(row);
       const monitorId = this.kinds.monitorId(row);
-      const [apps, linkedError, quest, rules, neighbours, trusters] =
+      const [apps, linkedError, quest, rules, neighbours, trusters, useCase] =
         await Promise.all([
           kind === "sigil" ? this.appsOf(row) : [],
           this.linkedErrorOf(row, agent),
@@ -244,6 +244,7 @@ export class ProjectErrorController {
           this.ruleService.listForProject(row.projectId),
           this.neighboursOf(row, agent),
           this.trusters([row]),
+          this.useCaseOf(row, user),
         ]);
       return {
         error: {
@@ -260,6 +261,7 @@ export class ProjectErrorController {
                   ? { useCaseRunId: row.useCaseRunId }
                   : {}),
                 ...(row.criterionKey ? { criterionKey: row.criterionKey } : {}),
+                ...(useCase ? { useCase } : {}),
               },
             }
           : {}),
@@ -927,6 +929,33 @@ export class ProjectErrorController {
       title: ref.title,
       ...(ref.status ? { status: ref.status } : {}),
     };
+  }
+
+  /**
+   * The use case a run error verified, through the `usecase` kind of the
+   * resources registry, for the page's link to it. Absent for any other
+   * error, where no module registers the kind, and for a caller who may not
+   * read use cases.
+   */
+  protected async useCaseOf(
+    row: ProjectError,
+    user: UserAccountToken,
+  ): Promise<{ number: number; title: string } | undefined> {
+    const id = this.kinds.useCaseId(row);
+    if (id === undefined) return undefined;
+    if (
+      !(await this.access.kindReadable(
+        "usecase",
+        this.owned.authority<Project>(),
+        user,
+      ))
+    ) {
+      return undefined;
+    }
+    const [ref] = await this.resources.describe("usecase", row.projectId, [
+      String(id),
+    ]);
+    return ref ? { number: ref.shortId, title: ref.title } : undefined;
   }
 
   /**

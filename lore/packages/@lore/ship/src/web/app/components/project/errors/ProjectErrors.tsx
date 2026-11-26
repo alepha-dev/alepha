@@ -1,10 +1,5 @@
 import {
   TimeAgo,
-  Badge,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
   useDialog,
   useToast,
   cn,
@@ -22,7 +17,6 @@ import {
   formatReference,
   LoreEmptyState,
   PinnedPromptsButton,
-  StackTraceViewer,
 } from "@lore/core/web";
 import { type Page, z } from "alepha";
 import { useAction, useAlepha, useClient, useStore } from "alepha/react";
@@ -32,10 +26,7 @@ import {
   AppWindow,
   CheckCircle2,
   CircleDot,
-  FileText,
-  Globe,
   Send,
-  Server,
   ShieldCheck,
   ShieldOff,
   Trash2,
@@ -49,6 +40,8 @@ import { currentErrorCountAtom } from "../../../atoms/currentErrorCountAtom.ts";
 import ErrorLinkedLine from "./ErrorLinkedLine.tsx";
 import ErrorSourceCell from "./ErrorSourceCell.tsx";
 import ErrorTrustIcon from "./ErrorTrustIcon.tsx";
+import ProjectErrorOriginBadge from "./ProjectErrorOriginBadge.tsx";
+import ProjectErrorStatusBadge from "./ProjectErrorStatusBadge.tsx";
 import { sigilNameParts } from "./sigilNameParts.ts";
 
 /**
@@ -75,7 +68,6 @@ const ProjectErrors = () => {
   const toaster = useToast();
   const dialog = useDialog();
 
-  const [stackView, setStackView] = useState<ProjectErrorResource | null>(null);
   // Sigil options for the "filter by sigil" dropdown, hydrated from the list
   // response rather than from `SigilController.listSigils`: the filter needs
   // id + label, and that endpoint hands back the whole credential row
@@ -84,9 +76,6 @@ const ProjectErrors = () => {
   const [sigilOptions, setSigilOptions] = useState<
     { id: string; label: string }[]
   >([]);
-  // Every row the last fetch returned, before the filters: a row's linked
-  // error (#Q4404) opens from it even when a filter hides it.
-  const [fetched, setFetched] = useState<ProjectErrorResource[]>([]);
   // Whether the filters hide open errors: one app's only, or resolved rows
   // only. An empty page there is "no match", the table's own state; anywhere
   // else it means no open error is left, which the companion says.
@@ -245,18 +234,12 @@ const ProjectErrors = () => {
     forwardAction.loading ||
     deleteAction.loading;
 
-  const renderStatus = (status: string) => {
-    if (status === "resolved") {
-      return <Badge variant="secondary">{tr("errors.status.resolved")}</Badge>;
-    }
-    // The status carries the quest's database id after the prefix, not its
-    // per-project number, so the badge says only that it was forwarded
-    // (epic #32): a `#` before a database id read as a reference nobody had.
-    if (status.startsWith(QUEST_STATUS_PREFIX)) {
-      return <Badge variant="outline">{tr("errors.status.quest")}</Badge>;
-    }
-    return null;
-  };
+  // Where one error's page is (#E185): a row opens it, and so does the
+  // line naming the error on the other side of its request.
+  const errorHref = (id: number) =>
+    router.path("projectError", {
+      params: { projectSlug: project?.slug ?? "", errorId: String(id) },
+    });
 
   /**
    * Both filters are applied client-side over the already-fetched list, and
@@ -337,7 +320,6 @@ const ProjectErrors = () => {
     // infinite refetch loop. `store.set` updates the atom without subscribing.
     alepha.store.set(currentErrorCountAtom, { count: res.openCount });
     setSigilOptions(res.sigils);
-    setFetched(res.items);
 
     const stored = filters?.sigilId;
     // ⚠️ `"all"` is a value this filter no longer has, and it is still on the
@@ -435,23 +417,18 @@ const ProjectErrors = () => {
             cell: (b) => (
               <div className="flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* Attacker-controlled — plain text, escaped by React. */}
-                  <span className="font-medium">{b.name}</span>
-                  {/* The shared tint Badge, as the quest priority and the
-                      feedback status (#Q4261): a tone and a glyph each. */}
-                  <Badge
-                    variant="tint"
-                    tone={b.origin === "server" ? "blue" : "violet"}
-                    data-testid="error-origin"
+                  {/* Attacker-controlled — plain text, escaped by React. The
+                      name opens the error's own page, which replaced the
+                      stack dialog (#E185). */}
+                  <Link
+                    href={errorHref(b.id)}
+                    className="font-medium hover:underline"
+                    data-testid="error-open"
                   >
-                    {b.origin === "server" ? (
-                      <Server className="size-3" />
-                    ) : (
-                      <Globe className="size-3" />
-                    )}
-                    {tr(`errors.origin.${b.origin}`)}
-                  </Badge>
-                  {renderStatus(b.status)}
+                    {b.name}
+                  </Link>
+                  <ProjectErrorOriginBadge origin={b.origin} />
+                  <ProjectErrorStatusBadge status={b.status} />
                   {(b.trustedAt || b.status === "open") && (
                     <ErrorTrustIcon
                       trusted={!!b.trustedAt}
@@ -471,8 +448,7 @@ const ProjectErrors = () => {
                         : "errors.linked.caused",
                       { args: [String(b.linkedError.id)] },
                     )}
-                    linked={fetched.find((it) => it.id === b.linkedError?.id)}
-                    onOpen={setStackView}
+                    href={errorHref(b.linkedError.id)}
                   />
                 )}
               </div>
@@ -541,11 +517,6 @@ const ProjectErrors = () => {
           const triaged =
             b.status === "resolved" || b.status.startsWith(QUEST_STATUS_PREFIX);
           return [
-            {
-              icon: FileText,
-              label: tr("errors.action.viewStack"),
-              onClick: () => setStackView(b),
-            },
             // ⚠️ Triage is `error:triage`. A rank without it reads the
             // inbox and the stack traces and is offered no verb - off the
             // ACTION, so nothing here repeats a permission string.
@@ -611,57 +582,6 @@ const ProjectErrors = () => {
           ];
         }}
       />
-
-      <Dialog
-        open={stackView !== null}
-        onOpenChange={(open) => {
-          if (!open) setStackView(null);
-        }}
-      >
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle>
-              {stackView?.name}: {stackView?.message}
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-muted-foreground text-xs">
-            {tr("errors.dialog.number", {
-              args: [String(stackView?.id ?? "")],
-            })}
-            {stackView?.route && <> · {stackView.route}</>}
-          </p>
-          {stackView?.sourceUrl && (
-            <p className="text-muted-foreground text-xs break-all">
-              {stackView.sourceUrl}
-            </p>
-          )}
-          {stackView?.linkedError && (
-            <ErrorLinkedLine
-              label={tr(
-                stackView.linkedError.origin === "server"
-                  ? "errors.linked.causedBy"
-                  : "errors.linked.caused",
-                { args: [String(stackView.linkedError.id)] },
-              )}
-              linked={fetched.find((it) => it.id === stackView.linkedError?.id)}
-              onOpen={setStackView}
-            />
-          )}
-          {/* Read, not dumped (#Q4186): one section per error of the chain,
-              frames one per line. Plain React text, as above. */}
-          <div className="max-h-[60vh] min-w-0 overflow-auto">
-            {stackView?.stack ? (
-              <StackTraceViewer
-                stack={stackView.stack}
-                name={stackView.name}
-                message={stackView.message}
-              />
-            ) : (
-              <p className="text-muted-foreground text-sm">—</p>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

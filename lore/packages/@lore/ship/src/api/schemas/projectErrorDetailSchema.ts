@@ -55,6 +55,12 @@ export const projectErrorDetailSchema = z.object({
     .object({
       useCaseRunId: z.integer().optional(),
       criterionKey: z.string().optional(),
+      /**
+       * The use case the run verified, so the page can link it. Absent
+       * while Requirements is not registered, for a caller who may not read
+       * use cases, and once the use case is gone.
+       */
+      useCase: z.object({ number: z.integer(), title: z.string() }).optional(),
     })
     .optional(),
   /**
