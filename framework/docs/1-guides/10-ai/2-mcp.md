@@ -586,9 +586,11 @@ A request in the modern protocol (2026-07-28, see
 [Protocol revisions](#protocol-revisions)) also says who is calling on every
 request, and the context carries it: `context.protocolVersion`,
 `context.clientInfo` (self-reported, fine for logs, never for a decision) and
-`context.clientCapabilities` (`{}` when the client declares none). All three are
-`undefined` on a legacy request, which states them once in `initialize` and is
-not remembered by this stateless server.
+`context.clientCapabilities` (`{}` when the client declares none). The first two
+are `undefined` on a legacy request, which states them once in `initialize`.
+Its capabilities are kept by the stdio transport, which is one connection, and
+are `undefined` on legacy HTTP, which this stateless server cannot tie back to
+its `initialize`.
 
 ## Asking the User: Elicitation
 
@@ -894,6 +896,52 @@ changelog = $resource({
 
 `$resourceTemplate` takes the same `cache` option. Set `"public"` only on
 content that is identical for every caller.
+
+### Extensions
+
+MCP 2026-07-28 lets either side declare optional extensions under
+`capabilities.extensions`, keyed by id (`io.modelcontextprotocol/ui`), each
+with a settings object. An extension is in use when both sides declare it.
+
+The server declares one with `registerExtension`, and `server/discover` and
+`initialize` list it. The list is omitted while none is registered.
+
+```typescript
+import { McpServerProvider } from "alepha/mcp";
+
+alepha
+  .inject(McpServerProvider)
+  .registerExtension("io.example/widgets", { level: 2 });
+```
+
+A handler reads what its client declared with `clientExtension(context, id)`,
+which has three answers:
+
+| Answer          | When                                                                                              |
+| --------------- | ------------------------------------------------------------------------------------------------- |
+| settings object | the client declared the extension                                                                 |
+| `false`         | its capabilities are known and do not declare it                                                  |
+| `undefined`     | they cannot be known: a legacy HTTP request carries none, and nothing ties it to its `initialize` |
+
+A modern request's capabilities come from its `_meta`, on HTTP and stdio
+alike. A legacy stdio client's come from the `initialize` of its connection.
+
+```typescript
+import { $inject } from "alepha";
+import { $tool, McpServerProvider } from "alepha/mcp";
+
+class Widgets {
+  protected readonly mcp = $inject(McpServerProvider);
+
+  render = $tool({
+    description: "Render the widget",
+    handler: async ({ context }) => {
+      const widgets = this.mcp.clientExtension(context, "io.example/widgets");
+      return widgets ? "rich" : "plain";
+    },
+  });
+}
+```
 
 ### Progress on long calls
 
