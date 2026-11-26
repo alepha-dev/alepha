@@ -225,6 +225,38 @@ describe("ProjectSettingsPromptsPage", () => {
     await waitFor(() => expect(states()).toEqual(["true", "true", null]));
   });
 
+  it("summarises a trigger in its cell, the checks as badges, and shows it whole on hover (#Q4411)", async ({
+    expect,
+  }) => {
+    world.items = [
+      prompt({
+        name: "triage",
+        title: "Triage",
+        on: "event:feedback.created,feedback.commented,error.trusted,hourly",
+        check: ["feedback", "errors"],
+      }),
+    ];
+    await show();
+    const cell = await screen.findByTestId("prompt-on");
+    expect(screen.getByTestId("prompt-on-summary").textContent).toBe(
+      "feedback.created +2 · hourly",
+    );
+    expect(
+      screen.getAllByTestId("prompt-on-check").map((it) => it.textContent),
+    ).toEqual(["feedback", "errors"]);
+    expect(cell.textContent).not.toContain("checks");
+    expect(cell.getAttribute("data-enabled")).toBe("true");
+
+    fireEvent.mouseEnter(cell);
+    fireEvent.pointerEnter(cell);
+    fireEvent.focus(cell);
+    const full = await screen.findByTestId("prompt-on-full");
+    expect(full.textContent).toContain(
+      "event:feedback.created,feedback.commented,error.trusted,hourly",
+    );
+    expect(full.textContent).toContain("checks feedback, errors");
+  });
+
   it("has no guide link under the table, and a separator only between a missing host and a pause (#Q4291)", async ({
     expect,
   }) => {

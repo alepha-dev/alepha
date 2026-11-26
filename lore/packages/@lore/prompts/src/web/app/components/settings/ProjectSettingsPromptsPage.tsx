@@ -3,6 +3,9 @@ import {
   cn,
   textLinkUnderlineClassName,
   TimeAgo,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   useDialog,
 } from "@alepha/ui";
 import {
@@ -447,12 +450,53 @@ const ProjectSettingsPromptsPage = () => {
    * The kinds of trigger an `on` word holds: `manual`, or any of an
    * `event:` part and a schedule part (`hourly`, `6h`, `daily@3`, ...).
    */
-  const triggerKinds = (on: string): string[] =>
-    on === "manual"
-      ? ["manual"]
-      : on
-          .split(",")
-          .map((part) => (part.startsWith("event:") ? "event" : "schedule"));
+  const triggerKinds = (on: string): string[] => {
+    if (on === "manual") return ["manual"];
+    const parts = triggerParts(on);
+    return [
+      ...(parts.events.length ? ["event"] : []),
+      ...(parts.schedule ? ["schedule"] : []),
+    ];
+  };
+  /**
+   * An `on` word split as the server reads it: the event keys after
+   * `event:` (the keys that follow it, comma separated, are events too) and
+   * the schedule part.
+   */
+  const triggerParts = (on: string) => {
+    const events: string[] = [];
+    let schedule: string | undefined;
+    let inEvents = false;
+    for (const raw of on.split(",")) {
+      const part = raw.trim();
+      if (!part) continue;
+      if (part.startsWith("event:")) {
+        inEvents = true;
+        events.push(part.slice("event:".length).trim());
+      } else if (inEvents && !/^(hourly|6h|daily@|weekly@)/.test(part)) {
+        events.push(part);
+      } else {
+        inEvents = false;
+        schedule = part;
+      }
+    }
+    return { events: events.filter(Boolean), schedule };
+  };
+  /**
+   * The Trigger cell's short form (#Q4411): the first event and how many
+   * more, then the schedule, so the column stays narrow; the full word is in
+   * the cell's tooltip.
+   */
+  const triggerSummary = (on: string): string => {
+    const parts = triggerParts(on);
+    const [first, ...rest] = parts.events;
+    return [
+      first ? `${first}${rest.length ? ` +${rest.length}` : ""}` : undefined,
+      parts.schedule,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  };
 
   return (
     <div className="-m-4 flex min-h-0 flex-1 flex-col gap-4 md:-m-6">
@@ -559,33 +603,59 @@ const ProjectSettingsPromptsPage = () => {
             },
             on: {
               label: tr("prompts.table.trigger"),
-              cell: (row) => (
-                <span
-                  className={cn(
-                    "text-xs",
-                    row.on === "manual" && "text-muted-foreground",
-                    row.on !== "manual" &&
-                      !row.enabled &&
-                      "text-muted-foreground",
-                  )}
-                  data-testid="prompt-on"
-                  data-enabled={row.on === "manual" ? undefined : row.enabled}
-                >
-                  {row.on === "manual" ? (
-                    tr("prompts.trigger.manual")
-                  ) : (
-                    <span className="font-mono font-medium">{row.on}</span>
-                  )}
-                  {row.check?.length ? (
-                    <span className="text-muted-foreground">
-                      {` · ${tr("prompts.trigger.checks", { args: [row.check.join(", ")] })}`}
-                    </span>
-                  ) : null}
-                  {row.on !== "manual" && !row.enabled
-                    ? ` · ${tr("prompts.trigger.off")}`
-                    : ""}
-                </span>
-              ),
+              cell: (row) => {
+                const off = row.on !== "manual" && !row.enabled;
+                const cell = (
+                  <span
+                    className={cn(
+                      "inline-flex max-w-56 items-center gap-1 text-xs whitespace-nowrap",
+                      (row.on === "manual" || off) && "text-muted-foreground",
+                    )}
+                    data-testid="prompt-on"
+                    data-enabled={row.on === "manual" ? undefined : row.enabled}
+                  >
+                    {row.on === "manual" ? (
+                      tr("prompts.trigger.manual")
+                    ) : (
+                      <span
+                        className="truncate font-mono font-medium"
+                        data-testid="prompt-on-summary"
+                      >
+                        {triggerSummary(row.on)}
+                      </span>
+                    )}
+                    {row.check?.map((it) => (
+                      <Badge
+                        key={it}
+                        variant="tint"
+                        tone="neutral"
+                        className="shrink-0 px-1.5 py-0 text-[10px] leading-4 font-normal"
+                        data-testid="prompt-on-check"
+                      >
+                        {it}
+                      </Badge>
+                    ))}
+                    {off && (
+                      <span className="shrink-0">{`· ${tr("prompts.trigger.off")}`}</span>
+                    )}
+                  </span>
+                );
+                // The whole trigger and its checks on hover (#Q4411): the
+                // cell keeps only a summary.
+                return row.on === "manual" && !row.check?.length ? (
+                  cell
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger render={cell} />
+                    <TooltipContent data-testid="prompt-on-full">
+                      <span className="font-mono">{row.on}</span>
+                      {row.check?.length
+                        ? ` · ${tr("prompts.trigger.checks", { args: [row.check.join(", ")] })}`
+                        : ""}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              },
             },
             pins: {
               label: tr("prompts.table.pins"),
