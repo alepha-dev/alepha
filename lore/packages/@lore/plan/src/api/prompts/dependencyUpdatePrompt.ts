@@ -40,5 +40,5 @@ Name it from the lockfile at the repository's root, and use that one only, for e
 ## Deliver
 
 - Only when the checks pass: commit as the repository asks, push the branch, and open a pull request with \`gh\`. Its description lists what changed (from and to), what was left behind and why.
-- Once the checks are green, turn on auto-merge as a rebase merge (\`gh pr merge --auto --rebase\`) if the repository's AGENTS.md or CLAUDE.md lets an agent do so: that is how the pull request lands, once CI is green. Otherwise it waits for review. Never merge it at once without CI (\`gh pr merge\` without \`--auto\`), and never push to the default branch.
+- Once the checks are green, turn on auto-merge as a rebase merge (\`gh pr merge --auto --rebase\`): that is how the pull request lands, once CI is green. If the repository refuses it (auto-merge is off in its settings), say so in your reply: the pull request then waits for review. Never merge it at once without CI (\`gh pr merge\` without \`--auto\`), and never push to the default branch.
 - When nothing could be updated with the checks passing, open nothing: end with a one-line summary of why.`;

@@ -216,6 +216,7 @@ describe("Requirements built-in prompts", () => {
     expect(spec).toContain("`gh pr merge --auto --rebase`");
     expect(spec).toContain("Never merge it at once without CI");
     expect(spec).not.toContain("Never merge it yourself");
+    expect(spec).not.toContain("lets an agent do so");
     const demo = await render("prepare-use-case-demo", { useCase: "1" }).catch(
       (error: Error) => error.message,
     );
