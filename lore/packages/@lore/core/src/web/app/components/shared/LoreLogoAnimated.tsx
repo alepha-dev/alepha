@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { type LoreSpriteMood, LoreSpriteMoods } from "./LoreSpriteMoods.ts";
+import { LoreSpritePortraitRenderer } from "./LoreSpritePortraitRenderer.ts";
 
 export interface LoreLogoAnimatedProps {
   /**
@@ -18,6 +19,12 @@ export interface LoreLogoAnimatedProps {
    * (`LoreSpriteMoods`). Absent, the companion of the Home page.
    */
   mood?: LoreSpriteMood;
+  /**
+   * Frame her orb and the roots of her wings, for an avatar of 30 to 48 px
+   * (`LoreSpritePortraitRenderer`). A portrait has no mood and follows no
+   * pointer.
+   */
+  portrait?: boolean;
 }
 
 /**
@@ -31,7 +38,7 @@ export interface LoreLogoAnimatedProps {
  * rather than a flash. A change of `mood` is a new entrance.
  *
  * Small marks (header, favicon) keep the raster `LoreLogo`: this one is drawn
- * for a box of 120 px and up.
+ * for a box of 120 px and up, or as a `portrait` for an avatar.
  */
 const LoreLogoAnimated = (props: LoreLogoAnimatedProps) => {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -49,14 +56,12 @@ const LoreLogoAnimated = (props: LoreLogoAnimatedProps) => {
     ) {
       return;
     }
-    const renderer = LoreSpriteMoods.create(
-      canvas,
-      { follow: props.follow },
-      props.mood,
-    );
+    const renderer = props.portrait
+      ? new LoreSpritePortraitRenderer(canvas, {})
+      : LoreSpriteMoods.create(canvas, { follow: props.follow }, props.mood);
     renderer.start();
     return () => renderer.destroy();
-  }, [props.follow, props.mood]);
+  }, [props.follow, props.mood, props.portrait]);
 
   return (
     <canvas

@@ -1,6 +1,7 @@
 import { FileImage, cn } from "@alepha/ui";
 import {
   AgentAvatar,
+  LoreLogoAnimated,
   projectInitials,
   projectMonogramColor,
 } from "@lore/core/web";
@@ -15,7 +16,7 @@ export interface ChatAgentAvatarProps {
    */
   avatarId?: string;
   /**
-   * The built-in `@lore`, drawn as the bot it always was.
+   * The built-in `@lore`, drawn as the Lore companion.
    */
   builtin?: boolean;
   /**
@@ -26,16 +27,34 @@ export interface ChatAgentAvatarProps {
 
 /**
  * A chat agent's picture (#E170, #Q4198): its uploaded avatar, or its
- * initials on a colour of its own when it has none or it fails to load, and
- * core's agent avatar, the bot, for `@lore`. Served from the authenticated file route: an agent's
- * picture is read with `chat:read`.
+ * initials on a colour of its own when it has none or it fails to load.
+ * Served from the authenticated file route: an agent's picture is read with
+ * `chat:read`.
+ *
+ * The built-in `@lore` is the Lore companion herself, alive, in her portrait
+ * framing (`LoreLogoAnimated`'s `portrait`): the agent of the product is the
+ * one figure the product already has. She is decoration beside the name the
+ * row prints, so the tile is hidden from assistive technology.
  */
 const ChatAgentAvatar = (props: ChatAgentAvatarProps) => {
   const box = cn(
     "@container flex shrink-0 items-center justify-center overflow-hidden rounded-[9px]",
     props.className ?? "size-[30px]",
   );
-  if (props.builtin || !props.name) {
+  if (props.builtin) {
+    return (
+      <span
+        aria-hidden
+        // Dark in both themes: the portrait is always light on dark.
+        className={cn(box, "bg-neutral-950 dark:ring-1 dark:ring-white/10")}
+        data-testid="chat-agent-avatar"
+        data-builtin
+      >
+        <LoreLogoAnimated portrait className="size-full" />
+      </span>
+    );
+  }
+  if (!props.name) {
     // Core's agent avatar, the robot every agent with no icon of its own is
     // drawn as, a quest's agent assignee included (#Q4353).
     return (
