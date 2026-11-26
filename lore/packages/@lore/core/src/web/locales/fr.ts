@@ -3361,6 +3361,8 @@ export default {
   "feedback.empty.pending": "Aucun retour en attente.",
   "feedback.empty.status": "Aucun retour $1.",
   "feedback.empty.selectOne": "Sélectionnez un élément dans la liste",
+  "feedback.empty.selectOneBody":
+    "Son fil et les quêtes qui en sont issues s'ouvrent ici.",
   "feedback.empty.detail.pending.title": "Tout est traité",
   "feedback.empty.detail.pending.body":
     "Aucun retour ne vous attend. Les nouveaux signalements arrivent ici.",

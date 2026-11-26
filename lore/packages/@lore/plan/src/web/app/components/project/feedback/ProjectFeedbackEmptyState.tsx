@@ -1,12 +1,5 @@
-import type { I18n } from "@lore/core/web";
+import { type I18n, LoreEmptyState } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import {
-  Circle,
-  CircleCheck,
-  CircleX,
-  type LucideIcon,
-  MousePointerClick,
-} from "lucide-react";
 import type { ReactElement } from "react";
 
 import type { FeedbackResource } from "../../../../../api/schemas/feedbackResourceSchema.ts";
@@ -27,7 +20,12 @@ export interface ProjectFeedbackEmptyStateProps {
 }
 
 /**
- * The detail pane with no feedback open.
+ * The detail pane with no feedback open, said by the Lore companion
+ * (`LoreEmptyState`) in the mood each case calls for:
+ *
+ * - rows in the list and none open: `seeking`, her beam turned to the list.
+ * - an empty Pending tab: `calm`. Nothing is waiting, which is good news.
+ * - an empty Accepted or Rejected tab: `asleep`. Nothing has happened yet.
  *
  * It used to be one message for both states this pane can be in: an `Inbox`
  * glyph and "Select an item from the list" - the same glyph the list beside
@@ -42,11 +40,6 @@ export interface ProjectFeedbackEmptyStateProps {
  * places, Back clears the selection to bring the list forward, and widening
  * the window past `md` from there leaves a populated list with nothing open.
  *
- * The empty case takes the active filter's own icon rather than a generic
- * one. It costs nothing, it disambiguates a pane that would otherwise look
- * identical on all three tabs, and it is the same vocabulary as the segmented
- * control above and the rows in the list.
- *
  * It carries no action. The feedback form used to be a button here, on the
  * empty Pending tab only; it is the list header's "+" since #Q4449, where it
  * is reachable whatever the tab and however full the list.
@@ -58,45 +51,21 @@ const ProjectFeedbackEmptyState = (
 
   if (props.hasItems) {
     return (
-      <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-        <MousePointerClick className="size-10 opacity-50" />
-        <p className="text-sm">{tr("feedback.empty.selectOne")}</p>
-      </div>
+      <LoreEmptyState
+        mood="seeking"
+        title={tr("feedback.empty.selectOne")}
+        description={tr("feedback.empty.selectOneBody")}
+      />
     );
   }
 
-  const Icon = STATUS_ICONS[props.status];
-
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-8 text-center">
-      {/*
-        A tinted tile rather than a bare glyph. At this size a 40px outline
-        icon floating in a very large empty pane reads as something failing
-        to load; giving it a surface makes it read as a placed element.
-      */}
-      <div className="bg-primary/10 text-primary flex size-16 items-center justify-center rounded-2xl">
-        <Icon className="size-7" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <p className="text-base font-medium">
-          {tr(`feedback.empty.detail.${props.status}.title` as const)}
-        </p>
-        <p className="text-muted-foreground max-w-xs text-sm">
-          {tr(`feedback.empty.detail.${props.status}.body` as const)}
-        </p>
-      </div>
-    </div>
+    <LoreEmptyState
+      mood={props.status === "pending" ? "calm" : "asleep"}
+      title={tr(`feedback.empty.detail.${props.status}.title` as const)}
+      description={tr(`feedback.empty.detail.${props.status}.body` as const)}
+    />
   );
 };
 
 export default ProjectFeedbackEmptyState;
-
-/*
- * The same three glyphs the segmented control and `ProjectFeedbackCard` use,
- * so a status is one shape everywhere on this screen.
- */
-const STATUS_ICONS: Record<FeedbackResource["status"], LucideIcon> = {
-  pending: Circle,
-  accepted: CircleCheck,
-  rejected: CircleX,
-};

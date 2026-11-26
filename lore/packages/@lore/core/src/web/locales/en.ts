@@ -3343,6 +3343,8 @@ export default {
   "feedback.empty.pending": "No pending feedback.",
   "feedback.empty.status": "No $1 feedback.",
   "feedback.empty.selectOne": "Select an item from the list",
+  "feedback.empty.selectOneBody":
+    "Its thread and the quests it turned into open here.",
   "feedback.empty.detail.pending.title": "All caught up",
   "feedback.empty.detail.pending.body":
     "No feedback is waiting on you. New reports land here as they arrive.",

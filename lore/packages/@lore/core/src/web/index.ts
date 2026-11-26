@@ -293,6 +293,11 @@ export {
   type AgentAvatarProps,
 } from "./app/components/shared/AgentAvatar.tsx";
 export {
+  default as LoreEmptyState,
+  type LoreEmptyStateProps,
+} from "./app/components/shared/LoreEmptyState.tsx";
+export type { LoreSpriteMood } from "./app/components/shared/LoreSpriteMoods.ts";
+export {
   ProjectUserChip,
   type ProjectUserChipProps,
 } from "./app/components/shared/ProjectUserChip.tsx";
