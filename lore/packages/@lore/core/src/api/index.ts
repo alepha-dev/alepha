@@ -660,7 +660,11 @@ export {
   ProjectEventListeners,
 } from "./services/ProjectEventListeners.ts";
 export { AgentJobs } from "./services/AgentJobs.ts";
-export type { AgentJobRequest, AgentJobRunner } from "./services/AgentJobs.ts";
+export type {
+  AgentJobRequest,
+  AgentJobRunner,
+  AgentRunOption,
+} from "./services/AgentJobs.ts";
 export { AgentJobsUnavailableError } from "./errors/AgentJobsUnavailableError.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {

@@ -103,7 +103,18 @@ export interface AgentJobRunner {
     projectId: number,
     run: { host?: string; agent?: string; firstAgent?: boolean },
   ): Promise<{ host: AgentHostRef; agent?: string }>;
-  choices(projectId: number): Promise<Array<{ host: string; agent?: string }>>;
+  choices(projectId: number): Promise<AgentRunOption[]>;
+}
+
+/**
+ * One host and agent CLI a run may pick, and whether the CLI says it is
+ * signed in (#Q4504): absent when it has no status command or an older Bay
+ * sent none.
+ */
+export interface AgentRunOption {
+  host: string;
+  agent?: string;
+  signedIn?: boolean;
 }
 
 /**
@@ -160,9 +171,7 @@ export class AgentJobs {
    * The hosts and agents a run of this project may pick from (#Q4223):
    * none without a runner, or with Prompts off.
    */
-  public async choices(
-    projectId: number,
-  ): Promise<Array<{ host: string; agent?: string }>> {
+  public async choices(projectId: number): Promise<AgentRunOption[]> {
     if (!this.runner || !(await this.isOn(projectId))) return [];
     return this.runner.choices(projectId);
   }

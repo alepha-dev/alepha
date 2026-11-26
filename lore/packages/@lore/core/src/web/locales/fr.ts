@@ -5313,6 +5313,8 @@ export default {
   "prompts.run.description":
     "Elle s'exécute sur l'hôte Agent choisi, avec la source de l'invite, et ouvre la page de la tâche.",
   "prompts.run.host": "Hôte Agent",
+  "prompts.run.model": "Modèle",
+  "prompts.run.model.default": "Modèle par défaut de l'hôte",
   "prompts.run.fix":
     "Pousser les corrections sur la branche de la pull request",
   "prompts.run.trust": "Je fais confiance à l'auteur de la pull request",

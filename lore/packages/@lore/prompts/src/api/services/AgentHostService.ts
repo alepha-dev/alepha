@@ -44,6 +44,20 @@ export class AgentHostService {
   }
 
   /**
+   * Whether each agent CLI says it is signed in (#Q4504), for those whose
+   * status command answered.
+   */
+  public static signedInOf(
+    tools: HostJobTool[] | undefined | null,
+  ): Record<string, boolean> {
+    return Object.fromEntries(
+      (tools ?? [])
+        .filter((tool) => tool.kind === "agent" && tool.signedIn !== undefined)
+        .map((tool) => [tool.name, tool.signedIn === true]),
+    );
+  }
+
+  /**
    * A check's time: two minutes for a cold CLI.
    */
   public static readonly CHECK_TIMEOUT_SECONDS = 120;
@@ -70,7 +84,10 @@ export class AgentHostService {
           ...(host.agentStatus ? { status: host.agentStatus } : {}),
           ...(host.offlineSince ? { offline: true } : {}),
           ...(host.jobsTools
-            ? { agents: AgentHostService.agentsOf(host.jobsTools) }
+            ? {
+                agents: AgentHostService.agentsOf(host.jobsTools),
+                signedIn: AgentHostService.signedInOf(host.jobsTools),
+              }
             : {}),
           ...(host.jobsSources ? { sources: true } : {}),
           ...(host.jobsUser ? { jobsUser: host.jobsUser } : {}),

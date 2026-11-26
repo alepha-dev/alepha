@@ -254,6 +254,7 @@ const ProjectPrompt = (props: ProjectPromptProps) => {
             prompt={prompt}
             mode={open.kind}
             hosts={hosts.data?.hosts}
+            agents={hosts.data?.agents}
             busy={busy}
             onSubmit={async (body) => {
               const done =

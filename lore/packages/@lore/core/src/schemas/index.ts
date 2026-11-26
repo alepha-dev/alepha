@@ -202,6 +202,10 @@ export {
   promptArgSchema,
 } from "../api/schemas/promptArgSchema.ts";
 export {
+  AGENT_MODELS,
+  type AgentModelChoice,
+} from "../api/schemas/agentModels.ts";
+export {
   type PromptResource,
   promptResourceSchema,
 } from "../api/schemas/promptResourceSchema.ts";

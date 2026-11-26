@@ -24,6 +24,7 @@ const OTHER = "00000000-0000-4000-8000-00000000000b";
 
 const world = {
   members: [] as { value: string; label: string }[],
+  agents: [] as { host: string; agent: string; signedIn?: boolean }[],
 };
 
 class FakeLinkProvider extends LinkProvider {
@@ -45,11 +46,17 @@ describe("PromptRunDialog", () => {
   });
 
   let alepha: Alepha | undefined;
-  const submitted: { args: Record<string, string>; host?: string }[] = [];
+  const submitted: {
+    args: Record<string, string>;
+    host?: string;
+    agent?: string;
+    model?: string;
+  }[] = [];
 
   afterEach(async () => {
     submitted.length = 0;
     world.members = [];
+    world.agents = [];
     cleanup();
     await alepha?.stop();
     alepha = undefined;
@@ -81,6 +88,7 @@ describe("PromptRunDialog", () => {
           }
           mode={mode}
           hosts={["desktop"]}
+          agents={world.agents}
           onSubmit={(body) => submitted.push(body)}
         />
       </AlephaContext.Provider>,
@@ -124,5 +132,48 @@ describe("PromptRunDialog", () => {
     fireEvent.click(screen.getByTestId("prompt-run-submit"));
     await waitFor(() => expect(submitted).toHaveLength(1));
     expect(submitted[0].args).toEqual({});
+  });
+  it("offers the models of a signed-in Claude host, and the run carries the one picked (#Q4504)", async ({
+    expect,
+  }) => {
+    world.agents = [{ host: "desktop", agent: "claude", signedIn: true }];
+    await show("run");
+
+    const model = await screen.findByRole("combobox", { name: /Model/ });
+    fireEvent.click(model);
+    for (const family of [
+      "claude-haiku",
+      "claude-sonnet",
+      "claude-opus",
+      "claude-fable",
+    ]) {
+      expect(await screen.findByRole("option", { name: family })).toBeTruthy();
+    }
+    fireEvent.click(screen.getByRole("option", { name: "claude-opus" }));
+    fireEvent.click(screen.getByTestId("prompt-run-submit"));
+    await waitFor(() => expect(submitted).toHaveLength(1));
+    expect(submitted[0]).toMatchObject({
+      host: "desktop",
+      agent: "claude",
+      model: "claude-opus-5-5",
+    });
+  });
+
+  it("offers no model for a signed-out CLI, nor in copy, and a run then keeps the host's default (#Q4504)", async ({
+    expect,
+  }) => {
+    world.agents = [{ host: "desktop", agent: "claude", signedIn: false }];
+    await show("run");
+    expect(screen.queryByRole("combobox", { name: /Model/ })).toBeNull();
+    fireEvent.click(screen.getByTestId("prompt-run-submit"));
+    await waitFor(() => expect(submitted).toHaveLength(1));
+    expect(submitted[0].model).toBeUndefined();
+    expect(submitted[0].agent).toBeUndefined();
+    cleanup();
+    await alepha?.stop();
+
+    world.agents = [{ host: "desktop", agent: "claude", signedIn: true }];
+    await show("copy");
+    expect(screen.queryByRole("combobox", { name: /Model/ })).toBeNull();
   });
 });

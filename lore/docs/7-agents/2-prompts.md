@@ -186,9 +186,12 @@ there too.
 ## Running a prompt
 
 **Run** is offered when the project has an Agent host that is ready. It asks
-the args, then the host when there are several, and nothing else: the code
-the run finds is the prompt's own setting, and the run takes the first agent
-CLI the host reports, with its default model.
+the args, then the host when there are several, then the **Model** when the
+host's agent CLI is signed in: `claude-haiku`, `claude-sonnet`,
+`claude-opus` or `claude-fable` for Claude, each the latest version of that
+family. Left on **The host's default**, the run takes the first agent CLI the
+host reports, with its default model. The code the run finds is the
+prompt's own setting.
 
 The run opens its job's page, where its progress shows. The agent's final
 reply is the first thing on it, once the job ends. See

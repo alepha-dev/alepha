@@ -4,6 +4,7 @@ import {
   type AgentHostRef,
   type AgentJobRequest,
   AgentJobs,
+  type AgentRunOption,
   type HostJobSummary,
   HostJobs,
   JobKeyService,
@@ -318,15 +319,19 @@ export class AgentJobService {
    * none yet. The agent entries offer one click when there is one choice,
    * a small picker otherwise.
    */
-  public async choices(
-    projectId: number,
-  ): Promise<Array<{ host: string; agent?: string }>> {
+  public async choices(projectId: number): Promise<AgentRunOption[]> {
     const hosts = await this.port.agentHosts(projectId);
     return hosts
       .filter((host) => host.status === "available")
       .flatMap((host) =>
         host.agents?.length
-          ? host.agents.map((agent) => ({ host: host.slug, agent }))
+          ? host.agents.map((agent) => ({
+              host: host.slug,
+              agent,
+              ...(host.signedIn?.[agent] === undefined
+                ? {}
+                : { signedIn: host.signedIn[agent] }),
+            }))
           : [{ host: host.slug }],
       );
   }

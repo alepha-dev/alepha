@@ -184,6 +184,7 @@ export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
         mode={open.mode}
         given={open.given}
         hosts={hosts.data?.hosts}
+        agents={hosts.data?.agents}
         busy={copy.loading || run.loading}
         onSubmit={async (body) => {
           const done =

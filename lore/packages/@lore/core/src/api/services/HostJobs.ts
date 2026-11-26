@@ -192,6 +192,11 @@ export interface AgentHostRef {
    */
   agents?: string[];
   /**
+   * Whether each agent CLI says it is signed in (#Q4504), by adapter name:
+   * only those whose status command answered.
+   */
+  signedIn?: Record<string, boolean>;
+  /**
    * The host's Bay prepares a job's source (#E173). A read or write job is
    * refused on a host that does not say so.
    */
