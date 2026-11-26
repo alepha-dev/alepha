@@ -3,6 +3,7 @@ import {
   type DashboardCardValue,
   DashboardMetricCatalog,
   type Project,
+  hostInventories,
   hostProjects,
   hosts,
 } from "@lore/core/schemas";
@@ -28,6 +29,7 @@ import {
 class ShipRepositories {
   hosts = $repository(hosts);
   loans = $repository(hostProjects);
+  inventories = $repository(hostInventories);
   monitors = $repository(monitors);
 }
 
@@ -65,6 +67,7 @@ describe("dashboard hosts and uptime cards", () => {
     project: Project,
     metric: string,
     user: UserAccountToken = token(project.createdBy!),
+    filters: Record<string, unknown> = {},
   ): Promise<DashboardCardValue> =>
     (
       await alepha.inject(DashboardMetricRegistry).resolveForProject(
@@ -73,7 +76,7 @@ describe("dashboard hosts and uptime cards", () => {
             id: 1,
             metric,
             scope: { kind: "projects", projectIds: [project.id] },
-            filters: {},
+            filters,
             size: 1,
             position: 0,
           },
@@ -267,6 +270,73 @@ describe("dashboard hosts and uptime cards", () => {
 
       expect(value.empty).toBe("noData");
       expect(value.rows).toBeUndefined();
+    });
+  });
+  describe("host usage and watched units (#Q4425)", () => {
+    const seed = async () => {
+      const project = await createTestProject(alepha);
+      const now = dateTime.nowISOString();
+      const host = await repos.hosts.create({
+        projectId: project.id,
+        ownerUserId: project.createdBy!,
+        type: "bay",
+        slug: "api-box",
+        connectedAt: now,
+        lastSeenAt: now,
+        cpuPercent: 12.5,
+        memoryPercent: 48,
+        watchUnits: ["api.service", "caddy.service"],
+      });
+      await repos.inventories.create({
+        hostId: host.id,
+        at: now,
+        reportedAt: now,
+        machine: {
+          diskTotalBytes: 200,
+          diskUsedBytes: 112,
+          load1: 0.4,
+          units: [
+            { name: "api.service", activeState: "activating", since: now },
+            { name: "caddy.service", activeState: "active" },
+          ],
+        },
+        apps: [],
+        appCount: 0,
+      });
+      return project;
+    };
+
+    it("hostStats reads the gauge for CPU and the inventory for disk, as a percent", async ({
+      expect,
+    }) => {
+      const project = await seed();
+      const cpu = await resolve(project, "hostStats");
+      expect(cpu).toMatchObject({ ok: true, value: 12.5, unit: "percent" });
+      expect(cpu.detail).toMatchObject({ host: "api-box", measure: "cpu" });
+      const disk = await resolve(project, "hostStats", undefined, {
+        measure: "disk",
+      });
+      expect(disk.value).toBe(56);
+      const load = await resolve(project, "hostStats", undefined, {
+        measure: "load",
+      });
+      expect(load.value).toBe(0.4);
+      expect(load.unit).toBeUndefined();
+    });
+
+    it("hostUnits lists every watched unit with its state", async ({
+      expect,
+    }) => {
+      const project = await seed();
+      const value = await resolve(project, "hostUnits");
+      expect(value.ok).toBe(true);
+      expect(value.value).toBe(1);
+      expect(
+        (value.rows ?? []).map((row) => [row.title, row.badge, row.state]),
+      ).toEqual([
+        ["api.service", "activating", "warn"],
+        ["caddy.service", "active", "ok"],
+      ]);
     });
   });
 });

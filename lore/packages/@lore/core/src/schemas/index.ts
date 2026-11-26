@@ -166,6 +166,8 @@ export { jobKeys, type JobKey } from "../api/entities/jobKeys.ts";
 
 // ---- hosts (#E166) ----
 export { hostsCardFiltersSchema } from "../api/schemas/hostsCardFiltersSchema.ts";
+export { hostStatsCardFiltersSchema } from "../api/schemas/hostStatsCardFiltersSchema.ts";
+export { hostUnitsCardFiltersSchema } from "../api/schemas/hostUnitsCardFiltersSchema.ts";
 export { hostCommands } from "../api/entities/hostCommands.ts";
 export type { HostCommand } from "../api/entities/hostCommands.ts";
 export { hostJobs } from "../api/entities/hostJobs.ts";
