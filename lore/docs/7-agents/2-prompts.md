@@ -388,10 +388,12 @@ reverted alone. The flow:
    (or `CLAUDE.md`), never the author's reasoning. The agent fixes what holds
    in the quest's own commit, runs the checks again and pushes, and its reply
    says what the review found and fixed.
-6. The agent never merges it, never pushes to main, and never merges main into
-   its branch: it rebases instead. If the project's `AGENTS.md` (or
-   `CLAUDE.md`) lets an agent turn on auto-merge, it does, as a rebase merge.
-   Otherwise the pull request waits for your review. A quest the agent left
+6. Once the review's fixes are pushed, the agent turns on auto-merge, as a
+   rebase merge: the pull request lands by itself once CI is green. If the
+   repository has auto-merge switched off, the agent says so and the pull
+   request waits for your review. The agent never merges at once without CI,
+   never pushes to main, and never merges main into its branch: it rebases
+   instead. A quest the agent left
    with a comment, or tagged `needs-answer`, does not hold back a run's or an
    epic's pull request: it stays open, and the rest goes ready.
 7. Every quest completes once its commit is pushed, in the same run, without

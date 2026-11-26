@@ -1,6 +1,6 @@
 /**
  * The review every work prompt runs before its pull request may merge
- * (#Q4332): the work prompts auto-merge where the repository lets them, so
+ * (#Q4332): the work prompts turn on auto-merge (#Q4537), so
  * the review moves into the run. A sub-agent reads the change cold; it never
  * gets the author's reasoning, since a reviewer that shares it agrees with
  * it.

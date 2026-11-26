@@ -422,6 +422,10 @@ describe("prompts", () => {
       expect(text).toContain("`gh pr merge --auto --rebase`");
       expect(text).toContain("that is how the pull request lands");
       expect(text).toContain("Never merge it at once without CI");
+      // Always, whatever AGENTS.md says; a repository that refuses it
+      // leaves the pull request to a review (#Q4537).
+      expect(text).not.toContain("lets an agent do so");
+      expect(text).toContain("auto-merge is off in its settings");
       expect(text).not.toContain("Never merge it yourself");
     }
   });
