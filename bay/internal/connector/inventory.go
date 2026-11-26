@@ -49,6 +49,10 @@ type InventoryJobs struct {
 	// MaxJobs is how many jobs this machine runs at once, its
 	// `--max-jobs` (#Q4249): Lore dispatches up to that many.
 	MaxJobs int `json:"maxJobs,omitempty"`
+	// MaxReadJobs is how many jobs that change no code it runs beside
+	// them, its `--max-read-jobs` (#Q4525). A bay that reports none has one
+	// limit for every job, MaxJobs.
+	MaxReadJobs int `json:"maxReadJobs,omitempty"`
 	// Result is true on a bay whose job-run terminal ack carries the agent's
 	// final reply (#Q4288), so Lore can tell a host that returns none.
 	Result bool `json:"result,omitempty"`

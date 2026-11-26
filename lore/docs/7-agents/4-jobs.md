@@ -40,10 +40,19 @@ sudo useradd --create-home bay-agent
 sudo bay config jobs --user bay-agent
 ```
 
-Bay never runs a job as root or as its own user. `--max-jobs 2` lets the host
-run two jobs at once (one by default), and Lore sends it up to that many.
-Jobs that only read the code share a workspace; a job that changes code has
-its workspace to itself.
+Bay never runs a job as root or as its own user. A host runs its jobs in two
+lanes, each with its own limit, and Lore sends it up to that many of each:
+
+- the jobs that **change code**, one at a time unless `--max-jobs` says more
+  (`--max-jobs 2` runs two at once). Each runs the project's checks, so the
+  machine's cores decide how many it takes.
+- **every other job**, one that reads the code or takes none, and the host's
+  own check: 8 at a time, or what `--max-read-jobs` says (16 at most). Such a
+  job mostly waits on its model.
+
+So a triage or a review never waits behind a job that works a quest. Jobs that
+only read the code share a workspace; a job that changes code has its
+workspace to itself.
 
 **3. Install an agent CLI, and sign it in as the jobs user.** Claude Code or
 Gemini CLI, or both. Sign in as that user, the way you do on your own machine:
@@ -117,7 +126,8 @@ agent prints its version, then answers a one-line prompt. The host shows
 **Available**, or **Unavailable** with the agent's own message. The check runs
 again once a day and on **Check now**. The **Agent** tab's **Tools** section lists what
 the jobs user has, installed or not, with its version and its sign-in, and the
-**Agent host** card says how many jobs run, of how many the host allows.
+**Agent host** card says how many jobs run, of how many the host allows in
+each lane.
 
 From the CLI:
 
@@ -145,8 +155,8 @@ never clones, fetches or resets. Each job has a **source**:
 
 - **read**: the project's repository at the default branch, checked out at
   `./src` and made read-only. A triage, an epic's review, a pull request's
-  review and a security check read. Any number of read jobs of a project run
-  at once.
+  review and a security check read. The read jobs of a project run at once,
+  up to the host's `--max-read-jobs`.
 - **write**: a git worktree on a branch Lore names, `lore/q<number>` for a job
   on one quest and `lore/job-<id>` for any other. When the branch is already on
   GitHub the worktree continues it, so a follow-up on a quest (a CI fix, review

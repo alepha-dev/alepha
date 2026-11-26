@@ -199,7 +199,14 @@ describe("HostInventoryService", () => {
     ].join(",");
     await ctx.service.record(row, {
       ...frame([]),
-      jobs: { user: "bay-agent", tools, sources: true, maxJobs: 3, running },
+      jobs: {
+        user: "bay-agent",
+        tools,
+        sources: true,
+        maxJobs: 3,
+        maxReadJobs: 8,
+        running,
+      },
     });
     const slots = await ctx.repos.hosts.getOne({
       where: { id: { eq: host.id } },
@@ -207,6 +214,7 @@ describe("HostInventoryService", () => {
     expect(slots).toMatchObject({
       jobsSources: true,
       jobsMaxJobs: 3,
+      jobsMaxReadJobs: 8,
       jobsRunning: 2,
     });
     expect(slots.jobsResult).toBe(false);
@@ -220,6 +228,8 @@ describe("HostInventoryService", () => {
       where: { id: { eq: host.id } },
     });
     expect(replies.jobsResult).toBe(true);
+    // That frame named no read lane: the host is back to one lane (#Q4525).
+    expect(replies.jobsMaxReadJobs ?? undefined).toBeUndefined();
   });
 
   it("answers nothing for a machine that has never reported", async ({

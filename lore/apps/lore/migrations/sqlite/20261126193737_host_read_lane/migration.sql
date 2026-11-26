@@ -1,0 +1,1 @@
+ALTER TABLE `hosts` ADD `jobs_max_read_jobs` integer;

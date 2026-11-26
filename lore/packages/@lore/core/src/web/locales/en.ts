@@ -3304,6 +3304,8 @@ export default {
     "No agent CLI answers for the jobs user: this host cannot run agent jobs.",
   "hosts.agent.check": "Check now",
   "hosts.agent.running": "$1 of $2 jobs running",
+  "hosts.agent.running.lanes":
+    "$1 jobs running, of $2 that change code and $3 others at once",
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
     "Written by someone outside the project's team. No agent reads it until a member has read it and trusted it.",

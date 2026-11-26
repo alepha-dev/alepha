@@ -251,6 +251,7 @@
       }
     ],
     "sources": true,
-    "maxJobs": 2
+    "maxJobs": 2,
+    "maxReadJobs": 8
   }
 }

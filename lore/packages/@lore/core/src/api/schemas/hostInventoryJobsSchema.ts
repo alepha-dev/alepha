@@ -57,6 +57,13 @@ export const hostInventoryJobsSchema = z.object({
    */
   maxJobs: z.integer().min(1).max(64).optional(),
   /**
+   * How many jobs that change no code it runs beside them, its
+   * `--max-read-jobs` (#Q4525): a lane of their own, so a job that reads
+   * never waits behind one that changes code. A machine that reports none
+   * has one limit for every job, `maxJobs`.
+   */
+  maxReadJobs: z.integer().min(1).max(64).optional(),
+  /**
    * The machine's terminal ack of a job carries the agent's final reply
    * (#Q4288): a host that does not say so leaves its jobs without one.
    */

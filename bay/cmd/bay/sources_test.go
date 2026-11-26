@@ -341,6 +341,94 @@ func setMaxJobs(t *testing.T, w *jobWorld, n int) {
 	}
 }
 
+func setMaxReadJobs(t *testing.T, w *jobWorld, n int) {
+	t.Helper()
+	cfg, _ := loadJobsConfig(w.f.root)
+	cfg.MaxReadJobs = n
+	if err := saveJobsConfig(w.f.root, cfg); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestJobLanes(t *testing.T) {
+	t.Run("the read lane is 8 wide by default, and --max-read-jobs sets it", func(t *testing.T) {
+		if got := (jobsConfig{}).readJobsLimit(); got != 8 {
+			t.Fatalf("default read limit = %d, want 8", got)
+		}
+		if got := (jobsConfig{MaxReadJobs: 3}).readJobsLimit(); got != 3 {
+			t.Fatalf("read limit = %d, want 3", got)
+		}
+		w := newJobWorld(t)
+		if err := cmdConfigJobs([]string{"--root", w.f.root, "--max-read-jobs", "4"}); err != nil {
+			t.Fatal(err)
+		}
+		if cfg, _ := loadJobsConfig(w.f.root); cfg.MaxReadJobs != 4 || cfg.User == "" {
+			t.Fatalf("config = %+v", cfg)
+		}
+		for _, raw := range []string{"0", "17", "many"} {
+			if err := cmdConfigJobs([]string{"--root", w.f.root, "--max-read-jobs", raw}); err == nil {
+				t.Errorf("--max-read-jobs %s was accepted", raw)
+			}
+		}
+	})
+
+	t.Run("jobs that read run while the write lane is full, and a second write job is busy", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		// Only the job in q12, the write job, waits to be let go.
+		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
+case "$PWD" in
+  */q12*) while [ ! -f "`+w.bin+`/go" ]; do sleep 0.05; done ;;
+esac
+`)
+		done := make(chan connector.Ack, 1)
+		go func() {
+			done <- w.run("job-w", w.agentSpec(map[string]any{"workspace": "q12", "timeoutSeconds": 600,
+				"source": map[string]any{"mode": "write", "repository": origin, "branch": "lore/q12"}})).last()
+		}()
+		waitFor(t, func() bool { return strings.Contains(w.frames.textOf("job-w", "stderr"), "agent claude started") })
+
+		read := w.agentSpec(map[string]any{"source": map[string]any{"mode": "read", "repository": origin}})
+		if last := w.run("job-r", read).last(); last.Status != "done" {
+			t.Fatalf("a read job beside a full write lane: ack = %+v", last)
+		}
+		if last := w.run("job-n", w.agentSpec(map[string]any{"workspace": "notes"})).last(); last.Status != "done" {
+			t.Fatalf("a job with no source beside a full write lane: ack = %+v", last)
+		}
+		last := w.run("job-w2", writeSpec(w, origin, "q13", "lore/q13")).last()
+		if last.Status != "failed" || last.Step != stepBusy || !strings.Contains(last.Reason, "--max-jobs") {
+			t.Fatalf("a second write job: ack = %+v, want busy naming --max-jobs", last)
+		}
+		w.stub(t, "go", "")
+		if last := <-done; last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+	})
+
+	t.Run("a read job past the read lane's limit is busy, and names --max-read-jobs", func(t *testing.T) {
+		origin := originRepo(t)
+		w := newJobWorld(t)
+		setMaxJobs(t, w, 3)
+		setMaxReadJobs(t, w, 1)
+		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nwhile [ ! -f \""+w.bin+"/go\" ]; do sleep 0.05; done\n")
+		src := map[string]any{"mode": "read", "repository": origin}
+		done := make(chan connector.Ack, 1)
+		go func() {
+			done <- w.run("job-a", w.agentSpec(map[string]any{"source": src, "timeoutSeconds": 600})).last()
+		}()
+		waitFor(t, func() bool { return strings.Contains(w.frames.textOf("job-a", "stderr"), "agent claude started") })
+		last := w.run("job-b", w.agentSpec(map[string]any{"source": src, "workspace": "review"})).last()
+		if last.Status != "failed" || last.Step != stepBusy || !strings.Contains(last.Reason, "--max-read-jobs") {
+			t.Fatalf("ack = %+v, want busy naming --max-read-jobs", last)
+		}
+		w.stub(t, "go", "")
+		if last := <-done; last.Status != "done" {
+			t.Fatalf("ack = %+v", last)
+		}
+	})
+}
+
 func TestReadTrees(t *testing.T) {
 	t.Run("a read job runs in its workspace with ./src at the commit, read-only, with its history", func(t *testing.T) {
 		origin := originRepo(t)

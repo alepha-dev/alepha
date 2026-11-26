@@ -363,10 +363,11 @@ func usageText() string {
   bay config registry-mirror (HOST|--clear)
                 # a pull-through mirror for Docker Hub images (rate limits,
                 # company policy): postgres:17 is pulled as HOST/library/postgres:17
-  bay config jobs (--user NAME|--clear) [--max-jobs N]
+  bay config jobs (--user NAME|--clear) [--max-jobs N] [--max-read-jobs N]
                 # the Unix user one-shot jobs from Lore run as (agent jobs: an
                 # agent CLI run on a prompt in a workspace kept under
-                # ~NAME/bay-jobs), and how many run at once (1 by default).
+                # ~NAME/bay-jobs), and how many run at once: those changing
+                # code (1 by default), and the others beside them (8).
                 # Never root, never bay's own user; an agent CLI (claude,
                 # gemini) must be on its PATH, signed in by hand as that user.
                 # Lore must also allow jobs on the host. ⚠ No sandbox: a job

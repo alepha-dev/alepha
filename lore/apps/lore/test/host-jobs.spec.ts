@@ -164,7 +164,7 @@ describe("HostJobService", () => {
     expect(next.status).toBe("running");
   });
 
-  it("dispatches up to the host's --max-jobs, and never two jobs into a workspace a write job holds (#Q4249)", async ({
+  it("dispatches up to the host's --max-jobs in one lane on a host that reports no read lane, and never two jobs into a workspace a write job holds (#Q4249)", async ({
     expect,
   }) => {
     await w.repos.hosts.updateById(w.host.id, { jobsMaxJobs: 3 });
@@ -213,6 +213,66 @@ describe("HostJobService", () => {
       "running",
     );
     expect(after.find((it) => it.id === fourth.id)?.status).toBe("queued");
+  });
+
+  it("dispatches the jobs that change no code in a lane of their own, so none waits behind a write job (#Q4525)", async ({
+    expect,
+  }) => {
+    await w.repos.hosts.updateById(w.host.id, {
+      jobsMaxJobs: 1,
+      jobsMaxReadJobs: 2,
+    });
+    const startWith = (extra: Record<string, unknown>) =>
+      w.service.start({
+        projectId: w.projectId,
+        hostId: w.host.id,
+        kind: "agent",
+        input: { ...input, ...extra },
+        startedBy: w.ownerId,
+      });
+    const statusOf = async (id: string) =>
+      (await w.repos.jobs.getOne({ where: { id: { eq: id } } })).status;
+    const end = async (id: string) =>
+      w.commands.ack(w.host.id, {
+        id: (await commandOf(w, id)).id,
+        status: "done",
+        exitCode: 0,
+      });
+
+    const write = await startWith({
+      workspace: "q1",
+      source: { mode: "write", branch: "lore/q1" },
+    });
+    const secondWrite = await startWith({
+      workspace: "q2",
+      source: { mode: "write", branch: "lore/q2" },
+    });
+    const read = await startWith({
+      workspace: "triage",
+      source: { mode: "read" },
+    });
+    const noSource = await startWith({ workspace: "text" });
+    const thirdRead = await startWith({
+      workspace: "review",
+      source: { mode: "read" },
+    });
+    // One write job at a time: the second waits.
+    expect(write.status).toBe("running");
+    expect(secondWrite.status).toBe("queued");
+    // Queued after it, the jobs that change no code start all the same.
+    expect(read.status).toBe("running");
+    expect(noSource.status).toBe("running");
+    // Their lane is two wide.
+    expect(thirdRead.status).toBe("queued");
+
+    // A slot of the read lane goes to the read job, never to the older
+    // write job.
+    await end(read.id);
+    expect(await statusOf(thirdRead.id)).toBe("running");
+    expect(await statusOf(secondWrite.id)).toBe("queued");
+
+    await end(write.id);
+    expect(await statusOf(secondWrite.id)).toBe("running");
   });
 
   it("puts a job the host acked busy back in the queue, offered again only once a job of the host ends (#Q4249)", async ({
