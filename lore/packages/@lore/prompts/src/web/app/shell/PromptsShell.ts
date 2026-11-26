@@ -5,7 +5,7 @@ import {
   SpotlightSourceRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { Bot } from "lucide-react";
+import { Bot, ListChecks } from "lucide-react";
 
 import BayAgentHost from "../components/bay/BayAgentHost.tsx";
 import PromptPinsMenu from "../components/pins/PromptPinsMenu.tsx";
@@ -15,7 +15,8 @@ import { usePromptSpotlightGroup } from "../components/pins/usePromptSpotlightGr
 /**
  * What Prompts puts in the project shell and in core's web slots (#E175):
  * Settings > Prompts, the pins button and hook Plan's and Ship's pages
- * draw, the spotlight's prompt rows and the host's Agent switch.
+ * draw, the spotlight's prompt rows, the host's Agent switch and its Jobs
+ * tab.
  *
  * Registered at boot, before the container locks.
  */
@@ -42,8 +43,9 @@ export class PromptsShell {
           fullWidth: true,
         },
         {
-          // A job belongs to the project, not to a host (#Q4281): no host
-          // page lists jobs. Listed with the read its API asks.
+          // A job belongs to the project (#Q4281): this is where its
+          // members list theirs. A host's console lists the machine's
+          // (#Q4524). Listed with the read its API asks.
           route: "projectSettingsPromptJobs",
           labelKey: "project.settings.tab.jobs",
           requires: "host:read",
@@ -57,6 +59,14 @@ export class PromptsShell {
       key: "prompts",
       capability: "prompts",
       useGroup: usePromptSpotlightGroup,
+    });
+    // Whatever the home project's capabilities (#Q4524): a host may run
+    // the jobs of a project it is lent to.
+    this.hostConsole.registerTab({
+      route: "bayJobs",
+      labelKey: "bay.nav.jobs",
+      icon: ListChecks,
+      order: 36,
     });
     this.hostConsole.registerAgentPanel({
       key: "agent-host",

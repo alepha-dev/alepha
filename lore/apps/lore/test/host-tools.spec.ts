@@ -4,7 +4,8 @@ import {
   ProjectHostController,
 } from "@lore/core/api";
 import { HostTools } from "@lore/core/mcp";
-import { hosts } from "@lore/core/schemas";
+import { hostJobs, hosts } from "@lore/core/schemas";
+import { createTestProject } from "@lore/core/testing";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { LoreShipApi } from "@lore/ship/api";
 import { LoreShipMcp } from "@lore/ship/mcp";
@@ -20,6 +21,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 class HostRepositories {
   hosts = $repository(hosts);
+  jobs = $repository(hostJobs);
 }
 
 /**
@@ -63,6 +65,16 @@ describe("host MCP tools", () => {
       alepha.store.set(currentUserAtom, user);
       return (
         alepha.inject(HostTools).host_stats as unknown as {
+          execute: (p: unknown) => Promise<any>;
+        }
+      ).execute(params);
+    });
+
+  const jobsOf = (user: { id: string }, params: Record<string, unknown>) =>
+    alepha.context.run(() => {
+      alepha.store.set(currentUserAtom, user);
+      return (
+        alepha.inject(HostTools).host_jobs as unknown as {
           execute: (p: unknown) => Promise<any>;
         }
       ).execute(params);
@@ -166,5 +178,49 @@ describe("host MCP tools", () => {
       statsIntervalSeconds: 300,
     });
     expect((await stats(owner, { host: "shell-box" })).collecting).toBe(true);
+  });
+
+  it("lists a machine's jobs to a member of its home, another project's without what that project wrote (#Q4524)", async ({
+    expect,
+  }) => {
+    const owner = await newUser();
+    const stranger = await newUser();
+    const minted = await createTestHost(alepha, owner, { slug: "box-1" });
+    // A project the owner is no member of, whose job ran on the machine.
+    const other = await createTestProject(alepha, { createdBy: stranger.id });
+    const base = {
+      hostId: minted.id,
+      kind: "agent" as const,
+      input: { prompt: "Rewrite the billing module", timeoutSeconds: 600 },
+      prompt: "work-quest",
+    };
+    await repos.jobs.create({
+      ...base,
+      projectId: minted.projectId,
+      status: "succeeded",
+      queuedAt: "2026-11-26T10:00:00.000Z",
+    });
+    await repos.jobs.create({
+      ...base,
+      projectId: other.id,
+      status: "running",
+      queuedAt: "2026-11-26T11:00:00.000Z",
+    });
+
+    const result = await jobsOf(owner, { host: "box-1" });
+    expect(result.host).toBe("box-1");
+    expect(
+      result.jobs.map((job: any) => [job.project.id, job.readable, job.prompt]),
+    ).toEqual([
+      [other.id, false, undefined],
+      [minted.projectId, true, "work-quest"],
+    ]);
+    expect(JSON.stringify(result)).not.toContain("billing");
+
+    const running = await jobsOf(owner, { host: "box-1", status: "running" });
+    expect(running.jobs).toHaveLength(1);
+    await expect(jobsOf(stranger, { host: "box-1" })).rejects.toThrow(
+      "No host named box-1 that you can read",
+    );
   });
 });

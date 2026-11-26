@@ -119,6 +119,8 @@ export const hostJobs = $entity({
   indexes: [
     // The dispatcher: the oldest queued job of a host, and its running one.
     { columns: ["hostId", "status", "queuedAt"] },
+    // The machine's job list, newest first, whatever the status (#Q4524).
+    { columns: ["hostId", "queuedAt"] },
     // The project's job list, newest first.
     { columns: ["projectId", "queuedAt"] },
     { columns: ["commandId"] },

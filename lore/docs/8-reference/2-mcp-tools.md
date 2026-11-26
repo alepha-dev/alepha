@@ -320,9 +320,13 @@ See [Deploying an app](/lore/docs/ship-deploying),
 | `stack_rollback`  | Deploy an earlier revision again.                                                           |
 | `stack_logs`      | Ask for a service's logs, then read them.                                                   |
 | `host_stats`      | A host's CPU and memory: the current reading and one mean per day.                          |
+| `host_jobs`       | Every job that ran on a host, whatever its project, newest first.                           |
 
-On `host_stats`, `project` or `project_name` narrows the slug to that
-project's hosts, and `home` picks between two hosts that share a slug.
+On `host_stats` and `host_jobs`, `project` or `project_name` narrows the slug
+to that project's hosts, and `home` picks between two hosts that share a slug.
+`host_jobs` answers a job of a project where you hold no `host:read` with
+`readable: false`: its project, status, times and tokens, and nothing that
+project wrote.
 
 ## Prompts and agent jobs
 
@@ -352,22 +356,22 @@ the project has it off; the `job_*` tools do not.
 Some of Lore is not reachable over MCP. Reach for the page or the
 [CLI](/lore/docs/reference-cli) instead:
 
-| Surface                                                          | Where it is                                                                           |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Creating or deleting a project                                   | `lore project create` and `lore project delete`.                                      |
-| Members, ranks and project settings                              | The project's Settings.                                                               |
-| Switching a capability                                           | `lore project capability`, and the project's Settings.                                |
-| [Notifications](/lore/docs/project-notifications)                | The bell. A comment naming someone reaches them.                                      |
-| Deleting a feedback report                                       | The Feedback page.                                                                    |
-| Deleting an error                                                | The Errors page.                                                                      |
-| Error ignore rules                                               | **Settings ▸ Plan ▸ Errors**.                                                         |
-| Pushing a build                                                  | CI, with `lore artifacts push`.                                                       |
-| Building an app, or taking a deployed copy down                  | `lore deploy` and `lore apps destroy`.                                                |
-| Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                                              |
-| Creating a stack, uploading a revision, its variables and routes | `lore stack`, and the Stacks page.                                                    |
-| [Hosts](/lore/docs/project-hosts) and their secrets              | `lore host`. `host_stats` only reads: no tool creates, moves, assigns or deletes one. |
-| Container registry credentials                                   | `lore registry`.                                                                      |
-| API keys and account settings                                    | Your account, from a signed-in session.                                               |
+| Surface                                                          | Where it is                                                                                                                               |
+| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Creating or deleting a project                                   | `lore project create` and `lore project delete`.                                                                                          |
+| Members, ranks and project settings                              | The project's Settings.                                                                                                                   |
+| Switching a capability                                           | `lore project capability`, and the project's Settings.                                                                                    |
+| [Notifications](/lore/docs/project-notifications)                | The bell. A comment naming someone reaches them.                                                                                          |
+| Deleting a feedback report                                       | The Feedback page.                                                                                                                        |
+| Deleting an error                                                | The Errors page.                                                                                                                          |
+| Error ignore rules                                               | **Settings ▸ Plan ▸ Errors**.                                                                                                             |
+| Pushing a build                                                  | CI, with `lore artifacts push`.                                                                                                           |
+| Building an app, or taking a deployed copy down                  | `lore deploy` and `lore apps destroy`.                                                                                                    |
+| Secrets of a deployed copy                                       | `lore secrets`, and the Environment tab.                                                                                                  |
+| Creating a stack, uploading a revision, its variables and routes | `lore stack`, and the Stacks page.                                                                                                        |
+| [Hosts](/lore/docs/project-hosts) and their secrets              | `lore host`. `host_stats` and `host_jobs` only read: no tool creates, moves, assigns or deletes one, or stops a job from the host's side. |
+| Container registry credentials                                   | `lore registry`.                                                                                                                          |
+| API keys and account settings                                    | Your account, from a signed-in session.                                                                                                   |
 
 ## Next
 

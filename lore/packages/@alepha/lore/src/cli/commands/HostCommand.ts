@@ -2,6 +2,7 @@ import type {
   AdminHostController,
   HostCommandController,
   HostController,
+  HostJobController,
   ProjectHostController,
 } from "@lore/core/api";
 import type { AgentHostController } from "@lore/prompts/api";
@@ -49,7 +50,8 @@ import { HostProviders } from "../services/providers/HostProviders.ts";
  * waits for the new version to serve. `delete` (#Q3131) removes one: refused while an app or a
  * stack still deploys to it, and nothing on the machine stops. `move`
  * (#Q3282) gives it another home, and `assign` is the instance admin's, for
- * a host with no home.
+ * a host with no home. `jobs` (#Q4524) lists every job of a machine,
+ * whatever its project, and stops one with `--cancel`.
  */
 export class HostCommand {
   protected readonly client = $inject(LoreClientService);
@@ -77,6 +79,7 @@ export class HostCommand {
     this.client.scope(),
   );
   protected readonly agents = $client<AgentHostController>(this.client.scope());
+  protected readonly hostJobs = $client<HostJobController>(this.client.scope());
 
   protected readonly projectFlag = z
     .text({
@@ -1318,10 +1321,106 @@ export class HostCommand {
     },
   });
 
+  /**
+   * Every job of a machine, whatever its project (#Q4524), the twin of
+   * `host_jobs`: `host:read` in the host's home project. A job of a project
+   * the caller cannot read comes with its project, status and times alone.
+   * `--cancel` stops one of them, under `host:update` there.
+   */
+  public readonly jobs = $command({
+    name: "jobs",
+    description:
+      "Every job that ran on a host, newest first, whatever its project; --cancel stops one",
+    args: z.text({
+      title: "host",
+      description: "The host's slug, as lore host list prints it",
+    }),
+    flags: z.object({
+      project: this.projectFlag,
+      home: this.homeFlag,
+      status: z
+        .enum([
+          "queued",
+          "running",
+          "succeeded",
+          "failed",
+          "cancelled",
+          "timed_out",
+        ])
+        .describe("Only the jobs in this status.")
+        .optional(),
+      limit: z
+        .integer()
+        .min(1)
+        .max(500)
+        .describe("How many jobs, newest first. Defaults to 50.")
+        .optional(),
+      cancel: z
+        .text({
+          title: "job",
+          description:
+            "Stop this job of the host, by id, instead of listing: any project's, with host:update in the host's home project",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const scope = await this.readScope(flags.project, flags.home, context);
+        if (flags.cancel) {
+          const host = await this.owned.readable(args, {
+            ...scope,
+            need: "host:update",
+          });
+          const job = await this.hostJobs.cancelHostJob({
+            params: { hostId: host.id, jobId: flags.cancel },
+          });
+          this.render.written(
+            print,
+            flags.output,
+            job,
+            job.status === "cancelled"
+              ? `Cancelled job ${job.id} on ${host.slug}`
+              : `Stopping job ${job.id} on ${host.slug}`,
+          );
+          return;
+        }
+        const host = await this.owned.readable(args, scope);
+        const { items } = await this.hostJobs.listHostJobs({
+          params: { hostId: host.id },
+          query: { limit: flags.status ? 500 : (flags.limit ?? 50) },
+        });
+        const jobs = (
+          flags.status
+            ? items.filter((item) => item.status === flags.status)
+            : items
+        ).slice(0, flags.limit ?? 50);
+        if (flags.output === "json") {
+          this.render.json(print, { host: host.slug, jobs });
+          return;
+        }
+        this.render.list(
+          print,
+          jobs.map((job) => ({
+            handle: job.id,
+            title: `${job.prompt ?? job.kind} ${job.status}`,
+            fields: [
+              `in ${job.project.slug ?? job.project.title}`,
+              job.queuedAt,
+            ],
+          })),
+          undefined,
+          "No job has run on this host.",
+        );
+      });
+    },
+  });
+
   public readonly host = $command({
     name: "host",
     description:
-      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, lend or unlend it, update it, upgrade its Bay, rotate, move or delete it, and, for an admin, assign one",
+      "The machines your projects deploy to: provision a server, add one by hand, list them, read one, wait for it, read its stats, list or stop its jobs, lend or unlend it, update it, upgrade its Bay, rotate, move or delete it, and, for an admin, assign one",
     children: [
       this.provision,
       this.add,
@@ -1333,6 +1432,7 @@ export class HostCommand {
       this.unlend,
       this.update,
       this.check,
+      this.jobs,
       this.upgrade,
       this.rotate,
       this.move,

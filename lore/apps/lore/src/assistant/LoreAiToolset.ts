@@ -155,6 +155,7 @@ export class LoreAiToolset {
     folio_row_list: LoreAiToolset.LATER,
     folio_row_update: LoreAiToolset.LATER,
     folio_update: LoreAiToolset.LATER,
+    host_jobs: LoreAiToolset.HOST,
     host_stats: LoreAiToolset.HOST,
     inbox_list: LoreAiToolset.LATER,
     inbox_read: LoreAiToolset.LATER,

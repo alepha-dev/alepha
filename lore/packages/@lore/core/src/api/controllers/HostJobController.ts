@@ -1,11 +1,12 @@
 import { $inject, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
-import { OwnedResourceProvider } from "alepha/security";
-import { $action } from "alepha/server";
+import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
+import { $action, NotFoundError } from "alepha/server";
 
 import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
-import { hosts } from "../entities/hosts.ts";
+import { type Host, hosts } from "../entities/hosts.ts";
+import { projects } from "../entities/projects.ts";
 import {
   type HostJobLogResource,
   hostJobLogSchema,
@@ -19,10 +20,15 @@ import {
   HOST_JOB_TERMINAL,
   HOST_JOB_WAKE_UP,
 } from "../schemas/hostJobValues.ts";
+import {
+  type HostMachineJob,
+  hostMachineJobSchema,
+} from "../schemas/hostMachineJobSchema.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { HostJobService } from "../services/HostJobService.ts";
+import { HostService } from "../services/HostService.ts";
 
-export type { HostJobLogResource, HostJobResource };
+export type { HostJobLogResource, HostJobResource, HostMachineJob };
 
 /**
  * A project's host jobs (#Q3984): the list, one job with its live log,
@@ -38,12 +44,24 @@ export class HostJobController {
   protected readonly rows = $repository(hostJobs);
   protected readonly hostRows = $repository(hosts);
   protected readonly users = $repository(users);
+  protected readonly projectRows = $repository(projects);
+  protected readonly hostService = $inject(HostService);
   protected readonly owned = $inject(OwnedResourceProvider);
 
   protected ownsJob = (requires: string) =>
     $ownsProject({
       repository: () => this.rows,
       param: "jobId",
+      requires,
+    });
+
+  /**
+   * The host a `/hosts/:hostId/...` route names, gated in its home project.
+   */
+  protected ownsHost = (requires: string) =>
+    $ownsProject({
+      repository: () => this.hostRows,
+      param: "hostId",
       requires,
     });
 
@@ -157,6 +175,129 @@ export class HostJobController {
       return { ...resource, pokes: await this.pokesOf(job) };
     },
   });
+
+  /**
+   * Every job of a machine, newest first, whatever its project (#Q4524):
+   * the Jobs tab of the host's console.
+   *
+   * Gated by the host's **home** project, at `host:read`, where every other
+   * read of a job is gated by the job's own. So a job of a project the
+   * reader holds no `host:read` in is answered by what the machine knows
+   * alone: see `hostMachineJobSchema`.
+   */
+  listHostJobs = $action({
+    use: [this.ownsHost("host:read")],
+    method: "GET",
+    path: "/hosts/:hostId/jobs",
+    schema: {
+      params: z.object({ hostId: z.uuid() }),
+      query: z.object({ limit: z.integer().min(1).max(500).optional() }),
+      response: z.object({ items: z.array(hostMachineJobSchema) }),
+    },
+    handler: async ({ query, user }) => {
+      const host = this.owned.get<Host>();
+      const rows = await this.service.listOn(host.id, query.limit ?? 100);
+      return { items: await this.presentOnMachine(rows, user) };
+    },
+  });
+
+  /**
+   * Stops a job of the machine, another project's included (#Q4524), under
+   * `host:update` in the host's home project: the machine is its operator's,
+   * and stopping a job reads nothing of it. A job that ran elsewhere is a
+   * 404, so the route never reaches past its host.
+   */
+  cancelHostJob = $action({
+    use: [this.ownsHost("host:update")],
+    method: "POST",
+    path: "/hosts/:hostId/jobs/:jobId/cancel",
+    schema: {
+      params: z.object({ hostId: z.uuid(), jobId: z.uuid() }),
+      response: hostMachineJobSchema,
+    },
+    handler: async ({ params, user }) => {
+      const host = this.owned.get<Host>();
+      const job = await this.service.getRow(params.jobId);
+      if (job.hostId !== host.id) {
+        throw new NotFoundError("No such job");
+      }
+      const cancelled = await this.service.cancel(job.id, user.id);
+      const [row] = await this.presentOnMachine([cancelled], user);
+      return row;
+    },
+  });
+
+  /**
+   * Rows as a machine's console shows them to `user`: the project behind
+   * each in one query, the reader's permissions computed once per project,
+   * and the project's own half only where they hold `host:read`.
+   */
+  protected async presentOnMachine(
+    rows: HostJob[],
+    user: UserAccountToken,
+  ): Promise<HostMachineJob[]> {
+    const projectIds = [...new Set(rows.map((row) => row.projectId))];
+    const projectList = projectIds.length
+      ? await this.projectRows.findMany({
+          where: { id: { inArray: projectIds } },
+          columns: ["id", "title", "slug"],
+        })
+      : [];
+    const readable = new Set<number>();
+    for (const projectId of projectIds) {
+      const can = await this.hostService.hostPermissionsIn(projectId, user);
+      if (can.includes("host:read")) {
+        readable.add(projectId);
+      }
+    }
+    const starterIds = [
+      ...new Set(
+        rows.flatMap((row) =>
+          row.startedBy && readable.has(row.projectId) ? [row.startedBy] : [],
+        ),
+      ),
+    ];
+    const people = starterIds.length
+      ? await this.users.findMany({
+          where: { id: { inArray: starterIds } },
+          columns: ["id", "username"],
+        })
+      : [];
+    return rows.map((row) => {
+      const project = projectList.find((it) => it.id === row.projectId);
+      const open = readable.has(row.projectId);
+      const starter = people.find((it) => it.id === row.startedBy)?.username;
+      return {
+        id: row.id,
+        kind: row.kind,
+        status: row.status,
+        queuedAt: row.queuedAt,
+        ...(row.startedAt ? { startedAt: row.startedAt } : {}),
+        ...(row.endedAt ? { endedAt: row.endedAt } : {}),
+        ...(row.turns != null ? { turns: row.turns } : {}),
+        ...(row.inputTokens != null ? { inputTokens: row.inputTokens } : {}),
+        ...(row.outputTokens != null ? { outputTokens: row.outputTokens } : {}),
+        project: {
+          id: row.projectId,
+          title: project?.title ?? "",
+          ...(project?.slug ? { slug: project.slug } : {}),
+        },
+        readable: open,
+        // The project's own half: named field by field, never spread.
+        ...(open
+          ? {
+              ...(row.prompt ? { prompt: row.prompt } : {}),
+              ...(row.args ? { args: row.args } : {}),
+              ...(row.cause ? { cause: row.cause } : {}),
+              ...(row.subjectType ? { subjectType: row.subjectType } : {}),
+              ...(row.subjectId ? { subjectId: row.subjectId } : {}),
+              ...(starter ? { startedByName: starter } : {}),
+              ...(row.reason ? { reason: row.reason } : {}),
+            }
+          : {}),
+      };
+    });
+  }
 
   /**
    * A job's pokes with their senders' names.

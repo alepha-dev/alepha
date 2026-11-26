@@ -239,7 +239,10 @@ filter keeps those quests with **An agent**.
 **Settings ▸ Prompts ▸ Jobs** lists every job of the project, newest first:
 its prompt and the items it was given, what started it (you, an event, the
 schedule), its host, status and duration. Filter by prompt, status or host.
-A job belongs to the project, not to a host: no host page lists them.
+A job belongs to the project. The **Jobs** tab of a
+[host's console](/lore/docs/project-hosts#the-console-of-a-bay-host) lists
+what ran on that server for every project, and shows of another project's job
+only its status, times and tokens.
 
 A job's page names it by its prompt and its items, with its facts on the
 side: who or what started it, the host, the agent CLI and its model, the
