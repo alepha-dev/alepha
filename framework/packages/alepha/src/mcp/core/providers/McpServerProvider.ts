@@ -31,6 +31,7 @@ import {
   McpMethodNotFoundError,
   McpPromptNotFoundError,
   McpResourceNotFoundError,
+  McpTaskNotFoundError,
   McpToolNotFoundError,
   McpToolOutputError,
   McpUnsupportedProtocolVersionError,
@@ -44,7 +45,11 @@ import {
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import { McpActionTool } from "../helpers/McpActionTool.ts";
-import { MCP_APP_MIME_TYPE, MCP_APPS_EXTENSION } from "../helpers/mcpApps.ts";
+import {
+  MCP_APP_MIME_TYPE,
+  MCP_APPS_EXTENSION,
+  MCP_TASKS_EXTENSION,
+} from "../helpers/mcpApps.ts";
 import { McpElicitationSession } from "../helpers/McpElicitationSession.ts";
 import { McpToolView } from "../helpers/McpToolView.ts";
 import type {
@@ -78,7 +83,11 @@ import type { PromptPrimitive } from "../primitives/$prompt.ts";
 import type { ResourcePrimitive } from "../primitives/$resource.ts";
 import type { ResourceTemplatePrimitive } from "../primitives/$resourceTemplate.ts";
 import type { ToolPrimitive } from "../primitives/$tool.ts";
-import type { McpTaskRun } from "./McpTaskStore.ts";
+import {
+  type McpTaskRun,
+  type McpTaskState,
+  McpTaskStore,
+} from "./McpTaskStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -231,6 +240,17 @@ export class McpServerProvider {
   };
 
   /**
+   * How long a task and its result are kept, from its creation, unless its
+   * tool names its own (`$tool({ task: { ttlMs } })`). One hour.
+   */
+  public taskTtlMs = 3_600_000;
+
+  /**
+   * How often a client is told to poll a task (`pollIntervalMs`).
+   */
+  public taskPollIntervalMs = 1_000;
+
+  /**
    * The extensions this server declares under `capabilities.extensions`,
    * keyed by id. See {@link registerExtension}.
    */
@@ -312,8 +332,22 @@ export class McpServerProvider {
         }
         this.registerAction(action);
       }
+      // Tasks need somewhere durable to live: with no store, the extension
+      // is not declared and every tool answers plainly.
+      if (this.taskStore()) {
+        this.registerExtension(MCP_TASKS_EXTENSION, {});
+      }
     },
   });
+
+  /**
+   * The bound `McpTaskStore`, or `undefined` when the app bound none.
+   */
+  protected taskStore(): McpTaskStore | undefined {
+    return this.alepha.has(McpTaskStore)
+      ? this.alepha.inject(McpTaskStore)
+      : undefined;
+  }
 
   /**
    * Whether the classes a build list declared for the MCP surface exist.
@@ -743,6 +777,11 @@ export class McpServerProvider {
         return true;
       case "server/discover":
         return modern;
+      // The Tasks extension: modern only, and only with a store.
+      case "tasks/get":
+      case "tasks/update":
+      case "tasks/cancel":
+        return modern && this.hasExtension(MCP_TASKS_EXTENSION);
       case "initialize":
       case "ping":
         return !modern;
@@ -1068,7 +1107,8 @@ export class McpServerProvider {
     const meta = this.isPlainObject(object._meta) ? object._meta : {};
     return {
       ...object,
-      resultType: "complete",
+      // A tool answered as a task says so; every other result is complete.
+      resultType: object.resultType === "task" ? "task" : "complete",
       ...this.cacheHintsFor(request),
       _meta: { ...meta, "io.modelcontextprotocol/serverInfo": this.serverInfo },
     };
@@ -1434,6 +1474,12 @@ export class McpServerProvider {
         return this.handlePromptsGet(params, context);
       case "completion/complete":
         return this.handleCompletionComplete(params, context);
+      case "tasks/get":
+        return this.handleTasksGet(params, context);
+      case "tasks/update":
+        return this.handleTasksUpdate(params, context);
+      case "tasks/cancel":
+        return this.handleTasksCancel(params, context);
       default:
         throw new McpMethodNotFoundError({ method });
     }
@@ -1654,6 +1700,31 @@ export class McpServerProvider {
         args,
         context,
       });
+      const store = tool.isTask ? this.taskStoreFor(context) : undefined;
+      if (store) {
+        // Answered as a task: checked now, run in the store's worker, which
+        // checks again and announces the call's end.
+        await tool.checkCall(args, context);
+        const state = await store.create({
+          tool: name,
+          arguments: args,
+          clientKey: context!.clientKey!,
+          data: context?.data,
+          elicitation: this.isPlainObject(
+            context?.clientCapabilities?.elicitation,
+          )
+            ? (context!.clientCapabilities!.elicitation as Record<
+                string,
+                unknown
+              >)
+            : undefined,
+          ttlMs: tool.taskTtlMs ?? this.taskTtlMs,
+        });
+        return {
+          resultType: "task",
+          ...this.taskFields(state),
+        } as unknown as McpToolCallResult;
+      }
       const result = await tool.execute(args, context);
 
       // A tool WITHOUT an output schema may return raw MCP content blocks
@@ -1909,6 +1980,116 @@ export class McpServerProvider {
         isError: true,
       };
     }
+  }
+
+  // -----------------------------------------------------------------------------------------------------------------
+  // Tasks (io.modelcontextprotocol/tasks)
+  // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * The store a `tools/call` is answered as a task through, or `undefined`
+   * when it is answered plainly: a task needs a bound store, a modern
+   * request, a client key to authorize later reads against, and a client
+   * that declared the extension.
+   */
+  protected taskStoreFor(context?: McpContext): McpTaskStore | undefined {
+    if (
+      !context?.protocolVersion ||
+      !context.clientKey ||
+      !this.hasExtension(MCP_TASKS_EXTENSION) ||
+      !this.clientExtension(context, MCP_TASKS_EXTENSION)
+    ) {
+      return undefined;
+    }
+    return this.taskStore();
+  }
+
+  /**
+   * The task named by `params.taskId`, when it exists and belongs to the
+   * caller; `-32602` otherwise, the same answer for a task of another client
+   * as for no task at all.
+   */
+  protected async ownedTask(
+    params: Record<string, unknown>,
+    context?: McpContext,
+  ): Promise<McpTaskState> {
+    const taskId = this.requireStringParam(params, "taskId");
+    const state = await this.taskStore()?.get(taskId);
+    if (
+      !state ||
+      !context?.clientKey ||
+      state.clientKey !== context.clientKey
+    ) {
+      throw new McpTaskNotFoundError({ taskId });
+    }
+    return state;
+  }
+
+  /**
+   * A task's fields on the wire.
+   */
+  protected taskFields(state: McpTaskState): Record<string, unknown> {
+    return {
+      taskId: state.id,
+      status: state.status,
+      createdAt: state.createdAt,
+      lastUpdatedAt: state.lastUpdatedAt,
+      ttlMs: state.ttlMs,
+      pollIntervalMs: this.taskPollIntervalMs,
+    };
+  }
+
+  /**
+   * `tasks/get`: the task, with its result once `completed`, its error once
+   * `failed`, and its pending input requests while `input_required`.
+   */
+  protected async handleTasksGet(
+    params: Record<string, unknown>,
+    context?: McpContext,
+  ): Promise<Record<string, unknown>> {
+    const state = await this.ownedTask(params, context);
+    return {
+      ...this.taskFields(state),
+      ...(state.status === "completed" ? { result: state.result } : {}),
+      ...(state.status === "failed" && state.error
+        ? { error: state.error, statusMessage: state.error.message }
+        : {}),
+      ...(state.status === "input_required"
+        ? { inputRequests: state.inputRequests ?? {} }
+        : {}),
+    };
+  }
+
+  /**
+   * `tasks/update`: answer an `input_required` task's requests, which wakes
+   * it. A task not waiting for input is refused with `-32602`.
+   */
+  protected async handleTasksUpdate(
+    params: Record<string, unknown>,
+    context?: McpContext,
+  ): Promise<Record<string, never>> {
+    const state = await this.ownedTask(params, context);
+    const responses = params.inputResponses;
+    if (!this.isPlainObject(responses)) {
+      throw new McpInvalidParamsError(
+        'Invalid params: missing required object "inputResponses"',
+      );
+    }
+    await this.taskStore()!.answer(state.id, responses);
+    return {};
+  }
+
+  /**
+   * `tasks/cancel`: cooperative. A waiting task is cancelled at once, a
+   * running one when its tool honours its signal.
+   */
+  protected async handleTasksCancel(
+    params: Record<string, unknown>,
+    context?: McpContext,
+  ): Promise<Record<string, never>> {
+    const state = await this.ownedTask(params, context);
+    await this.taskStore()!.cancel(state.id);
+    return {};
   }
 
   /**

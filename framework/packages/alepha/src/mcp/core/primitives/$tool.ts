@@ -17,7 +17,7 @@ import {
   z,
 } from "alepha";
 import { DateTimeProvider, type DurationLike } from "alepha/datetime";
-import { KIND } from "alepha/internal";
+import { KIND, OPTIONS } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { McpToolOutputError } from "../errors/McpError.ts";
@@ -176,6 +176,19 @@ export interface ToolPrimitiveOptions<
    * @example { resource: this.chart, visibility: ["app"] }
    */
   ui?: ToolUiOptions;
+
+  /**
+   * Answer the call as a task (the `io.modelcontextprotocol/tasks`
+   * extension): to a modern client that declares the extension and has a
+   * client key, `tools/call` answers at once with the task's id, the tool
+   * runs in the worker of the bound `McpTaskStore`, and the client polls
+   * `tasks/get` for its result. Every other client gets the plain result,
+   * waited for as without this option.
+   *
+   * `ttlMs` is how long the task and its result are kept, the server's
+   * `taskTtlMs` by default.
+   */
+  task?: boolean | { ttlMs?: number };
 
   /**
    * Zod schema defining the tool's parameters and result type.
@@ -362,6 +375,40 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
         }),
       );
     }
+  }
+
+  /**
+   * Whether this tool may be answered as a task.
+   */
+  public get isTask(): boolean {
+    return !!this.options.task;
+  }
+
+  /**
+   * The task ttl this tool asks for, when it names one.
+   */
+  public get taskTtlMs(): number | undefined {
+    const task = this.options.task;
+    return typeof task === "object" ? task.ttlMs : undefined;
+  }
+
+  /**
+   * Validate `params` and run the tool's `$secure` gates, without the
+   * handler or any other middleware: what a call answered as a task checks
+   * before the task is created. A malformed argument throws the
+   * `SchemaValidationError` `execute` would; a refusal, the gate's error.
+   */
+  public async checkCall(params: unknown, context?: McpContext): Promise<void> {
+    if (this.options.schema?.params) {
+      this.alepha.codec.decode(this.options.schema.params, params ?? {});
+    }
+    const gates = (this.options.use ?? []).filter(
+      (it) => (it as any)[OPTIONS]?.name === "$secure",
+    );
+    if (gates.length === 0) {
+      return;
+    }
+    await new PipelineHandler(() => undefined, gates).run(params, context);
   }
 
   /**

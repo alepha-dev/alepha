@@ -832,7 +832,7 @@ class Reports {
 ```
 
 This is what an MCP task is made of: see
-[MCP Server](/docs/guides-ai-mcp).
+[MCP Server](/docs/guides-ai-mcp#tasks-long-running-tools).
 
 ### A rename loses the history
 

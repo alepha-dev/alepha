@@ -1107,6 +1107,65 @@ known, and a client that does not know the extension ignores `_meta`. So the
 tool's text result must make sense on its own; the view is an addition, not a
 replacement.
 
+### Tasks: long-running tools
+
+The Tasks extension (`io.modelcontextprotocol/tasks`) lets a tool answer at once
+with a task id, run on, and be polled for its result. Mark the tool `task`, and
+bind a store where tasks live, `JobMcpTaskStore` from `alepha/api/jobs`:
+
+```typescript
+import { Alepha, z } from "alepha";
+import { AlephaApiJobs, JobMcpTaskStore } from "alepha/api/jobs";
+import { $tool, AlephaMcp, McpTaskStore } from "alepha/mcp";
+
+class Reports {
+  monthly_report = $tool({
+    description: "Build the monthly report (slow)",
+    task: { ttlMs: 3_600_000 },
+    schema: { params: z.object({ month: z.text() }) },
+    handler: async ({ params }) => ({ month: params.month, rows: 42 }),
+  });
+}
+
+const alepha = Alepha.create()
+  .with(AlephaApiJobs)
+  .with(AlephaMcp)
+  .with({ provide: McpTaskStore, use: JobMcpTaskStore })
+  .with(Reports);
+```
+
+- **Who gets a task**: a modern (2026-07-28) client that declares the
+  extension and has a client key. Anyone else, a legacy client included, gets
+  the plain result, waited for as before.
+- **The flow**: `tools/call` answers `resultType: "task"` with `taskId`,
+  `status`, `createdAt`, `lastUpdatedAt`, `ttlMs` and `pollIntervalMs`. The
+  client polls `tasks/get`, which carries the tool's `result` once `completed`
+  (a tool error, `isError`, is a completed task), `error` once `failed`, and
+  `inputRequests` while `input_required`. `tasks/cancel` asks it to stop.
+- **Asking the user**: a task's tool elicits as any tool does (`context.elicit`).
+  The task goes `input_required`, the client answers with `tasks/update`
+  (`inputResponses`), and the tool runs again from the top with the answer, one
+  question per round. A `tasks/update` on a task that is not waiting is
+  `-32602`.
+- **Who may see it**: only the client key that created it; anyone else, and an
+  unknown or expired id, gets `-32602`. Over HTTP, `Mcp-Name` carries the
+  `taskId`.
+- **Where it runs**: in a `$job` (`system.mcp.task`), not in the request. The tool
+  receives the caller's `context.data` and client key as stored, its `$secure`
+  gates run when the call arrives and again in the worker, `signal` is the
+  run's, and there are no `headers` and no `reportProgress`. The task is
+  durable before its id is returned, is kept with its result until `ttlMs`
+  (`taskTtlMs` on `McpServerProvider` by default, one hour), and is never
+  retried after a failure.
+
+Each pass of the worker runs the tool once, with every answer given so far, under
+a 10-minute timeout; a longer tool on Cloudflare needs a queue dispatcher
+(`AlephaApiJobsQueue`). `mcp:tool:call:begin` fires when the task is created and
+again on each pass, `mcp:tool:call:end` once, when the tool finally answers.
+
+Without a bound store the server does not declare the extension, `tasks/*` are
+unknown methods, and `task` tools answer plainly.
+
 ### Tracing
 
 With `alepha/tracing` recording, every `tools/call`, `resources/read` and
