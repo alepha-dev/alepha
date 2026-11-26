@@ -120,6 +120,8 @@ export default {
   "notifications.event.host.expired": "Hôte expiré",
   "notifications.event.host.offline": "Hôte hors ligne",
   "notifications.event.host.online": "Hôte de nouveau en ligne",
+  "notifications.event.host.unit_failed": "Unité surveillée en échec",
+  "notifications.event.host.unit_recovered": "Unité surveillée rétablie",
   "notifications.resource.quests": "Quêtes",
   "notifications.resource.epics": "Épopées",
   "notifications.resource.releases": "Versions",
@@ -2898,6 +2900,12 @@ export default {
   "bay.chart.cpu": "Processeur %",
   "bay.chart.memory": "Mémoire %",
   "bay.chart.disk": "Disque %",
+  "bay.units.label": "Unités surveillées",
+  "bay.units.description":
+    "Unités systemd que cette machine signale, séparées par des virgules. Un nom seul est un .service.",
+  "bay.units.save": "Enregistrer",
+  "bay.units.title": "Unités surveillées",
+  "bay.units.since": "depuis $1",
   "bay.chart.off":
     "Cette machine n'enregistre pas d'historique. Les jauges ci-dessus sont toujours conservées ; la série est un réglage à part, et elle démarre le jour où il est activé.",
   "bay.chart.off.link": "L'activer dans les paramètres",

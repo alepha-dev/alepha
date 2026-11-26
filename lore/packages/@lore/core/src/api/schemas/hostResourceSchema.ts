@@ -58,6 +58,7 @@ export const hostResourceSchema = hosts.schema
     jobsMaxJobs: true,
     jobsRunning: true,
     statsIntervalSeconds: true,
+    watchUnits: true,
     connectedAt: true,
     disconnectedAt: true,
     connectionId: true,

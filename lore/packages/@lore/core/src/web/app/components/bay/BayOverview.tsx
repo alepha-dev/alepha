@@ -9,6 +9,7 @@ import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { HostConsoleRegistry } from "../../registries/HostConsoleRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
 import BayStatsChart from "./BayStatsChart.client.tsx";
+import BayUnitsCard from "./BayUnitsCard.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
 import BayVersion from "./BayVersion.tsx";
 import { useBayInventory } from "./useBayInventory.ts";
@@ -135,6 +136,8 @@ const BayOverview = () => {
           </dl>
         </CardContent>
       </Card>
+
+      {machine?.units?.length ? <BayUnitsCard units={machine.units} /> : null}
 
       {/* A module's sections (#E166): Ship's stacks, while Ship is on. */}
       {sections.map((section) => (

@@ -820,6 +820,7 @@ export { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 export { HostJobJobs } from "./jobs/HostJobJobs.ts";
 export { HostCommandTransport } from "./services/HostCommandTransport.ts";
 export { HostEventService } from "./services/HostEventService.ts";
+export { HostUnitEvents } from "./services/HostUnitEvents.ts";
 export { HostTokenService } from "./services/HostTokenService.ts";
 export { HostEventFields } from "./services/HostEventFields.ts";
 export { HostCredentialRefused } from "./errors/HostCredentialRefused.ts";

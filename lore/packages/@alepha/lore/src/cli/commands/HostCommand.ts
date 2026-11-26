@@ -825,12 +825,29 @@ export class HostCommand {
           "Make it an Agent host, which runs Claude Code jobs and is checked with a one-turn prompt; needs jobs allowed",
         )
         .optional(),
+      "watch-units": z
+        .text({
+          description:
+            "The systemd units the machine reports, comma separated (api, caddy.service), or none to stop watching",
+        })
+        .optional(),
       ...LoreOutput.FLAGS,
     }),
     handler: async ({ args, flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const body = {
+          ...(flags["watch-units"] === undefined
+            ? {}
+            : {
+                watchUnits:
+                  flags["watch-units"].trim() === "none"
+                    ? []
+                    : flags["watch-units"]
+                        .split(",")
+                        .map((unit) => unit.trim())
+                        .filter(Boolean),
+              }),
           ...(flags["allow-deploys"] === undefined
             ? {}
             : { deployAllowed: flags["allow-deploys"] }),
@@ -848,7 +865,7 @@ export class HostCommand {
         };
         if (Object.keys(body).length === 0) {
           throw new UsageError(
-            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --allow-jobs, --agent-host, --label, --ttl, --stats-history, --no-stats-history or --stats-interval.",
+            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --allow-jobs, --agent-host, --label, --ttl, --stats-history, --no-stats-history, --stats-interval or --watch-units.",
           );
         }
         const { project, projectId } = await this.projects.named(
@@ -864,7 +881,7 @@ export class HostCommand {
           print,
           flags.output,
           updated,
-          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}, jobs ${updated.jobsAllowed ? "allowed" : "off"}${updated.agentHost ? ", Agent host" : ""}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}${updated.statsIntervalSeconds ? `, stats every ${this.intervalLabel(updated.statsIntervalSeconds)}${updated.collectSeries ? " with history" : ""}` : ""}`,
+          `Updated ${updated.slug}: deploys ${updated.deployAllowed ? "allowed" : "off"}, jobs ${updated.jobsAllowed ? "allowed" : "off"}${updated.agentHost ? ", Agent host" : ""}${updated.label ? `, label "${updated.label}"` : ""}${updated.expiresAt ? `, expires ${updated.expiresAt}` : ""}${updated.statsIntervalSeconds ? `, stats every ${this.intervalLabel(updated.statsIntervalSeconds)}${updated.collectSeries ? " with history" : ""}` : ""}${updated.watchUnits?.length ? `, watching ${updated.watchUnits.join(", ")}` : ""}`,
         );
       });
     },

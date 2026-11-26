@@ -27,6 +27,7 @@ import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
+import BayWatchUnitsField from "./BayWatchUnitsField.tsx";
 
 /**
  * The switches, the lending and the credential, for one machine. The jobs
@@ -77,6 +78,7 @@ const BaySettings = () => {
         jobsAllowed?: boolean;
         collectSeries?: boolean;
         statsIntervalSeconds?: number;
+        watchUnits?: string[];
       },
     ],
     void
@@ -303,6 +305,13 @@ const BaySettings = () => {
                 }))}
               />
             </div>
+
+            <BayWatchUnitsField
+              key={(host.watchUnits ?? []).join(",")}
+              units={host.watchUnits ?? []}
+              busy={busy}
+              onSave={(watchUnits) => void update({ watchUnits })}
+            />
           </CardContent>
         </Card>
       )}
