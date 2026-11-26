@@ -438,12 +438,14 @@ prints a webhook's signing secret once. See
 
 ## Errors and insights
 
-| Command                    | What it does                                                                                      | Flags                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------- |
-| `lore error list`          | The inbox: one row per root cause, most widespread first. Open ones only by default.              | `--include-resolved`                |
-| `lore error resolve <ref>` | Close an error for good. A later report raises its count and never reopens it.                    |                                     |
-| `lore error forward <ref>` | Turn an error into a new quest and close it, or link a quest already filed. One error, one quest. | `--quest`                           |
-| `lore insights read`       | Analytics, Web Vitals and the error budget of each app.                                           | `--range`, `--segment`, `--traffic` |
+| Command                        | What it does                                                                                        | Flags                                                                |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `lore error list`              | The inbox: one row per root cause, most widespread first. Open ones only by default.                | `--include-resolved`                                                 |
+| `lore error get <ref>`         | One error whole: where it stands, the apps that reported it, its quest, its 30 days and its thread. |                                                                      |
+| `lore error comment add <ref>` | Comment on an error's thread.                                                                       | `--body` (required), `--as <name>` (marks it as written by an agent) |
+| `lore error resolve <ref>`     | Close an error for good. A later report raises its count and never reopens it.                      |                                                                      |
+| `lore error forward <ref>`     | Turn an error into a new quest and close it, or link a quest already filed. One error, one quest.   | `--quest`                                                            |
+| `lore insights read`           | Analytics, Web Vitals and the error budget of each app.                                             | `--range`, `--segment`, `--traffic`                                  |
 
 Before resolving an error, check `lore insights read --segment errors`: it is
 what says whether the failure is still happening.

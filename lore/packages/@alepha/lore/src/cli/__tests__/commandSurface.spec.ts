@@ -147,7 +147,7 @@ describe("the Lore CLI command surface", () => {
       artifacts: ["push", "push-image", "list", "get"],
       attachments: ["push", "pull"],
       chat: ["room", "message", "agent"],
-      error: ["list", "resolve", "forward"],
+      error: ["list", "get", "comment", "resolve", "forward"],
       event: ["catalog", "list"],
       subscription: ["list", "set"],
       channel: ["list", "add", "update", "delete", "rotate"],

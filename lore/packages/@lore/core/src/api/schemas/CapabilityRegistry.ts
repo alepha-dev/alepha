@@ -562,6 +562,8 @@ export class CapabilityRegistry {
         "artifact_list",
         "artifact_get",
         "error_list",
+        "error_get",
+        "error_comment_add",
         "error_resolve",
         "error_forward",
         "sigil_list",
