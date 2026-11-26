@@ -119,7 +119,11 @@ export type {
   // Handler types
   ToolPrimitiveSchema,
 } from "./interfaces/McpTypes.ts";
-export { MCP_APP_MIME_TYPE, MCP_APPS_EXTENSION } from "./helpers/mcpApps.ts";
+export {
+  MCP_APP_MIME_TYPE,
+  MCP_APPS_EXTENSION,
+  MCP_TASKS_EXTENSION,
+} from "./helpers/mcpApps.ts";
 export type { PromptPrimitiveOptions } from "./primitives/$prompt.ts";
 export { $prompt, PromptPrimitive } from "./primitives/$prompt.ts";
 export type { ResourcePrimitiveOptions } from "./primitives/$resource.ts";

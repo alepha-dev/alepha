@@ -9,3 +9,9 @@ export const MCP_APPS_EXTENSION = "io.modelcontextprotocol/ui";
  * iframe. A `ui://` resource serves it by default.
  */
 export const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
+
+/**
+ * The Tasks extension's id (`ext-tasks`, against 2026-07-28), declared under
+ * `capabilities.extensions` while an `McpTaskStore` is bound.
+ */
+export const MCP_TASKS_EXTENSION = "io.modelcontextprotocol/tasks";

@@ -740,13 +740,20 @@ export class StreamableHttpMcpTransport {
   /**
    * The body field `Mcp-Name` mirrors for a method, when it requires one.
    */
-  protected mcpNameField(method: string): "name" | "uri" | undefined {
+  protected mcpNameField(
+    method: string,
+  ): "name" | "uri" | "taskId" | undefined {
     switch (method) {
       case "tools/call":
       case "prompts/get":
         return "name";
       case "resources/read":
         return "uri";
+      // The Tasks extension: `Mcp-Name` mirrors the task's id.
+      case "tasks/get":
+      case "tasks/update":
+      case "tasks/cancel":
+        return "taskId";
       default:
         return undefined;
     }
