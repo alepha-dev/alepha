@@ -111,7 +111,7 @@ export const DataTable = <
   // reader had no way to see more rows than the call site had decided for
   // them. Already in `load`'s dependency array, so changing it refetches.
   const [size, setSize] = useState<number>(() =>
-    persistedSize(sizeKey, props.defaultSize),
+    persistedSize(sizeKey, props.defaultSize, props.persistenceStorage),
   );
   const alepha = useAlepha();
   const { tr } = useI18n();
@@ -159,6 +159,7 @@ export const DataTable = <
   const filterVisibility = useDataTableFilterVisibility({
     definition: filterDefinition,
     filtersKey,
+    persistenceStorage: props.persistenceStorage,
   });
 
   // The filters that sit in a column's header, by column: the first field
@@ -276,6 +277,7 @@ export const DataTable = <
   const summary = useDataTableSummary({
     summary: untyped.summary,
     persistenceKey: props.persistenceKey,
+    persistenceStorage: props.persistenceStorage,
     refreshKey,
     form,
     alepha,
@@ -441,13 +443,14 @@ export const DataTable = <
   if (scopeRef.current !== props.persistenceKey) {
     scopeRef.current = props.persistenceKey;
     setPage(0);
-    setSize(persistedSize(sizeKey, props.defaultSize));
-    setSort(persistedSort(sortKey, props.defaultSort));
-    setVisibleColumns(persistedColumns(columnsKey, props.columns));
+    const storage = props.persistenceStorage;
+    setSize(persistedSize(sizeKey, props.defaultSize, storage));
+    setSort(persistedSort(sortKey, props.defaultSort, storage));
+    setVisibleColumns(persistedColumns(columnsKey, props.columns, storage));
     // Same render pass as the rest, and for the identical reason: the effects
     // keyed on `persistenceKey` fire in one flush, so an order left behind
     // here would be written back under the INCOMING key.
-    setColumnOrder(persistedOrder(columnsKey, props.columns));
+    setColumnOrder(persistedOrder(columnsKey, props.columns, storage));
     // Which filters are on the bar is the scope's too, and read here for the
     // same reason: the project just opened must not show the bar of the one
     // just left.

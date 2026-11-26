@@ -193,7 +193,8 @@ export const useDataTableRefresh = <T>(
     };
   }, [alepha, form, autoApply]);
 
-  // Persist filter values to localStorage on change.
+  // Persist filter values on change, to `persistenceStorage` (localStorage
+  // by default).
   useEffect(() => {
     if (!filtersKey || !form || !props.filters) return;
     const writeFilters = () => {
@@ -201,6 +202,7 @@ export const useDataTableRefresh = <T>(
         filtersKey,
         "filters",
         cleanFilterValues(form.currentValues ?? {}),
+        props.persistenceStorage,
       );
     };
     const unsubs = [
@@ -216,7 +218,7 @@ export const useDataTableRefresh = <T>(
     return () => {
       for (const u of unsubs) u();
     };
-  }, [alepha, form, props.filters, filtersKey]);
+  }, [alepha, form, props.filters, filtersKey, props.persistenceStorage]);
 
   // -- Polling ---------------------------------------------------------------
 

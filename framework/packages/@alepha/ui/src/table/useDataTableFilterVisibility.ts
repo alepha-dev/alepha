@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import {
+  type DataTablePersistenceStorage,
   declaredShownFilters,
   filterVisibilityChange,
   persistedShownFilters,
@@ -21,6 +22,10 @@ export interface UseDataTableFilterVisibilityOptions {
    * they put on the bar with it.
    */
   filtersKey: string | undefined;
+  /**
+   * Where `filtersKey` is stored, `localStorage` when absent.
+   */
+  persistenceStorage?: DataTablePersistenceStorage;
 }
 
 const NO_MODES = {};
@@ -38,11 +43,11 @@ const NO_MODES = {};
 export const useDataTableFilterVisibility = (
   options: UseDataTableFilterVisibilityOptions,
 ) => {
-  const { definition, filtersKey } = options;
+  const { definition, filtersKey, persistenceStorage } = options;
   const modes = definition?.modes ?? NO_MODES;
 
   const [shown, setShownState] = useState<string[]>(() =>
-    persistedShownFilters(filtersKey, modes),
+    persistedShownFilters(filtersKey, modes, persistenceStorage),
   );
 
   const declared = useMemo(() => declaredShownFilters(modes), [modes]);
@@ -55,10 +60,11 @@ export const useDataTableFilterVisibility = (
           filtersKey,
           "filterVisibility",
           filterVisibilityChange(next, modes),
+          persistenceStorage,
         );
       }
     },
-    [filtersKey, modes],
+    [filtersKey, modes, persistenceStorage],
   );
 
   /**
@@ -67,8 +73,15 @@ export const useDataTableFilterVisibility = (
    */
   const resetShown = useCallback(() => {
     setShownState(declared);
-    if (filtersKey) writePersisted(filtersKey, "filterVisibility", undefined);
-  }, [declared, filtersKey]);
+    if (filtersKey) {
+      writePersisted(
+        filtersKey,
+        "filterVisibility",
+        undefined,
+        persistenceStorage,
+      );
+    }
+  }, [declared, filtersKey, persistenceStorage]);
 
   /**
    * Re-read for a scope that just changed under a mounted table. Called from
@@ -78,9 +91,9 @@ export const useDataTableFilterVisibility = (
    */
   const rereadShown = useCallback(
     (key: string | undefined) => {
-      setShownState(persistedShownFilters(key, modes));
+      setShownState(persistedShownFilters(key, modes, persistenceStorage));
     },
-    [modes],
+    [modes, persistenceStorage],
   );
 
   /**

@@ -4,6 +4,7 @@ import type { FormModel } from "alepha/react/form";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
+  type DataTablePersistenceStorage,
   persistedSummaryOpen,
   writePersisted,
 } from "./dataTablePersistence.ts";
@@ -21,6 +22,10 @@ export interface UseDataTableSummaryOptions {
    */
   persistenceKey: string | undefined;
   /**
+   * Where `persistenceKey` is stored, `localStorage` when absent.
+   */
+  persistenceStorage?: DataTablePersistenceStorage;
+  /**
    * The table's reload counter. Every reload of the SET bumps it (a filter
    * change, Refresh, `refreshSignal`, a poll, an action's `refresh()`), and a
    * page or a sort does not, which is exactly when the figures change.
@@ -35,10 +40,17 @@ export interface UseDataTableSummaryOptions {
  * it shows, fetched with the table's filters when the caller gave a `fetch`.
  */
 export const useDataTableSummary = (options: UseDataTableSummaryOptions) => {
-  const { summary, persistenceKey, refreshKey, form, alepha } = options;
+  const {
+    summary,
+    persistenceKey,
+    persistenceStorage,
+    refreshKey,
+    form,
+    alepha,
+  } = options;
 
   const [open, setOpenState] = useState(() =>
-    persistedSummaryOpen(persistenceKey),
+    persistedSummaryOpen(persistenceKey, persistenceStorage),
   );
   // `undefined` until the first fetch lands, which is what tells the panel
   // to draw its placeholder tiles rather than nothing.
@@ -57,9 +69,11 @@ export const useDataTableSummary = (options: UseDataTableSummaryOptions) => {
   const setOpen = useCallback(
     (next: boolean) => {
       setOpenState(next);
-      if (persistenceKey) writePersisted(persistenceKey, "summaryOpen", next);
+      if (persistenceKey) {
+        writePersisted(persistenceKey, "summaryOpen", next, persistenceStorage);
+      }
     },
-    [persistenceKey],
+    [persistenceKey, persistenceStorage],
   );
 
   /**
@@ -68,10 +82,13 @@ export const useDataTableSummary = (options: UseDataTableSummaryOptions) => {
    * like the rest of the scope's state: the figures of the project just left
    * must not sit under the name of the one just opened while it loads.
    */
-  const resetScope = useCallback((key: string | undefined) => {
-    setOpenState(persistedSummaryOpen(key));
-    setFetched(undefined);
-  }, []);
+  const resetScope = useCallback(
+    (key: string | undefined) => {
+      setOpenState(persistedSummaryOpen(key, persistenceStorage));
+      setFetched(undefined);
+    },
+    [persistenceStorage],
+  );
 
   useEffect(() => {
     const fetcher = fetchRef.current;

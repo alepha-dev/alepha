@@ -15,7 +15,10 @@
  * are its parts, and `useTableSelection` its selection state.
  * `readPersisted` and `writePersisted` are where a table keeps what it
  * remembers under its `persistenceKey`, for a page control beside the table
- * (a grouping, a view) to be remembered the same way. `PermissionMatrix` is the grid of
+ * (a grouping, a view) to be remembered the same way; they go to
+ * `localStorage` unless a `DataTablePersistenceStorage` is passed, which is
+ * what a table's `persistenceStorage` prop takes to keep its state elsewhere,
+ * such as the user's preferences on a server. `PermissionMatrix` is the grid of
  * roles against permissions the admin and account kits draw.
  *
  * @module alepha.ui.table
@@ -60,7 +63,13 @@ export {
   type DataTableBulkMenuProps,
 } from "./DataTableBulkMenu.tsx";
 export { dataTableFilterKeys } from "./dataTableFilterFields.ts";
-export { readPersisted, writePersisted } from "./dataTablePersistence.ts";
+export {
+  DATA_TABLE_PERSISTED_SUFFIXES,
+  type DataTablePersistenceStorage,
+  localStorageDataTableStorage,
+  readPersisted,
+  writePersisted,
+} from "./dataTablePersistence.ts";
 export {
   DATA_TABLE_FILTERS_QUERY_KEY,
   DATA_TABLE_NO_STORED_FILTERS,

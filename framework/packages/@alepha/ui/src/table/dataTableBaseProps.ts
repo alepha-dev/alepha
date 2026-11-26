@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { DataTableCellPadding } from "./dataTableCellPadding.ts";
+import type { DataTablePersistenceStorage } from "./dataTablePersistence.ts";
 import type { DataTableSquareRight } from "./dataTableSquareRight.ts";
 import type {
   DataTableEmptyState,
@@ -262,13 +263,25 @@ export interface DataTableBaseProps<
   filters?: DataTableFilters<F>;
   /**
    * When set, filter values, the filters on the bar, column visibility, and
-   * sort state are persisted to `localStorage` under this key. Pick a key that's
+   * sort state are persisted under this key, to `localStorage` unless
+   * {@link persistenceStorage} names another store. Pick a key that's
    * unique per page and per scope (e.g. `"admin.users"`,
    * `\`lor.board.${campaignId}\``).
    *
    * Narrow what it stores with {@link persist}.
    */
   persistenceKey?: string;
+  /**
+   * Where {@link persistenceKey} is stored: `localStorage` when absent. Pass
+   * a {@link DataTablePersistenceStorage} to keep the table's state somewhere
+   * else, for instance in the user's preferences on the server so it follows
+   * them to another device.
+   *
+   * The storage answers synchronously, so a remote one is loaded before the
+   * table mounts. Keep its identity for the table's lifetime: it is read on
+   * mount and when the key changes.
+   */
+  persistenceStorage?: DataTablePersistenceStorage;
   /**
    * Which facets {@link persistenceKey} stores. All three by default, so this
    * is only ever worth passing to turn one OFF.

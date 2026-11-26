@@ -122,9 +122,13 @@ export const useDataTableFilterForm = <T>(
     if (!filtersKey || !definition) return undefined;
     return reconcilePersistedFilters(
       definition.schema,
-      readPersisted<Record<string, any>>(filtersKey, "filters"),
+      readPersisted<Record<string, any>>(
+        filtersKey,
+        "filters",
+        props.persistenceStorage,
+      ),
     );
-  }, [filtersKey, definition]);
+  }, [filtersKey, definition, props.persistenceStorage]);
 
   /**
    * Filter values the URL carries, when the caller opted in with `fromQuery`.

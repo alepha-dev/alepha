@@ -49,6 +49,7 @@ import { ResourceFilingController } from "./controllers/ResourceFilingController
 import { SearchController } from "./controllers/SearchController.ts";
 import { SubscriptionController } from "./controllers/SubscriptionController.ts";
 import { UserDockController } from "./controllers/UserDockController.ts";
+import { UserPreferenceController } from "./controllers/UserPreferenceController.ts";
 import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
@@ -155,6 +156,7 @@ import { ReportStatistics } from "./services/ReportStatistics.ts";
 import { ResourceLinkService } from "./services/ResourceLinkService.ts";
 import { SubscriptionService } from "./services/SubscriptionService.ts";
 import { UserDockService } from "./services/UserDockService.ts";
+import { UserPreferenceService } from "./services/UserPreferenceService.ts";
 import { WebSocketHostCommandTransport } from "./services/WebSocketHostCommandTransport.ts";
 
 /**
@@ -470,6 +472,10 @@ export const LoreCoreApi = $module({
     UserDockService,
     UserDockController,
     UserDockHooks,
+    // Each user's preferences kept on the server (#Q4417): the Quests
+    // table's state, so it follows the reader to another device.
+    UserPreferenceService,
+    UserPreferenceController,
   ],
   register: (alepha) => {
     // The Discord transport a channel's test post and delivery go through
@@ -539,6 +545,7 @@ export { ProjectRankController } from "./controllers/ProjectRankController.ts";
 export { ResourceFilingController } from "./controllers/ResourceFilingController.ts";
 export { SearchController } from "./controllers/SearchController.ts";
 export { UserDockController } from "./controllers/UserDockController.ts";
+export { UserPreferenceController } from "./controllers/UserPreferenceController.ts";
 export { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 export { LoreInboxNotifications } from "./notifications/LoreInboxNotifications.ts";
 export { NotificationHtmlEscaper } from "./notifications/NotificationHtmlEscaper.ts";
@@ -572,6 +579,7 @@ export { DashboardMetricRegistry } from "./services/DashboardMetricRegistry.ts";
 export { DashboardReadShare } from "./services/DashboardReadShare.ts";
 export { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 export { UserDockService } from "./services/UserDockService.ts";
+export { UserPreferenceService } from "./services/UserPreferenceService.ts";
 export {
   type DashboardAttentionItem,
   type DashboardAttentionItems,
