@@ -151,13 +151,26 @@ describe("chat tools", () => {
         name: "Jarvis",
         pre_prompt: playbook,
         model: "claude-haiku-5-5",
+        tools: ["quest_list", "quest_get"],
       }),
     );
     expect(created).toMatchObject({
       handle: "jarvis",
       model: "claude-haiku-5-5",
       avatar: false,
+      tools: ["quest_list", "quest_get"],
     });
+    // A name the assistant does not have is refused, and the refusal names
+    // the ones it has (#Q4430).
+    await expect(
+      owner.run(() =>
+        ctx.tools.chat_agent_update.execute({
+          project: ctx.project.id,
+          handle: "jarvis",
+          tools: ["quest_lst"],
+        }),
+      ),
+    ).rejects.toThrow("No tool is named 'quest_lst'");
 
     // Every chat reader reads the playbook.
     const read = await as(ctx.member.id).run(() =>
@@ -174,10 +187,13 @@ describe("chat tools", () => {
         handle: "jarvis",
         new_handle: "friday",
         model: "",
+        tools: [],
       }),
     );
     expect(updated.handle).toBe("friday");
     expect(updated.model).toBeUndefined();
+    // An empty list is every tool again.
+    expect(updated.tools).toBeUndefined();
 
     await owner.run(() =>
       ctx.tools.chat_agent_delete.execute({
@@ -188,7 +204,9 @@ describe("chat tools", () => {
     const listed = await owner.run(() =>
       ctx.tools.chat_agent_list.execute({ project: ctx.project.id }),
     );
-    expect(listed).toEqual({ agents: [], enabled: false });
+    expect(listed).toMatchObject({ agents: [], enabled: false });
+    // The names an agent may declare, read with the agents.
+    expect(listed.tools).toContain("quest_get");
   });
 
   it("starts the agent's run from a message sent over MCP", async ({

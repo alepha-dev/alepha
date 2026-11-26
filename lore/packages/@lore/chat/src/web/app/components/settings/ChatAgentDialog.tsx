@@ -20,7 +20,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { AtSign, Bot, Cpu } from "lucide-react";
+import { AtSign, Bot, Cpu, Wrench } from "lucide-react";
 import { useState } from "react";
 
 import type { ChatAgentController } from "../../../../api/controllers/ChatAgentController.ts";
@@ -35,6 +35,10 @@ export interface ChatAgentDialogProps {
    * The agent to edit; absent creates one.
    */
   agentId?: string;
+  /**
+   * Every tool name an agent may declare, from the agent list.
+   */
+  tools: string[];
   onClose: () => void;
   onSaved: () => void;
 }
@@ -84,7 +88,7 @@ const CreateForm = (props: ChatAgentDialogProps) => {
     id: "chat-agent-create",
     schema: chatAgentBodySchema,
     params: { projectId: props.projectId },
-    initialValues: { handle: "", name: "", prePrompt: "" },
+    initialValues: { handle: "", name: "", prePrompt: "", tools: [] },
     onSuccess: () => props.onSaved(),
   });
   return (
@@ -92,6 +96,7 @@ const CreateForm = (props: ChatAgentDialogProps) => {
       form={form}
       input={form.input}
       title={undefined}
+      tools={props.tools}
       onClose={props.onClose}
     />
   );
@@ -111,6 +116,7 @@ const EditForm = (
       prePrompt: props.agent.prePrompt ?? "",
       avatar: props.agent.avatarId ?? null,
       model: props.agent.model ?? null,
+      tools: props.agent.tools ?? [],
     },
     onSuccess: () => props.onSaved(),
   });
@@ -119,6 +125,7 @@ const EditForm = (
       form={form}
       input={form.input}
       title={props.agent.handle}
+      tools={props.tools}
       onClose={props.onClose}
     />
   );
@@ -130,9 +137,13 @@ const EditForm = (
 const AgentForm = (props: {
   form: { submit: () => Promise<unknown> } & Parameters<typeof useFormState>[0];
   input: Record<
-    "handle" | "name" | "avatar" | "model" | "prePrompt",
+    "handle" | "name" | "avatar" | "model" | "tools" | "prePrompt",
     BaseInputField
   >;
+  /**
+   * Every tool name an agent may declare.
+   */
+  tools: string[];
   /**
    * The handle being edited, none when creating.
    */
@@ -202,6 +213,21 @@ const AgentForm = (props: {
               />
             </div>
           </div>
+        </div>
+        {/* The tools it uses (#Q4430): a multi-select over the assistant's
+            own names, empty meaning all of them. */}
+        <div data-testid="chat-agent-tools">
+          <Control
+            input={props.input.tools}
+            label={tr("chat.agents.form.tools")}
+            description={tr("chat.agents.form.toolsHint")}
+            placeholder={tr("chat.agents.form.toolsPlaceholder")}
+            countLabel={(count) =>
+              tr("chat.agents.toolCount.other", { args: [String(count)] })
+            }
+            items={props.tools}
+            icon={Wrench}
+          />
         </div>
         <Control
           input={props.input.prePrompt}

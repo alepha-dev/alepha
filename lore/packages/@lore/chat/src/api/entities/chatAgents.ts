@@ -44,6 +44,15 @@ export const chatAgents = $entity({
      * A model id, or none for the instance default.
      */
     model: z.text({ maxLength: 120 }).optional(),
+    /**
+     * The tools it declares, by name (#Q4430): a run offers these and no
+     * other, among those the mentioner may be offered. None means every
+     * tool the mentioner may be offered.
+     *
+     * ⚠️ Nullable with no default on purpose: adding it is an `ADD COLUMN`,
+     * never a rebuild of a table that has children.
+     */
+    tools: z.array(z.text({ maxLength: 100 })).optional(),
     createdBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),

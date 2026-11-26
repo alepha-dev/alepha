@@ -75,6 +75,28 @@ test.describe("Chat agents", () => {
         .getByTestId("chat-agent-model")
         .locator("input")
         .fill("claude-haiku-5-5");
+      // The tools its playbook uses (#Q4430), picked in the multi-select:
+      // the assistant's names are listed with AI off too.
+      const tools = form.getByTestId("chat-agent-tools");
+      await tools.getByRole("combobox").click();
+      await page
+        .getByRole("option", { name: "quest_list", exact: true })
+        .click();
+      await page
+        .getByRole("option", { name: "quest_get", exact: true })
+        .click();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("option")).toHaveCount(0);
+      await expect(form).toBeVisible();
+      await expect(tools).toContainText("2 tools");
+      await page.screenshot({
+        path: test.info().outputPath("chat-agent-dialog-light.png"),
+      });
+      await page.emulateMedia({ colorScheme: "dark" });
+      await page.screenshot({
+        path: test.info().outputPath("chat-agent-dialog-dark.png"),
+      });
+      await page.emulateMedia({ colorScheme: "light" });
       await fillMarkdownEditor(
         page,
         "Checking means: the feedback, then the errors.",
@@ -102,6 +124,7 @@ test.describe("Chat agents", () => {
       );
       await expect(row).toContainText("Jarvis");
       await expect(row).toContainText("claude-haiku-5-5");
+      await expect(row).toContainText("2 tools");
       // The uploaded picture, not the initials.
       await expect(
         row.getByTestId("chat-agent-avatar").locator("img"),

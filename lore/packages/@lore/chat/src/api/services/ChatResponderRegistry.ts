@@ -26,6 +26,13 @@ export class ChatResponderRegistry {
   protected engineName?: string;
   protected readonly agents = $repository(chatAgents);
 
+  /**
+   * The tool names a project's agent may declare (#Q4430): the engine's
+   * whole toolset. The tools are the app's, so the app sets this, with AI on
+   * or off: an agent is written either way. None until it does.
+   */
+  public toolNames: () => string[] = () => [];
+
   public register(responder: ChatResponder): void {
     if (this.responders.has(responder.name)) {
       throw new AlephaError(
@@ -182,7 +189,8 @@ export interface ChatAgentRequest {
 
 /**
  * What a project's agent changes in a run: who answers, what it is told, on
- * which model. Never what it may do.
+ * which model, and which tools it is shown. Never what it may do: its tools
+ * only narrow what the mentioner is offered.
  */
 export interface ChatAgentPersona {
   id: string;
@@ -195,6 +203,12 @@ export interface ChatAgentPersona {
    * Its model id, none for the instance default.
    */
   model?: string;
+  /**
+   * The tools it declares (#Q4430), none for every tool the mentioner may
+   * be offered. As saved: the responder drops what the mentioner may not
+   * use.
+   */
+  tools?: string[];
 }
 
 export interface ChatAgentDecision {
@@ -204,7 +218,8 @@ export interface ChatAgentDecision {
   callId: string;
   decision: "approve" | "deny";
   /**
-   * The agent the paused run is: its resume keeps its playbook and model.
+   * The agent the paused run is: its resume keeps its playbook, model and
+   * tools.
    */
   agent?: ChatAgentPersona;
 }

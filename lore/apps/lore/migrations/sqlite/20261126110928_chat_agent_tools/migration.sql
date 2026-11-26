@@ -1,0 +1,1 @@
+ALTER TABLE `chat_agents` ADD `tools` text;

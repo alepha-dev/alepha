@@ -389,16 +389,16 @@ room. A private room you are not in does not exist here, as in the app.
 `@name` in a message notifies that member; `@lore`, or a project agent's
 handle, asks that agent, which answers in the room with your rights.
 
-| Command                                | What it does                                                          | Flags                                                                                                          |
-| -------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `lore chat room list`                  | The rooms you can see, open and private, with what is unread in each. |                                                                                                                |
-| `lore chat message list <room>`        | A room's latest messages, newest first.                               | `--before <message id>`, `--limit` (1 to 100)                                                                  |
-| `lore chat message send <room> <text>` | Post a message as you.                                                |                                                                                                                |
-| `lore chat agent list`                 | The agents a message can mention: `lore` and the project's own.       |                                                                                                                |
-| `lore chat agent get <handle>`         | One agent, its persona and playbook included.                         |                                                                                                                |
-| `lore chat agent create`               | Create an agent (Chat agents permission).                             | `--handle`, `--name`, `--pre-prompt` (text, `@file.md` or `@-` for stdin), `--model`, `--avatar <image>`       |
-| `lore chat agent update <handle>`      | Edit an agent: only the flags given change.                           | `--new-handle`, `--name`, `--pre-prompt`, `--model` (empty for the default), `--avatar <image>`, `--no-avatar` |
-| `lore chat agent delete <handle>`      | Delete an agent: its past answers stay, its handle is freed.          |                                                                                                                |
+| Command                                | What it does                                                          | Flags                                                                                                                                                               |
+| -------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lore chat room list`                  | The rooms you can see, open and private, with what is unread in each. |                                                                                                                                                                     |
+| `lore chat message list <room>`        | A room's latest messages, newest first.                               | `--before <message id>`, `--limit` (1 to 100)                                                                                                                       |
+| `lore chat message send <room> <text>` | Post a message as you.                                                |                                                                                                                                                                     |
+| `lore chat agent list`                 | The agents a message can mention: `lore` and the project's own.       |                                                                                                                                                                     |
+| `lore chat agent get <handle>`         | One agent, its persona and playbook included.                         |                                                                                                                                                                     |
+| `lore chat agent create`               | Create an agent (Chat agents permission).                             | `--handle`, `--name`, `--pre-prompt` (text, `@file.md` or `@-` for stdin), `--model`, `--tool` (once per tool it uses), `--avatar <image>`                          |
+| `lore chat agent update <handle>`      | Edit an agent: only the flags given change.                           | `--new-handle`, `--name`, `--pre-prompt`, `--model` (empty for the default), `--tool` (replaces the list; `'[]'` for every tool), `--avatar <image>`, `--no-avatar` |
+| `lore chat agent delete <handle>`      | Delete an agent: its past answers stay, its handle is freed.          |                                                                                                                                                                     |
 
 ## Notifications
 

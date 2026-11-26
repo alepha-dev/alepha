@@ -34,7 +34,7 @@ export class ChatAgentController {
     path: "/projects/:projectId/chat/agents",
     use: [this.ownsProject("chat:read")],
     description:
-      "The project's agents: the built-in `lore` first (when AI is on for this Lore), then the project's own. `enabled` is false with AI off: the agents are listed, and none answers a mention.",
+      "The project's agents: the built-in `lore` first (when AI is on for this Lore), then the project's own. `enabled` is false with AI off: the agents are listed, and none answers a mention. `tools` is every tool name an agent may declare.",
     schema: {
       params: z.object({ projectId: z.integer() }),
       response: z.object({
@@ -43,11 +43,16 @@ export class ChatAgentController {
          * Whether a mention starts a run here: AI is on.
          */
         enabled: z.boolean(),
+        /**
+         * Every tool name an agent may declare as its own (#Q4430).
+         */
+        tools: z.array(z.text()),
       }),
     },
     handler: async ({ params }) => ({
       items: await this.service.list(params.projectId),
       enabled: this.service.enabled(),
+      tools: this.service.toolNames(),
     }),
   });
 
@@ -113,7 +118,7 @@ export class ChatAgentController {
     path: "/projects/:projectId/chat/agents",
     use: [this.ownsProject("chat:agent")],
     description:
-      "Create an agent: a `handle` a message mentions (2 to 32 lowercase letters, digits or dashes, not `lore`, not a member's), a `name`, a `prePrompt` (its persona and playbook), an optional `model` and an optional `avatar`, an image uploaded to the `chat-agent-avatars` bucket.",
+      "Create an agent: a `handle` a message mentions (2 to 32 lowercase letters, digits or dashes, not `lore`, not a member's), a `name`, a `prePrompt` (its persona and playbook), an optional `model`, optional `tools` (the names of the tools it uses, from `tools` in the agent list: a run then sends those definitions alone; none means every tool the member may be offered) and an optional `avatar`, an image uploaded to the `chat-agent-avatars` bucket.",
     schema: {
       params: z.object({ projectId: z.integer() }),
       body: chatAgentBodySchema,
@@ -128,7 +133,7 @@ export class ChatAgentController {
     path: "/projects/:projectId/chat/agents/:agentId",
     use: [this.ownsProject("chat:agent")],
     description:
-      "Edit an agent: only the fields given change; `avatar` or `model` set to null is removed.",
+      "Edit an agent: only the fields given change; `avatar` or `model` set to null is removed, and an empty `tools` goes back to every tool the member may be offered.",
     schema: {
       params: this.agentParams,
       body: chatAgentBodySchema.partial(),

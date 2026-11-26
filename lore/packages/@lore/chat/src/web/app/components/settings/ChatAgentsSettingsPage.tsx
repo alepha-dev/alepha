@@ -86,6 +86,13 @@ const ChatAgentsSettingsPage = () => {
     [api, projectId, dialog],
   );
 
+  const toolCount = (agent: ChatAgentResource) => {
+    const count = agent.tools?.length ?? 0;
+    return count === 1
+      ? tr("chat.agents.toolCount.one", { args: [String(count)] })
+      : tr("chat.agents.toolCount.other", { args: [String(count)] });
+  };
+
   const creator = (agent: ChatAgentResource) => {
     const user = users.find((it) => it.id === agent.createdBy);
     return user ? displayName(user) : undefined;
@@ -173,6 +180,7 @@ const ChatAgentsSettingsPage = () => {
                     {!agent.builtin && (
                       <span className="text-muted-foreground truncate text-xs">
                         {agent.model ?? tr("chat.agents.defaultModel")}
+                        {agent.tools?.length ? ` · ${toolCount(agent)}` : ""}
                         {creator(agent)
                           ? ` · ${tr("chat.agents.by", { args: [creator(agent)!] })}`
                           : ""}
@@ -210,6 +218,7 @@ const ChatAgentsSettingsPage = () => {
             <ChatAgentDialog
               projectId={projectId}
               agentId={editing === "new" ? undefined : editing.id}
+              tools={data?.tools ?? []}
               onClose={() => setEditing(undefined)}
               onSaved={() => {
                 setEditing(undefined);

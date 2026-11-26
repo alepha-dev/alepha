@@ -247,6 +247,12 @@ export class ChatCommand {
           "A model id; empty is the instance default. The AI budget counts tokens whatever the model.",
       })
       .optional(),
+    tool: z
+      .array(z.text())
+      .describe(
+        "A tool it uses, repeated for each: a run then sends those definitions alone. REPLACES the whole list; '[]' is every tool the member may be offered. lore chat agent list --output json names them.",
+      )
+      .optional(),
     avatar: z
       .text({ description: "An image to upload as its avatar, 2 MB at most." })
       .optional(),
@@ -266,7 +272,11 @@ export class ChatCommand {
         });
         const rows = page.items.map((agent) => this.toAgent(agent));
         if (flags.output === "json") {
-          this.render.json(print, { agents: rows, enabled: page.enabled });
+          this.render.json(print, {
+            agents: rows,
+            enabled: page.enabled,
+            tools: page.tools,
+          });
           return;
         }
         if (!page.enabled) {
@@ -310,6 +320,9 @@ export class ChatCommand {
         }
         print(`@${agent.handle}  ${agent.name}`);
         print(`model: ${agent.model ?? "the instance default"}`);
+        print(
+          `tools: ${agent.tools?.join(", ") ?? "every tool the member may be offered"}`,
+        );
         print("");
         print(agent.pre_prompt ?? "");
       });
@@ -319,7 +332,7 @@ export class ChatCommand {
   public readonly agentCreate = $command({
     name: "create",
     description:
-      "Create an agent (needs chat:agent): its handle, name, playbook, model and avatar",
+      "Create an agent (needs chat:agent): its handle, name, playbook, model, tools and avatar",
     flags: z.object({
       ...ChatCommand.PROJECT_FLAG,
       handle: z.text({
@@ -344,6 +357,7 @@ export class ChatCommand {
             name: flags.name,
             prePrompt: flags["pre-prompt"] ?? "",
             ...(flags.model ? { model: flags.model } : {}),
+            ...(flags.tool ? { tools: flags.tool } : {}),
             ...(avatar ? { avatar } : {}),
           },
         });
@@ -399,6 +413,7 @@ export class ChatCommand {
             ...(flags.model !== undefined
               ? { model: flags.model.trim() ? flags.model : null }
               : {}),
+            ...(flags.tool !== undefined ? { tools: flags.tool } : {}),
             ...(avatar !== undefined ? { avatar } : {}),
           },
         });
@@ -444,6 +459,7 @@ export class ChatCommand {
       builtin: agent.builtin,
       ...(agent.model ? { model: agent.model } : {}),
       avatar: !!agent.avatarId,
+      ...(agent.tools?.length ? { tools: agent.tools } : {}),
       ...(agent.prePrompt !== undefined ? { pre_prompt: agent.prePrompt } : {}),
     };
   }

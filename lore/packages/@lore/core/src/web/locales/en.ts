@@ -1282,6 +1282,8 @@ export default {
   "chat.agents.builtin": "built-in",
   "chat.agents.defaultModel": "default model",
   "chat.agents.by": "by $1",
+  "chat.agents.toolCount.one": "$1 tool",
+  "chat.agents.toolCount.other": "$1 tools",
   "chat.agents.form.createTitle": "New agent",
   "chat.agents.form.editTitle": "Edit @$1",
   "chat.agents.form.handle": "Handle",
@@ -1293,6 +1295,10 @@ export default {
   "chat.agents.form.modelHint":
     "Empty runs on the instance default. The AI budget counts tokens whatever the model.",
   "chat.agents.form.modelPlaceholder": "Instance default",
+  "chat.agents.form.tools": "Tools",
+  "chat.agents.form.toolsHint":
+    "The tools its playbook uses. Each run then sends these alone, which costs less and leaves it more rounds. Empty offers every tool. It only ever gets those the member who mentions it may use.",
+  "chat.agents.form.toolsPlaceholder": "Every tool",
   "chat.agents.form.prePrompt": "Persona and playbook",
   "chat.agents.form.prePromptHint":
     "Markdown, added after Lore's own instructions. Every member who reads chat can read it: keep secrets out.",
