@@ -110,7 +110,7 @@ export class CoreWebBoot {
     const head: Head = {
       title: "Alepha Lore",
       description:
-        "Alepha Lore - project and knowledge management for builders.",
+        "Alepha Lore - planning, memory and operations for builders and their agents.",
       // What a chat app or a social network shows when a Lore link is pasted.
       // Square, so the card stays a summary: a large card crops it.
       image: "/logo-512x512.png",
@@ -152,7 +152,7 @@ export class CoreWebBoot {
       {
         name: "keywords",
         content:
-          "Alepha Lore, project management, task tracking, knowledge management, MCP, AI, quests, open-source",
+          "Alepha Lore, project management, task tracking, knowledge management, deploys, uptime monitoring, error tracking, MCP, AI agents, quests, open-source",
       },
     ];
 
