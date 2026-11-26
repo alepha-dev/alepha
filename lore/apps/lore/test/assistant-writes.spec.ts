@@ -93,6 +93,8 @@ describe("the assistant's write tools", () => {
       "dashboard_card_add",
       "dashboard_card_update",
       "feedback_submit",
+      // #Q4512: a prompt's run, behind its card.
+      "prompt_run",
     ]);
     for (const entry of toolset.writes) {
       const tool = entry.tool as ToolPrimitive<any>;

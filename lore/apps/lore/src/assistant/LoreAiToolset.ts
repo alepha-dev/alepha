@@ -18,6 +18,8 @@ import {
   QuestTools,
   ReleaseTools,
 } from "@lore/plan/mcp";
+import { PromptController } from "@lore/prompts/api";
+import { PromptTools } from "@lore/prompts/mcp";
 import { FolioController } from "@lore/remember/api";
 import { FolioTools } from "@lore/remember/mcp";
 import {
@@ -55,7 +57,7 @@ import { LoreAiDocsController } from "./LoreAiDocsController.ts";
  * runs the tool as the turn's user, and the action's gate decides.
  *
  * Declaration order is what the vendor sees, and it stays stable so the
- * vendor caches it. Twenty-five read tools and sixteen writes: the eight
+ * vendor caches it. Twenty-five read tools and seventeen writes: the eight
  * operations reads (#Q4235) went past the ~25 a small model handles, on
  * purpose, since an agent asked to watch the house had nothing to watch it
  * with, and #Q4297 added eight writes, deletes among them, each behind its
@@ -182,7 +184,6 @@ export class LoreAiToolset {
     prompt_pause_all: LoreAiToolset.AGENTS,
     prompt_render: LoreAiToolset.LATER,
     prompt_resume_all: LoreAiToolset.AGENTS,
-    prompt_run: LoreAiToolset.AGENTS,
     prompt_update: LoreAiToolset.AGENTS,
     quest_attachment_add: LoreAiToolset.FILES,
     quest_attachment_get: LoreAiToolset.FILES,
@@ -264,8 +265,8 @@ export class LoreAiToolset {
    * The writes a member does most from the web (#Q3210), offered like the
    * reads and each paused on a confirmation card: none declares
    * `readOnlyHint: true`, which is what makes `$ai` wait for the user. Since
-   * #Q4297 a delete or a shelve is offered too, behind its card; nothing
-   * that deploys or touches a host.
+   * #Q4297 a delete or a shelve is offered too, behind its card, and since
+   * #Q4512 a prompt's run; nothing that deploys or touches a host.
    *
    * `quest_update` is offered whole, every field of its schema: the card
    * shows each one the call sets. A comment needs `quest:update`, not
@@ -298,6 +299,8 @@ export class LoreAiToolset {
     const feedbackController = this.alepha.inject(FeedbackController);
     const commentController = this.alepha.inject(QuestCommentController);
     const docsController = this.alepha.inject(LoreAiDocsController);
+    const promptTools = this.alepha.inject(PromptTools);
+    const promptController = this.alepha.inject(PromptController);
     const monitorTools = this.alepha.inject(MonitorTools);
     const errorTools = this.alepha.inject(ProjectErrorTools);
     const jobTools = this.alepha.inject(JobTools);
@@ -542,6 +545,15 @@ export class LoreAiToolset {
         tool: feedbackTools.feedback_submit,
         permissions: [],
         gate: feedbackController.submitFeedback,
+      },
+      {
+        // A run of one of the project's prompts (#Q4512), behind its card
+        // like every write: the member who asked approves it, and the
+        // action checks `host:read` and the prompt's own permission as
+        // that member. Writing or pausing a prompt stays on its page.
+        tool: promptTools.prompt_run,
+        permissions: ["host:read"],
+        gate: promptController.runPrompt,
       },
     ];
 
