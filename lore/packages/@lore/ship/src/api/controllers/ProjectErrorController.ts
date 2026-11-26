@@ -20,6 +20,7 @@ import {
   okSchema,
 } from "alepha/server";
 
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import type { ProjectErrorIgnoreRule } from "../entities/projectErrorIgnoreRules.ts";
 import { type ProjectError, projectErrors } from "../entities/projectErrors.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
@@ -38,6 +39,11 @@ import {
   projectErrorRuleResourceSchema,
 } from "../schemas/projectErrorRuleResourceSchema.ts";
 import { projectErrorSigilSchema } from "../schemas/projectErrorSigilSchema.ts";
+import {
+  type ProjectErrorTrend,
+  projectErrorTrendSchema,
+} from "../schemas/projectErrorTrendSchema.ts";
+import { ErrorSeriesWindow } from "../services/ErrorSeriesWindow.ts";
 import { ErrorTrustEvents } from "../services/ErrorTrustEvents.ts";
 import { ProjectErrorKinds } from "../services/ProjectErrorKinds.ts";
 import { ProjectErrorRuleService } from "../services/ProjectErrorRuleService.ts";
@@ -79,6 +85,14 @@ export class ProjectErrorController {
   protected dateTime = $inject(DateTimeProvider);
   protected errorGroups = $repository(sigilErrorGroups);
   protected kinds = $inject(ProjectErrorKinds);
+  protected datasets = $inject(DeployAnalytics);
+  protected window = $inject(ErrorSeriesWindow);
+
+  /**
+   * The window of one error's trend: what the `sigil_errors` dataset keeps
+   * hot, hour by hour.
+   */
+  protected readonly TREND_DAYS = 30;
   protected owned = $inject(OwnedResourceProvider);
   protected ranks = $inject(RankService);
 
@@ -257,6 +271,68 @@ export class ProjectErrorController {
           .filter((rule) => this.ruleService.matches(row.message, [rule]))
           .map((rule) => this.toRuleResource(rule)),
         ...neighbours,
+      };
+    },
+  });
+
+  /**
+   * One error's occurrences per day over the last 30 days, with the
+   * project's deploys marked (#E185): did that deploy make it better or
+   * worse. Its own action, so the page loads it beside the single read.
+   *
+   * The series is the `sigil_errors` dataset narrowed to this fingerprint,
+   * across the project's apps, zero-filled here. A `run` or an `uptime`
+   * error has no series, and neither has a project with no app: the answer
+   * is an explicit empty.
+   *
+   * Same gates as {@link getProjectError}.
+   */
+  getProjectErrorTrend = $action({
+    use: [$ownsProject({ requires: "error:read", param: "projectId" })],
+    method: "GET",
+    path: "/projects/:projectId/errors/:errorId/trend",
+    schema: {
+      params: z.object({
+        projectId: z.integer(),
+        errorId: z.integer(),
+      }),
+      response: projectErrorTrendSchema,
+    },
+    handler: async ({ params, user }): Promise<ProjectErrorTrend> => {
+      const row = await this.loadProjectError(params.projectId, params.errorId);
+      await this.assertAgentMayRead(row, user);
+      const nothing = { empty: true, series: [], markers: [], total: 0 };
+      if (this.kinds.of(row) !== "sigil") return nothing;
+      const apps = await this.sigils.findMany({
+        where: { projectId: { eq: row.projectId } },
+        columns: ["id"],
+      });
+      if (apps.length === 0) return nothing;
+      const days = this.window.days(this.TREND_DAYS);
+      const [errors, markers] = await Promise.all([
+        this.datasets.errors.query({
+          since: days[0]!,
+          until: days[days.length - 1]!,
+          // The fingerprint is a plain value: an `$analytics` where takes no
+          // `{ eq }`.
+          where: {
+            sigilId: { inArray: apps.map((app) => app.id) },
+            fingerprint: row.fingerprint,
+          },
+          groupBy: ["day"],
+          select: { count: "sum" },
+        }),
+        this.window.deploys(row.projectId, days[0]!),
+      ]);
+      const byDay = new Map(
+        errors.rows.map((it) => [String(it.day), Number(it.count)]),
+      );
+      const series = days.map((at) => ({ at, value: byDay.get(at) ?? 0 }));
+      return {
+        empty: false,
+        series,
+        markers,
+        total: series.reduce((sum, point) => sum + point.value, 0),
       };
     },
   });

@@ -8,12 +8,11 @@ import {
   DashboardMetricCatalog,
 } from "@lore/core/schemas";
 import { $inject } from "alepha";
-import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { DeployAnalytics } from "../entities/deployAnalytics.ts";
-import { deployments } from "../entities/deployments.ts";
 import { sigils } from "../entities/sigils.ts";
+import { ErrorSeriesWindow } from "./ErrorSeriesWindow.ts";
 
 /**
  * Error occurrences per day over the board's window, with each finished
@@ -33,9 +32,8 @@ export class ErrorTrendMetric implements DashboardMetricResolver {
   readonly metric = "errorTrend";
 
   protected readonly catalog = $inject(DashboardMetricCatalog);
-  protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly datasets = $inject(DeployAnalytics);
-  protected readonly deployments = $repository(deployments);
+  protected readonly window = $inject(ErrorSeriesWindow);
   protected readonly sigils = $repository(sigils);
 
   async resolveAll(
@@ -61,13 +59,8 @@ export class ErrorTrendMetric implements DashboardMetricResolver {
         out.set(entry.card.id, { empty: "noSigil", detail: {} });
         continue;
       }
-      const today = this.dateTime.nowMillis();
-      const days = Array.from({ length: entry.windowDays }, (_, index) =>
-        new Date(today - (entry.windowDays - 1 - index) * 86_400_000)
-          .toISOString()
-          .slice(0, 10),
-      );
-      const [errors, deployed] = await Promise.all([
+      const days = this.window.days(entry.windowDays);
+      const [errors, markers] = await Promise.all([
         this.datasets.errors.query({
           since: days[0]!,
           until: days[days.length - 1]!,
@@ -75,17 +68,7 @@ export class ErrorTrendMetric implements DashboardMetricResolver {
           groupBy: ["day"],
           select: { count: "sum" },
         }),
-        // Never `log`, which holds a whole deploy log per row (#Q2682).
-        this.deployments.findMany({
-          columns: ["createdAt", "finishedAt"],
-          where: {
-            projectId: { eq: project.id },
-            status: { eq: "succeeded" },
-            createdAt: { gte: `${days[0]}T00:00:00.000Z` },
-          },
-          orderBy: [{ column: "createdAt", direction: "asc" }],
-          limit: 50,
-        }),
+        this.window.deploys(project.id, days[0]!),
       ]);
       const byDay = new Map(
         errors.rows.map((row) => [String(row.day), Number(row.count)]),
@@ -95,11 +78,8 @@ export class ErrorTrendMetric implements DashboardMetricResolver {
       out.set(entry.card.id, {
         value: total,
         series,
-        markers: deployed.map((it) => ({
-          at: it.finishedAt ?? it.createdAt,
-          kind: "deploy",
-        })),
-        detail: { deployments: deployed.length },
+        markers,
+        detail: { deployments: markers.length },
         link: this.catalog.get(this.metric).link(entry.card.scope, {
           projectSlug: slug,
         }),
