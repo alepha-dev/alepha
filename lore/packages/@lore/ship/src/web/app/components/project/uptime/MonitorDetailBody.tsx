@@ -37,7 +37,6 @@ const MonitorDetailBody = (props: MonitorDetailBodyProps) => {
               filter={monitor.id}
               label={tr("uptime.subscription.label")}
               description={tr("uptime.subscription.description")}
-              offDescription={tr("uptime.subscription.offDescription")}
               testId="monitor-subscription-bell"
             />
           </div>

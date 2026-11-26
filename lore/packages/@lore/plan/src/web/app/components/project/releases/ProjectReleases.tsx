@@ -372,7 +372,6 @@ const ProjectReleases = () => {
             events={["release.published"]}
             label={tr("release.subscription.label")}
             description={tr("release.subscription.description")}
-            offDescription={tr("release.subscription.offDescription")}
             testId="release-subscription-bell"
           />
         }

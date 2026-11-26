@@ -250,7 +250,6 @@ const ProjectSettingsHostsPage = () => {
               ]}
               label={tr("hosts.subscription.allLabel")}
               description={tr("hosts.subscription.allDescription")}
-              offDescription={tr("hosts.subscription.allOffDescription")}
               testId="hosts-subscription-bell"
             />
           }

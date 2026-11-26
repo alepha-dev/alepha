@@ -378,7 +378,6 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               events={["feedback.created"]}
               label={tr("feedback.subscription.label")}
               description={tr("feedback.subscription.description")}
-              offDescription={tr("feedback.subscription.offDescription")}
               // Opens a dialog: channels, and whose feedback (#Q4055, #Q4290).
               authors={{
                 allLabel: tr("feedback.subscription.all"),

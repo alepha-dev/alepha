@@ -5,24 +5,16 @@ export default {
     "Notify me when this monitor goes down or recovers",
   "uptime.subscription.description":
     "You will be notified in the app when this monitor's outage is confirmed, and again when it recovers. Change how on Settings > Notifications.",
-  "uptime.subscription.offDescription":
-    "You will no longer be notified of this monitor's outages and recoveries.",
   "uptime.subscription.allLabel":
     "Notify me when any monitor goes down or recovers",
   "uptime.subscription.allDescription":
     "You will be notified in the app when any monitor of this project has a confirmed outage, and again when it recovers. Change how on Settings > Notifications.",
-  "uptime.subscription.allOffDescription":
-    "You will no longer be notified of this project's outages and recoveries.",
   "hosts.subscription.label": "Notify me when this host needs attention",
   "hosts.subscription.description":
     "You will be notified in the app when this host passes its TTL, goes offline or comes back, or its Cloudflare token stops working. Change how on Settings > Notifications.",
-  "hosts.subscription.offDescription":
-    "You will no longer be notified about this host.",
   "hosts.subscription.allLabel": "Notify me when any host needs attention",
   "hosts.subscription.allDescription":
     "You will be notified in the app when any host of this project passes its TTL, goes offline or comes back, or its Cloudflare token stops working. Change how on Settings > Notifications.",
-  "hosts.subscription.allOffDescription":
-    "You will no longer be notified about this project's hosts.",
   "project.settings.tab.notificationChannels": "Channels",
 
   "project.settings.nav.notifications": "Notifications",
@@ -89,9 +81,8 @@ export default {
   "notifications.channels.emptyFilter": "No channel matches these filters",
   "notifications.bell.on": "You are notified",
   "notifications.bell.partial": "You are notified of part of it",
-  "notifications.bell.offTitle": "Stop notifying you?",
-  "notifications.bell.offConfirm": "Stop notifying me",
-  "notifications.bell.channel": "How",
+  "notifications.bell.channel": "Channels",
+  "notifications.bell.none": "None",
   "notifications.bell.events": "Of what",
   "notifications.bell.authors": "From whom",
   "notifications.bell.confirm": "Notify me",
@@ -3380,16 +3371,12 @@ export default {
   "release.subscription.label": "Notify me when a release is published",
   "release.subscription.description":
     "You will be notified in the app of every release published in this project. Change how on Settings > Notifications.",
-  "release.subscription.offDescription":
-    "You will no longer be notified when a release is published.",
   "feedback.subscription.label": "Notify me of new feedback",
   "feedback.subscription.description":
     "You will be notified in the app of every new feedback in this project.",
   "feedback.subscription.all": "All feedback",
   "feedback.subscription.notMine": "All except mine",
   "feedback.subscription.notMembers": "All except project members'",
-  "feedback.subscription.offDescription":
-    "You will no longer be notified of new feedback in this project.",
   "feedback.filter.label": "Status",
   "feedback.filter.pending": "Pending",
   "feedback.filter.accepted": "Accepted",
