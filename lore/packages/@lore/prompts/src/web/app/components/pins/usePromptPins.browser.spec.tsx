@@ -48,10 +48,16 @@ class FakeLinks extends LinkProvider {
    */
   public static hosts: string[] = ["desktop"];
 
+  /**
+   * The run's answer, held until a test releases it.
+   */
+  public static run: Promise<unknown> = Promise.resolve({ skipped: [] });
+
   override client(): any {
     const answers: Record<string, () => unknown> = {
       listPrompts: () => ({ items: [WORK_EPIC], pages: [] }),
-      listPromptHosts: () => ({ hosts: FakeLinks.hosts }),
+      listPromptHosts: () => ({ hosts: FakeLinks.hosts, agents: [] }),
+      runPrompt: () => FakeLinks.run,
     };
     return new Proxy(
       {},
@@ -109,6 +115,7 @@ describe("usePromptPins rowGroup", () => {
     await alepha?.stop();
     alepha = undefined;
     FakeLinks.hosts = ["desktop"];
+    FakeLinks.run = Promise.resolve({ skipped: [] });
   });
 
   const mount = async () => {
@@ -184,5 +191,32 @@ describe("usePromptPins rowGroup", () => {
     expect(run.hasAttribute("data-disabled")).toBe(true);
     fireEvent.click(run);
     expect(screen.queryByTestId("prompt-run-dialog")).toBeNull();
+  });
+  it("spins Run while the run request is pending, and closes the dialog once it answers (#Q4505)", async ({
+    expect,
+  }) => {
+    let answer: (value: unknown) => void = () => {};
+    FakeLinks.run = new Promise((resolve) => {
+      answer = resolve;
+    });
+    await mount();
+    await openSubmenu();
+    fireEvent.click(await menuItem("Run"));
+    const dialog = await screen.findByTestId("prompt-run-dialog");
+    const epic = within(dialog).queryAllByRole("combobox")[0];
+    if (epic) fireEvent.click(epic);
+    fireEvent.click(within(dialog).getByTestId("prompt-run-submit"));
+
+    await waitFor(() =>
+      expect(
+        within(dialog).getByTestId("prompt-run-submit").getAttribute(
+          "aria-busy",
+        ),
+      ).toBe("true"),
+    );
+    answer({ jobId: "00000000-0000-4000-8000-000000000009", skipped: [] });
+    await waitFor(() =>
+      expect(screen.queryByTestId("prompt-run-dialog")).toBeNull(),
+    );
   });
 });
