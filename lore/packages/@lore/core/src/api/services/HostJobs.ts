@@ -47,6 +47,11 @@ export interface HostJobRequest {
   prompt?: string;
   args?: PromptJobArg[];
   cause?: PromptJobCause;
+  /**
+   * A hash of the prompt's text as written (#Q4435): a job's usual duration
+   * is read from the runs that share it.
+   */
+  promptHash?: string;
 }
 
 /**

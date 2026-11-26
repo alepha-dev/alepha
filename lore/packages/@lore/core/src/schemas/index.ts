@@ -301,6 +301,8 @@ export { hostEnrolExchangeSchema } from "../api/schemas/hostEnrolExchangeSchema.
 export { hostJobLogSchema } from "../api/schemas/hostJobLogSchema.ts";
 export type { HostJobLogResource } from "../api/schemas/hostJobLogSchema.ts";
 export { hostJobResourceSchema } from "../api/schemas/hostJobResourceSchema.ts";
+export { hostJobUsualSchema } from "../api/schemas/hostJobUsualSchema.ts";
+export type { HostJobUsual } from "../api/schemas/hostJobUsualSchema.ts";
 export { agentJobStepsSchema } from "../api/schemas/agentJobStepsSchema.ts";
 export { agentJobPaceSchema } from "../api/schemas/agentJobPaceSchema.ts";
 export type { AgentJobPaceValue } from "../api/schemas/agentJobPaceSchema.ts";

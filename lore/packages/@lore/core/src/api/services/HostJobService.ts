@@ -14,6 +14,7 @@ import { projects } from "../entities/projects.ts";
 import type { AgentJobStepsValue } from "../schemas/agentJobStepsSchema.ts";
 import { AgentTranscript } from "../schemas/AgentTranscript.ts";
 import type { HostJobTotals } from "../schemas/hostJobTotalsSchema.ts";
+import type { HostJobUsual } from "../schemas/hostJobUsualSchema.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
@@ -173,6 +174,7 @@ export class HostJobService {
       subjectType: request.subjectType,
       subjectId: request.subjectId,
       ...(request.prompt ? { prompt: request.prompt } : {}),
+      ...(request.promptHash ? { promptHash: request.promptHash } : {}),
       ...(request.args ? { args: request.args } : {}),
       ...(request.cause ? { cause: request.cause } : {}),
       queuedAt: this.now(),
@@ -1006,6 +1008,74 @@ export class HostJobService {
     );
     await this.pump(job.hostId);
     return ended;
+  }
+
+  /**
+   * How many of a prompt's last runs its usual duration is read from.
+   */
+  public static readonly USUAL_RUNS = 20;
+
+  /**
+   * Under this many runs, a job shows its elapsed time only.
+   */
+  public static readonly USUAL_MIN_RUNS = 5;
+
+  /**
+   * How long a running job's prompt usually takes (#Q4435, epic #E181),
+   * for a job with no steps: the last {@link USUAL_RUNS} succeeded runs of
+   * the same project, prompt name, prompt text (`promptHash`) and model, in
+   * one query. A timed out run was cut, not finished, so it is left out. The
+   * model is the one the run named (`input.model`): a run that named none
+   * is compared with runs that named none. Nothing under
+   * {@link USUAL_MIN_RUNS} runs, for a job with no hash, or once it ended.
+   */
+  public async usualOf(job: HostJob): Promise<HostJobUsual | undefined> {
+    if (job.status !== "running" || !job.prompt || !job.promptHash) {
+      return undefined;
+    }
+    const rows = await this.jobs.findMany({
+      where: {
+        projectId: { eq: job.projectId },
+        prompt: { eq: job.prompt },
+        promptHash: { eq: job.promptHash },
+        status: { eq: "succeeded" },
+        startedAt: { isNotNull: true },
+        endedAt: { isNotNull: true },
+      },
+      columns: ["startedAt", "endedAt", "input"],
+      orderBy: [{ column: "endedAt", direction: "desc" }],
+      // Room for the runs of other models, read past in memory: the model
+      // lives inside the `input` JSON.
+      limit: HostJobService.USUAL_RUNS * 5,
+    });
+    const model = job.input.model ?? undefined;
+    const seconds = rows
+      .filter((row) => (row.input.model ?? undefined) === model)
+      .slice(0, HostJobService.USUAL_RUNS)
+      .map(
+        (row) =>
+          (Date.parse(row.endedAt ?? "") - Date.parse(row.startedAt ?? "")) /
+          1000,
+      )
+      .filter((it) => Number.isFinite(it) && it >= 0)
+      .sort((a, b) => a - b);
+    if (seconds.length < HostJobService.USUAL_MIN_RUNS) return undefined;
+    // Nearest rank: the smallest duration at or above the share asked.
+    const rank = (share: number) =>
+      Math.round(
+        seconds[
+          Math.min(
+            seconds.length - 1,
+            Math.max(0, Math.ceil(share * seconds.length) - 1),
+          )
+        ] ?? 0,
+      );
+    return {
+      runs: seconds.length,
+      low: rank(0.25),
+      high: rank(0.75),
+      p90: rank(0.9),
+    };
   }
 
   /**

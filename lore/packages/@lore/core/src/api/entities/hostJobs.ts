@@ -96,6 +96,14 @@ export const hostJobs = $entity({
      */
     prompt: z.string().max(64).optional(),
     /**
+     * A hash of the prompt's text as written (#Q4435, epic #E181): before
+     * its args are filled and the preamble put in front, so two runs of the
+     * same words share it and an edited prompt starts a new history. The
+     * usual duration of a job with no steps is read from the runs sharing
+     * it. Absent for a job started outside the prompt runner.
+     */
+    promptHash: z.string().max(64).optional(),
+    /**
      * Its args as run, and what started it.
      */
     args: z.array(promptJobArgSchema).max(8).optional(),
@@ -126,6 +134,10 @@ export const hostJobs = $entity({
     steps: agentJobStepsSchema.optional(),
   }),
   indexes: [
+    // How long a prompt usually takes (#Q4435): its last succeeded runs.
+    {
+      columns: ["projectId", "prompt", "promptHash", "status", "endedAt"],
+    },
     // The dispatcher: the oldest queued job of a host, and its running one.
     { columns: ["hostId", "status", "queuedAt"] },
     // The machine's job list, newest first, whatever the status (#Q4524).

@@ -4,6 +4,7 @@ import { agentJobPaceSchema } from "./agentJobPaceSchema.ts";
 import { agentJobStepsSchema } from "./agentJobStepsSchema.ts";
 import { hostJobInputSchema } from "./hostJobInputSchema.ts";
 import { hostJobPokeSchema } from "./hostJobPokeSchema.ts";
+import { hostJobUsualSchema } from "./hostJobUsualSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "./hostJobValues.ts";
 import { promptJobArgSchema } from "./promptJobArgSchema.ts";
 import { promptJobCauseSchema } from "./promptJobCauseSchema.ts";
@@ -84,6 +85,12 @@ export const hostJobResourceSchema = z.object({
    * fit before its timeout. Absent before that, and once it ended.
    */
   pace: agentJobPaceSchema.optional(),
+  /**
+   * How long the job's prompt usually takes (#Q4435): for a running job
+   * with no steps whose prompt text has 5 succeeded runs or more. Answered
+   * by one job's read, never by a list.
+   */
+  usual: hostJobUsualSchema.optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

@@ -178,6 +178,13 @@ export class JobCommand {
                 ? `about ${job.pace.low} to ${job.pace.high} min for the ${job.pace.left} ${job.steps?.unit === "objective" ? "objectives" : "quests"} left (review, checks and merge not counted)`
                 : undefined,
             ],
+            // A job with no steps: how long its prompt usually takes (#Q4435).
+            [
+              "Usually",
+              job.usual
+                ? `${Math.round(job.usual.low / 6) / 10} to ${Math.round(job.usual.high / 6) / 10} min (last ${job.usual.runs} runs)`
+                : undefined,
+            ],
             [
               "Pace warning",
               job.pace?.warning
