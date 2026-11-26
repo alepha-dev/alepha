@@ -135,8 +135,10 @@ export const HomeSearch = (props: HomeSearchProps) => {
             }}
             className="size-auto overflow-visible rounded-none! bg-transparent p-0"
           >
-            <div className="bg-background rounded-2xl border">
-              <div className="chrome [&_[data-slot=input-group]]:bg-background! [&_[data-slot=input-group]]:border-border! rounded-[inherit] p-1.5 [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group]]:h-11! [&_[data-slot=input-group]]:rounded-xl! [&_[data-slot=input-group]]:shadow-xs!">
+            {/* Hovered, only the inner border (the input group's) lightens,
+                with a short transition; the frame keeps its own (#Q4450). */}
+            <div className="bg-background group/search rounded-2xl border">
+              <div className="chrome [&_[data-slot=input-group]]:bg-background! [&_[data-slot=input-group]]:border-border! group-hover/search:[&_[data-slot=input-group]]:border-foreground/30! rounded-[inherit] p-1.5 [&_[data-slot=command-input-wrapper]]:p-0 [&_[data-slot=input-group-addon]]:pl-3.5! [&_[data-slot=input-group]]:h-11! [&_[data-slot=input-group]]:rounded-xl! [&_[data-slot=input-group]]:shadow-xs! [&_[data-slot=input-group]]:transition-colors [&_[data-slot=input-group]]:duration-150">
                 <CommandInput
                   placeholder={tr("home.search.placeholder")}
                   aria-label={tr("home.search.placeholder")}
@@ -150,7 +152,9 @@ export const HomeSearch = (props: HomeSearchProps) => {
               </div>
             </div>
             {open && (
-              <div className="bg-popover text-popover-foreground absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border shadow-lg">
+              // Enters with a fade and a slight drop, as the kit's popovers
+              // do; still under reduced motion (#Q4450).
+              <div className="bg-popover text-popover-foreground animate-in fade-in-0 slide-in-from-top-1 absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border shadow-lg duration-150 motion-reduce:animate-none">
                 <CommandEmpty className="text-muted-foreground">
                   {search.loading
                     ? tr("home.search.searching")
