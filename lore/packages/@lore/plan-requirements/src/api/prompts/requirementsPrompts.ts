@@ -12,7 +12,9 @@
  */
 const whereRule = (environment: string) => `## Where
 
-The persona's environment: ${environment}. Find its copy and URL with \`app_instance_list\` (project_name "{{project}}"). With no copy named, take a development, staging or preview copy, or else run the app from the repository as its AGENTS.md or README says. Never play it against production.`;
+The persona's environment: ${environment}. Find its copy and URL with \`app_instance_list\` (project_name "{{project}}"). With no copy named, take a development, staging or preview copy, or else run the app from the repository as its AGENTS.md or README says. Never play it against production.
+
+Play it in a real browser, as the persona would: with \`playwright-cli\` when it is on the host (\`command -v playwright-cli\`), opening only that copy. Without a browser, say what you could not play and why: reading the code is not a run.`;
 
 /**
  * How a run signs in (#Q4343): nobody can hand it a password mid-run, and

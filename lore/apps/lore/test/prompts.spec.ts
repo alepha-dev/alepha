@@ -215,6 +215,17 @@ describe("prompts", () => {
     }
   });
 
+  it("names the browser step in review-pr and dependency-update (#Q4429)", async ({
+    expect,
+  }) => {
+    const review = registry.get("review-pr")?.text ?? "";
+    expect(review).toContain("`command -v playwright-cli`");
+    expect(review).toContain("the review says no screen was looked at");
+    const update = registry.get("dependency-update")?.text ?? "";
+    expect(update).toContain("`command -v playwright-cli`");
+    expect(update).toContain("open its main screens");
+  });
+
   it("asks triage to look at a screen a report describes, and keeps needs-human for what a person must decide (#Q4428)", async ({
     expect,
   }) => {

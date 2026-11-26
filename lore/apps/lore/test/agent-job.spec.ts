@@ -133,6 +133,11 @@ describe("the agent job", () => {
     expect(job.input.prompt).toMatch(
       /^## Where things are\n[\s\S]*names no GitHub repository[\s\S]*\n\nTriage feedback 4\.$/,
     );
+    // Every job is told it may use a browser, whatever its prompt (#Q4429).
+    expect(job.input.prompt).toContain(
+      "**A browser**, when `playwright-cli` is on this host (`command -v playwright-cli`)",
+    );
+    expect(job.input.prompt).toContain("no browser check was made");
 
     const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
     const spec = await w.hostRows.spec(row, "https://lore.test");

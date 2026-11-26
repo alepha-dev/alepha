@@ -12,6 +12,7 @@ export const reviewPrPromptText = `Review {{pullRequest.title}} of the Lore proj
 1. The diff against its base: \`gh pr diff {{pullRequest.number}}\`, and \`gh pr view {{pullRequest.number}}\` for its description and its checks.
 2. What it is for: the quest its title, its description or its branch names in Lore (\`quest_get\`), and the repository's own agent instructions (AGENTS.md or CLAUDE.md).
 3. The code around what changed, enough to judge it: callers, tests, the conventions the repository states.
+4. What a person sees, when it changes a screen: with \`playwright-cli\` on the host (\`command -v playwright-cli\`), start the app from the pull request's code as the repository's agent instructions say, on a port of its own that no other run uses, open each changed screen and compare it with what the quest asks, then stop the app. Open only the app you started. Without it, the review says no screen was looked at.
 
 ## Judge
 

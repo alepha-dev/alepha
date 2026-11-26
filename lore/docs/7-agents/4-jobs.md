@@ -70,26 +70,30 @@ Install the `lore` CLI only if a prompt asks for it, and **never sign it in**
 as the jobs user: a job reaches Lore with a key held to its project and its
 subject, and a signed-in CLI would reach past that.
 
-**Install `playwright-cli` for a look at the screens a job changes.** It is
-optional. With it, a job that builds a change the user sees starts the app,
-opens the screens it changed in a browser and checks them against the quest,
-then says on the quest what it looked at. Without it, the job says no visual
-check was made. It needs a browser for the jobs user too:
+**Install `playwright-cli` so a job can open the app in a browser.** It is
+optional. With it, every job is told it may start the app and look at it
+whenever seeing it tells more than reading its code: a triage reproduces a
+report about a screen at the reported viewport, a job that builds a change
+the user sees checks the screens it changed against the quest, a review
+opens the screens a pull request changes, and a use case run plays the app.
+Each says on the quest, the pull request or the run what it looked at.
+Without it, the job says no browser check was made.
 
 ```bash
 sudo -iu bay-agent npm install -g @playwright/cli
 ```
 
-```bash
-sudo -iu bay-agent npx playwright install chromium
-```
+`playwright-cli` opens Google Chrome by default, so the host needs Chrome
+itself: on Debian and Ubuntu, Google's `google-chrome-stable` package.
+Playwright's own Chromium is not enough for it.
 
 A job cannot attach a screenshot: it describes what it saw in words.
 
 **A host that runs a project's checks needs the project's toolchain.** A job
 runs the checks the repository's agent instructions name, as the jobs user,
 on this host: its runtime and package manager (Node and Yarn, Go, ...), and
-for end-to-end suites a browser, the same `npx playwright install chromium`.
+for end-to-end suites the browser they drive (`npx playwright install chromium`
+for a Playwright suite).
 A check the host cannot run fails the job's work, not the host.
 
 There is no sandbox: the app a job starts and the browser it opens reach
