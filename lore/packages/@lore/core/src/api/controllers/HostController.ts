@@ -408,6 +408,12 @@ export class HostController {
          */
         watchUnits: z.array(z.string().max(200)).max(20).optional(),
         /**
+         * Disk and memory thresholds in percent (#Q4423); `null` turns one
+         * off.
+         */
+        alertDiskPercent: z.integer().min(1).max(100).nullable().optional(),
+        alertMemoryPercent: z.integer().min(1).max(100).nullable().optional(),
+        /**
          * How long from now the host is meant to live, in seconds (#Q3138);
          * `null` clears the expiry. Either way the overdue notification is
          * re-armed.
@@ -451,6 +457,12 @@ export class HostController {
           ? {}
           : { statsIntervalSeconds: body.statsIntervalSeconds }),
         ...(watchUnits === undefined ? {} : { watchUnits }),
+        ...(body.alertDiskPercent === undefined
+          ? {}
+          : { alertDiskPercent: body.alertDiskPercent }),
+        ...(body.alertMemoryPercent === undefined
+          ? {}
+          : { alertMemoryPercent: body.alertMemoryPercent }),
         ...(body.ttlSeconds === undefined
           ? {}
           : {

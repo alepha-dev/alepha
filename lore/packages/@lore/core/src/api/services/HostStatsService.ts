@@ -5,6 +5,7 @@ import { $repository } from "alepha/orm";
 import { type Host, hosts } from "../entities/hosts.ts";
 import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 import type { HostStatsFrame } from "../schemas/hostStatsFrameSchema.ts";
+import { HostResourceAlerts } from "./HostResourceAlerts.ts";
 
 /**
  * One day of a host's series, averaged from what the dataset holds.
@@ -69,6 +70,7 @@ export class HostStatsService {
   protected readonly hosts = $repository(hosts);
   protected readonly analytics = $inject(ProjectAnalytics);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly alerts = $inject(HostResourceAlerts);
 
   /**
    * The gauge, then the series if the switch is on.
@@ -83,6 +85,9 @@ export class HostStatsService {
       memoryPercent: frame.memoryPercent,
       statsAt: this.now(),
     });
+    // The thresholds read the gauge, so they hold whatever the series switch
+    // says (#Q4423).
+    await this.alerts.check(host, frame);
 
     if (!host.collectSeries) {
       return;

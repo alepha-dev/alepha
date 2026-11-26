@@ -2,6 +2,7 @@ import {
   ProjectAnalytics,
   HostStatsService,
   HostController,
+  projectEvents,
 } from "@lore/core/api";
 import { type Host, hosts, type HostStatsFrame } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
@@ -19,6 +20,7 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 
 class HostRepositories {
   hosts = $repository(hosts);
+  events = $repository(projectEvents);
 }
 
 interface TestContext {
@@ -252,6 +254,45 @@ describe("HostStatsService", () => {
     const older = await ctx.service.series(old.id, "2000-01-01");
     expect(older.points[0].diskPercent).toBeUndefined();
     expect(older.points[0].load1).toBeUndefined();
+  });
+
+  it("raises a resource alert once at the threshold and clears it under the margin", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    let host = await createHost(ctx, owner, "full-disk");
+    await ctx.repos.hosts.updateById(host.id, { alertDiskPercent: 85 });
+    host = await reload(ctx, host);
+    const push = async (disk: number) => {
+      await ctx.service.record(host, { ...frame(10, 10), diskPercent: disk });
+      host = await reload(ctx, host);
+    };
+    const names = async () =>
+      (await ctx.repos.events.findMany({ orderBy: "occurredAt" }))
+        .map((event) => event.name)
+        .filter((name) => name.startsWith("host.resource_"));
+
+    await push(80);
+    expect(await names()).toEqual([]);
+    await push(86);
+    await push(90);
+    // Hovering just under the limit is inside the margin: still raised.
+    await push(83);
+    expect(await names()).toEqual(["host.resource_high"]);
+    expect(host.resourceAlerts?.disk).toBeDefined();
+    await push(79);
+    expect(await names()).toEqual(["host.resource_high", "host.resource_ok"]);
+    expect(host.resourceAlerts?.disk).toBeUndefined();
+
+    const [high] = await ctx.repos.events.findMany({
+      where: { name: "host.resource_high" },
+    });
+    expect(high.fields).toMatchObject({
+      host: "full-disk",
+      resource: "disk",
+      percent: 86,
+      limit: 85,
+    });
   });
 
   it("declares the dataset on the host, pinned, with hot retention under the Analytics Engine ceiling", async ({

@@ -122,6 +122,8 @@ export default {
   "notifications.event.host.online": "Hôte de nouveau en ligne",
   "notifications.event.host.unit_failed": "Unité surveillée en échec",
   "notifications.event.host.unit_recovered": "Unité surveillée rétablie",
+  "notifications.event.host.resource_high": "Hôte au-dessus d'un seuil",
+  "notifications.event.host.resource_ok": "Hôte revenu sous un seuil",
   "notifications.resource.quests": "Quêtes",
   "notifications.resource.epics": "Épopées",
   "notifications.resource.releases": "Versions",
@@ -2906,6 +2908,11 @@ export default {
   "bay.units.save": "Enregistrer",
   "bay.units.title": "Unités surveillées",
   "bay.units.since": "depuis $1",
+  "bay.alerts.label": "Alertes de ressources",
+  "bay.alerts.description":
+    "Alerter quand le disque ou la mémoire atteint ce pourcentage. Vide désactive.",
+  "bay.alerts.disk": "Disque %",
+  "bay.alerts.memory": "Mémoire %",
   "bay.chart.off":
     "Cette machine n'enregistre pas d'historique. Les jauges ci-dessus sont toujours conservées ; la série est un réglage à part, et elle démarre le jour où il est activé.",
   "bay.chart.off.link": "L'activer dans les paramètres",

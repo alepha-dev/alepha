@@ -24,6 +24,7 @@ import type { HostLoan } from "../../../../api/schemas/ownedHostResourceSchema.t
 import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import HostSecretDialog from "../hosts/HostSecretDialog.tsx";
+import BayAlertThresholdsField from "./BayAlertThresholdsField.tsx";
 import BayMoveDialog from "./BayMoveDialog.tsx";
 import BaySettingsHome from "./BaySettingsHome.tsx";
 import BaySettingsReadOnly from "./BaySettingsReadOnly.tsx";
@@ -79,6 +80,8 @@ const BaySettings = () => {
         collectSeries?: boolean;
         statsIntervalSeconds?: number;
         watchUnits?: string[];
+        alertDiskPercent?: number | null;
+        alertMemoryPercent?: number | null;
       },
     ],
     void
@@ -311,6 +314,19 @@ const BaySettings = () => {
               units={host.watchUnits ?? []}
               busy={busy}
               onSave={(watchUnits) => void update({ watchUnits })}
+            />
+
+            <BayAlertThresholdsField
+              key={`${host.alertDiskPercent ?? ""}-${host.alertMemoryPercent ?? ""}`}
+              disk={host.alertDiskPercent}
+              memory={host.alertMemoryPercent}
+              busy={busy}
+              onSave={(limits) =>
+                void update({
+                  alertDiskPercent: limits.disk,
+                  alertMemoryPercent: limits.memory,
+                })
+              }
             />
           </CardContent>
         </Card>

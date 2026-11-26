@@ -59,6 +59,8 @@ export const hostResourceSchema = hosts.schema
     jobsRunning: true,
     statsIntervalSeconds: true,
     watchUnits: true,
+    alertDiskPercent: true,
+    alertMemoryPercent: true,
     connectedAt: true,
     disconnectedAt: true,
     connectionId: true,

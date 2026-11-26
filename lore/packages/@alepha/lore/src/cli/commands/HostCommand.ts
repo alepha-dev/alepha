@@ -825,6 +825,18 @@ export class HostCommand {
           "Make it an Agent host, which runs Claude Code jobs and is checked with a one-turn prompt; needs jobs allowed",
         )
         .optional(),
+      "alert-disk": z
+        .text({
+          description:
+            "Alert when disk use reaches this percent (85), or none to turn it off",
+        })
+        .optional(),
+      "alert-memory": z
+        .text({
+          description:
+            "Alert when memory use reaches this percent (90), or none to turn it off",
+        })
+        .optional(),
       "watch-units": z
         .text({
           description:
@@ -837,6 +849,22 @@ export class HostCommand {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
         const body = {
+          ...(flags["alert-disk"] === undefined
+            ? {}
+            : {
+                alertDiskPercent: this.percentLimitOf(
+                  "--alert-disk",
+                  flags["alert-disk"],
+                ),
+              }),
+          ...(flags["alert-memory"] === undefined
+            ? {}
+            : {
+                alertMemoryPercent: this.percentLimitOf(
+                  "--alert-memory",
+                  flags["alert-memory"],
+                ),
+              }),
           ...(flags["watch-units"] === undefined
             ? {}
             : {
@@ -865,7 +893,7 @@ export class HostCommand {
         };
         if (Object.keys(body).length === 0) {
           throw new UsageError(
-            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --allow-jobs, --agent-host, --label, --ttl, --stats-history, --no-stats-history, --stats-interval or --watch-units.",
+            "Nothing to change: pass --allow-deploys, --no-allow-deploys, --allow-jobs, --agent-host, --label, --ttl, --stats-history, --no-stats-history, --stats-interval, --watch-units, --alert-disk or --alert-memory.",
           );
         }
         const { project, projectId } = await this.projects.named(
@@ -1330,6 +1358,19 @@ export class HostCommand {
       ...(projectId === undefined ? {} : { projectId }),
       ...(home ? { home } : {}),
     };
+  }
+
+  /**
+   * A threshold flag (#Q4423): a whole percent from 1 to 100, or `none`,
+   * which turns it off.
+   */
+  protected percentLimitOf(flag: string, raw: string): number | null {
+    if (raw.trim() === "none") return null;
+    const value = Number(raw.trim().replace(/%$/, ""));
+    if (!Number.isInteger(value) || value < 1 || value > 100) {
+      throw new UsageError(`${flag} takes a percent from 1 to 100, or none.`);
+    }
+    return value;
   }
 
   /**
