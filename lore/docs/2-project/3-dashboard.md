@@ -199,14 +199,15 @@ The **Add card** panel lists them in these groups.
 
 **Apps**
 
-| Card                | What it shows                                                                   |
-| ------------------- | ------------------------------------------------------------------------------- |
-| **App health**      | One pill per app instance: its last deploy, and whether it reports              |
-| **Errors**          | Occurrences per day, with a mark at each deployment                             |
-| **Coverage**        | Line coverage over the recorded runs                                            |
-| **Unique visitors** | Human visitors a day, averaged over the board's period, against the one before  |
-| **Hosts**           | The project's hosts, its own and lent ones: online or offline, and last heard   |
-| **Uptime**          | Each monitor, up or down, with its availability over the last 24 hours as a bar |
+| Card                | What it shows                                                                                                         |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| **App health**      | One pill per app instance: its last deploy, and whether it reports                                                    |
+| **Errors**          | Occurrences per day, with a mark at each deployment                                                                   |
+| **Coverage**        | Line coverage over the recorded runs                                                                                  |
+| **Unique visitors** | Human visitors a day, averaged over the board's period, against the one before                                        |
+| **Web vitals**      | LCP, INP and CLS at p75 over the board's period, green, amber or red as on the Vitals page; grey with too few samples |
+| **Hosts**           | The project's hosts, its own and lent ones: online or offline, and last heard                                         |
+| **Uptime**          | Each monitor, up or down, with its availability over the last 24 hours as a bar                                       |
 
 ### The Folio card
 
@@ -263,13 +264,13 @@ which. To point it somewhere else, use **Change scope** in the card's menu.
 The menu at the right of a dashboard's header has **Presets**: ready-made
 layouts, for anyone who may change the project.
 
-| Preset              | What it shows                                                       |
-| ------------------- | ------------------------------------------------------------------- |
-| **Apps and vitals** | Health, visitors, errors and uptime of the project's apps.          |
-| **Code quality**    | Line coverage over time, the latest coverage and the failing tests. |
-| **Requirements**    | Coverage, what is left to cover, use case and persona health.       |
-| **Triage**          | What waits on someone: feedback, errors, held quests, the feed.     |
-| **Delivery**        | Where the next releases stand, and the epics and quests in flight.  |
+| Preset              | What it shows                                                          |
+| ------------------- | ---------------------------------------------------------------------- |
+| **Apps and vitals** | Health, visitors, web vitals, errors and uptime of the project's apps. |
+| **Code quality**    | Line coverage over time, the latest coverage and the failing tests.    |
+| **Requirements**    | Coverage, what is left to cover, use case and persona health.          |
+| **Triage**          | What waits on someone: feedback, errors, held quests, the feed.        |
+| **Delivery**        | Where the next releases stand, and the epics and quests in flight.     |
 
 **Apply to this board** replaces every card on the dashboard on screen with the
 preset's, for everyone, after Lore asks. To change it again, apply another

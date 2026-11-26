@@ -8,6 +8,7 @@ import {
   qualityRuns,
 } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
+import { DeployAnalytics } from "@lore/ship/api";
 import {
   appInstances,
   deployments,
@@ -254,6 +255,75 @@ describe("dashboard apps tiles", () => {
 
       expect(value.series).toHaveLength(14);
       expect(value.series?.[13]).toEqual({ at: yesterday, value: 2 });
+    });
+  });
+
+  describe("webVitals", () => {
+    const record = async (
+      sigilId: string,
+      metric: string,
+      bucket: number,
+      samples: number,
+    ) =>
+      alepha.inject(DeployAnalytics).vitals.recordMany([
+        {
+          sigilId,
+          hour: dateTime.nowISOString().slice(0, 13),
+          metric,
+          path: "/",
+          bucket,
+          samples,
+        },
+      ]);
+
+    it("draws the p75 range of LCP, INP and CLS, rated, and neutral on too few samples (#Q4521)", async ({
+      expect,
+    }) => {
+      const web = await copy("web", "production", ["beacon"], 1);
+      // LCP: 1.0 to 1.8 s, good. INP: 400 to 500 ms, needs improvement.
+      // CLS: ten samples, not enough to rate.
+      await record(web.sigil.id, "lcp", 1, 100);
+      await record(web.sigil.id, "inp", 4, 50);
+      await record(web.sigil.id, "cls", 0, 10);
+
+      const value = await resolve("webVitals");
+
+      expect(value.empty).toBeUndefined();
+      expect(
+        value.rows?.map((row) => ({ id: row.id, state: row.state })),
+      ).toEqual([
+        { id: "LCP 1–1.8 s", state: "ok" },
+        { id: "INP 400–500 ms", state: "warn" },
+        { id: "CLS ≤ 0.05", state: "neutral" },
+      ]);
+      expect(value.detail).toMatchObject({
+        days: 14,
+        rated: 2,
+        samples: { lcp: 100, inp: 50, cls: 10 },
+      });
+      expect(value.link).toEqual({
+        route: "appVitals",
+        params: { projectSlug: project.slug, app: "web", env: "production" },
+      });
+    });
+
+    it("rates a p75 past the last boundary poor", async ({ expect }) => {
+      const web = await copy("web", "production", ["beacon"], 1);
+      await record(web.sigil.id, "lcp", 6, 40);
+
+      const value = await resolve("webVitals");
+
+      expect(value.rows?.[0]).toMatchObject({ id: "LCP > 6 s", state: "bad" });
+    });
+
+    it("is empty when no copy reported a vital in the window, or none sends the beacon", async ({
+      expect,
+    }) => {
+      expect((await resolve("webVitals")).empty).toBe("noSigil");
+      await copy("api", "production", ["errors"], 1);
+      expect((await resolve("webVitals")).empty).toBe("noBeacon");
+      await copy("web", "production", ["beacon"], 1);
+      expect((await resolve("webVitals")).empty).toBe("noData");
     });
   });
 

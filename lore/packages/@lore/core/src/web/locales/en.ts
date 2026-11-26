@@ -4440,6 +4440,9 @@ export default {
   "dashboard.filter.branchPlaceholder": "main",
   "dashboard.metric.qualityTrend": "Coverage",
   "dashboard.metric.qualityTrend.hint": "line coverage over the recorded runs",
+  "dashboard.footer.webVitals": "p75 over $1 days",
+  "dashboard.footer.webVitals.few":
+    "p75 over $1 days, $2 of 3 with enough samples",
   "dashboard.footer.appHealth": "$1 of $2 copies healthy",
   "dashboard.footer.errorTrend": "$1 occurrences, $2 deployments",
   "dashboard.footer.qualityTrend": "$1 of $2 tests passing",
@@ -4517,7 +4520,7 @@ export default {
   "dashboard.preset.confirm.action": "Apply preset",
   "dashboard.preset.appVitals": "Apps and vitals",
   "dashboard.preset.appVitals.description":
-    "Health, visitors, errors and uptime of the project's apps.",
+    "Health, visitors, web vitals, errors and uptime of the project's apps.",
   "dashboard.preset.codeQuality": "Code quality",
   "dashboard.preset.codeQuality.description":
     "Line coverage over time, the latest coverage and the failing tests.",
@@ -4605,6 +4608,9 @@ export default {
   "dashboard.metric.untriagedFeedback.card": "Feedback",
   "dashboard.metric.untriagedFeedback.hint": "project or all",
   "dashboard.metric.uniqueVisitors": "Unique visitors",
+  "dashboard.metric.webVitals": "Web vitals",
+  "dashboard.metric.webVitals.hint":
+    "p75 of LCP, INP and CLS over the board's period, rated like the Vitals page",
   "dashboard.metric.uniqueVisitors.hint":
     "human visitors a day, averaged over the board's period",
 

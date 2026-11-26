@@ -4477,6 +4477,9 @@ export default {
   "dashboard.metric.qualityTrend": "Couverture",
   "dashboard.metric.qualityTrend.hint":
     "couverture des lignes sur les exécutions enregistrées",
+  "dashboard.footer.webVitals": "p75 sur $1 jours",
+  "dashboard.footer.webVitals.few":
+    "p75 sur $1 jours, $2 sur 3 avec assez d'échantillons",
   "dashboard.footer.appHealth": "$1 copies sur $2 en bonne santé",
   "dashboard.footer.errorTrend": "$1 occurrences, $2 déploiements",
   "dashboard.footer.qualityTrend": "$1 tests sur $2 passent",
@@ -4556,7 +4559,7 @@ export default {
   "dashboard.preset.confirm.action": "Appliquer le modèle",
   "dashboard.preset.appVitals": "Applications et indicateurs",
   "dashboard.preset.appVitals.description":
-    "Santé, visiteurs, erreurs et disponibilité des applications du projet.",
+    "Santé, visiteurs, Web Vitals, erreurs et disponibilité des applications du projet.",
   "dashboard.preset.codeQuality": "Qualité du code",
   "dashboard.preset.codeQuality.description":
     "La couverture des lignes dans le temps, la dernière couverture et les tests en échec.",
@@ -4647,6 +4650,9 @@ export default {
   "dashboard.metric.untriagedFeedback.card": "Retours",
   "dashboard.metric.untriagedFeedback.hint": "un projet ou tous",
   "dashboard.metric.uniqueVisitors": "Visiteurs uniques",
+  "dashboard.metric.webVitals": "Web Vitals",
+  "dashboard.metric.webVitals.hint":
+    "p75 du LCP, de l'INP et du CLS sur la période du tableau, notés comme sur la page Web Vitals",
   "dashboard.metric.uniqueVisitors.hint":
     "visiteurs humains par jour, en moyenne sur la période du tableau",
 

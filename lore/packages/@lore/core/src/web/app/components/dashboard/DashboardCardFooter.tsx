@@ -199,6 +199,18 @@ const DashboardCardFooter = (props: DashboardCardFooterProps) => {
         ],
       })}`;
     }
+    if (props.metric === "webVitals") {
+      // The pills say the range; the footer says over what, and when a
+      // metric had too few samples to be rated (#Q4521).
+      const rated = Number(detail.rated ?? 3);
+      return rated < 3
+        ? tr("dashboard.footer.webVitals.few", {
+            args: [String(detail.days ?? ""), String(rated)],
+          })
+        : tr("dashboard.footer.webVitals", {
+            args: [String(detail.days ?? "")],
+          });
+    }
     if (props.metric === "appHealth") {
       return tr("dashboard.footer.appHealth", {
         args: [String(props.value?.value ?? 0), String(detail.copies ?? 0)],

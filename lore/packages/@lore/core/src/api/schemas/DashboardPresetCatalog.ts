@@ -44,8 +44,8 @@ export interface DashboardPreset {
 export class DashboardPresetCatalog {
   public static readonly PRESETS: DashboardPreset[] = [
     {
-      // Traffic, health, errors and uptime of the project's apps. There is
-      // no web-vitals card yet: the vitals live on an app's own Vitals tab.
+      // Traffic, health, web vitals (#Q4521), errors and uptime of the
+      // project's apps.
       key: "appVitals",
       labelKey: "dashboard.preset.appVitals",
       descriptionKey: "dashboard.preset.appVitals.description",
@@ -54,6 +54,7 @@ export class DashboardPresetCatalog {
       cards: [
         { metric: "appHealth", size: 2 },
         { metric: "uniqueVisitors" },
+        { metric: "webVitals", size: 2 },
         { metric: "openErrors" },
         { metric: "errorTrend", size: 2 },
         { metric: "uptime", size: 2 },
