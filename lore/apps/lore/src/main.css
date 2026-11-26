@@ -282,6 +282,10 @@ body::before {
  * neutral grey instead, so both modes of the default theme read alike. A
  * named theme's dark block sets the token back to its own accent, since
  * `.dark` above would otherwise reach it too.
+ *
+ * Mona is not in the list below: its bars are green in both modes, set in
+ * its own two blocks, because its accent is a blue and the graph it borrows
+ * from is not.
  * ──────────────────────────────────────────────────────────────────────── */
 
 .dark.theme-forest,
@@ -562,6 +566,11 @@ body::before {
  * away, and a future edit that treats these numbers as free choices will
  * drift the palette away from the thing it is a transcription of.
  *
+ * Last held against the source on 2026-11-26 (#Q4437), the palette the
+ * Claude desktop app ships: page, card, sidebar and orange had not moved in
+ * either mode. The text had, to #141413 on light and #FAF9F5 on dark, and
+ * `--foreground` followed it.
+ *
  * Two of those anchors are transcribed with a correction. The source
  * orange, #D97757, carries white at 3.9:1 and sits at 4.2:1 on a dark card,
  * both under 4.5 — fine on claude.ai, where it is mostly a large button, and
@@ -591,10 +600,12 @@ body::before {
  * ──────────────────────────────────────────────────────────────────────── */
 
 .theme-tangor {
-  /* Copernicus, the source's display serif, is proprietary. Source Serif 4 is
-   * the nearest free face by construction: transitional, moderate contrast,
-   * the same sturdy text-weight roman. The text is Source Sans 3, its own
-   * superfamily sibling, so the two agree without being tuned to.
+  /* The source's faces are proprietary: Anthropic Serif and Anthropic Sans
+   * today, Copernicus when this was transcribed. Source Serif 4 was picked as
+   * the nearest free face to Copernicus by construction (transitional,
+   * moderate contrast, the same sturdy text-weight roman) and stands in for
+   * its successor too. The text is Source Sans 3, its own superfamily
+   * sibling, so the two agree without being tuned to.
    *
    * The mono is IBM Plex Mono rather than the superfamily's Source Code Pro,
    * and that is the one deliberate break: holding the whole app to two
@@ -610,30 +621,30 @@ body::before {
   --shadow-color: 31 30 28;
   --shadow-alpha: 0.06;
   --background: oklch(0.982 0.005 95);
-  --foreground: oklch(0.236 0.004 95);
+  --foreground: oklch(0.19 0.002 107);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.236 0.004 95);
+  --card-foreground: oklch(0.19 0.002 107);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.236 0.004 95);
+  --popover-foreground: oklch(0.19 0.002 107);
   --primary: oklch(0.566 0.138 38.2);
   --primary-foreground: oklch(0.99 0.004 95);
   --secondary: oklch(0.939 0.012 95);
-  --secondary-foreground: oklch(0.236 0.004 95);
+  --secondary-foreground: oklch(0.19 0.002 107);
   --muted: oklch(0.939 0.012 95);
   --muted-foreground: oklch(0.51 0.012 95);
   --accent: oklch(0.915 0.015 95);
-  --accent-foreground: oklch(0.236 0.004 95);
+  --accent-foreground: oklch(0.19 0.002 107);
   --destructive: oklch(0.505 0.19 27);
   --destructive-foreground: oklch(0.99 0.004 95);
   --border: oklch(0.875 0.015 95);
   --input: oklch(0.875 0.015 95);
   --ring: oklch(0.566 0.138 38.2);
   --sidebar: oklch(0.948 0.011 95);
-  --sidebar-foreground: oklch(0.236 0.004 95);
+  --sidebar-foreground: oklch(0.19 0.002 107);
   --sidebar-primary: oklch(0.566 0.138 38.2);
   --sidebar-primary-foreground: oklch(0.99 0.004 95);
   --sidebar-accent: oklch(0.905 0.016 95);
-  --sidebar-accent-foreground: oklch(0.236 0.004 95);
+  --sidebar-accent-foreground: oklch(0.19 0.002 107);
   --sidebar-ring: oklch(0.566 0.138 38.2);
   --folio-tree-directory: oklch(0.6 0.115 95);
   --folio-tree-folio: oklch(0.55 0.085 232);
@@ -650,33 +661,161 @@ body::before {
   --shadow-color: 13 12 11;
   --shadow-alpha: 0.35;
   --background: oklch(0.268 0.004 106);
-  --foreground: oklch(0.966 0.008 99);
+  --foreground: oklch(0.982 0.005 95);
   --card: oklch(0.308 0.004 106);
-  --card-foreground: oklch(0.966 0.008 99);
+  --card-foreground: oklch(0.982 0.005 95);
   --popover: oklch(0.308 0.004 106);
-  --popover-foreground: oklch(0.966 0.008 99);
+  --popover-foreground: oklch(0.982 0.005 95);
   --primary: oklch(0.69 0.131 38.8);
   --primary-foreground: oklch(0.24 0.004 106);
   --secondary: oklch(0.347 0.005 106);
-  --secondary-foreground: oklch(0.966 0.008 99);
+  --secondary-foreground: oklch(0.982 0.005 95);
   --muted: oklch(0.347 0.005 106);
   --muted-foreground: oklch(0.76 0.014 97.5);
   --accent: oklch(0.386 0.008 97.5);
-  --accent-foreground: oklch(0.966 0.008 99);
+  --accent-foreground: oklch(0.982 0.005 95);
   --destructive: oklch(0.704 0.191 22.2);
   --destructive-foreground: oklch(0.24 0.004 106);
   --border: oklch(0.362 0.007 106);
   --input: oklch(0.347 0.005 106);
   --ring: oklch(0.69 0.131 38.8);
   --sidebar: oklch(0.236 0.004 106);
-  --sidebar-foreground: oklch(0.966 0.008 99);
+  --sidebar-foreground: oklch(0.982 0.005 95);
   --sidebar-primary: oklch(0.69 0.131 38.8);
   --sidebar-primary-foreground: oklch(0.24 0.004 106);
   --sidebar-accent: oklch(0.386 0.008 97.5);
-  --sidebar-accent-foreground: oklch(0.966 0.008 99);
+  --sidebar-accent-foreground: oklch(0.982 0.005 95);
   --sidebar-ring: oklch(0.69 0.131 38.8);
   --folio-tree-directory: oklch(0.78 0.11 96);
   --folio-tree-folio: oklch(0.71 0.085 232);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Mona: GitHub's palette, cool greys and a link blue (#Q4437).
+ *
+ * Like Tangor, a transcription and not an invention: every value below is
+ * a Primer token (`@primer/primitives` 11.10.0, the design system GitHub
+ * publishes), converted to oklch and named beside it. A future edit that
+ * moves one moves the theme away from the tool it is meant to sit beside,
+ * which is the only reason it exists.
+ *
+ * `--primary` is the accent blue, not the green of GitHub's primary button.
+ * There, a button and a link are two tokens; here `--primary` is both, and
+ * a quest list in green links reads as no GitHub page ever did. The green
+ * is kept for the one place GitHub itself draws activity over time with it:
+ * Home's momentum bars, which are the contribution graph's colour.
+ *
+ * Dark does not reuse light's blue. #0969da carries 3.3:1 as text on a dark
+ * card, so dark takes Primer's own dark link colour, #4493f8 (5.6:1), with
+ * the page colour as its foreground: white on it is 3.1:1.
+ *
+ * The stepping is the page's: an #eff2f5 sidebar, a #f6f8fa page and white,
+ * bordered cards in light; #010409 sidebar, #0d1117 page and #151b23 cards
+ * in dark. So the card is the lit surface in both modes, as in Tangor.
+ *
+ * The folio tree follows GitHub's file tree in light, a blue directory
+ * beside a grey file. In dark Primer draws both in the same grey, which is
+ * the "two greys" this pair exists to prevent, so the directory keeps its
+ * blue there.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+.theme-mona {
+  /* Mona Sans is GitHub's own typeface, under the OFL. Its mono sibling,
+   * Monaspace, is not on Google Fonts, which is where `fetch-fonts` reads,
+   * so the mono stays `:root`'s JetBrains Mono: no third monospace face. */
+  --font-sans:
+    "Mona Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Primer's `borderRadius-medium`, 6px. */
+  --radius: 0.375rem;
+  --heading-tracking: -0.01em;
+  --heading-weight: 600;
+  --shadow-color: 31 35 40;
+  --shadow-alpha: 0.05;
+  /* bgColor-muted #f6f8fa */
+  --background: oklch(0.978 0.003 248);
+  /* fgColor-default #1f2328 */
+  --foreground: oklch(0.254 0.011 254);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.254 0.011 254);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.254 0.011 254);
+  /* fgColor-accent #0969da */
+  --primary: oklch(0.54 0.191 257);
+  --primary-foreground: oklch(1 0 0);
+  /* control-bgColor-hover #eff2f5 */
+  --secondary: oklch(0.96 0.005 248);
+  --secondary-foreground: oklch(0.254 0.011 254);
+  --muted: oklch(0.96 0.005 248);
+  /* fgColor-muted #59636e */
+  --muted-foreground: oklch(0.495 0.022 251);
+  /* control-bgColor-active #e6eaef */
+  --accent: oklch(0.935 0.008 254);
+  --accent-foreground: oklch(0.254 0.011 254);
+  /* bgColor-danger-emphasis #cf222e */
+  --destructive: oklch(0.552 0.205 25);
+  --destructive-foreground: oklch(1 0 0);
+  /* borderColor-default #d1d9e0 */
+  --border: oklch(0.881 0.013 244);
+  --input: oklch(0.881 0.013 244);
+  --ring: oklch(0.54 0.191 257);
+  --sidebar: oklch(0.96 0.005 248);
+  --sidebar-foreground: oklch(0.254 0.011 254);
+  --sidebar-primary: oklch(0.54 0.191 257);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.935 0.008 254);
+  --sidebar-accent-foreground: oklch(0.254 0.011 254);
+  --sidebar-ring: oklch(0.54 0.191 257);
+  /* treeViewItem-leadingVisual-iconColor #54aeff, then fgColor-muted */
+  --folio-tree-directory: oklch(0.731 0.146 248);
+  --folio-tree-folio: oklch(0.495 0.022 251);
+  /* bgColor-success-emphasis #1f883d */
+  --home-momentum: oklch(0.552 0.145 148);
+}
+
+.dark.theme-mona,
+.theme-mona.dark {
+  --shadow-color: 1 4 9;
+  --shadow-alpha: 0.6;
+  /* bgColor-default #0d1117 */
+  --background: oklch(0.176 0.014 258);
+  /* fgColor-default #f0f6fc */
+  --foreground: oklch(0.97 0.01 248);
+  /* bgColor-muted #151b23 */
+  --card: oklch(0.22 0.018 256);
+  --card-foreground: oklch(0.97 0.01 248);
+  --popover: oklch(0.22 0.018 256);
+  --popover-foreground: oklch(0.97 0.01 248);
+  /* fgColor-accent #4493f8 */
+  --primary: oklch(0.663 0.169 256);
+  --primary-foreground: oklch(0.176 0.014 258);
+  /* control-bgColor-rest #212830 */
+  --secondary: oklch(0.274 0.018 252);
+  --secondary-foreground: oklch(0.97 0.01 248);
+  --muted: oklch(0.274 0.018 252);
+  /* fgColor-muted #9198a1 */
+  --muted-foreground: oklch(0.677 0.016 255);
+  /* control-bgColor-active #2a313c */
+  --accent: oklch(0.311 0.022 259);
+  --accent-foreground: oklch(0.97 0.01 248);
+  /* fgColor-danger #f85149 */
+  --destructive: oklch(0.665 0.205 27);
+  --destructive-foreground: oklch(0.176 0.014 258);
+  /* borderColor-default #3d444d */
+  --border: oklch(0.384 0.018 255);
+  --input: oklch(0.384 0.018 255);
+  --ring: oklch(0.663 0.169 256);
+  /* bgColor-inset #010409 */
+  --sidebar: oklch(0.104 0.019 248);
+  --sidebar-foreground: oklch(0.97 0.01 248);
+  --sidebar-primary: oklch(0.663 0.169 256);
+  --sidebar-primary-foreground: oklch(0.176 0.014 258);
+  --sidebar-accent: oklch(0.311 0.022 259);
+  --sidebar-accent-foreground: oklch(0.97 0.01 248);
+  --sidebar-ring: oklch(0.663 0.169 256);
+  --folio-tree-directory: oklch(0.731 0.146 248);
+  --folio-tree-folio: oklch(0.677 0.016 255);
+  /* fgColor-success #3fb950 */
+  --home-momentum: oklch(0.695 0.181 146);
 }
 
 /* ────────────────────────────────────────────────────────────────────────

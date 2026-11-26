@@ -29,7 +29,7 @@ describe("folio tree theme tokens", () => {
 
   /**
    * Every selector block that establishes a palette: the two defaults, plus
-   * light and dark for each of the four named themes.
+   * light and dark for each of the five named themes.
    */
   const BLOCKS = [
     ":root",
@@ -42,6 +42,8 @@ describe("folio tree theme tokens", () => {
     ".dark.theme-winter",
     ".theme-tangor",
     ".dark.theme-tangor",
+    ".theme-mona",
+    ".dark.theme-mona",
   ];
 
   /**

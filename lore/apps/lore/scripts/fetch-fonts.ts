@@ -62,6 +62,10 @@ const THEMES: Theme[] = [
     id: "tangor",
     url: "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&family=Source+Serif+4:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap",
   },
+  {
+    id: "mona",
+    url: "https://fonts.googleapis.com/css2?family=Mona+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap",
+  },
 ];
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

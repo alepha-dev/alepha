@@ -39,6 +39,12 @@ export class ThemesProvider {
       swatch: ["#b85434", "#f0eee6", "#faf9f5", "#262624"],
       fontHref: "/fonts/tangor.css",
     },
+    {
+      id: "mona",
+      label: "Mona",
+      swatch: ["#0969da", "#1f883d", "#f6f8fa", "#0d1117"],
+      fontHref: "/fonts/mona.css",
+    },
   ];
 
   register = $hook({
