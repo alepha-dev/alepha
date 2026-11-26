@@ -1,8 +1,7 @@
-import { users } from "@lore/core/schemas";
+import { commentSourceSchema, users } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { feedback } from "./feedback.ts";
 
 /**
@@ -72,9 +71,9 @@ export const feedbackComments = $entity({
     /**
      * Provenance, carried from day one rather than retrofitted the way
      * `quest_comments.source` had to be. Absent means a human typed it.
-     * See `questCommentSourceSchema`.
+     * See `commentSourceSchema`.
      */
-    source: questCommentSourceSchema.optional(),
+    source: commentSourceSchema.optional(),
   }),
   indexes: [{ columns: ["feedbackId", "createdAt"] }],
 });

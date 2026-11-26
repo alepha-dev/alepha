@@ -10,6 +10,7 @@ import {
   type ProjectMergeStepPlan,
   projectMergeWrite,
 } from "@lore/core/api";
+import { comments } from "@lore/core/schemas";
 import { $inject, type ZObject } from "alepha";
 import {
   $repository,
@@ -59,6 +60,7 @@ export class WorkProjectMerge {
   protected readonly repositories = $inject(RepositoryProvider);
   protected readonly quests = $repository(quests);
   protected readonly questComments = $repository(questComments);
+  protected readonly comments = $repository(comments);
   protected readonly epics = $repository(epics);
   protected readonly epicReviews = $repository(epicReviews);
   protected readonly epicReviewItems = $repository(epicReviewItems);
@@ -153,6 +155,10 @@ export class WorkProjectMerge {
     await rewrite(this.releases, ["description", "changelog"], {
       projectId: { eq: source },
     });
+    // Core's `comments` (#E185): every thread of the source, whatever its
+    // subject, so an error comment naming a quest follows the renumbering
+    // too. Core moves the rows; the number map is Plan's.
+    await rewrite(this.comments, ["body"], { projectId: { eq: source } });
     return { rewritten, statements };
   }
 

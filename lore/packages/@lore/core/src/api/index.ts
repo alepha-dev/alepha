@@ -84,6 +84,7 @@ import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
+import { CommentService } from "./services/CommentService.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
@@ -291,6 +292,9 @@ export const LoreCoreApi = $module({
     // Registers its project deletion step; nothing injects it.
     // Registers core's project merge step (#Q2782); nothing injects it.
     CoreProjectMerge,
+    // The shared `comments` table (#E185): listed so the table is there
+    // whichever package registers the first subject.
+    CommentService,
     ProjectChannelController,
     // Registers the configured channels as notification channel instances
     // (#Q3614); nothing else may inject it before an event is delivered.
@@ -571,6 +575,10 @@ export { BestEffort } from "./services/BestEffort.ts";
 export { DefaultRankService } from "./services/DefaultRankService.ts";
 export { ProjectReaderPermissions } from "./services/ProjectReaderPermissions.ts";
 export { BoundParameters } from "./services/BoundParameters.ts";
+export {
+  CommentService,
+  type CommentSubject,
+} from "./services/CommentService.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 export { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";

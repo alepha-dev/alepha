@@ -1,7 +1,9 @@
 import { type Infer, z } from "alepha";
 
 /**
- * Provenance of a quest comment that a machine wrote.
+ * Provenance of a comment that a machine wrote, on any subject core's
+ * `comments` table holds (a quest, a feedback item, a persona, a use case, an
+ * error). The one machine mark: there is no second way to say it.
  *
  * Absent means a human typed it in the UI. That is the whole semantic: over
  * MCP the session user IS the account that owns the API key, so without this
@@ -15,8 +17,11 @@ import { type Infer, z } from "alepha";
  *
  * Opaque JSON, modelled on `questSourceSchema`: additive and D1-safe, so a
  * new field here never needs a migration.
+ *
+ * `requirements_comments` said the same with two columns, `byAgent` and
+ * `agentClient`: `byAgent` is `kind: "mcp"`, `agentClient` is `client`.
  */
-export const questCommentSourceSchema = z.object({
+export const commentSourceSchema = z.object({
   /**
    * How the comment was written. `mcp` is stamped by
    * `QuestTools.quest_comment_add`, which by construction is only ever
@@ -42,4 +47,4 @@ export const questCommentSourceSchema = z.object({
   client: z.string().optional(),
 });
 
-export type QuestCommentSource = Infer<typeof questCommentSourceSchema>;
+export type CommentSource = Infer<typeof commentSourceSchema>;

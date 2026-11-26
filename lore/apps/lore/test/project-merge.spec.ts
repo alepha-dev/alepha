@@ -1,5 +1,5 @@
 import { ProjectMergeController, ProjectMergeService } from "@lore/core/api";
-import { qualityRuns } from "@lore/core/schemas";
+import { comments, qualityRuns } from "@lore/core/schemas";
 import { appInstances, sigils } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizationMembers } from "alepha/api/organizations";
@@ -33,6 +33,7 @@ class Probe {
   public readonly sigils = $repository(sigils);
   public readonly quality = $repository(qualityRuns);
   public readonly members = $repository(organizationMembers);
+  public readonly comments = $repository(comments);
 }
 
 /**
@@ -285,6 +286,50 @@ describe("ProjectMergeService across every module", () => {
     expect(
       plan.steps.find((step) => step.name === "knowledge")!.rewritten,
     ).toEqual({ folios: 1 });
+  });
+
+  it("moves every thread of core's comments with its project, and rewrites the references its bodies hold", async ({
+    expect,
+  }) => {
+    const target = await createTestProject(ctx.alepha);
+    const source = await createTestProject(ctx.alepha);
+    await createTestQuest(ctx.alepha, target, { shortId: 7 });
+    const renumbered = await createTestQuest(ctx.alepha, source, {
+      shortId: 7,
+    });
+    // A subject Plan knows nothing of: the body is rewritten all the same.
+    const moved = await ctx.probe.comments.create({
+      projectId: source.id,
+      subjectType: "error",
+      subjectId: 42,
+      authorId: source.createdBy,
+      body: "Same cause as [[#Q7]].",
+    });
+    const theirs = await ctx.probe.comments.create({
+      projectId: target.id,
+      subjectType: "error",
+      subjectId: 43,
+      authorId: target.createdBy,
+      body: "The target's own [[#Q7]].",
+    });
+
+    const plan = await ctx.merge.merge(source.id, target.id);
+
+    const work = plan.steps.find((step) => step.name === "work")!;
+    const to = work.renumbered.find((row) => row.id === renumbered.id)!.to;
+    expect(await ctx.probe.comments.findById(moved.id)).toMatchObject({
+      projectId: target.id,
+      subjectType: "error",
+      subjectId: 42,
+      body: `Same cause as [[#Q${to}]].`,
+    });
+    expect((await ctx.probe.comments.findById(theirs.id))!.body).toBe(
+      "The target's own [[#Q7]].",
+    );
+    expect(
+      plan.steps.find((step) => step.name === "core")!.moved,
+    ).toMatchObject({ comments: 1 });
+    expect(work.rewritten).toMatchObject({ comments: 1 });
   });
 
   it("answers a dry run by default to the owner of both projects, with the mapping as markdown", async ({

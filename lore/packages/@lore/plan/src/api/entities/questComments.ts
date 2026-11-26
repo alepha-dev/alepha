@@ -1,8 +1,7 @@
-import { users } from "@lore/core/schemas";
+import { commentSourceSchema, users } from "@lore/core/schemas";
 import { type Infer, z } from "alepha";
 import { $entity, db } from "alepha/orm";
 
-import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { quests } from "./quests.ts";
 
 /**
@@ -70,14 +69,14 @@ export const questComments = $entity({
     editedAt: z.datetime().optional(),
     /**
      * Provenance, set only when a machine wrote the comment. Absent means a
-     * human typed it in the UI. See `questCommentSourceSchema`.
+     * human typed it in the UI. See `commentSourceSchema`.
      *
      * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
      * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
      * rebuild on D1. This table has no cascade children today, but the habit
      * is what keeps the next one from being the expensive one.
      */
-    source: questCommentSourceSchema.optional(),
+    source: commentSourceSchema.optional(),
     /**
      * File ids, uploaded through `POST /quests/attachments` by the author.
      * The COMMENT's files, not the quest's: a screenshot posted in the

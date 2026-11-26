@@ -164,6 +164,11 @@ export {
   renderPromptTemplate,
 } from "../api/schemas/renderPromptTemplate.ts";
 export { jobKeys, type JobKey } from "../api/entities/jobKeys.ts";
+export { comments, type Comment } from "../api/entities/comments.ts";
+export {
+  type CommentSource,
+  commentSourceSchema,
+} from "../api/schemas/commentSourceSchema.ts";
 
 // ---- hosts (#E166) ----
 export { hostsCardFiltersSchema } from "../api/schemas/hostsCardFiltersSchema.ts";

@@ -1,5 +1,5 @@
 import { $ownsProject, BoundParameters, LoreAudits } from "@lore/core/api";
-import { type Project } from "@lore/core/schemas";
+import { commentSourceSchema, type Project } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { files } from "alepha/api/files";
@@ -17,7 +17,6 @@ import {
 import { type QuestComment, questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
-import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { WorkFileAccess } from "../services/WorkFileAccess.ts";
@@ -271,10 +270,10 @@ export class QuestCommentController {
         /**
          * Set by `QuestTools.quest_comment_add` and by nothing else. The web
          * client never sends it, so a comment with no `source` is one a
-         * human typed. See `questCommentSourceSchema` for why this is not
+         * human typed. See `commentSourceSchema` for why this is not
          * derived from the credential the caller authenticated with.
          */
-        source: questCommentSourceSchema.optional(),
+        source: commentSourceSchema.optional(),
         /**
          * The comment answers the question the quest waits on: the
          * `needs-answer` tag goes with it, in the same call (#Q4348). The
