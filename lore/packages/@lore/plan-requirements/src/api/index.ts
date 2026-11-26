@@ -32,6 +32,7 @@ import { RequirementsProjectMerge } from "./services/RequirementsProjectMerge.ts
 import { RequirementsPrompts } from "./services/RequirementsPrompts.ts";
 import { RequirementsPromptService } from "./services/RequirementsPromptService.ts";
 import { RequirementsReleaseGuard } from "./services/RequirementsReleaseGuard.ts";
+import { RetiredCommentTables } from "./services/RetiredCommentTables.ts";
 import { RunService } from "./services/RunService.ts";
 import { SourceSectionService } from "./services/SourceSectionService.ts";
 import { UseCaseService } from "./services/UseCaseService.ts";
@@ -65,6 +66,9 @@ export const LorePlanRequirementsApi = $module({
     // injects it.
     RequirementsPrompts,
     RequirementsCommentService,
+    // Keeps the retired `requirements_comments` declared until its drop
+    // (#E185); nothing injects it.
+    RetiredCommentTables,
     UseCaseService,
     PersonaInsightService,
     RequirementsRetentionJobs,

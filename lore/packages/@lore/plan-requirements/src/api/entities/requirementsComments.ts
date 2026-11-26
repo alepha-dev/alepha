@@ -5,12 +5,20 @@ import { $entity, db } from "alepha/orm";
 import { commentSubjectKindSchema } from "../schemas/commentSubjectKindSchema.ts";
 
 /**
- * The discussion of a persona or a use case (#E153). One table for both,
- * keyed by `(subjectKind, subjectId)`: `quest_comments` is keyed on a quest,
- * and there is no generic comment table to reuse.
+ * ⚠️ RETIRED (#E185): the table a persona's and a use case's discussion
+ * lived in until the comments moved to core's `comments` (subjects
+ * `persona` and `usecase`). Nothing reads or writes it any more.
  *
- * The subject is not a foreign key (it names one of two tables); a subject's
- * delete removes its comments by hand.
+ * Still declared, and only that, because the table is still on disk: its
+ * rows were copied by `20261126215005_requirements_comments_to_comments`, and
+ * one later
+ * migration drops it with Plan's `quest_comments` and `feedback_comments`
+ * once the counts are compared on production (review of #E185, item 26).
+ * Registered by `RetiredCommentTables` so the snapshot and the migration
+ * safety spec still hold it.
+ *
+ * Do not import it: a comment is a row of `comments`, written through
+ * `CommentService`.
  */
 export const requirementsComments = $entity({
   name: "requirements_comments",
