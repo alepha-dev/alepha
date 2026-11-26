@@ -14,7 +14,11 @@ export interface EpicReviewQuestionProps {
    * or `ready`.
    */
   writable: boolean;
-  busy: boolean;
+  /**
+   * The answer in flight for this item (#Q4510): its controls wait, and the
+   * one clicked spins. Absent while no answer of it is in flight.
+   */
+  answering?: EpicReviewAnswer;
   onAnswer: (number: number, answer: EpicReviewAnswer) => void;
 }
 
@@ -23,15 +27,17 @@ export interface EpicReviewQuestionProps {
  * stored, the question, its context, each suggestion with its cost and the
  * reviewer's pick marked. Pick a suggestion, write an answer, or waive.
  *
- * The write itself is the page's `useAction` (`onAnswer`), so every control
- * of every question waits while one answer is in flight.
+ * The write itself is the page's (`onAnswer`), which runs answers in
+ * order. Only the question being answered shows it (#Q4510): its controls
+ * wait and the one clicked spins; the other questions stay as they are.
  */
 const EpicReviewQuestion = (props: EpicReviewQuestionProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const [project] = useStore(currentProjectAtom);
   const { item } = props;
-  const disabled = props.busy || !props.writable;
+  const pending = props.answering;
+  const disabled = !!pending || !props.writable;
 
   const write = async () => {
     const answer = await dialog.prompt({
@@ -118,6 +124,7 @@ const EpicReviewQuestion = (props: EpicReviewQuestionProps) => {
                   variant={item.recommended === index ? "solid" : "outlined"}
                   intent={item.recommended === index ? "primary" : "none"}
                   disabled={disabled}
+                  loading={pending?.suggestion === index}
                   onClick={() =>
                     props.onAnswer(item.number, { suggestion: index })
                   }
@@ -134,6 +141,7 @@ const EpicReviewQuestion = (props: EpicReviewQuestionProps) => {
               size="sm"
               variant="outlined"
               disabled={disabled}
+              loading={pending?.answer !== undefined}
               onClick={() => void write()}
             >
               {tr("epic.review.write")}
@@ -142,6 +150,7 @@ const EpicReviewQuestion = (props: EpicReviewQuestionProps) => {
               size="sm"
               variant="minimal"
               disabled={disabled}
+              loading={pending?.waive === true}
               onClick={() => props.onAnswer(item.number, { waive: true })}
             >
               {tr("epic.review.waive")}
