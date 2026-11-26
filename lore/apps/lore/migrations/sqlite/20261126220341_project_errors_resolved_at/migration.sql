@@ -1,0 +1,1 @@
+ALTER TABLE `project_errors` ADD `resolved_at` text;

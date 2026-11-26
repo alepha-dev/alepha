@@ -43,7 +43,7 @@ export class ProjectErrorQuestHandBack {
             id: { eq: source.projectErrorId },
             status: { eq: `${QUEST_STATUS_PREFIX}${event.id}` },
           },
-          { status: "open" },
+          { status: "open", resolvedAt: null },
         )
         .catch((error: unknown) => {
           if (!(error instanceof DbEntityNotFoundError)) throw error;

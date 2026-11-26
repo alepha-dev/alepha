@@ -49,7 +49,9 @@ export class RunErrorService {
         count: existing.count + 1,
         useCaseRunId: input.useCaseRunId,
         // A forwarded error keeps its quest; a resolved one reopens.
-        ...(existing.status === "resolved" ? { status: "open" } : {}),
+        ...(existing.status === "resolved"
+          ? { status: "open", resolvedAt: null }
+          : {}),
       });
       // Lore reopened it, nobody did (#E185): no actor.
       if (existing.status === "resolved") {
@@ -95,6 +97,7 @@ export class RunErrorService {
     await this.projectErrors.updateById(existing.id, {
       status: "resolved",
       lastSeenAt: input.at,
+      resolvedAt: input.at,
     });
     await this.thread.record(existing.id, "run_resolved");
     return true;

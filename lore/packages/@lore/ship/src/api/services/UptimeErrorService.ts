@@ -1,5 +1,5 @@
 import { $inject } from "alepha";
-import { $repository } from "alepha/orm";
+import { $repository, DbEntityNotFoundError } from "alepha/orm";
 
 import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { projectErrors } from "../entities/projectErrors.ts";
@@ -41,11 +41,22 @@ export class UptimeErrorService {
       // Recovery never recreates it, and the exact incident history survives.
       // A forwarded or already resolved row is left as it is.
       if (existing?.status !== "open") return;
-      await this.projectErrors.updateById(existing.id, {
-        status: "resolved",
-        lastSeenAt: incident.endedAt ?? monitor.statusSince,
-      });
-      await this.thread.record(existing.id, "monitor_resolved");
+      const endedAt = incident.endedAt ?? monitor.statusSince;
+      // Still open, checked by the write itself: a member forwarding it
+      // between the read above and this write keeps their quest. No
+      // transaction (D1), so the precondition is in the WHERE.
+      const resolved = await this.projectErrors
+        .updateOne(
+          { id: { eq: existing.id }, status: { eq: "open" } },
+          { status: "resolved", lastSeenAt: endedAt, resolvedAt: endedAt },
+        )
+        .catch((error: unknown) => {
+          if (!(error instanceof DbEntityNotFoundError)) throw error;
+          return undefined;
+        });
+      if (resolved) {
+        await this.thread.record(existing.id, "monitor_resolved");
+      }
       return;
     }
     const reopens = existing?.status === "resolved";
@@ -90,7 +101,7 @@ export class UptimeErrorService {
           sourceUrl: monitor.target.slice(0, 2000),
           lastSeenAt: incident.startedAt,
           // Reopened only when it was resolved: `quest:<id>` stays.
-          ...(reopens ? { status: "open" } : {}),
+          ...(reopens ? { status: "open", resolvedAt: null } : {}),
           count: Math.max(1, count),
         },
       },

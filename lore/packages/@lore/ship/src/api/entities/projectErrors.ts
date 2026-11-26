@@ -78,6 +78,14 @@ export const projectErrors = $entity({
      */
     status: db.default(z.string().max(64), "open"),
     /**
+     * When the error last became `resolved` (#Q4466), set by every write
+     * that resolves it and cleared by every write that takes it out of
+     * `resolved`. A resolved error reported after this date was "seen again
+     * since resolved". No default: a row resolved before the column existed
+     * has none, and shows nothing rather than a guess.
+     */
+    resolvedAt: z.string().optional(),
+    /**
      * When a member trusted this group, and who (#Q4233). Its text comes
      * from an ingest open to anyone, so no agent reads it before a member
      * did: a job key's error list holds trusted groups only, and refuses to

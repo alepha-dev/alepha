@@ -41,7 +41,9 @@ import ErrorLinkedLine from "./ErrorLinkedLine.tsx";
 import ErrorSourceCell from "./ErrorSourceCell.tsx";
 import ErrorTrustIcon from "./ErrorTrustIcon.tsx";
 import ProjectErrorOriginBadge from "./ProjectErrorOriginBadge.tsx";
+import ProjectErrorSeenAgainBadge from "./ProjectErrorSeenAgainBadge.tsx";
 import ProjectErrorStatusBadge from "./ProjectErrorStatusBadge.tsx";
+import { matchesProjectErrorStatus } from "./projectErrorStatusFilter.ts";
 import { sigilNameParts } from "./sigilNameParts.ts";
 
 /**
@@ -259,12 +261,14 @@ const ProjectErrors = () => {
      * filter holding that value keeps it on the bar.
      */
     status: {
-      schema: z.array(z.enum(["open", "resolved"])),
+      schema: z.array(z.enum(["open", "resolved", "seenAgain"])),
       label: tr("errors.filter.status"),
       icon: CircleDot,
       items: [
         { label: tr("errors.filter.open"), value: "open" },
         { label: tr("errors.filter.resolved"), value: "resolved" },
+        // Resolved, and reported again since: a fix that did not hold.
+        { label: tr("errors.filter.seenAgain"), value: "seenAgain" },
       ],
       control: {
         clearLabel: tr("errors.filter.allStatuses"),
@@ -329,10 +333,9 @@ const ProjectErrors = () => {
     // absent: no error carries it, so the alternative is an empty table
     // under a trigger that says "All apps", which is the worst of both.
     const sigilId = stored === "all" ? undefined : stored;
-    const resolvedOnly = statuses.length === 1 && statuses[0] === "resolved";
-    const statusFiltered = resolvedOnly
-      ? res.items.filter((b) => b.status === "resolved")
-      : res.items;
+    const statusFiltered = res.items.filter((b) =>
+      matchesProjectErrorStatus(b, statuses),
+    );
     const filtered = sigilId
       ? statusFiltered.filter((b) => b.sigilId === sigilId)
       : statusFiltered;
@@ -429,6 +432,7 @@ const ProjectErrors = () => {
                   </Link>
                   <ProjectErrorOriginBadge origin={b.origin} />
                   <ProjectErrorStatusBadge status={b.status} />
+                  {b.seenAgain && <ProjectErrorSeenAgainBadge />}
                   {(b.trustedAt || b.status === "open") && (
                     <ErrorTrustIcon
                       trusted={!!b.trustedAt}

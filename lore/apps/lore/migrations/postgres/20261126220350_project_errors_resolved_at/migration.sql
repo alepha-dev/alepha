@@ -1,0 +1,1 @@
+ALTER TABLE "project_errors" ADD COLUMN "resolved_at" text;

@@ -363,13 +363,19 @@ export class ProjectErrorController {
         params.errorId,
       );
       await this.assertAgentMayRead(projectError, user);
+      // Resolving a resolved error changes nothing and keeps its date,
+      // unless it was seen again since (#Q4466): the member answers that
+      // report, so the date moves and the mark goes.
+      const changes =
+        projectError.status !== "resolved" || this.seenAgain(projectError);
       await this.currentProjectErrors.updateById(projectError.id, {
         status: "resolved",
+        ...(changes ? { resolvedAt: this.dateTime.nowISOString() } : {}),
       });
       // After the change, never before it (#E185): see
-      // `ProjectErrorThread.record`. Resolving a resolved error changed
-      // nothing, and leaves no line.
-      if (projectError.status !== "resolved") {
+      // `ProjectErrorThread.record`. A resolve that changed nothing leaves
+      // no line.
+      if (changes) {
         await this.thread.record(projectError.id, "resolved", {
           actorId: user.id,
         });
@@ -616,7 +622,7 @@ export class ProjectErrorController {
             id: { eq: projectError.id },
             status: { notLike: `${QUEST_STATUS_PREFIX}%` },
           },
-          { status: `${QUEST_STATUS_PREFIX}${quest.id}` },
+          { status: `${QUEST_STATUS_PREFIX}${quest.id}`, resolvedAt: null },
         );
       } catch (error) {
         if (!(error instanceof DbEntityNotFoundError)) throw error;
@@ -659,7 +665,7 @@ export class ProjectErrorController {
           id: { eq: projectError.id },
           status: { notLike: `${QUEST_STATUS_PREFIX}%` },
         },
-        { status: `${QUEST_STATUS_PREFIX}${quest.id}` },
+        { status: `${QUEST_STATUS_PREFIX}${quest.id}`, resolvedAt: null },
       );
     } catch (error) {
       if (!(error instanceof DbEntityNotFoundError)) throw error;
@@ -1101,6 +1107,19 @@ export class ProjectErrorController {
     return row.origin === "server" ? row.sourceUrl || undefined : undefined;
   }
 
+  /**
+   * Resolved, and reported again since (#Q4466). Read from the row, so the
+   * list and the single read agree and the ingest writes nothing more. The
+   * dates are compared as instants: both are ISO strings, written by
+   * different paths.
+   */
+  protected seenAgain(
+    row: Pick<ProjectError, "status" | "resolvedAt" | "lastSeenAt">,
+  ): boolean {
+    if (row.status !== "resolved" || !row.resolvedAt) return false;
+    return Date.parse(row.lastSeenAt) > Date.parse(row.resolvedAt);
+  }
+
   protected toResource(
     b: ProjectError,
     trusters: Map<string, string> = new Map(),
@@ -1118,6 +1137,8 @@ export class ProjectErrorController {
       count: b.count ?? 1,
       status: b.status ?? "open",
       origin: b.origin ?? "client",
+      ...(b.resolvedAt ? { resolvedAt: b.resolvedAt } : {}),
+      ...(this.seenAgain(b) ? { seenAgain: true } : {}),
       ...(b.trustedAt ? { trustedAt: b.trustedAt } : {}),
       ...(b.trustedBy ? { trustedBy: b.trustedBy } : {}),
       ...(b.trustedBy && trusters.get(b.trustedBy)

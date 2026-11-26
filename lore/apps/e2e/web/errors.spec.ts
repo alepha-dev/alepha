@@ -102,25 +102,27 @@ test.describe("Errors", () => {
 
     // ⚠️ Through the isolated `request` fixture, never the page: the page's
     // `fetch` attaches the session bearer, which would replace the sigil's.
-    const ingested = await request.post(`${baseURL}/sigils/ingest`, {
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${token}`,
-      },
-      data: {
-        errors: [
-          {
-            name: "TypeError",
-            message,
-            stack: `TypeError: ${message}\n    at checkout (/app/checkout.js:42:10)`,
-            sourceUrl: "/api/checkout",
-            origin: "server",
-            count: 3,
-          },
-        ],
-      },
-    });
-    expect(ingested.status()).toBe(204);
+    const report = () =>
+      request.post(`${baseURL}/sigils/ingest`, {
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${token}`,
+        },
+        data: {
+          errors: [
+            {
+              name: "TypeError",
+              message,
+              stack: `TypeError: ${message}\n    at checkout (/app/checkout.js:42:10)`,
+              sourceUrl: "/api/checkout",
+              origin: "server",
+              count: 3,
+            },
+          ],
+        },
+      });
+    expect((await report()).status()).toBe(204);
+    let errorUrl = "";
 
     await test.step("the inbox row opens the error's page", async () => {
       await page.goto(`/${projectSlug}/errors`);
@@ -145,6 +147,7 @@ test.describe("Errors", () => {
 
     await test.step("Resolve stays on the page and says so", async () => {
       const url = page.url();
+      errorUrl = url;
       await page.getByTestId("error-resolve").click();
       await expect(
         page.getByTestId("error-header").getByTestId("error-status"),
@@ -160,6 +163,18 @@ test.describe("Errors", () => {
       await expect(page.getByText("No open errors")).toBeVisible({
         timeout: 10_000,
       });
+    });
+
+    await test.step("reported again, it stays resolved and says it was seen again", async () => {
+      expect((await report()).status()).toBe(204);
+      await page.goto(errorUrl);
+      const header = page.getByTestId("error-header");
+      await expect(header.getByTestId("error-status")).toHaveText("Resolved", {
+        timeout: 15_000,
+      });
+      await expect(header.getByTestId("error-seen-again")).toContainText(
+        "Seen again since resolved on",
+      );
     });
   });
 });
