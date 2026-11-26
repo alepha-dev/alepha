@@ -150,7 +150,8 @@ flowchart LR
   are waiting on with `@` and it lands in their inbox. **Lift hold** restores
   the previous status and assignee. While on hold, a quest can be neither
   accepted nor completed. The dialog also takes an optional **Until** date,
-  with quick picks for one and two weeks: the date shows beside On hold, and
+  with quick picks for one day, one, two and three weeks and one month
+  (**1D**, **1W**, **2W**, **3W**, **1M**): the date shows beside On hold, and
   within the hour after it the hold lifts on its own and the quest goes back to
   **To do**, unassigned whatever it was before, with a line in the Discussion.
   Nobody is notified.
