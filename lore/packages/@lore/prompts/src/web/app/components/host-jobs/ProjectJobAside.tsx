@@ -5,7 +5,7 @@ import type {
   HostJobResource,
   PromptJobArg,
 } from "@lore/core/schemas";
-import type { I18n } from "@lore/core/web";
+import { AgentJobStepper, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 
@@ -162,6 +162,17 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
               </span>
             )}
           </span>
+          {/* Its steps (#Q4434): quest k of N, live while it runs (the page
+              reads the job every 3 s), its final count once it ended. */}
+          {job.steps && (
+            <AgentJobStepper
+              steps={job.steps}
+              running={job.status === "running"}
+              {...(job.startedAt ? { startedAt: job.startedAt } : {})}
+              timeoutSeconds={job.input.timeoutSeconds}
+              className="mt-1"
+            />
+          )}
           {job.prompt && (
             <span className="text-muted-foreground text-xs">
               {tr("jobs.runOf")}{" "}
