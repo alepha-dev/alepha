@@ -19,6 +19,11 @@ export interface PinnedPromptsButtonProps {
    * item's own button tells it.
    */
   publish?: boolean;
+  /**
+   * Why no prompt may run on this item (#Q4471): the button is drawn
+   * disabled, with this as its reason. The server refuses the run too.
+   */
+  blocked?: string;
 }
 
 /**

@@ -99,7 +99,7 @@ export class PromptRegistry {
   /**
    * A page a prompt can be pinned to (#Q4284), registered by the module
    * that owns the page: Plan the quest, epic and feedback lists and views,
-   * Ship the error list. A pin naming no registered page is refused.
+   * Ship the error list and an error's view. A pin naming no registered page is refused.
    */
   public registerPage(page: PromptPage): void {
     if (this.pageMap.has(page.key)) {
@@ -307,6 +307,7 @@ export type PromptRunPlan = Partial<
     | "feedbackNumber"
     | "feedbackNumbers"
     | "epicNumber"
+    | "errorId"
     | "workspace"
     | "timeoutSeconds"
     | "source"

@@ -4,6 +4,7 @@ import {
   currentProjectAtom,
   ElementReferenceRegistry,
   I18n,
+  PinnedPromptsSlot,
   StackTraceParser,
 } from "@lore/core/web";
 import {
@@ -199,6 +200,9 @@ describe("ProjectErrorPage", () => {
     // The thread's editor and viewer resolve `[[...]]` references through
     // it, from a hook at render too.
     alepha.inject(ElementReferenceRegistry);
+    // The header's robot button reads core's pins slot at render. Unfilled
+    // here, as in a Lore without Prompts: the button draws nothing.
+    alepha.inject(PinnedPromptsSlot);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(

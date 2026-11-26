@@ -11,14 +11,17 @@ import { useAction, useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
 import { useI18n } from "alepha/react/i18n";
 import { MessageSquare } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ProjectErrorThreadController } from "../../../../../api/controllers/ProjectErrorThreadController.ts";
 import type { ProjectErrorDetail } from "../../../../../api/schemas/projectErrorDetailSchema.ts";
+import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQuestStatus.ts";
 import type { ProjectErrorThreadEntry } from "../../../../../api/schemas/projectErrorThreadEntrySchema.ts";
+import type { ProjectErrorThreadJob } from "../../../../../api/schemas/projectErrorThreadJobSchema.ts";
 import ProjectErrorThreadComment from "./ProjectErrorThreadComment.tsx";
 import { buildProjectErrorTimeline } from "./projectErrorThreadEntries.ts";
 import ProjectErrorThreadEvent from "./ProjectErrorThreadEvent.tsx";
+import ProjectErrorThreadRun from "./ProjectErrorThreadRun.tsx";
 import ProjectErrorTrustNotice from "./ProjectErrorTrustNotice.tsx";
 
 export interface ProjectErrorThreadProps {
@@ -31,6 +34,21 @@ export interface ProjectErrorThreadProps {
    * member who may not triage.
    */
   onTrust?: () => void;
+  /**
+   * Forward the error to a new quest carrying one comment as its finding
+   * (#Q4471). Absent for a member who may not forward, and on a project
+   * with no Plan.
+   */
+  onForwardFinding?: (commentId: number) => void;
+  /**
+   * An agent job's page, for a member who may read jobs.
+   */
+  jobHref?: (jobId: string) => string;
+  /**
+   * The last agent run on the error ended while the page was open: the
+   * error itself may have moved (a forward), so the page reads it again.
+   */
+  onRunEnded?: () => void;
   /**
    * A triage verb is running elsewhere on the page.
    */
@@ -54,6 +72,7 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
   const toaster = useToast();
   const users = useProjectUsers();
   const [draft, setDraft] = useState("");
+  const [running, setRunning] = useState(false);
   const errorId = props.detail.error.id;
   const params = { projectId: props.projectId, errorId };
   const key = ["project-error-thread", props.projectId, errorId];
@@ -71,17 +90,37 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
     {
       key,
       keepPreviousData: true,
-      handler: async () => ({
-        errorId,
-        entries: (await api.listProjectErrorThread({ params })).entries,
-      }),
+      // While an agent run is queued or running the thread reads itself
+      // again: its answer arrives as a comment, with nobody on the page
+      // having acted. It stops with the run, and `runEvery` skips a hidden
+      // tab.
+      runEvery: running ? RUN_POLL_MS : undefined,
+      handler: async () => {
+        const read = await api.listProjectErrorThread({ params });
+        const jobs = read.jobs ?? NO_JOBS;
+        setRunning(
+          jobs.some(
+            (job) => job.status === "queued" || job.status === "running",
+          ),
+        );
+        return { errorId, entries: read.entries, jobs };
+      },
     },
-    [api, props.projectId, errorId],
+    [api, props.projectId, errorId, running],
   );
-  const thread =
-    threadQuery.data?.errorId === errorId
-      ? threadQuery.data.entries
-      : NO_ENTRIES;
+  const current =
+    threadQuery.data?.errorId === errorId ? threadQuery.data : undefined;
+  const thread = current?.entries ?? NO_ENTRIES;
+  const jobs = current?.jobs ?? NO_JOBS;
+
+  // The last run ended while the page was open: the error itself may have
+  // moved (a forward), so the page reads it again.
+  const wasRunning = useRef(false);
+  const onRunEnded = props.onRunEnded;
+  useEffect(() => {
+    if (wasRunning.current && !running) onRunEnded?.();
+    wasRunning.current = running;
+  }, [running, onRunEnded]);
 
   const post = useAction(
     {
@@ -119,7 +158,9 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
   const busy = props.busy || post.loading || remove.loading;
   const viewerId = (auth.user as { id?: string } | undefined)?.id;
   const members = users.map((user) => mentionHandle(user));
-  const timeline = buildProjectErrorTimeline(props.detail, thread);
+  const timeline = buildProjectErrorTimeline(props.detail, thread, jobs);
+  const forwarded = props.detail.error.status.startsWith(QUEST_STATUS_PREFIX);
+  const onForwardFinding = forwarded ? undefined : props.onForwardFinding;
 
   return (
     <CollapsibleBlock
@@ -134,7 +175,13 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
         )}
       <ol className="divide-border/40 flex flex-col divide-y px-1">
         {timeline.map((entry) =>
-          entry.type === "comment" ? (
+          entry.type === "job" ? (
+            <ProjectErrorThreadRun
+              key={entry.key}
+              job={entry.job}
+              href={props.jobHref?.(entry.job.id)}
+            />
+          ) : entry.type === "comment" ? (
             <ProjectErrorThreadComment
               key={entry.key}
               entry={entry.entry}
@@ -146,6 +193,12 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
               onDelete={
                 viewerId && entry.entry.userId === viewerId
                   ? () => void remove.run(entry.entry)
+                  : undefined
+              }
+              // An agent's finding, on an error not forwarded yet.
+              onForward={
+                onForwardFinding && entry.entry.source
+                  ? () => onForwardFinding(entry.entry.id)
                   : undefined
               }
             />
@@ -191,3 +244,9 @@ export default ProjectErrorThread;
  * identity across renders.
  */
 const NO_ENTRIES: ProjectErrorThreadEntry[] = [];
+const NO_JOBS: ProjectErrorThreadJob[] = [];
+
+/**
+ * How often the thread reads itself again while an agent run is going.
+ */
+const RUN_POLL_MS = 5_000;

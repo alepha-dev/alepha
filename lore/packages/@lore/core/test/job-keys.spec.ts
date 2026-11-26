@@ -131,6 +131,38 @@ describe("JobKeyService", () => {
       { [McpProjectScope.KEY]: {} },
     );
   });
+  it("holds an error pin to its error for the tools that name one, and leaves the list open (#Q4471)", ({
+    expect,
+  }) => {
+    const pinned = key({ questNumber: undefined, errorId: 42 });
+    for (const tool of [
+      "error_get",
+      "error_comment_add",
+      "error_resolve",
+      "error_forward",
+    ]) {
+      expect(() => keys.check(pinned, tool, { error_id: 42 })).not.toThrow();
+      expect(() => keys.check(pinned, tool, { error_id: 43 })).toThrow(
+        "reaches error 42 only",
+      );
+      // A call naming none is refused too: there is no "every error".
+      expect(() => keys.check(pinned, tool, {})).toThrow(
+        "reaches error 42 only",
+      );
+    }
+    expect(() => keys.check(pinned, "error_list", {})).not.toThrow();
+    // The quest it files for its finding is not an error tool.
+    expect(() =>
+      keys.check(pinned, "quest_create", { title: "x" }),
+    ).not.toThrow();
+    // A key with no error pin reaches every error its owner may.
+    expect(() =>
+      keys.check(key({ questNumber: undefined }), "error_get", {
+        error_id: 43,
+      }),
+    ).not.toThrow();
+  });
+
   it("holds an epic pin to its epic, its creates under it, and its quests inside it (#Q4214)", ({
     expect,
   }) => {

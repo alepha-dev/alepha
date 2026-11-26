@@ -1,4 +1,5 @@
 import {
+  CommentService,
   ResourceRegistry,
   $ownsProject,
   ProjectSecurityService,
@@ -71,6 +72,11 @@ export class ProjectErrorController {
    */
   protected readonly ERROR_AREA = "Errors";
 
+  /**
+   * How much of a comment a quest forwarded with its finding carries.
+   */
+  public static readonly FINDING_MAX = 12_000;
+
   protected currentProjectErrors = $repository(projectErrors);
   protected sigils = $repository(sigils);
   protected security = $inject(ProjectSecurityService);
@@ -79,6 +85,7 @@ export class ProjectErrorController {
   protected trustEvents = $inject(ErrorTrustEvents);
   protected access = $inject(ProjectErrorAccess);
   protected thread = $inject(ProjectErrorThread);
+  protected comments = $inject(CommentService);
   protected users = $repository(users);
   protected dateTime = $inject(DateTimeProvider);
   protected errorGroups = $repository(sigilErrorGroups);
@@ -526,6 +533,12 @@ export class ProjectErrorController {
               "An existing quest of this project to link, by its per-project number, instead of creating one",
             )
             .optional(),
+          /**
+           * A comment of this error's thread whose text the new quest
+           * carries as its finding (#Q4471): an agent's answer, forwarded
+           * by a member. With a new quest only.
+           */
+          findingCommentId: z.integer().optional(),
         })
         .optional(),
       response: z.object({ questId: z.integer(), questShortId: z.integer() }),
@@ -547,6 +560,25 @@ export class ProjectErrorController {
       if (projectError.status.startsWith(QUEST_STATUS_PREFIX)) {
         throw new BadRequestError("Error already forwarded to a quest");
       }
+
+      if (
+        body?.questShortId !== undefined &&
+        body.findingCommentId !== undefined
+      ) {
+        throw new BadRequestError(
+          "A finding goes into a new quest: pass findingCommentId or questShortId, not both",
+        );
+      }
+      // Read before anything is written: a comment of another error is a
+      // 404, never a quest carrying somebody else's words.
+      const finding =
+        body?.findingCommentId === undefined
+          ? undefined
+          : await this.comments.get(
+              ProjectErrorThread.SUBJECT,
+              projectError.id,
+              body.findingCommentId,
+            );
 
       if (body?.questShortId !== undefined) {
         return this.linkToQuest(
@@ -587,6 +619,17 @@ export class ProjectErrorController {
         "",
         "Stack:",
         this.codeFence(stack),
+        // The finding is a member's or an agent's own markdown, written on
+        // the thread of an error an agent only reads once trusted: it is
+        // quoted as it stands, under the forwarded text.
+        ...(finding
+          ? [
+              "",
+              "## Finding",
+              "",
+              finding.body.slice(0, ProjectErrorController.FINDING_MAX),
+            ]
+          : []),
       ].join("\n");
 
       // Error-forwarded quests always land in a dedicated "Errors" area

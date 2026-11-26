@@ -9,7 +9,8 @@
  * use case, persona and requirement, and Remember's folio, came with
  * Requirements' built-ins (#Q4343). A `choice` (#Q4415) is no item: one of
  * the options its `accepts` lists, `bump:choice:minor|patch|major`, read
- * as `{{bump.value}}`; a triggered run takes the first.
+ * as `{{bump.value}}`; a triggered run takes the first. Ship's `error`
+ * (#Q4471) is one error of the inbox, by its id.
  */
 export const PROMPT_ARG_TYPES = [
   "epic",
@@ -21,6 +22,7 @@ export const PROMPT_ARG_TYPES = [
   "persona",
   "requirement",
   "folio",
+  "error",
   "choice",
 ] as const;
 
@@ -42,6 +44,8 @@ export const PROMPT_ARG_STATUSES: Record<PromptArgType, readonly string[]> = {
   // Computed on read from the runs, never stored: an arg takes any.
   requirement: [],
   folio: [],
+  // `forwarded` stands for a `quest:<id>` status.
+  error: ["open", "resolved", "forwarded"],
   // A choice's list is its options, not statuses: see `PROMPT_CHOICE_OPTION`.
   choice: [],
 };
@@ -94,6 +98,8 @@ export const PROMPT_ARG_FIELDS: Record<PromptArgType, readonly string[]> = {
     "verifiedBy",
   ],
   folio: ["reference", "title", "url", "number", "id"],
+  // `title` is the error's kind ("Server error"), never its own text.
+  error: ["reference", "title", "url", "number", "id"],
   choice: ["value"],
 };
 

@@ -2922,6 +2922,14 @@ export default {
   "errors.thread.delete": "Delete comment",
   "errors.thread.deleteConfirm": "Delete this comment?",
   "errors.thread.toast.deleted": "Comment deleted",
+  "errors.thread.job.queued": "An agent run is queued",
+  "errors.thread.job.running": "An agent is investigating",
+  "errors.thread.job.failed": "An agent run failed",
+  "errors.thread.job.timed_out": "An agent run timed out",
+  "errors.thread.job.open": "Open the job",
+  "errors.thread.forwardFinding": "Forward to quest with this finding",
+  "errors.agent.untrusted":
+    "No agent reads this error until a member trusts it",
 
   "sigils.token.title":
     "Copy this token now: it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, which is the only variable an app needs. Add SIGIL_SINK pointing at this instance if it is not the app's default sink.",
@@ -5357,6 +5365,7 @@ export default {
   "prompts.arg.persona": "Persona",
   "prompts.arg.requirement": "Requirement",
   "prompts.arg.folio": "Folio",
+  "prompts.arg.error": "Error",
   "prompts.arg.choice": "Choice",
   "prompts.args.none": "None",
   "prompts.accepts": "accepts $1",

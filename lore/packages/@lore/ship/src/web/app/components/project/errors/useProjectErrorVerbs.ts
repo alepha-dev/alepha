@@ -102,6 +102,27 @@ export const useProjectErrorVerbs = (options: ProjectErrorVerbsOptions) => {
     [api, options.projectId, options.errorId],
   );
 
+  // To a new quest carrying one comment of the thread as its finding
+  // (#Q4471): an agent's answer a member decides to act on.
+  const forwardFinding = useAction<[commentId: number], void>(
+    {
+      handler: async (_context, commentId) => {
+        const res = await api.forwardProjectErrorToQuest({
+          params,
+          body: { findingCommentId: commentId },
+        });
+        toaster.success(
+          tr("errors.toast.forwarded", {
+            args: [formatReference("quest", res.questShortId)],
+          }),
+        );
+        options.onChanged();
+        await recount();
+      },
+    },
+    [api, options.projectId, options.errorId],
+  );
+
   // To a quest already filed, by its number: the API has taken
   // `questShortId` since #Q3802, and no screen offered it.
   const link = useAction(
@@ -157,6 +178,7 @@ export const useProjectErrorVerbs = (options: ProjectErrorVerbsOptions) => {
     trust,
     untrust,
     forward,
+    forwardFinding,
     link,
     remove,
     /**
@@ -168,6 +190,7 @@ export const useProjectErrorVerbs = (options: ProjectErrorVerbsOptions) => {
       trust.loading ||
       untrust.loading ||
       forward.loading ||
+      forwardFinding.loading ||
       link.loading ||
       remove.loading,
     /**

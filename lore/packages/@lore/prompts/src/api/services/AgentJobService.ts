@@ -197,6 +197,9 @@ export class AgentJobService {
           ...(request.epicNumber === undefined
             ? {}
             : { epicId: request.epicNumber }),
+          ...(request.errorId === undefined
+            ? {}
+            : { errorId: request.errorId }),
         },
       },
     });

@@ -90,6 +90,7 @@ describe("prompts", () => {
       "feedback",
       "feedback-item",
       "errors",
+      "error",
     ]);
     // Requirements' views exist only with Plan's `requirements` on (#Q4412).
     expect(registry.pages().map((it) => it.key)).toContain("use-case");
@@ -240,7 +241,7 @@ describe("prompts", () => {
     expect(text).not.toContain("a migration or money");
   });
 
-  it("lists the ten built-ins with their args and accepted statuses, and leaves out one the project cannot use", async ({
+  it("lists Plan's ten built-ins and Ship's one with their args and accepted statuses, and leaves out one the project cannot use", async ({
     expect,
   }) => {
     const items = await list();
@@ -255,6 +256,7 @@ describe("prompts", () => {
       "review-pr",
       "security-check",
       "dependency-update",
+      "investigate-error",
     ]);
     const byName = Object.fromEntries(items.map((it) => [it.name, it]));
     expect(byName["review-epic"]!.args).toEqual([
@@ -685,7 +687,7 @@ describe("prompts", () => {
           { user: member },
         )
       ).items.length,
-    ).toBe(10);
+    ).toBe(11);
     expect((await render("triage", {}, member)).text).toContain(
       "Triage the whole feedback inbox",
     );

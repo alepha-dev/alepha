@@ -14,7 +14,8 @@ import { projects } from "./projects.ts";
  *
  * - **one project**, `projectId`: an MCP call resolving any other is refused;
  * - optionally **one quest**, **one feedback item** or **one epic**, by
- *   per-project number: an MCP call naming another is refused.
+ *   per-project number, or **one error**, by id: an MCP call naming another
+ *   is refused.
  *
  * The key reaches Lore's MCP only, and any tool its owner's rank allows
  * within those pins (#Q4222). Every check is server side (`JobKeyService`),
@@ -40,6 +41,9 @@ export const jobKeys = $entity({
     // An epic review's epic (#Q4214): its `epic_*` tools reach this number
     // only, its creates file under it, its quest writes touch its quests.
     epicNumber: z.integer().optional(),
+    // An error investigation's error (#Q4471), by id: the error tools that
+    // name one reach this one only.
+    errorId: z.integer().optional(),
     expiresAt: z.string(),
     revokedAt: z.string().optional(),
   }),

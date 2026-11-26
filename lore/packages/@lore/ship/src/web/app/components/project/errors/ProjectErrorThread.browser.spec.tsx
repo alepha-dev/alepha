@@ -26,6 +26,7 @@ import { afterEach, beforeAll, describe, expect as check, it } from "vitest";
 
 import type { ProjectErrorDetail } from "../../../../../api/schemas/projectErrorDetailSchema.ts";
 import type { ProjectErrorThreadEntry } from "../../../../../api/schemas/projectErrorThreadEntrySchema.ts";
+import type { ProjectErrorThreadJob } from "../../../../../api/schemas/projectErrorThreadJobSchema.ts";
 import ProjectErrorThread from "./ProjectErrorThread.tsx";
 
 class RecordingLinkProvider extends LinkProvider {
@@ -163,6 +164,9 @@ describe("ProjectErrorThread", () => {
       denied?: string[];
       viewer?: string;
       onTrust?: () => void;
+      jobs?: ProjectErrorThreadJob[];
+      onForwardFinding?: (commentId: number) => void;
+      jobHref?: (jobId: string) => string;
     } = {},
   ) => {
     alepha = Alepha.create()
@@ -184,7 +188,10 @@ describe("ProjectErrorThread", () => {
     } as never);
     const links = alepha.inject(LinkProvider) as RecordingLinkProvider;
     links.responses = {
-      listProjectErrorThread: { entries: options.entries ?? entries },
+      listProjectErrorThread: {
+        entries: options.entries ?? entries,
+        jobs: options.jobs ?? [],
+      },
       getProjectUsers: [],
       deleteProjectErrorComment: { ok: true },
     };
@@ -200,6 +207,8 @@ describe("ProjectErrorThread", () => {
             questHref={(shortId) => `/acme/quests/${shortId}`}
             busy={false}
             onTrust={options.onTrust}
+            onForwardFinding={options.onForwardFinding}
+            jobHref={options.jobHref}
           />
         </DialogProvider>
       </AlephaContext.Provider>,
@@ -249,6 +258,52 @@ describe("ProjectErrorThread", () => {
     expect(
       screen.getAllByTestId("error-thread-event")[3]!.querySelector("a"),
     ).toBeNull();
+  });
+
+  it("names a deleted account's verb as a former member's, and never Lore's own change", async ({
+    expect,
+  }) => {
+    await show(detail({ trustedAt: "2026-11-02T10:00:00.000Z" }), {
+      entries: [
+        // The account is gone: the foreign key cleared the actor.
+        {
+          type: "event",
+          id: 1,
+          at: "2026-11-02T10:00:00.000Z",
+          kind: "resolved",
+        },
+        // The account is there, with no name left to show.
+        {
+          type: "event",
+          id: 2,
+          at: "2026-11-03T10:00:00.000Z",
+          kind: "trusted",
+          userId: ADA,
+        },
+        {
+          type: "event",
+          id: 3,
+          at: "2026-11-04T10:00:00.000Z",
+          kind: "run_reopened",
+        },
+      ],
+    });
+
+    const lines = await waitFor(() => {
+      const rows = screen.getAllByTestId("error-thread-event");
+      expect(rows.length).toBeGreaterThanOrEqual(4);
+      return rows.map((row) => row.textContent ?? "");
+    });
+    const said = (kind: string) =>
+      lines[
+        screen
+          .getAllByTestId("error-thread-event")
+          .findIndex((row) => row.getAttribute("data-kind") === kind)
+      ] ?? "";
+    expect(said("resolved")).toContain("A former member resolved this error");
+    expect(said("trusted")).toContain("A former member trusted this error");
+    expect(said("run_reopened")).not.toContain("former member");
+    expect(said("run_reopened")).toContain("Lore reopened this error");
   });
 
   it("shows a member's comment as markdown and an agent's with its mark", async ({
@@ -312,6 +367,99 @@ describe("ProjectErrorThread", () => {
     expect(
       document.querySelector('[data-slot="discussion-composer"]'),
     ).toBeTruthy();
+  });
+
+  it("shows an agent run that has not answered where it was asked for, linked for who may read jobs", async ({
+    expect,
+  }) => {
+    const JOB = "00000000-0000-4000-8000-00000000a0b1";
+    await show(
+      detail({ trustedAt: "2026-11-02T10:00:00.000Z", trustedBy: ADA }),
+      {
+        jobs: [
+          {
+            id: JOB,
+            status: "running",
+            prompt: "investigate-error",
+            queuedAt: "2026-11-03T12:00:00.000Z",
+          },
+        ],
+        jobHref: (jobId) => `/acme/jobs/${jobId}`,
+      },
+    );
+
+    const run = await screen.findByTestId("error-thread-job");
+    expect(run.getAttribute("data-status")).toBe("running");
+    expect(run.textContent).toContain("An agent is investigating");
+    expect(
+      within(run).getByTestId("error-thread-job-link").getAttribute("href"),
+    ).toBe(`/acme/jobs/${JOB}`);
+    // Between Bob's comment of the 3rd at 10:00 and the agent's of the 4th.
+    const order = [
+      ...document.querySelectorAll(
+        '[data-testid="error-thread-job"], [data-testid="error-thread-comment"]',
+      ),
+    ].map((line) => line.getAttribute("data-status") ?? "comment");
+    expect(order).toEqual(["comment", "running", "comment"]);
+  });
+
+  it("names a failed run without a link for a member who may not read jobs", async ({
+    expect,
+  }) => {
+    await show(
+      detail({ trustedAt: "2026-11-02T10:00:00.000Z", trustedBy: ADA }),
+      {
+        entries: [],
+        jobs: [
+          {
+            id: "00000000-0000-4000-8000-00000000a0b2",
+            status: "failed",
+            queuedAt: "2026-11-03T12:00:00.000Z",
+          },
+        ],
+      },
+    );
+
+    const run = await screen.findByTestId("error-thread-job");
+    expect(run.textContent).toContain("An agent run failed");
+    expect(within(run).queryByTestId("error-thread-job-link")).toBeNull();
+  });
+
+  it("offers Forward to quest with this finding on an agent's comment only, and not once the error is forwarded", async ({
+    expect,
+  }) => {
+    const forwarded: number[] = [];
+    await show(
+      detail({ trustedAt: "2026-11-02T10:00:00.000Z", trustedBy: ADA }),
+      { onForwardFinding: (commentId) => forwarded.push(commentId) },
+    );
+    const [members, agents] = await waitFor(() => {
+      const cards = screen.getAllByTestId("error-thread-comment");
+      expect(cards).toHaveLength(2);
+      return cards;
+    });
+    expect(
+      within(members!).queryByTestId("error-thread-comment-forward"),
+    ).toBeNull();
+    const button = within(agents!).getByTestId("error-thread-comment-forward");
+    expect(button.textContent).toContain("Forward to quest with this finding");
+    fireEvent.click(button);
+    expect(forwarded).toEqual([11]);
+
+    cleanup();
+    await alepha?.stop();
+    await show(
+      detail({
+        trustedAt: "2026-11-02T10:00:00.000Z",
+        trustedBy: ADA,
+        status: "quest:900",
+      }),
+      { onForwardFinding: (commentId) => forwarded.push(commentId) },
+    );
+    await waitFor(() =>
+      expect(screen.getAllByTestId("error-thread-comment")).toHaveLength(2),
+    );
+    expect(screen.queryByTestId("error-thread-comment-forward")).toBeNull();
   });
 
   it("offers the delete on the viewer's own comment only, and asks first", async ({

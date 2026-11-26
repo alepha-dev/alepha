@@ -2935,6 +2935,14 @@ export default {
   "errors.thread.delete": "Supprimer le commentaire",
   "errors.thread.deleteConfirm": "Supprimer ce commentaire ?",
   "errors.thread.toast.deleted": "Commentaire supprimé",
+  "errors.thread.job.queued": "Une tâche d’agent est en attente",
+  "errors.thread.job.running": "Un agent enquête",
+  "errors.thread.job.failed": "Une tâche d’agent a échoué",
+  "errors.thread.job.timed_out": "Une tâche d’agent a expiré",
+  "errors.thread.job.open": "Ouvrir la tâche",
+  "errors.thread.forwardFinding": "Transférer vers une quête avec ce constat",
+  "errors.agent.untrusted":
+    "Aucun agent ne lit cette erreur tant qu’un membre ne lui a pas accordé sa confiance",
 
   "sigils.token.title":
     "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",
@@ -5414,6 +5422,7 @@ export default {
   "prompts.arg.persona": "Persona",
   "prompts.arg.requirement": "Exigence",
   "prompts.arg.folio": "Folio",
+  "prompts.arg.error": "Erreur",
   "prompts.arg.choice": "Choix",
   "prompts.args.none": "Aucun",
   "prompts.accepts": "accepte $1",

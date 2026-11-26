@@ -6,7 +6,7 @@ import {
   LoreViewer,
 } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Trash2 } from "lucide-react";
+import { Send, Trash2 } from "lucide-react";
 
 import type { ProjectErrorThreadEntry } from "../../../../../api/schemas/projectErrorThreadEntrySchema.ts";
 
@@ -24,6 +24,12 @@ export interface ProjectErrorThreadCommentProps {
    * here.
    */
   onDelete?: () => void;
+  /**
+   * Forward the error to a new quest carrying this comment (#Q4471). Set on
+   * an agent's comment, for a member who may forward, while the error is
+   * not forwarded yet.
+   */
+  onForward?: () => void;
   busy: boolean;
 }
 
@@ -52,19 +58,37 @@ const ProjectErrorThreadComment = (props: ProjectErrorThreadCommentProps) => {
       at={entry.at}
       edited={!!entry.editedAt}
       actions={
-        props.onDelete && (
-          <Button
-            type="button"
-            variant="minimal"
-            size="sm"
-            className="h-7 w-7 shrink-0 p-0"
-            aria-label={tr("errors.thread.delete")}
-            data-testid="error-thread-comment-delete"
-            disabled={props.busy}
-            onClick={props.onDelete}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
+        (props.onForward || props.onDelete) && (
+          <>
+            {props.onForward && (
+              <Button
+                type="button"
+                variant="minimal"
+                size="sm"
+                className="h-7 shrink-0 gap-1.5 px-2 text-xs"
+                data-testid="error-thread-comment-forward"
+                disabled={props.busy}
+                onClick={props.onForward}
+              >
+                <Send className="size-3.5" />
+                {tr("errors.thread.forwardFinding")}
+              </Button>
+            )}
+            {props.onDelete && (
+              <Button
+                type="button"
+                variant="minimal"
+                size="sm"
+                className="h-7 w-7 shrink-0 p-0"
+                aria-label={tr("errors.thread.delete")}
+                data-testid="error-thread-comment-delete"
+                disabled={props.busy}
+                onClick={props.onDelete}
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            )}
+          </>
         )
       }
     >

@@ -6,7 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
+import { type I18n, PinnedPromptsButton } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import {
@@ -20,6 +20,7 @@ import {
 
 import type { ProjectErrorDetail } from "../../../../../api/schemas/projectErrorDetailSchema.ts";
 import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQuestStatus.ts";
+import { errorPromptItem } from "./errorPromptItem.ts";
 import ErrorTrustIcon from "./ErrorTrustIcon.tsx";
 import ProjectErrorOriginBadge from "./ProjectErrorOriginBadge.tsx";
 import ProjectErrorSeenAgainBadge from "./ProjectErrorSeenAgainBadge.tsx";
@@ -136,6 +137,15 @@ const ProjectErrorHeader = (props: ProjectErrorHeaderProps) => {
           </p>
         </div>
 
+        {/* Ask an agent (#Q4471): the prompts pinned to an error's view.
+            Reading errors is enough to ask, so it sits outside the triage
+            verbs. No agent reads an untrusted error: the button says why,
+            and the server refuses the run whatever is sent. */}
+        <PinnedPromptsButton
+          page="error"
+          item={errorPromptItem(error)}
+          blocked={error.trustedAt ? undefined : tr("errors.agent.untrusted")}
+        />
         {/* A member without `error:triage` reads the page and is offered no
             verb, as in the inbox. */}
         {verbs.canTriage && (

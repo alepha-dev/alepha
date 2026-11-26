@@ -30,8 +30,8 @@ import { McpProjectScope } from "./McpProjectScope.ts";
  *   configuration only;
  * - **one project**: the MCP run is pinned to it (`McpProjectScope`), so a
  *   tool resolving any other project throws;
- * - optionally **one quest**, **a set of feedback items** or **one epic**,
- *   for the tools that name one. Any other tool the owner's rank allows is
+ * - optionally **one quest**, **a set of feedback items**, **one epic** or
+ *   **one error**, for the tools that name one. Any other tool the owner's rank allows is
  *   open, within the project: there is no tool allowlist since #Q4222.
  *
  * Expires after the job's timeout plus {@link MARGIN_SECONDS}, and is
@@ -73,6 +73,18 @@ export class JobKeyService {
   public static readonly EPIC_CREATE_TOOLS = new Set([
     "quest_create",
     "folio_create",
+  ]);
+
+  /**
+   * The error tools an error pin holds to its error (#Q4471), by their
+   * `error_id`. `error_list` stays project wide: it names none, and lists
+   * what the key's owner may read anyway.
+   */
+  public static readonly ERROR_TOOLS = new Set([
+    "error_get",
+    "error_comment_add",
+    "error_resolve",
+    "error_forward",
   ]);
 
   public static readonly UNPINNED_TOOLS = new Set([
@@ -204,6 +216,7 @@ export class JobKeyService {
       feedbackNumber: scope.feedbackId,
       feedbackNumbers: scope.feedbackIds,
       epicNumber: scope.epicId,
+      errorId: scope.errorId,
       expiresAt: expiresAt.toISOString(),
     });
     return token;
@@ -270,7 +283,7 @@ export class JobKeyService {
 
   /**
    * Every MCP call made with a job key: the run pinned to the key's project,
-   * a pinned quest, feedback item or epic the only one named.
+   * a pinned quest, feedback item, epic or error the only one named.
    */
   protected readonly onToolCall = $hook({
     on: "mcp:tool:call:begin",
@@ -339,6 +352,14 @@ export class JobKeyService {
           `This job key keeps quests in epic ${epic}: no epic_number but ${epic}`,
         );
       }
+    }
+    const error = key.errorId ?? undefined;
+    if (
+      error !== undefined &&
+      JobKeyService.ERROR_TOOLS.has(name) &&
+      args.error_id !== error
+    ) {
+      throw new ForbiddenError(`This job key reaches error ${error} only`);
     }
     // A quest links a feedback item by `feedback_shortId`: a pinned key
     // links only its own, or a triage could accept and file against an

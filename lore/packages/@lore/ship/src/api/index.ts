@@ -71,6 +71,7 @@ import { ProjectReliabilityReportService } from "./services/ProjectReliabilityRe
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { RunErrorService } from "./services/RunErrorService.ts";
+import { ShipErrorPrompts } from "./services/ShipErrorPrompts.ts";
 import { ShipHostCommands } from "./services/ShipHostCommands.ts";
 import { ShipProjectEvents } from "./services/ShipProjectEvents.ts";
 import { ShipPromptChecks } from "./services/ShipPromptChecks.ts";
@@ -144,6 +145,8 @@ export const LoreShipApi = $module({
     DeployProjectCounts,
     // Whether a triage automation has errors to read (#Q4228).
     ShipPromptChecks,
+    // The `error` arg, the error view's pins and `investigate-error` (#Q4471).
+    ShipErrorPrompts,
     ProjectErrorJobs,
     UptimeRetentionJobs,
     UptimeJobs,
