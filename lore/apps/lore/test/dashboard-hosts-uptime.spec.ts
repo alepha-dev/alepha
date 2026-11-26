@@ -387,6 +387,70 @@ describe("dashboard hosts and uptime cards", () => {
       ]);
     });
 
+    it("certExpiry also lists the certificates a Bay reports from its store (#Q4441)", async ({
+      expect,
+    }) => {
+      const project = await uptimeProject();
+      const inDays = (days: number) =>
+        new Date(
+          dateTime.nowMillis() + days * 24 * 3600_000 + 60_000,
+        ).toISOString();
+      const now = dateTime.nowISOString();
+      await repos.monitors.create({
+        projectId: project.id,
+        name: "Api cert",
+        kind: "cert",
+        target: "example.test:443",
+        statusSince: now,
+        nextCheckAt: now,
+        certExpiresAt: inDays(30),
+      });
+      const host = await repos.hosts.create({
+        projectId: project.id,
+        ownerUserId: project.createdBy!,
+        type: "bay",
+        slug: "edge",
+        connectedAt: now,
+        lastSeenAt: now,
+      });
+      await repos.inventories.create({
+        hostId: host.id,
+        at: now,
+        reportedAt: now,
+        machine: {
+          certificates: [
+            {
+              domain: "shop.example.test",
+              notAfter: inDays(70),
+              issuer: "R11",
+            },
+            { domain: "old.example.test", notAfter: inDays(-2) },
+            { domain: "soon.example.test", notAfter: inDays(10) },
+          ],
+        },
+        apps: [],
+        appCount: 0,
+      });
+
+      const value = await resolve(project, "certExpiry");
+
+      expect(value.value).toBe(-2);
+      expect(
+        (value.rows ?? []).map((row) => [row.title, row.value, row.state]),
+      ).toEqual([
+        ["old.example.test", -2, "bad"],
+        ["soon.example.test", 10, "warn"],
+        ["Api cert", 30, "ok"],
+        ["shop.example.test", 70, "ok"],
+      ]);
+      // A Bay's row opens its host page.
+      expect(value.rows?.[0]?.link).toEqual({
+        route: "bay",
+        params: { projectSlug: project.slug, hostSlug: "edge" },
+      });
+      expect(value.detail).toMatchObject({ certificates: 4 });
+    });
+
     it("uptimeLatency charts the mean of passing checks per day, the last check as its value", async ({
       expect,
     }) => {

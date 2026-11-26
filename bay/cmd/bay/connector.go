@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/alepha-dev/bay/internal/connector"
+	"github.com/alepha-dev/bay/internal/tlsconf"
 )
 
 /*
@@ -247,6 +248,10 @@ func (s *server) connectorLoop(ctx context.Context) {
 		// What the handoff worked out at boot (handoff.go).
 		UpgradeMode: s.upgradeMode,
 	}
+	// A Bay serving TLS reports its certificates' expiry (#Q4441).
+	if s.tls != nil {
+		client.Certificates = tlsCertificates(s.tls)
+	}
 	// The executor tells the connection when something it did is worth
 	// reporting. One direction only: the client asks for an inventory, the
 	// executor asks for it to be sent, and neither holds the other's lock.
@@ -335,5 +340,24 @@ func connectionUnknown(err error) string {
 		return fmt.Sprintf("unknown, could not reach the control API on %s: %v", sock, err)
 	default:
 		return fmt.Sprintf("unknown, the control API on %s answered an error: %v", sock, err)
+	}
+}
+
+/*
+tlsCertificates reads the served domains' certificates from the TLS manager's
+store for the inventory (#Q4441), the expiry as RFC 3339 in UTC.
+*/
+func tlsCertificates(mgr *tlsconf.Manager) connector.CertificateReader {
+	return func(ctx context.Context, domains []string) []connector.CertificateState {
+		expiries := mgr.Expiries(ctx, domains)
+		out := make([]connector.CertificateState, 0, len(expiries))
+		for _, e := range expiries {
+			out = append(out, connector.CertificateState{
+				Domain:   e.Domain,
+				NotAfter: e.NotAfter.UTC().Format(time.RFC3339),
+				Issuer:   e.Issuer,
+			})
+		}
+		return out
 	}
 }

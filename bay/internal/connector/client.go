@@ -397,6 +397,9 @@ type Client struct {
 	// Units reads the systemd units Lore asks this machine to watch; nil
 	// watches nothing.
 	Units UnitReader
+	// Certificates reads the TLS certificates of the domains the inventory's
+	// apps serve (#Q4441); nil for a Bay that serves no TLS.
+	Certificates CertificateReader
 	// UnitPollInterval is how often the watched units are read;
 	// DefaultUnitPollInterval when zero.
 	UnitPollInterval time.Duration

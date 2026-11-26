@@ -104,6 +104,7 @@ func (c *Client) pushInventory(ctx context.Context) {
 	// Stamped here rather than read by the gauge: `version` is a package main
 	// variable and internal/connector cannot import main.
 	inv.Host.Units = c.unitStates()
+	inv.Host.Certificates = c.certificates(ctx, inv)
 	inv.Host.BayVersion = c.Version
 	inv.Host.UpgradeMode = c.UpgradeMode
 	inv.Host.Mode = c.Mode

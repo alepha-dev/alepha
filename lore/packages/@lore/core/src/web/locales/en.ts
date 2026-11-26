@@ -4354,7 +4354,7 @@ export default {
     "one http monitor's last check and its mean response time per day",
   "dashboard.metric.certExpiry": "Certificates",
   "dashboard.metric.certExpiry.hint":
-    "the TLS certificates the monitors read, and the days each has left",
+    "the TLS certificates the monitors read and your Bay hosts serve, and the days each has left",
   "dashboard.metric.incidents": "Incidents",
   "dashboard.metric.incidents.hint":
     "outages and watched unit changes, so restarts and deploys show beside them",

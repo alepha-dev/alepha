@@ -247,6 +247,10 @@ func sampleInventoryFrame() Inventory {
 				{Name: "acme-api.service", ActiveState: "activating", SubState: "start", Since: "2026-09-06T11:50:00Z"},
 				{Name: "caddy.service", ActiveState: "active", SubState: "running"},
 			},
+			Certificates: []CertificateState{
+				{Domain: "lore.alepha.dev", NotAfter: "2026-11-20T08:12:00Z", Issuer: "R11"},
+				{Domain: "www.lore.alepha.dev", NotAfter: "2026-11-20T08:12:00Z", Issuer: "R11"},
+			},
 			BayVersion:  "0.31.0",
 			UpgradeMode: "handoff",
 		},

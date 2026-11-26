@@ -10,9 +10,11 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/caddyserver/certmagic"
 )
@@ -158,4 +160,43 @@ func (m *Manager) HTTPChallengeHandler(next http.Handler) http.Handler {
 // with a domain Bay has never seen.
 func (m *Manager) Manage(ctx context.Context, domains []string) error {
 	return m.cfg.ManageSync(ctx, domains)
+}
+
+// Expiry is one served domain's certificate as Bay's TLS store holds it.
+type Expiry struct {
+	Domain   string
+	NotAfter time.Time
+	Issuer   string
+}
+
+/*
+Expiries reads the certificate of each of domains from the TLS store, with no
+network probe (#Q4441): Bay obtained and renews them, so the store is the
+truth. A domain with no certificate stored yet (an on-demand one nobody has
+visited, or one whose issuance failed) is left out, and so is one whose file
+does not parse. The result follows domains' order.
+*/
+func (m *Manager) Expiries(ctx context.Context, domains []string) []Expiry {
+	issuerKey := m.issuer.IssuerKey()
+	out := make([]Expiry, 0, len(domains))
+	for _, domain := range domains {
+		raw, err := m.cfg.Storage.Load(ctx, certmagic.StorageKeys.SiteCert(issuerKey, domain))
+		if err != nil {
+			continue
+		}
+		block, _ := pem.Decode(raw)
+		if block == nil || block.Type != "CERTIFICATE" {
+			continue
+		}
+		leaf, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			continue
+		}
+		issuer := leaf.Issuer.CommonName
+		if issuer == "" && len(leaf.Issuer.Organization) > 0 {
+			issuer = leaf.Issuer.Organization[0]
+		}
+		out = append(out, Expiry{Domain: domain, NotAfter: leaf.NotAfter, Issuer: issuer})
+	}
+	return out
 }
