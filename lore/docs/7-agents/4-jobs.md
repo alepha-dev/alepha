@@ -246,10 +246,15 @@ filter keeps those quests with **An agent**.
 
 ## A job's page
 
+**Jobs**, the robot button beside the bell, follows the jobs you are waiting
+for from any page of the project: the count of jobs in flight, and in its list
+the jobs queued, running or ended in the last 15 minutes, a running one with
+its time and the last line of its transcript. A row opens the job's page.
+
 **Settings ▸ Prompts ▸ Jobs** lists every job of the project, newest first:
 its prompt and the items it was given, what started it (you, an event, the
-schedule), its host, status and duration. Filter by prompt, status or host.
-A job belongs to the project. The **Jobs** tab of a
+schedule), its host, status, duration and tokens. Filter by prompt, status or
+host. A job belongs to the project. The **Jobs** tab of a
 [host's console](/lore/docs/project-hosts#the-console-of-a-bay-host) lists
 what ran on that server for every project, and shows of another project's job
 only its status, times and tokens.

@@ -72,7 +72,9 @@ const ProjectJob = (props: ProjectJobProps) => {
   // A stale `?tab=log`, from when the page had a Raw log tab (#Q4403), opens
   // the transcript.
   const tab: TabKey = asked === "prompt" ? "prompt" : "transcript";
-  const { run } = usePromptActions(project?.id, slug);
+  // Run again and Start fresh open the new job's page (#Q4514): the member
+  // is already watching a job here.
+  const { run } = usePromptActions(project?.id, slug, { open: true });
   // Keyed by the job it holds, so moving to another job starts it empty.
   const [held, setLog] = useState({ jobId, stdout: "", stderr: "" });
   const log = held.jobId === jobId ? held : { stdout: "", stderr: "" };

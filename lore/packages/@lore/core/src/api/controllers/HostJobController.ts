@@ -113,7 +113,10 @@ export class HostJobController {
   });
 
   /**
-   * The log past what the caller holds, `stdout` and `stderr` in bytes.
+   * The log past what the caller holds, `stdout` and `stderr` in bytes. With
+   * `tail`, the last `tail` bytes of stdout instead, and no stderr: what the
+   * header's jobs list reads a running job's last line from (#Q4514),
+   * never the whole log.
    */
   getJobLog = $action({
     use: [this.ownsJob("host:read")],
@@ -124,12 +127,16 @@ export class HostJobController {
       query: z.object({
         stdout: z.integer().min(0).optional(),
         stderr: z.integer().min(0).optional(),
+        tail: z.integer().min(1).max(65_536).optional(),
       }),
       response: hostJobLogSchema,
     },
     handler: async ({ params, query }) => {
       const job = await this.service.getRow(params.jobId);
-      const log = await this.service.readLog(params.jobId, query);
+      const log =
+        query.tail !== undefined
+          ? await this.service.readTail(params.jobId, query.tail)
+          : await this.service.readLog(params.jobId, query);
       return { ...log, live: !HOST_JOB_TERMINAL.includes(job.status) };
     },
   });
