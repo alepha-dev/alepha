@@ -42,6 +42,12 @@ export interface MonitorFormDialogProps {
    * `monitor` is given.
    */
   prefill?: MonitorPrefill;
+  /**
+   * Whether this Lore can run `tcp` and `cert` checks, from the monitor list
+   * (#Q4431). Where it cannot, a new monitor is not offered the two kinds, and
+   * an existing one says why it cannot be saved. Defaults to true.
+   */
+  sockets?: boolean;
   onClose: () => void;
 }
 const MonitorFormDialog = (props: MonitorFormDialogProps) => {
@@ -127,6 +133,11 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
   const { loading, error } = useFormState(form, ["loading", "error"]);
   const values = useFormValues(form);
   const kind = values.kind;
+  const sockets = props.sockets ?? true;
+  const socketKind = (value: string) => value === "tcp" || value === "cert";
+  const kinds = ["http", "tcp", "cert", "push"].filter(
+    (value) => sockets || !socketKind(value) || monitor?.kind === value,
+  );
   return (
     <Dialog
       open
@@ -167,8 +178,14 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
               input={form.input.kind}
               label={tr("uptime.kindLabel")}
               disabled={loading || Boolean(monitor)}
-              description={monitor ? tr("uptime.kindImmutable") : undefined}
-              items={["http", "tcp", "cert", "push"].map((value) => ({
+              description={
+                !sockets && (!monitor || socketKind(kind))
+                  ? tr("uptime.socketsUnavailable")
+                  : monitor
+                    ? tr("uptime.kindImmutable")
+                    : undefined
+              }
+              items={kinds.map((value) => ({
                 value,
                 label: tr(`uptime.kind.${value}`),
               }))}

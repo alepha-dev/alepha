@@ -12,6 +12,7 @@ import { monitorHeartbeatStoredSchema } from "../schemas/monitorHeartbeatStoredS
 import type { MonitorListResource } from "../schemas/monitorListResourceSchema.ts";
 import { monitorResourceSchema } from "../schemas/monitorResourceSchema.ts";
 import type { MonitorWindow } from "../schemas/monitorWindowSchema.ts";
+import { UptimeSocketProber } from "./UptimeSocketProber.ts";
 
 export class UptimeReadService {
   protected readonly monitors = $repository(monitors);
@@ -19,6 +20,7 @@ export class UptimeReadService {
   protected readonly beats = $repository(monitorHeartbeats);
   protected readonly analytics = $inject(DeployAnalytics);
   protected readonly clock = $inject(DateTimeProvider);
+  protected readonly sockets = $inject(UptimeSocketProber);
   protected readonly statusRank = { down: 0, pending: 2, up: 3, paused: 4 };
 
   public hours(window: MonitorWindow): number {
@@ -211,6 +213,7 @@ export class UptimeReadService {
     rows.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
     return {
       estimated,
+      sockets: this.sockets.available(),
       items: rows.map((row) => {
         const sum = totals.get(row.id);
         return {

@@ -12,7 +12,15 @@ import { monitorHeartbeats } from "../src/api/entities/monitorHeartbeats.ts";
 import { monitorIncidents } from "../src/api/entities/monitorIncidents.ts";
 import { monitors } from "../src/api/entities/monitors.ts";
 import { LoreShipApi } from "../src/api/index.ts";
+import { UptimeSocketProber } from "../src/api/services/UptimeSocketProber.ts";
 import { DeployTestEntities } from "../src/testing/entities.ts";
+
+/** A runtime without sockets, as on Workers. */
+class NoSocketsProber extends UptimeSocketProber {
+  protected override supportsSockets(): boolean {
+    return false;
+  }
+}
 
 class Repositories extends DeployTestEntities {
   monitors = $repository(monitors);
@@ -36,14 +44,17 @@ describe("Monitor API", () => {
   afterEach(async () => {
     for (const alepha of containers.splice(0)) await alepha.stop();
   });
-  const setup = async () => {
+  const setup = async (options: { sockets?: boolean } = {}) => {
     const alepha = Alepha.create({
       env: {
         DATABASE_URL: ":memory:",
         LOG_LEVEL: "error",
         DATABASE_TRANSACTIONS: false,
       },
-    }).with(LoreShipApi);
+    });
+    if (options.sockets === false)
+      alepha.with({ provide: UptimeSocketProber, use: NoSocketsProber });
+    alepha.with(LoreShipApi);
     const repos = alepha.inject(Repositories);
     const clock = alepha.inject(DateTimeProvider);
     clock.pause();
@@ -222,6 +233,86 @@ describe("Monitor API", () => {
         { user: { id: stranger.createdBy, roles: ["user"] } },
       ),
     ).rejects.toThrow();
+  });
+
+  it("refuses tcp and cert monitors where the runtime has no sockets, and says so on the list", async ({
+    expect,
+  }) => {
+    const ctx = await setup({ sockets: false });
+    const reason =
+      "TCP and certificate monitors require the self-hosted Node runtime with socket support";
+    for (const [kind, target] of [
+      ["tcp", "db.example.test:5432"],
+      ["cert", "example.test"],
+    ] as const) {
+      await expect(
+        ctx.api.createMonitor.fetch(
+          {
+            params: { projectId: ctx.project.id },
+            body: { ...ctx.body, kind, target },
+          },
+          { user: ctx.user },
+        ),
+      ).rejects.toThrow(reason);
+    }
+    expect(await ctx.repos.monitors.count()).toBe(0);
+    // One made before the refusal cannot be saved or resumed, only paused or deleted.
+    const now = ctx.clock.nowISOString();
+    const older = await ctx.repos.monitors.create({
+      projectId: ctx.project.id,
+      appInstanceId: ctx.app.id,
+      name: "Database",
+      kind: "tcp",
+      target: "db.example.test:5432",
+      statusSince: now,
+      nextCheckAt: now,
+    });
+    await expect(
+      ctx.api.updateMonitor.fetch(
+        {
+          params: { monitorId: older.id },
+          body: { ...config, kind: "tcp", target: "db.example.test:5433" },
+        },
+        { user: ctx.user },
+      ),
+    ).rejects.toThrow(reason);
+    const paused = await ctx.api.setMonitorActive.fetch(
+      { params: { monitorId: older.id }, body: { active: false } },
+      { user: ctx.user },
+    );
+    expect(paused.data.status).toBe("paused");
+    await expect(
+      ctx.api.setMonitorActive.fetch(
+        { params: { monitorId: older.id }, body: { active: true } },
+        { user: ctx.user },
+      ),
+    ).rejects.toThrow(reason);
+    // HTTP still works, and the list tells the form what this Lore can run.
+    await ctx.api.createMonitor.fetch(
+      { params: { projectId: ctx.project.id }, body: ctx.body },
+      { user: ctx.user },
+    );
+    const listed = await ctx.api.listMonitors.fetch(
+      { params: { projectId: ctx.project.id }, query: { window: "24h" } },
+      { user: ctx.user },
+    );
+    expect(listed.data.sockets).toBe(false);
+    expect(listed.data.items).toHaveLength(2);
+
+    const node = await setup();
+    const created = await node.api.createMonitor.fetch(
+      {
+        params: { projectId: node.project.id },
+        body: { ...node.body, kind: "cert", target: "example.test" },
+      },
+      { user: node.user },
+    );
+    expect(created.data.monitor.kind).toBe("cert");
+    const onNode = await node.api.listMonitors.fetch(
+      { params: { projectId: node.project.id }, query: { window: "24h" } },
+      { user: node.user },
+    );
+    expect(onNode.data.sockets).toBe(true);
   });
 
   it("validates targets and refuses disabled features and another project's monitor", async ({

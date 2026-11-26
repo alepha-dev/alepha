@@ -24,6 +24,7 @@ import { monitorOfInstance } from "../src/web/app/components/project/uptime/inst
  */
 class FakeLinkProvider extends LinkProvider {
   monitors: MonitorListItem[] = [];
+  sockets = true;
   calls: string[] = [];
   bodies: Record<string, unknown>[] = [];
 
@@ -36,7 +37,11 @@ class FakeLinkProvider extends LinkProvider {
             this.calls.push(name);
             if (args?.body) this.bodies.push({ action: name, ...args.body });
             return name === "listMonitors"
-              ? { items: this.monitors, estimated: false }
+              ? {
+                  items: this.monitors,
+                  estimated: false,
+                  sockets: this.sockets,
+                }
               : {};
           },
           { can: () => true },
@@ -222,9 +227,11 @@ describe("app settings' Monitor", () => {
   const mount = async (
     instance: ReturnType<typeof anInstance>,
     monitors: MonitorListItem[] = [],
+    sockets = true,
   ) => {
     const { alepha, links } = await boot(true);
     links.monitors = monitors;
+    links.sockets = sockets;
     alepha.store.set(currentInstanceAtom, instance as never);
     const view = render(
       <AlephaContext.Provider value={alepha}>
@@ -316,6 +323,35 @@ describe("app settings' Monitor", () => {
       await on.alepha.stop();
     } finally {
       await alepha.stop();
+    }
+  });
+
+  it("explains, editing a TCP check, that a Lore without sockets cannot run it", async ({
+    expect,
+  }) => {
+    const instance = anInstance({ url: undefined });
+    const tcp = aMonitor("db.example.test:5432", instance.id, { kind: "tcp" });
+    const reason =
+      "TCP and certificate checks need a self-hosted Lore on Node, with socket support. This Lore has none, so it cannot run them.";
+    const workers = await mount(instance, [tcp], false);
+    try {
+      fireEvent.click(
+        await workers.view.findByRole("button", { name: "Edit" }),
+      );
+      expect(await workers.view.findByText(reason)).toBeTruthy();
+    } finally {
+      cleanup();
+      await workers.alepha.stop();
+    }
+    const node = await mount(instance, [tcp]);
+    try {
+      fireEvent.click(await node.view.findByRole("button", { name: "Edit" }));
+      expect(
+        await node.view.findByText("Create a new monitor to change its kind."),
+      ).toBeTruthy();
+      expect(node.view.queryByText(reason)).toBeNull();
+    } finally {
+      await node.alepha.stop();
     }
   });
 });

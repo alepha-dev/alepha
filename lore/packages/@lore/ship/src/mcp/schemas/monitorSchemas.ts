@@ -30,7 +30,7 @@ const monitorSettingsParams = {
   kind: z
     .enum(["http", "tcp", "cert", "push"])
     .describe(
-      "`http` requests a URL, `tcp` opens host:port, `cert` reads a TLS certificate's expiry at host:port, `push` waits for the monitored job to call Lore.",
+      "`http` requests a URL, `tcp` opens host:port, `cert` reads a TLS certificate's expiry at host:port, `push` waits for the monitored job to call Lore. `tcp` and `cert` need a self-hosted Lore on Node: one on Workers refuses them.",
     )
     .optional(),
   target: z

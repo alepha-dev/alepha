@@ -50,8 +50,8 @@ resumes it.
 A target cannot carry credentials.
 
 ⚠️ **TCP and certificate monitors need a Node host.** They open a raw socket,
-which Cloudflare Workers cannot do, so on a Workers deployment such a monitor
-fails every check with a message saying so. HTTP and push monitors work on both.
+which Cloudflare Workers cannot do, so a Workers deployment refuses to create,
+save or resume one, with a message saying so. HTTP and push monitors work on both.
 `lore.alepha.app` runs on Workers; a
 [self-hosted image](/lore/docs/start-self-hosting) runs on Node.
 

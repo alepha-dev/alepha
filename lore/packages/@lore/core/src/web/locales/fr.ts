@@ -4872,6 +4872,8 @@ export default {
   "uptime.invalidTarget": "Utilisez une cible valide pour ce type de moniteur.",
   "uptime.target": "Cible",
   "uptime.httpTarget": "Une URL http ou https.",
+  "uptime.socketsUnavailable":
+    "Les contrôles TCP et de certificat nécessitent un Lore auto-hébergé sous Node, avec les sockets. Ce Lore n’en a pas et ne peut pas les exécuter.",
   "uptime.socketTarget":
     "Un hôte et un port, par exemple example.com:443. Ces contrôles nécessitent Lore auto-hébergé.",
   "uptime.pushDescription":
