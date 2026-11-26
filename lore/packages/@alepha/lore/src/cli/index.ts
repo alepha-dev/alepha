@@ -42,6 +42,7 @@ import { SubscriptionCommand } from "./commands/SubscriptionCommand.ts";
 import { ThresholdCommand } from "./commands/ThresholdCommand.ts";
 import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
+import { AttachmentDownloader } from "./services/AttachmentDownloader.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
 import { LoreOutput } from "./services/LoreOutput.ts";
 import { LoreReferences } from "./services/LoreReferences.ts";
@@ -115,6 +116,8 @@ export const AlephaLoreCli = $module({
     // attachment push resolves a shortId and registers a file through
     // `$client<QuestController>` / `$client<FolioAttachmentController>`.
     AttachmentUploader,
+    // Its other half (#Q4513), for the same reason.
+    AttachmentDownloader,
     // These three name nothing private, and are unexported anyway: how a
     // `lore project`, `quest` or `folio` command refuses, renders and reads a
     // reference is the binary's behaviour, not an API.

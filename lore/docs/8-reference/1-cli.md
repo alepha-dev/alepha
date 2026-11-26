@@ -321,8 +321,18 @@ a use case run.
 | `--type`              | The media type, such as `text/html`. Defaults to a guess from the extension. |
 
 A folio adds a suffix to a name it already holds, and the command prints the
-name it stored. To read a file back, use `lore quest attachment get` or
-`lore folio attachment list`. See
+name it stored.
+
+```bash
+lore attachments pull reports-mockup.html --folio 12
+lore attachments pull 4 --folio 12 --out ./mockups/
+lore attachments pull chart.png --quest 1208 --out chart-before.png
+```
+
+`lore attachments pull <name>` downloads one file back: from a folio by its
+name or its number (`lore folio attachment list` shows both), from a quest by
+its name. It writes the file in the current directory under its own name, or
+to `--out`, a file path or a directory, and prints where it put it. See
 [Attachments](/lore/docs/remember-attachments).
 
 ## Feedback

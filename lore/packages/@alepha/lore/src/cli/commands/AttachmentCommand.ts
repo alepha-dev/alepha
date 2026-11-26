@@ -2,17 +2,20 @@ import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
+import { AttachmentDownloader } from "../services/AttachmentDownloader.ts";
 import { AttachmentUploader } from "../services/AttachmentUploader.ts";
 import { LoreClientService } from "../services/LoreClientService.ts";
 import { LoreProjectResolver } from "../services/LoreProjectResolver.ts";
 
 /**
- * `lore attachments push` - put a file on a quest or in a folio.
+ * `lore attachments push` - put a file on a quest or in a folio, and
+ * `lore attachments pull` - get one back (#Q4513).
  *
  * ```bash
  * export LORE_API_KEY=...
  * lore attachments push ./chart.png   --project alepha --quest 1208
  * lore attachments push ./mockup.html --project alepha --folio 12 --name hero.html
+ * lore attachments pull hero.html     --project alepha --folio 12 --out ./mockups/
  * ```
  *
  * ## Why the bytes moved off MCP
@@ -49,6 +52,7 @@ export class AttachmentCommand {
   protected readonly client = $inject(LoreClientService);
   protected readonly projects = $inject(LoreProjectResolver);
   protected readonly uploader = $inject(AttachmentUploader);
+  protected readonly downloader = $inject(AttachmentDownloader);
 
   public readonly push = $command({
     name: "push",
@@ -153,10 +157,78 @@ export class AttachmentCommand {
     },
   });
 
+  /**
+   * `lore attachments pull` (#Q4513): the file back, from a folio by its
+   * name or shortId, or from a quest by its name or file id, written where
+   * the command runs or to `--out`.
+   */
+  public readonly pull = $command({
+    name: "pull",
+    description: "Download a file attached to a folio or a quest",
+    args: z.text({
+      title: "attachment",
+      description:
+        "The attachment's name, or on a folio its shortId (folio_attachment_list), on a quest its file id (quest_get attachments[].id)",
+    }),
+    flags: z.object({
+      project: z
+        .text({
+          aliases: ["p"],
+          description:
+            "Lore project slug, overriding LORE_PROJECT for this invocation",
+        })
+        .optional(),
+      quest: z
+        .number()
+        .describe("The quest's shortId. Mutually exclusive with --folio.")
+        .optional(),
+      folio: z
+        .number()
+        .describe("The folio's shortId. Mutually exclusive with --quest.")
+        .optional(),
+      out: z
+        .text({
+          aliases: ["o"],
+          description:
+            "Where to write it: a file path, or a directory to put it in. Defaults to the attachment's name in the current directory.",
+        })
+        .optional(),
+    }),
+    handler: async ({ args, flags, root }) => {
+      const project = this.client.resolveProject(flags.project);
+      const projectId = await this.projects.resolve(project);
+      if ((flags.quest == null) === (flags.folio == null)) {
+        throw new AlephaError(
+          "Name exactly one source: --folio <shortId> or --quest <shortId>.",
+        );
+      }
+      const pulled =
+        flags.folio != null
+          ? await this.downloader.pullFromFolio({
+              projectId,
+              folioShortId: flags.folio,
+              ref: args,
+              root,
+              ...(flags.out ? { out: flags.out } : {}),
+            })
+          : await this.downloader.pullFromQuest({
+              projectId,
+              questShortId: flags.quest!,
+              ref: args,
+              root,
+              ...(flags.out ? { out: flags.out } : {}),
+            });
+      this.log.info(
+        `Saved ${pulled.name} to ${pulled.path}`,
+        pulled.size === undefined ? {} : { size: pulled.size },
+      );
+    },
+  });
+
   public readonly attachments = $command({
     name: "attachments",
     description: "Files on a project's quests and folios",
-    children: [this.push],
+    children: [this.push, this.pull],
     handler: async ({ help }) => {
       help();
     },

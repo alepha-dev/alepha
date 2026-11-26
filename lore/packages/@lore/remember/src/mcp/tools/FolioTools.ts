@@ -1077,7 +1077,7 @@ export class FolioTools {
 
   folio_attachment_list = $tool({
     description:
-      "List the attachments of one folio. Each entry includes shortId, name, size, mimeType, and the optional sha256 + originalName.",
+      "List the attachments of one folio. Each entry includes shortId, name, size, mimeType, the optional sha256 + originalName, and `pull`: the `lore attachments pull` command line that downloads the file, since MCP carries no bytes. Run it in a shell that can authenticate to Lore (`authentication` says how).",
     title: "List attachments",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {
@@ -1096,8 +1096,14 @@ export class FolioTools {
             sha256: z.string().optional(),
             originalName: z.string().optional(),
             updatedAt: z.string(),
+            pull: z
+              .string()
+              .describe(
+                "The shell command that downloads this file to the current directory (add --out <path> for elsewhere).",
+              ),
           }),
         ),
+        authentication: z.string(),
       }),
     },
     handler: async ({ params }) => {
@@ -1121,7 +1127,14 @@ export class FolioTools {
           sha256: b.sha256,
           originalName: b.originalName,
           updatedAt: b.updatedAt,
+          pull: this.attachmentPush.composePull({
+            ref: b.shortId,
+            projectId,
+            target: "folio",
+            shortId: params.folio_shortId,
+          }),
         })),
+        authentication: this.attachmentPush.authentication,
       };
     },
   });

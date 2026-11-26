@@ -101,10 +101,13 @@ reference: assets/chart.png
 stored under, which a folio may have suffixed, as above. An encrypted folio
 refuses the push.
 
-To read files back:
+To read files back, `lore attachments pull` downloads one, from a folio by its
+name or its number, from a quest by its name, into the current directory or to
+`--out`:
 
 ```bash
-lore quest attachment get Q1208 --attachment <id> --out ./chart.png
+lore attachments pull chart.png --project acme --folio 12
+lore attachments pull chart.png --project acme --quest 1208 --out ./before/
 lore folio attachment list F12
 ```
 
@@ -128,8 +131,9 @@ worked reads as a broken CLI.
 
 Reading is done over MCP. `quest_attachment_get` returns an image inline,
 decodes a text file (HTML, plain text, CSV, Markdown, JSON), and answers with a
-note naming the file for anything else. `folio_attachment_list`,
-`folio_attachment_rename` and `folio_attachment_delete` manage a folio's files.
+note naming the file for anything else. `folio_attachment_list` lists a
+folio's files, each with the `lore attachments pull` line that downloads it,
+and `folio_attachment_rename` and `folio_attachment_delete` manage them.
 See [MCP tools](/lore/docs/reference-mcp-tools).
 
 ## Next

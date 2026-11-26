@@ -1,6 +1,7 @@
 /**
  * Composes the `lore attachments push` line the attach tools hand back: a
- * quest's, a folio's, and a use case run's (#Q3977).
+ * quest's, a folio's, and a use case run's (#Q3977), and the `pull` line
+ * that reads one back (#Q4513).
  *
  * ## Why these tools return a command instead of taking bytes
  *
@@ -63,6 +64,25 @@ export class AttachmentPushCommand {
       parts.push(`--name ${this.quote(input.name)}`);
     }
     return parts.join(" ");
+  }
+
+  /**
+   * The `lore attachments pull` line that fetches one file back (#Q4513),
+   * by its shortId on a folio: MCP carries no bytes, so this is how an
+   * agent reads a mockup attached to a folio.
+   */
+  public composePull(input: {
+    ref: string | number;
+    projectId: number;
+    target: "quest" | "folio";
+    shortId: number;
+  }): string {
+    return [
+      "lore attachments pull",
+      this.quote(String(input.ref)),
+      `--project ${input.projectId}`,
+      `--${input.target} ${input.shortId}`,
+    ].join(" ");
   }
 
   /**

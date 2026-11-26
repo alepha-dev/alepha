@@ -1,18 +1,29 @@
 import { ProjectController } from "@lore/core/api";
 import { Alepha } from "alepha";
+import { files } from "alepha/api/files";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
-import { AlephaOrm } from "alepha/orm";
+import { $repository, AlephaOrm } from "alepha/orm";
 import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer } from "alepha/server";
 import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
-import { FolioController } from "../src/api/index.ts";
+import {
+  FolioAttachmentController,
+  FolioController,
+} from "../src/api/index.ts";
 import { LoreRememberApi } from "../src/api/index.ts";
 import { FolioTools } from "../src/mcp/index.ts";
 import { LoreRememberMcp } from "../src/mcp/index.ts";
+
+/**
+ * The framework's file rows, to stand a stored file up without bytes.
+ */
+class FileRows {
+  public readonly files = $repository(files);
+}
 
 /**
  * Attaching a file to a folio, as MCP describes it.
@@ -46,6 +57,7 @@ const setup = async () => {
   alepha.with(AlephaMcp);
   alepha.with(LoreRememberApi);
   alepha.with(LoreRememberMcp);
+  alepha.with(FileRows);
 
   const folioTools = alepha.inject(FolioTools);
   const folioApi = alepha.inject(FolioController);
@@ -115,6 +127,41 @@ describe("Lore MCP: folio attachments", () => {
       folio_shortId: folio.shortId,
     });
     expect(listed.attachments).toEqual([]);
+  });
+
+  it("tells an agent how to fetch each listed file: the lore attachments pull line (#Q4513)", async () => {
+    const { alepha, folioTools, project, folio, call, asUser, OWNER } =
+      await setup();
+    const file = await alepha.inject(FileRows).files.create({
+      bucket: "archive-blobs",
+      blobId: "attachment-mockup",
+      name: "reports mockup.html",
+      originalName: "reports mockup.html",
+      mimeType: "text/html",
+      size: 42,
+      creator: OWNER,
+    });
+    const stored = await asUser(OWNER, () =>
+      alepha.inject(FolioAttachmentController).registerAttachment({
+        params: { projectId: project.id },
+        body: {
+          fileId: file.id,
+          name: "reports mockup.html",
+          folioId: folio.id,
+        },
+      }),
+    );
+
+    const listed = await call(folioTools.folio_attachment_list, {
+      project: project.id,
+      folio_shortId: folio.shortId,
+    });
+
+    expect(listed.attachments).toHaveLength(1);
+    expect(listed.attachments[0].pull).toBe(
+      `lore attachments pull ${stored.shortId} --project ${project.id} --folio ${folio.shortId}`,
+    );
+    expect(listed.authentication).toContain("LORE_API_KEY");
   });
 
   it("carries --name through, quoted when a shell would split it", async () => {
