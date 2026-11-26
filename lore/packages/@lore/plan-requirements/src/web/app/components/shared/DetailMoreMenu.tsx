@@ -35,8 +35,8 @@ const DetailMoreMenu = (props: DetailMoreMenuProps) => {
       <DropdownMenuTrigger
         render={
           <Button
-            variant="outlined"
-            size="icon-lg"
+            variant="minimal"
+            size="icon"
             disabled={props.disabled}
             aria-label={tr("requirements.more")}
             title={tr("requirements.more")}
