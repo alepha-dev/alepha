@@ -45,7 +45,8 @@ export interface AgentTranscriptTotals {
 export interface AgentTranscriptResult {
   entries: AgentTranscriptEntry[];
   /**
-   * Bookkeeping events left out, by type: shown on demand.
+   * Bookkeeping events left out, by type. Counted, never shown (#Q4529):
+   * the downloaded log keeps them all.
    */
   hidden: number;
   totals?: AgentTranscriptTotals;

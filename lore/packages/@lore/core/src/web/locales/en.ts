@@ -3350,9 +3350,6 @@ export default {
   "jobs.transcript.timedOut": "The job ran past its timeout",
   "jobs.transcript.replyLater": "The reply shows when the job ends.",
   "jobs.transcript.noReply": "The agent ended with no reply.",
-  "jobs.transcript.hidden": "$1 bookkeeping events hidden",
-  "jobs.transcript.hiddenHint":
-    "Rate limits and token counts the agent CLI reports: Download log has them all.",
   "jobs.transcript.truncated":
     "The log was cut: the transcript stops where it does.",
   "jobs.transcript.truncatedRunning":
