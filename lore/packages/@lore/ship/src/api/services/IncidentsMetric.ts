@@ -16,7 +16,7 @@ type Row = NonNullable<DashboardCardValue["rows"]>[number];
 
 /**
  * `incidents` (#Q4426): what happened to the project's apps and hosts over
- * the board's window (at least 30 days), newest first. Two sources side by
+ * the board's window, newest first. Two sources side by
  * side, so a deploy reads next to the outage it did or did not cause:
  *
  * - every uptime incident, with how long it lasted (or that it is open);
@@ -56,7 +56,7 @@ export class IncidentsMetric implements DashboardMetricResolver {
   protected async resolve(entry: DashboardResolvable): Promise<CardValue> {
     const project = entry.scope.projects[0];
     if (!project) return { empty: "noData", detail: {} };
-    const days = Math.max(entry.windowDays, 30);
+    const days = entry.windowDays;
     const since = new Date(
       this.dateTime.nowMillis() - days * 24 * 3600_000,
     ).toISOString();

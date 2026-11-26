@@ -17,8 +17,7 @@ type CardValue = Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">;
 
 /**
  * `hostStats` (#Q4425): one host's CPU, memory, disk or load, its current
- * reading over a chart of daily means for the board's window (at least the
- * 30 days the series keeps hot).
+ * reading over a chart of daily means for the board's window.
  *
  * The reading comes from where it is exact: CPU and memory from the row's
  * gauge, disk and load from the last inventory. The series is the host's
@@ -73,7 +72,7 @@ export class HostStatsMetric implements DashboardMetricResolver {
               : undefined
             : machine?.load1;
 
-    const days = Math.max(entry.windowDays, 30);
+    const days = entry.windowDays;
     const since = new Date(
       this.dateTime.nowMillis() - days * 24 * 3600_000,
     ).toISOString();
