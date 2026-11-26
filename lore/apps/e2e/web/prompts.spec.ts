@@ -223,7 +223,7 @@ test.describe("Settings > Prompts", () => {
       );
     });
 
-    await test.step("Run on an Agent host lands on its job's page", async () => {
+    await test.step("Run on an Agent host stays on the page, and the header's jobs list leads to its job (#Q4514, #Q4515)", async () => {
       const { id: hostId, secret } = await createHostInProject(
         page,
         project.slug,
@@ -269,6 +269,29 @@ test.describe("Settings > Prompts", () => {
       const dialog = page.getByTestId("prompt-run-dialog");
       await expect(dialog).toBeVisible();
       await dialog.getByTestId("prompt-run-submit").click();
+      await expect(dialog).toBeHidden({ timeout: 20_000 });
+      // Run stays on the page; the header's jobs button names the job.
+      await expect(page).toHaveURL(
+        new RegExp(`/${project.slug}/settings/prompts$`),
+      );
+      await expect(page.getByTestId("jobs-header-announcement")).toContainText(
+        "Security check",
+        { timeout: 15_000 },
+      );
+      // Its list opens the job in the side panel, whose Open job leads to
+      // the job's page.
+      await page.getByTestId("jobs-header-button").click();
+      await page
+        .getByTestId("jobs-header-popover")
+        .getByTestId("jobs-header-row")
+        .first()
+        .click();
+      const panel = page.getByTestId("job-panel");
+      await expect(panel).toBeVisible();
+      await expect(panel.getByTestId("job-panel-title")).toContainText(
+        "Security check",
+      );
+      await panel.getByTestId("job-panel-open").click();
       await page.waitForURL(new RegExp(`/${project.slug}/jobs/[^/]+$`), {
         timeout: 20_000,
       });

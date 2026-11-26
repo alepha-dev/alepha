@@ -198,7 +198,8 @@ the bell, says the job is queued, counts the jobs in flight with a ring turning
 while one runs, and says the job's name again when it ends. Open it for the
 project's jobs in flight and those that ended in the last 15 minutes, each with
 its host, its time and, while it runs, the last line of its transcript; a row
-opens the job's page, where the agent's final reply is the first thing once the
+opens the job in a panel beside the page, its transcript live, and **Open job**
+leads to its page, where the agent's final reply is the first thing once the
 job ends. **Run again** on a job's page opens the new job's page. See
 [Agent jobs](/lore/docs/agents-jobs).
 

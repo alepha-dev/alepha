@@ -6,11 +6,13 @@ import {
   currentProjectAtom,
   type I18n,
   loreDocsUrl,
+  sidePanelAtom,
 } from "@lore/core/web";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
 import { CircleHelp } from "lucide-react";
+import { useEffect } from "react";
 
 import { assistantConfirmCards } from "./assistantConfirmCards.ts";
 import { assistantOpenAtom } from "./assistantOpenAtom.ts";
@@ -42,6 +44,13 @@ const AssistantPanel = () => {
   const refresh = useAssistantInvalidates();
   const registry = useInject(AssistantSuggestionRegistry);
   const routerState = useRouterState();
+  const [side] = useStore(sidePanelAtom);
+
+  // One panel on the right at a time (#Q4515): a job watched from the
+  // header's jobs list takes it, and the assistant gives it up.
+  useEffect(() => {
+    if (open && side?.panel && side.panel !== "assistant") setOpen(false);
+  }, [side?.panel]);
 
   if (!enabled || project?.id === undefined) {
     return null;

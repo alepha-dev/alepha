@@ -9,6 +9,7 @@ import { $inject } from "alepha";
 import { Bot, ListChecks } from "lucide-react";
 
 import BayAgentHost from "../components/bay/BayAgentHost.tsx";
+import JobSidePanel from "../components/jobs-header/JobSidePanel.tsx";
 import PromptJobsButton from "../components/jobs-header/PromptJobsButton.tsx";
 import PromptPinsMenu from "../components/pins/PromptPinsMenu.tsx";
 import { usePromptPins } from "../components/pins/usePromptPins.tsx";
@@ -77,6 +78,11 @@ export class PromptsShell {
       key: "prompt-jobs",
       component: PromptJobsButton,
       order: -10,
+    });
+    // The job a row of that list opens, watched from any page (#Q4515).
+    this.extensions.registerOverlay({
+      key: "job-panel",
+      component: JobSidePanel,
     });
     this.hostConsole.registerAgentPanel({
       key: "agent-host",
