@@ -4333,6 +4333,15 @@ export default {
   "dashboard.metric.hostUnits": "Watched units",
   "dashboard.metric.hostUnits.hint":
     "the systemd units a host watches and their state now",
+  "dashboard.metric.uptimeLatency": "Response time",
+  "dashboard.metric.uptimeLatency.hint":
+    "one http monitor's last check and its mean response time per day",
+  "dashboard.metric.certExpiry": "Certificates",
+  "dashboard.metric.certExpiry.hint":
+    "the TLS certificates the monitors read, and the days each has left",
+  "dashboard.metric.incidents": "Incidents",
+  "dashboard.metric.incidents.hint":
+    "outages and watched unit changes, so restarts and deploys show beside them",
   "dashboard.metric.runningJobs": "Running jobs",
   "dashboard.metric.runningJobs.hint":
     "the agent jobs queued or running now, their host and since when",

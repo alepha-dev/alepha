@@ -34,6 +34,7 @@ import { ArtifactPushCaps } from "./services/ArtifactPushCaps.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
+import { CertExpiryMetric } from "./services/CertExpiryMetric.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 import { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
 import { DailyVisitorsService } from "./services/DailyVisitorsService.ts";
@@ -57,6 +58,7 @@ import { DeployService } from "./services/DeployService.ts";
 import { ErrorThreshold } from "./services/ErrorThreshold.ts";
 import { ErrorTrendMetric } from "./services/ErrorTrendMetric.ts";
 import { HostCloudflareService } from "./services/HostCloudflareService.ts";
+import { IncidentsMetric } from "./services/IncidentsMetric.ts";
 import { LiveQuestService } from "./services/LiveQuestService.ts";
 import { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
@@ -82,6 +84,7 @@ import { StackTargets } from "./services/StackTargets.ts";
 import { StackVariableService } from "./services/StackVariableService.ts";
 import { UniqueVisitorsMetric } from "./services/UniqueVisitorsMetric.ts";
 import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
+import { UptimeLatencyMetric } from "./services/UptimeLatencyMetric.ts";
 import { UptimeMetric } from "./services/UptimeMetric.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 
@@ -129,6 +132,9 @@ export const LoreShipApi = $module({
     AppHealthMetric,
     ErrorTrendMetric,
     UptimeMetric,
+    UptimeLatencyMetric,
+    CertExpiryMetric,
+    IncidentsMetric,
     DeployProjectCounts,
     // Whether a triage automation has errors to read (#Q4228).
     ShipPromptChecks,
