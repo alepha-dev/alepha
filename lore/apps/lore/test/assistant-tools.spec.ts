@@ -30,6 +30,7 @@ const WRITE_SET = [
   "dashboard_card_add",
   "dashboard_card_update",
   "feedback_submit",
+  "prompt_run",
 ];
 
 const READ_SET = [
@@ -263,6 +264,42 @@ describe("the assistant's read tools", () => {
       context: { data: { projectId: workOnly.id } },
     });
     expect(offeredWorkOnly).toContain("feedback_submit");
+    await alepha.stop();
+  });
+
+  it("offers prompt_run only to a rank holding host:read, on a project with Prompts on (#Q4512)", async ({
+    expect,
+  }) => {
+    const { alepha, project, owner, signIn, entities } = await boot();
+    const access = alepha.inject(LoreAiToolAccess);
+    expect(
+      await access.offered({
+        user: owner.user,
+        context: { data: { projectId: project.id } },
+      }),
+    ).toContain("prompt_run");
+
+    await createReaderRank(alepha, project.id, owner.id);
+    const account = await entities.users.create({ roles: ["user"] });
+    await createTestMember(alepha, project, account.id, { rank: "reader" });
+    const reader = await signIn(account.id);
+    expect(
+      await access.offered({
+        user: reader.user,
+        context: { data: { projectId: project.id } },
+      }),
+    ).not.toContain("prompt_run");
+
+    const workOnly = await createTestProject(alepha, {
+      capabilities: [{ key: "plan" }, { key: "remember" }],
+    });
+    const workOwner = await signIn(workOnly.createdBy);
+    expect(
+      await access.offered({
+        user: workOwner.user,
+        context: { data: { projectId: workOnly.id } },
+      }),
+    ).not.toContain("prompt_run");
     await alepha.stop();
   });
 

@@ -38,9 +38,12 @@ There it reads the room's recent messages rather than the page you are on.
   still lack?", "Summarise folio #F12."
 - **Write** the things you do most: file a quest, comment on one, update,
   accept, shelve, complete or delete it, create an epic, publish a release,
-  accept or reject a feedback, write or delete a folio, and add or change a
-  card on a project dashboard. Removing or reordering cards stays on the
-  board, and nothing that deploys or reaches a host is offered.
+  accept or reject a feedback, write or delete a folio, add or change a card
+  on a project dashboard, and run one of the project's
+  [prompts](/lore/docs/agents-prompts) on its Agent host: "run
+  dependency-update". Removing or reordering cards stays on the board,
+  writing or pausing a prompt stays on its page, and nothing that deploys is
+  offered.
 - **File a feedback**, here or into another project you belong to that accepts
   feedback, from any page or room: "report this to Acme". The card names the
   project it goes to, since its members will read what is filed.
