@@ -1,18 +1,19 @@
 import { LoreSpriteAsleepRenderer } from "./LoreSpriteAsleepRenderer.ts";
 import { LoreSpriteCalmRenderer } from "./LoreSpriteCalmRenderer.ts";
 import { LoreSpriteGlitchRenderer } from "./LoreSpriteGlitchRenderer.ts";
+import { LoreSpriteRenderer } from "./LoreSpriteRenderer.ts";
 import {
-  type LoreSpriteOptions,
-  LoreSpriteRenderer,
-} from "./LoreSpriteRenderer.ts";
-import { LoreSpriteSeekingRenderer } from "./LoreSpriteSeekingRenderer.ts";
+  type LoreSpriteSeekingOptions,
+  LoreSpriteSeekingRenderer,
+} from "./LoreSpriteSeekingRenderer.ts";
 
 /**
  * A state the companion can be drawn in, beyond the one Home shows:
  *
  * - `calm`: nothing left to do, her dust in one tidy orbit.
  * - `asleep`: nothing yet, wings folded and lens shut.
- * - `seeking`: waiting for a pick, a beam turned to the list beside her.
+ * - `seeking`: looking for something, a beam turned to the list beside her
+ *   or swept across a page that has none (`look`).
  * - `glitch`: something broke, a wing down and the lens red.
  */
 export type LoreSpriteMood = "calm" | "asleep" | "seeking" | "glitch";
@@ -22,11 +23,14 @@ export type LoreSpriteMood = "calm" | "asleep" | "seeking" | "glitch";
  * `LoreSpriteRenderer` that bends its behaviour and draws nothing it could
  * not already draw: the companion is never redrawn, only put in another
  * state.
+ *
+ * The options are the widest any mood reads: `look` is `seeking`'s, and the
+ * others ignore it.
  */
 export class LoreSpriteMoods {
   public static create(
     canvas: HTMLCanvasElement,
-    options: LoreSpriteOptions,
+    options: LoreSpriteSeekingOptions,
     mood?: LoreSpriteMood,
   ): LoreSpriteRenderer {
     switch (mood) {

@@ -60,6 +60,18 @@ describe("NotFoundPage", () => {
     expect(ui.container.textContent).toContain("Page not found");
   });
 
+  it("is said by the companion looking for the page", async ({ expect }) => {
+    const ui = await mount();
+
+    // `seeking`, not `glitch`: nothing broke, a page is missing (#Q4497).
+    const state = ui.container.querySelector('[data-slot="lore-empty-state"]');
+    expect(state?.getAttribute("data-mood")).toBe("seeking");
+    // She is decoration: the number and the sentence stand without her.
+    expect(
+      state?.querySelector("canvas")?.closest("[aria-hidden]"),
+    ).toBeTruthy();
+  });
+
   it("offers a link home", async ({ expect }) => {
     await mount();
 
