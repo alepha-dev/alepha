@@ -96,7 +96,7 @@ export class HostProjectEvents {
         filter: { field: "host_id", resource: "host" },
         message: (it) => ({
           title: `${it.host === null || it.host === undefined ? "" : String(it.host)} ${HostProjectEvents.TITLES[name]}`,
-          text: `${it.unit === null || it.unit === undefined ? "" : `${String(it.unit)}: `}${HostProjectEvents.TEXTS[name]}`,
+          text: `${typeof it.unit === "string" && it.unit ? `${it.unit}: ` : ""}${HostProjectEvents.TEXTS[name]}`,
         }),
       });
     for (const [name, label] of [
@@ -120,7 +120,12 @@ export class HostProjectEvents {
         filter: { field: "host_id", resource: "host" },
         message: (it) => ({
           title: `${it.host === null || it.host === undefined ? "" : String(it.host)} ${HostProjectEvents.TITLES[name]}`,
-          text: `${String(it.resource)} ${String(it.percent)}% (limit ${String(it.limit)}%). ${HostProjectEvents.TEXTS[name]}`,
+          text:
+            typeof it.resource === "string" &&
+            typeof it.percent === "number" &&
+            typeof it.limit === "number"
+              ? `${it.resource} ${it.percent}% (limit ${it.limit}%). ${HostProjectEvents.TEXTS[name]}`
+              : HostProjectEvents.TEXTS[name],
         }),
       });
   }

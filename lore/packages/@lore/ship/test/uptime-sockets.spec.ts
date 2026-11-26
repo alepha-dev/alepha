@@ -55,6 +55,7 @@ const monitor = (target: string, kind: "tcp" | "cert" = "tcp") =>
     intervalSecs: 60,
     timeoutSecs: 1,
     confirmations: 2,
+    graceSecs: 1500,
     expect: {},
     notifications: { email: true, recipients: [] },
     active: true,
