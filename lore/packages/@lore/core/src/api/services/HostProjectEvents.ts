@@ -21,6 +21,8 @@ export class HostProjectEvents {
     "host.online": "is back online",
     "host.unit_failed": "has a watched unit that failed",
     "host.unit_recovered": "has a watched unit running again",
+    "host.resource_high": "is over a resource threshold",
+    "host.resource_ok": "is back under a resource threshold",
   };
   protected static readonly TEXTS: Record<string, string> = {
     "host.credential_invalid": "Replace the token in the host's settings.",
@@ -29,6 +31,9 @@ export class HostProjectEvents {
     "host.online": "It is reporting again.",
     "host.unit_failed": "A systemd unit the host watches stopped.",
     "host.unit_recovered": "The unit that failed is active again.",
+    "host.resource_high":
+      "Free some room, or raise the threshold in the host's settings.",
+    "host.resource_ok": "The reading is back under the threshold.",
   };
   protected readonly catalog = $inject(ProjectEventCatalog);
   protected readonly filters = $inject(ProjectEventFilters);
@@ -92,6 +97,30 @@ export class HostProjectEvents {
         message: (it) => ({
           title: `${it.host === null || it.host === undefined ? "" : String(it.host)} ${HostProjectEvents.TITLES[name]}`,
           text: `${it.unit === null || it.unit === undefined ? "" : `${String(it.unit)}: `}${HostProjectEvents.TEXTS[name]}`,
+        }),
+      });
+    for (const [name, label] of [
+      ["host.resource_high", "Host over a resource threshold"],
+      ["host.resource_ok", "Host back under a resource threshold"],
+    ] as const)
+      this.catalog.register({
+        name,
+        label,
+        resource: "hosts",
+        subject: "host",
+        fields: {
+          host_id: "text",
+          host: "text",
+          resource: "text",
+          percent: "number",
+          limit: "number",
+          since: "text",
+        },
+        permission: "host:read",
+        filter: { field: "host_id", resource: "host" },
+        message: (it) => ({
+          title: `${it.host === null || it.host === undefined ? "" : String(it.host)} ${HostProjectEvents.TITLES[name]}`,
+          text: `${String(it.resource)} ${String(it.percent)}% (limit ${String(it.limit)}%). ${HostProjectEvents.TEXTS[name]}`,
         }),
       });
   }

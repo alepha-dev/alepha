@@ -269,6 +269,19 @@ export const hosts = $entity({
      */
     watchUnits: z.array(z.string().max(200)).max(20).optional(),
     /**
+     * Disk and memory thresholds, in percent (#Q4423): a reading at or above
+     * one raises `host.resource_high`. Absent is off.
+     */
+    alertDiskPercent: z.integer().min(1).max(100).optional(),
+    alertMemoryPercent: z.integer().min(1).max(100).optional(),
+    /**
+     * The alerts raised and not yet cleared, by resource, with when each was
+     * raised: the edge `HostResourceAlerts` keeps so an alert fires once.
+     */
+    resourceAlerts: z
+      .object({ disk: z.string().optional(), memory: z.string().optional() })
+      .optional(),
+    /**
      * Liveness, as two stamps. The HTTP list runs in the Worker and cannot
      * see sockets that live in a Durable Object, so the endpoint stamps the
      * row instead (#1782). `online` is `connectedAt > disconnectedAt` and

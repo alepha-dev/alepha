@@ -113,6 +113,9 @@ export default {
   "notifications.event.host.online": "Host back online",
   "notifications.event.host.unit_failed": "Watched unit failed",
   "notifications.event.host.unit_recovered": "Watched unit recovered",
+  "notifications.event.host.resource_high": "Host over a resource threshold",
+  "notifications.event.host.resource_ok":
+    "Host back under a resource threshold",
   "notifications.resource.quests": "Quests",
   "notifications.resource.epics": "Epics",
   "notifications.resource.releases": "Releases",
@@ -2896,6 +2899,11 @@ export default {
   "bay.units.save": "Save",
   "bay.units.title": "Watched units",
   "bay.units.since": "since $1",
+  "bay.alerts.label": "Resource alerts",
+  "bay.alerts.description":
+    "Raise an alert when disk or memory use reaches this percent. Empty is off.",
+  "bay.alerts.disk": "Disk %",
+  "bay.alerts.memory": "Memory %",
   "bay.chart.off":
     "This machine is not recording a history. Its live gauges above are always kept; the series is a separate switch, and it starts from the day it is turned on.",
   "bay.chart.off.link": "Turn it on in Settings",

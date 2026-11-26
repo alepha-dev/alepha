@@ -1,0 +1,89 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "f0795490-7265-4dc2-9369-ff5584e668ad",
+  "prevIds": ["a6049df1-41c6-4823-b50e-6694661d44a9"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "alert_disk_percent"],
+      "writes": [
+        "s|col|public.hosts.alert_disk_percent",
+        "n|col|public.hosts.alert_disk_percent",
+        "e|col|public.hosts.alert_disk_percent"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "alert_memory_percent"],
+      "writes": [
+        "s|col|public.hosts.alert_memory_percent",
+        "n|col|public.hosts.alert_memory_percent",
+        "e|col|public.hosts.alert_memory_percent"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "resource_alerts"],
+      "writes": [
+        "s|col|public.hosts.resource_alerts",
+        "n|col|public.hosts.resource_alerts",
+        "e|col|public.hosts.resource_alerts"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "alert_disk_percent",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "alert_memory_percent",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "resource_alerts",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
