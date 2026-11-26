@@ -11,7 +11,7 @@ import { AlephaError, z } from "alepha";
 import { useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Activity, Archive, ArchiveRestore, Trash2 } from "lucide-react";
+import { Activity, Archive, ArchiveRestore, LogIn, Trash2 } from "lucide-react";
 import { useCallback } from "react";
 
 /**
@@ -124,6 +124,28 @@ export const AdminProjects = () => {
   );
 
   /**
+   * Join a project as the instance admin (#Q4538): the only way an admin
+   * gets inside one, since every project gate answers a non-member 404. The
+   * confirm says the members will see it, because the project's Activity
+   * records it.
+   */
+  const join = useConfirmedAction<[AdminProjectResource, () => void]>(
+    {
+      confirm: (project) => ({
+        title: "Join project",
+        description: `Join "${project.title}" (#${project.id}) as an instance admin? Its members will see it: the project's activity records that an instance admin joined. You leave it like any member.`,
+        confirmLabel: "Join",
+      }),
+      handler: async (project, refresh) => {
+        await client.adminJoinProject({ params: { id: project.id } });
+        refresh();
+      },
+      success: (project) => `Joined "${project.title}"`,
+    },
+    [client],
+  );
+
+  /**
    * Deleting a project takes its members and quests with it and cannot be
    * undone, so the confirmation names the project rather than asking a generic
    * "are you sure" the operator will click through on reflex.
@@ -202,6 +224,19 @@ export const AdminProjects = () => {
           },
         ]}
         rowActions={(project) => [
+          // Offered to an admin who is not a member yet (#Q4538).
+          ...(project.joined
+            ? []
+            : [
+                {
+                  label: "Join",
+                  icon: LogIn,
+                  onClick: (
+                    _project: AdminProjectResource,
+                    { refresh }: { refresh: () => void },
+                  ) => void join.run(project, refresh),
+                },
+              ]),
           {
             // Read-only while archived (#Q4051); unarchiving brings it back.
             label: project.archivedAt ? "Unarchive" : "Archive",

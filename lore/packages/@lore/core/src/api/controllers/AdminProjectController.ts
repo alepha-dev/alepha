@@ -1,9 +1,13 @@
 import { $inject, Alepha, z } from "alepha";
-import { organizationMembers } from "alepha/api/organizations";
+import {
+  MemberService,
+  organizationMembers,
+  RankService,
+} from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, db, pageQuerySchema } from "alepha/orm";
 import { $secure } from "alepha/security";
-import { $action, NotFoundError, okSchema } from "alepha/server";
+import { $action, ConflictError, NotFoundError, okSchema } from "alepha/server";
 
 import { displayName } from "../../web/app/services/displayName.ts";
 import { projects } from "../entities/projects.ts";
@@ -27,6 +31,11 @@ import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
  *
  * Gated on `admin:project:read`, matching the `admin:<thing>:<verb>` shape
  * `AdminInvitationController` and the framework's own admin controllers use.
+ *
+ * ⚠️ An instance admin does not read inside a project they are not a member
+ * of (#Q4538): every project gate answers them the 404 anybody gets. To get
+ * in they join, with {@link AdminProjectController.adminJoinProject}, which
+ * the project's Activity records for its members to see.
  */
 export class AdminProjectController {
   /**
@@ -46,6 +55,8 @@ export class AdminProjectController {
    */
   protected readonly projectsWith = $repository(coreRelations, "projects");
   protected readonly members = $repository(organizationMembers);
+  protected readonly ranks = $inject(RankService);
+  protected readonly memberService = $inject(MemberService);
   protected readonly projectDeletion = $inject(ProjectDeletionService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
@@ -85,7 +96,7 @@ export class AdminProjectController {
       }),
       response: db.page(adminProjectResourceSchema),
     },
-    handler: async ({ query }) => {
+    handler: async ({ query, user }) => {
       const where = this.projects.createQueryWhere();
 
       if (query.search) {
@@ -147,9 +158,14 @@ export class AdminProjectController {
       const rows = organizationIds.length
         ? await this.members.findMany({
             where: { organizationId: { inArray: organizationIds } },
-            columns: ["organizationId"],
+            columns: ["organizationId", "userId"],
           })
         : [];
+      const joined = new Set(
+        rows
+          .filter((row) => row.userId === user.id)
+          .map((row) => row.organizationId),
+      );
 
       const memberCounts = new Map<string, number>();
       for (const row of rows) {
@@ -172,6 +188,8 @@ export class AdminProjectController {
             ? (memberCounts.get(project.organizationId) ?? 0)
             : 0,
           ...(project.archivedAt ? { archivedAt: project.archivedAt } : {}),
+          joined:
+            !!project.organizationId && joined.has(project.organizationId),
         })),
       };
     },
@@ -204,6 +222,75 @@ export class AdminProjectController {
         .inject(ProjectArchiveGuard)
         .setArchived(project, body.archived, user);
       return { ok: true };
+    },
+  });
+
+  /**
+   * The instance admin joins a project, in plain sight (#Q4538).
+   *
+   * The way in for an admin, who is otherwise refused inside a project like
+   * any non-member, and what recovers a project nobody can manage any more.
+   * The rank is `owner` when the project has none (its owner's account is
+   * gone), so members can be managed and ownership handed on; otherwise the
+   * `admin` rank, which manages members: a project has exactly one owner,
+   * and only they can transfer it.
+   *
+   * The Activity row says it was an instance admin entering, not an
+   * invitation accepted. Leaving is the project's ordinary leave.
+   */
+  public readonly adminJoinProject = $action({
+    path: `${this.url}/:id/join`,
+    method: "POST",
+    group: this.group,
+    use: [$secure({ permissions: ["admin:project:join"] })],
+    description:
+      "Join a project as an instance admin, recorded in its activity",
+    schema: {
+      params: z.object({ id: z.integer() }),
+      response: z.object({ rank: z.text() }),
+    },
+    handler: async ({ params, user }) => {
+      const project = await this.projects.findById(params.id);
+      if (!project?.organizationId) throw new NotFoundError("No such project");
+      const organizationId = project.organizationId;
+
+      const existing = await this.members.findMany({
+        where: { organizationId: { eq: organizationId } },
+        columns: ["userId", "rank"],
+      });
+      if (existing.some((member) => member.userId === user.id)) {
+        throw new ConflictError("You are already a member of this project");
+      }
+
+      const hasOwner = existing.some(
+        (member) => member.rank === MemberService.OWNER,
+      );
+      const defined = await this.ranks.ranksOf(organizationId);
+      let rank: string = MemberService.OWNER;
+      if (hasOwner) {
+        rank = defined.some((it) => it.key === "admin")
+          ? "admin"
+          : MemberService.MEMBER;
+        await this.memberService.add(organizationId, user.id, rank, user);
+      } else {
+        await this.memberService.addOwner(organizationId, user.id);
+      }
+      // The rank as the project names it, frozen on the row: a rank renamed
+      // later does not rewrite what members read happened.
+      const rankName =
+        defined.find((it) => it.key === rank)?.name ??
+        (rank === MemberService.OWNER ? "Owner" : rank);
+
+      await this.audits.member.logSuccess("join", {
+        ...this.audits.actor(user),
+        ...this.audits.scope(project.id),
+        severity: "warning",
+        resourceType: "project",
+        resourceId: String(project.id),
+        description: project.title,
+        metadata: { instanceAdmin: true, rank, rankName },
+      });
+      return { rank };
     },
   });
 

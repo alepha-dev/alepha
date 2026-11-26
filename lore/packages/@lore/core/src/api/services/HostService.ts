@@ -659,7 +659,7 @@ export class HostService {
         userId: { eq: user.id },
       },
     });
-    if (!member && user.ownership !== false) {
+    if (!member && !this.projectSecurity.bypassesMembership(user)) {
       return [];
     }
     const { permissions } = await this.permissions.of(

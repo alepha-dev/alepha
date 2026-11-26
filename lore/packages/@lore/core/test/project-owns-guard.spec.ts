@@ -151,7 +151,7 @@ describe("ProjectController $owns gates", () => {
     expect(updated.data.title).toBe("Renamed");
   });
 
-  it("lets a privileged identity through without membership", async ({
+  it("refuses an instance admin who is not a member (#Q4538)", async ({
     expect,
   }) => {
     const owner = await createTestUser(ctx);
@@ -160,13 +160,30 @@ describe("ProjectController $owns gates", () => {
       { user: owner },
     );
 
-    // `admin` resolves to `ownership: false` via the realm's wildcard
-    // permission — the privileged bypass both gates honour.
-    const response = await ctx.projectController.getProjectUsers.fetch(
-      { params: { id: created.data.id } },
-      { user: adminUser },
+    // `admin` resolves to `ownership: false` through the realm's wildcard
+    // permission, and that role-derived answer opens no project gate.
+    await expect(
+      ctx.projectController.getProjectUsers.fetch(
+        { params: { id: created.data.id } },
+        { user: adminUser },
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("lets an identity built unrestricted through without membership", async ({
+    expect,
+  }) => {
+    const owner = await createTestUser(ctx);
+    const created = await ctx.projectController.createProject.fetch(
+      { body: { title: "Owned" } },
+      { user: owner },
     );
 
-    expect(Array.isArray(response.data)).toBe(true);
+    const response = await ctx.projectController.getProjectUsers.run(
+      { params: { id: created.data.id } },
+      { user: { ...adminUser, ownership: false } },
+    );
+
+    expect(Array.isArray(response)).toBe(true);
   });
 });

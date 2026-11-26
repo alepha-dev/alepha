@@ -4873,6 +4873,8 @@ export default {
   "activity.review.filed":
     "a déposé une revue (questions : $1, décisions : $2, changements : $3)",
   "activity.review.answered": "a répondu à l’élément $1",
+  "activity.member.instanceAdmin":
+    "a rejoint en tant qu’administrateur de l’instance ($1)",
   "activity.review.waived": "a écarté l’élément $1",
   "activity.review.overturned":
     "a renversé l’élément $1, remplacé par l’élément $2",

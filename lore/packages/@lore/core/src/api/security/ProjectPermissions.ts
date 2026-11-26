@@ -68,7 +68,7 @@ export class ProjectPermissions {
      * the bypass is refused for them, on purpose, so `subscription:*` is what
      * the caller holds as a member.
      */
-    if (user.ownership === false) {
+    if (this.projectSecurity.bypassesMembership(user)) {
       const permissions = this.effective.resolve({
         user,
         exclude: ["admin:"],

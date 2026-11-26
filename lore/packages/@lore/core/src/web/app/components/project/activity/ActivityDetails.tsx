@@ -53,6 +53,20 @@ export const ActivityDetails = (props: ActivityDetailsProps) => {
     );
   }
 
+  // An instance admin who joined from /admin (#Q4538): said in words, so a
+  // member reads it as an admin entering rather than an invitation.
+  if (props.metadata?.instanceAdmin === true) {
+    return (
+      <span className="text-warning-text text-xs">
+        {tr("activity.member.instanceAdmin", {
+          args: [
+            String(props.metadata?.rankName ?? props.metadata?.rank ?? ""),
+          ],
+        })}
+      </span>
+    );
+  }
+
   // An epic review filed (#E121): how many of each kind it held.
   const questions = props.metadata?.questions;
   if (typeof questions === "number") {

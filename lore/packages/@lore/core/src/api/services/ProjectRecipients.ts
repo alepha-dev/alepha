@@ -70,7 +70,7 @@ export class ProjectRecipients {
         userId: { eq: user.id },
       },
     });
-    if (!member && user.ownership !== false) return [];
+    if (!member && !this.security.bypassesMembership(user)) return [];
     return this.held(projectId, user, member ?? undefined);
   }
 

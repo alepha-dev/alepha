@@ -30,6 +30,14 @@ export const organizationConfigAtom = $atom({
         }),
       )
       .optional(),
+    /**
+     * Which callers every organization gate (`$ownsOrganization`) lets in
+     * without membership: `"any"` (unset), an administrator whose role holds
+     * `*` as well as the system user; `"identity"`, the system user alone, so
+     * an administrator of the deployment is a stranger to an organization
+     * they have not joined. See `SecureOptions.privileged`.
+     */
+    privileged: z.enum(["any", "identity"]).optional(),
     invitationExpirationDays: z.integer().min(1).max(90),
     maxPendingInvitationsPerOrganization: z.integer().min(1).max(500),
     maxPendingInvitationsPerInviter: z.integer().min(1).max(1000),

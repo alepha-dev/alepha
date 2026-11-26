@@ -151,6 +151,9 @@ export function $owns(options: OwnsOptions): SecureMiddleware {
 
   return $secure({
     ...options.secure,
+    ...(options.privileged === undefined
+      ? {}
+      : { privileged: options.privileged }),
     // One string, checked twice. Folding it in here is what runs the
     // APPLICATION-scope check exactly as a separate `$secure({ permissions })`
     // beside this gate would have, and it is also what puts the permission in
@@ -249,7 +252,11 @@ export function $owns(options: OwnsOptions): SecureMiddleware {
 
       alepha.store.set(currentAuthorityAtom, authority);
 
-      if (ctx.user.ownership === false) {
+      // `$secure` above already refused a role's unrestricted answer as a
+      // privilege when `privileged` says identities only.
+      const user = ctx.user;
+
+      if (user.ownership === false) {
         return true;
       }
 
@@ -335,7 +342,7 @@ export function $owns(options: OwnsOptions): SecureMiddleware {
       // adopts this pays nothing for it.
       if (requires.length) {
         const decision = await grants.check({
-          user: ctx.user,
+          user,
           authority,
           membership,
           requires,
@@ -441,6 +448,22 @@ async function readResolved(
 // ---------------------------------------------------------------------------------------------------------------------
 
 export interface OwnsOptions {
+  /**
+   * Which unrestricted callers skip the owner, membership and grant checks.
+   *
+   * - `"any"` (the default): every caller whose `ownership` is `false`, the
+   *   answer a role holding `*` gets, as well as an identity built that way.
+   * - `"identity"`: only an identity BUILT with `ownership: false`, such as
+   *   the system user or `run(..., { user })` with a hand-made operator. A
+   *   role's unrestricted grant does not open the gate: an administrator who
+   *   is not the owner nor a member is refused like any other caller, and a
+   *   member's grants are checked even when their role holds `*`.
+   *
+   * For an application where an administrator of the whole deployment must
+   * not read inside a tenant's resources without joining them.
+   */
+  privileged?: SecureOptions["privileged"];
+
   /**
    * Repository the guarded resource is loaded from, as a thunk.
    *

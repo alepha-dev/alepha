@@ -105,7 +105,8 @@ export class ProjectController {
 
   /**
    * Project-member gate: the project creator, or any user holding a
-   * membership in it. Privileged identities bypass both.
+   * membership in it. Only an identity built unrestricted (the system user)
+   * bypasses both; an instance admin does not (#Q4538).
    *
    * These two used to build `$owns` by hand, which meant this file restated
    * `owner: "createdBy"`, the `members` join and both denial messages - the
@@ -1374,7 +1375,9 @@ export class ProjectController {
    * another tenant's project.
    */
   getProjectBySlug = $action({
-    use: [$secure({ permissions: ["project:read"] })],
+    // An instance admin reads a project they belong to as its member, rank
+    // included (#Q4538).
+    use: [$secure({ permissions: ["project:read"], privileged: "identity" })],
     method: "GET",
     path: "/projects/by-slug/:slug",
     schema: {
@@ -1438,7 +1441,7 @@ export class ProjectController {
         },
       });
 
-      if (!member && user.ownership !== false) {
+      if (!member && !this.projectSecurity.bypassesMembership(user)) {
         // The same 404 as an unknown slug, so a refusal never tells a caller
         // whether the slug names a real project.
         throw new NotFoundError("Project not found");

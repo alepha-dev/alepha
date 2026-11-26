@@ -4,6 +4,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 
 import { LoreRankBounds } from "../security/LoreRankBounds.ts";
+import { ProjectSecurityService } from "./ProjectSecurityService.ts";
 
 /**
  * What a reader's rank holds in each of several projects, in two reads
@@ -18,19 +19,22 @@ import { LoreRankBounds } from "../security/LoreRankBounds.ts";
  *
  * The answer is the rank's stored set with the floor, as
  * `RankService.permissionsOf` gives it. A project the reader is not a member
- * of, or a rank key with no definition, holds nothing. The privileged
- * identity holds `*`.
+ * of, or a rank key with no definition, holds nothing. An identity built
+ * unrestricted (the system user) holds `*`; an instance admin does not.
  */
 export class ProjectReaderPermissions {
   protected readonly ranks = $inject(RankService);
   protected readonly members = $repository(organizationMembers);
+  protected readonly projectSecurity = $inject(ProjectSecurityService);
 
   public async of(
     user: Pick<UserAccountToken, "id" | "ownership">,
     projects: ReadonlyArray<{ id: number; organizationId?: string | null }>,
   ): Promise<Map<number, string[]>> {
     const held = new Map<number, string[]>();
-    if (user.ownership === false) {
+    // Only an identity built unrestricted; an instance admin reads what
+    // their rank holds, and nothing where they are not a member (#Q4538).
+    if (this.projectSecurity.bypassesMembership(user)) {
       for (const project of projects) held.set(project.id, ["*"]);
       return held;
     }

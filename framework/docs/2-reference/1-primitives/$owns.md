@@ -86,6 +86,7 @@ class CampaignController {
 
 | Option       | Type                            | Required | Description                                                                                                                         |
 | ------------ | ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `privileged` | `SecureOptions["privileged"]`   | No       | Which unrestricted callers skip the owner, membership and grant checks                                                              |
 | `repository` | `Object`                        | Yes      | Repository the guarded resource is loaded from, as a thunk                                                                          |
 | `param`      | `string`                        | No       | Key holding the resource id, in whichever source `OwnsOptions.from` names                                                           |
 | `resolve`    | `Object`                        | No       | Compute the resource id instead of reading it off the request                                                                       |

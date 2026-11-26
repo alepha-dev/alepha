@@ -519,6 +519,10 @@ export const LoreCoreApi = $module({
       memberPermissions: LorePermissions.MEMBER_DEFAULT,
       floor: LorePermissions.FLOOR,
       ownerOnly: LoreRankBounds.NEVER_GRANTED,
+      // An instance admin is a stranger to a project they have not joined
+      // (#Q4538): every organization gate, the framework's member, rank and
+      // invitation routes included, lets in the system user alone.
+      privileged: "identity",
       // Every project holds these four, renamable and never deleted (#Q3736).
       builtinRanks: [...LoreRankBounds.BUILTIN_RANKS],
       // Admin is read from the code until somebody edits it, like Member, so

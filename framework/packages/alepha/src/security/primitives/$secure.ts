@@ -20,6 +20,11 @@ import type { UserAccountToken } from "../interfaces/UserAccountToken.ts";
 import { SecurityProvider } from "../providers/SecurityProvider.ts";
 import type { Permission } from "../schemas/permissionSchema.ts";
 
+/**
+ * Which callers a gate treats as unrestricted: see `SecureOptions.privileged`.
+ */
+export type SecurePrivileged = "any" | "identity";
+
 export interface SecureOptions {
   /**
    * Restrict to specific issuers (realms).
@@ -73,6 +78,24 @@ export interface SecureOptions {
    * routes no machine credential reaches at all.
    */
   sessionOnly?: boolean;
+
+  /**
+   * Which callers this gate publishes as unrestricted (`ownership: false`)
+   * when its permissions pass.
+   *
+   * - `"any"` (the default): a role holding `*` unrestricted, as well as an
+   *   identity built with `ownership: false`.
+   * - `"identity"`: only an identity BUILT with `ownership: false` (the
+   *   system user, `run(..., { user })` with a hand-made operator). A role's
+   *   unrestricted grant still passes the permission check, but the user the
+   *   guard, the handler and `currentUserAtom` receive carries no
+   *   `ownership: false`: every check further on, `$owns` and a rank check
+   *   alike, treats that caller like anybody else.
+   *
+   * A function is read on each request, for a default an application sets
+   * at runtime.
+   */
+  privileged?: SecurePrivileged | (() => SecurePrivileged | undefined);
 
   /**
    * Custom guard. Runs after all other checks, and is the only check that can
@@ -355,6 +378,21 @@ export function $secure(options?: SecureOptions): SecureMiddleware {
             } else if (ownership === undefined) {
               ownership = result.ownership;
             }
+          }
+
+          // A role's unrestricted answer, refused as a privilege where the
+          // gate asks for identities only: the caller passed the permission
+          // and is restricted like anybody else from here on.
+          const privileged =
+            typeof options?.privileged === "function"
+              ? options.privileged()
+              : options?.privileged;
+          if (
+            privileged === "identity" &&
+            ownership === false &&
+            securityProvider.identityOwnership(user) !== false
+          ) {
+            ownership = undefined;
           }
 
           user = securityProvider.withOwnershipDecision(user, ownership);

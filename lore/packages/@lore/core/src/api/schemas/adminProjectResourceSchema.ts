@@ -39,6 +39,11 @@ export const adminProjectResourceSchema = z.object({
    * When the project was archived (#Q4051), absent while it is live.
    */
   archivedAt: z.datetime().optional(),
+  /**
+   * Whether the admin reading the list is a member of the project: Join is
+   * offered only when not (#Q4538).
+   */
+  joined: z.boolean().optional(),
 });
 
 export type AdminProjectResource = Infer<typeof adminProjectResourceSchema>;

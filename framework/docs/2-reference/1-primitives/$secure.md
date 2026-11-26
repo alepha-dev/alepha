@@ -103,10 +103,11 @@ class OrderController {
 
 ## Options
 
-| Option        | Type       | Required | Description                                                                                                         |
-| ------------- | ---------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
-| `issuers`     | `string[]` | No       | Restrict to specific issuers (realms)                                                                               |
-| `roles`       | `string[]` | No       | Required roles                                                                                                      |
-| `permissions` | `Object`   | No       | Required permissions                                                                                                |
-| `sessionOnly` | `boolean`  | No       | Require a signed-in session: refuse an identity authenticated by a machine credential, whatever it may otherwise do |
-| `guard`       | `Object`   | No       | Custom guard                                                                                                        |
+| Option        | Type                                                        | Required | Description                                                                                                         |
+| ------------- | ----------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------- |
+| `issuers`     | `string[]`                                                  | No       | Restrict to specific issuers (realms)                                                                               |
+| `roles`       | `string[]`                                                  | No       | Required roles                                                                                                      |
+| `permissions` | `Object`                                                    | No       | Required permissions                                                                                                |
+| `sessionOnly` | `boolean`                                                   | No       | Require a signed-in session: refuse an identity authenticated by a machine credential, whatever it may otherwise do |
+| `privileged`  | `SecurePrivileged \| (() => SecurePrivileged \| undefined)` | No       | Which callers this gate publishes as unrestricted (`ownership: false`) when its permissions pass                    |
+| `guard`       | `Object`                                                    | No       | Custom guard                                                                                                        |

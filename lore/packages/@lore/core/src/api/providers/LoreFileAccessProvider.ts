@@ -45,10 +45,13 @@ export class LoreFileAccessProvider extends FileAccessProvider {
       throw new ForbiddenError("File access requires authentication");
     }
 
-    // Privileged identities pass through (admin tooling).
-    if (user.ownership === false) {
+    // An identity built unrestricted passes through (the system user). An
+    // instance admin's role does not (#Q4538): a project's files are read
+    // as a member, like everything else in it.
+    if (this.projectSecurity.bypassesMembership(user)) {
       return;
     }
+    const caller = this.projectSecurity.asProjectCaller(user);
 
     // Uploader is always allowed.
     if (file.creator && file.creator === user.id) {
@@ -67,7 +70,11 @@ export class LoreFileAccessProvider extends FileAccessProvider {
         where: { icon: { eq: file.id } },
       });
       if (project) {
-        await this.ranks.assert(project.organizationId!, "project:read", user);
+        await this.ranks.assert(
+          project.organizationId!,
+          "project:read",
+          caller,
+        );
         return;
       }
       // Orphan icon (uploaded but never assigned) stays creator-only.
@@ -85,7 +92,7 @@ export class LoreFileAccessProvider extends FileAccessProvider {
         await this.ranks.assert(
           await this.projectSecurity.organizationIdOf(owner.projectId),
           owner.permission,
-          user,
+          caller,
         );
         return;
       }
