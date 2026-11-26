@@ -125,10 +125,11 @@ export const PlateLayout = (props: PlateLayoutProps) => (
           </div>
           {/*
             A thin strip in the active tile's fill, ruled at its foot: the
-            tile opens into it with no seam, and the body below is content,
-            on `bg-card` (the surface rules in `styles.css`). It replaced a
+            tile opens into it with no seam. The body below takes the shell
+            header's fill, `bg-background`, so header, band and body read as
+            one surface and the cards inside stand out from it. It replaced a
             body filled grey to match the tile, which made every tab a grey
-            page.
+            page, and then a `bg-card` body, lighter than the header in dark.
           */}
           <div
             aria-hidden
@@ -161,9 +162,15 @@ export const PlateLayout = (props: PlateLayoutProps) => (
 
     {props.scroll === false ? (
       // A body that owns its scroll is a page of content under a toolbar of
-      // its own, on the content surface. Opaque, never transparent: without a
-      // fill the shell behind it shows through.
-      <div className="bg-card flex min-h-0 flex-1 flex-col">
+      // its own. Opaque, never transparent: without a fill the shell behind
+      // it shows through. Under folder tabs it takes the header's fill, like
+      // the scrolling body below.
+      <div
+        className={cn(
+          "flex min-h-0 flex-1 flex-col",
+          props.tabsVariant === "underline" ? "bg-card" : "bg-background",
+        )}
+      >
         {props.children}
       </div>
     ) : (
@@ -172,11 +179,13 @@ export const PlateLayout = (props: PlateLayoutProps) => (
       <div
         // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- a scroll region must take focus for the keyboard to scroll it (WCAG 2.1.1); the lint rule does not know scroll containers
         tabIndex={0}
-        // Folder tabs end on their grey strip, so the body is content, on
-        // `bg-card`. Underline tabs have no tile and keep the flat fill.
+        // Folder tabs end on their grey strip, and the body under it takes
+        // the shell header's fill, `bg-background`, so the page reads as one
+        // surface with its cards on top. Underline tabs have no tile and keep
+        // the flat fill.
         className={cn(
           "focus-visible:ring-ring/50 min-h-0 flex-1 overflow-y-auto outline-none focus-visible:ring-[3px] focus-visible:ring-inset",
-          props.tabsVariant === "underline" ? "bg-muted" : "bg-card",
+          props.tabsVariant === "underline" ? "bg-muted" : "bg-background",
         )}
       >
         {props.children}
