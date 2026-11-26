@@ -60,6 +60,28 @@ const monitorSettingsParams = {
     .max(100)
     .describe("Failed checks in a row before the monitor goes down.")
     .optional(),
+  grace_host: z
+    .string()
+    .max(64)
+    .describe(
+      "A host of the project, by slug, whose watched unit `grace_unit` this monitor follows: while that unit starts or stops, a failed check is held, so a deploy pages nobody. Empty string clears.",
+    )
+    .optional(),
+  grace_unit: z
+    .string()
+    .max(200)
+    .describe(
+      "The watched unit on `grace_host` (e.g. `api.service`). Empty string clears.",
+    )
+    .optional(),
+  grace_secs: z
+    .integer()
+    .min(60)
+    .max(86_400)
+    .describe(
+      "How long a start may last before a failure counts again, in seconds (default 1500).",
+    )
+    .optional(),
   expect: monitorExpectSchema
     .describe(
       "What a passing check looks like: `status` (HTTP code), `keyword` (in the body), `latencyBudgetMs` (slower is a failure), `certWarningDays`. Replaces the whole object on update.",

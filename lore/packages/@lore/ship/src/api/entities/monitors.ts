@@ -51,6 +51,19 @@ export const monitors = $entity({
     lastLatencyMs: z.integer().min(0).optional(),
     lastError: z.string().max(4096).optional(),
     certExpiresAt: z.string().optional(),
+    /**
+     * A host of the project, by slug, and one of its watched units
+     * (#Q4424): while that unit is
+     * starting or stopping (`activating`, `deactivating`, `reloading`), and
+     * for at most {@link graceSecs} since it began, a failed check is held:
+     * it does not count toward {@link confirmations} and opens no incident.
+     * A deploy that restarts the app then pages nobody. A slug, as people
+     * name hosts, resolved when a check fails: a deleted host simply stops
+     * holding anything.
+     */
+    graceHost: z.string().max(64).optional(),
+    graceUnit: z.string().max(200).optional(),
+    graceSecs: db.default(z.integer().min(60).max(86_400), 1500),
   }),
   indexes: [
     { columns: ["pushTokenHash"], unique: true },

@@ -69,6 +69,9 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
       keyword: monitor?.expect.keyword,
       latencyBudgetMs: monitor?.expect.latencyBudgetMs,
       certWarningDays: monitor?.expect.certWarningDays ?? 14,
+      graceHost: monitor?.graceHost ?? "",
+      graceUnit: monitor?.graceUnit ?? "",
+      graceSecs: monitor?.graceSecs ?? 1500,
     },
     onError: () => {},
     handler: async (values) => {
@@ -86,6 +89,12 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
         intervalSecs: values.intervalSecs,
         timeoutSecs: values.timeoutSecs,
         confirmations: values.confirmations,
+        // Both or neither (#Q4424): a host without a unit holds nothing.
+        graceHost:
+          values.graceHost && values.graceUnit ? values.graceHost : undefined,
+        graceUnit:
+          values.graceHost && values.graceUnit ? values.graceUnit : undefined,
+        graceSecs: values.graceSecs,
         expect:
           values.kind === "http"
             ? {
@@ -225,6 +234,27 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
                   disabled={loading}
                 />
               </>
+            )}
+            {(kind === "http" || kind === "tcp") && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Control
+                  input={form.input.graceHost}
+                  label={tr("uptime.graceHost")}
+                  description={tr("uptime.grace.description")}
+                  disabled={loading}
+                />
+                <Control
+                  input={form.input.graceUnit}
+                  label={tr("uptime.graceUnit")}
+                  disabled={loading}
+                />
+                <Control
+                  number
+                  input={form.input.graceSecs}
+                  label={tr("uptime.graceSecs")}
+                  disabled={loading}
+                />
+              </div>
             )}
             {kind === "cert" && (
               <Control
