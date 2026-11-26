@@ -2,6 +2,7 @@ package connector
 
 import (
 	"context"
+	"math"
 	"time"
 )
 
@@ -158,11 +159,30 @@ func (c *Client) pushStats(ctx context.Context) {
 		Type:          "stats",
 		CPUPercent:    cpu,
 		MemoryPercent: mem,
+		DiskPercent:   diskPercentOf(reading.Host),
+		Load1:         reading.Host.Load1,
 		At:            c.Now().UTC().Format(time.RFC3339),
 	}
 	if err := c.Send(frame); err != nil {
 		c.Log.Debug("stats not sent", "err", err)
 	}
+}
+
+/*
+diskPercentOf is the share of the disk in use, from the absolutes the sample
+already read, or nil when the gauge could not read the disk. Rounded to one
+decimal: the series is a trend line, and the wire stays readable.
+*/
+func diskPercentOf(h Host) *float64 {
+	if h.DiskTotalBytes == nil || h.DiskUsedBytes == nil || *h.DiskTotalBytes == 0 {
+		return nil
+	}
+	pct, ok := sanitizePercent(float64(*h.DiskUsedBytes) / float64(*h.DiskTotalBytes) * 100)
+	if !ok {
+		return nil
+	}
+	pct = math.Round(pct*10) / 10
+	return &pct
 }
 
 // statsInterval is the interval in force, never under the floor.

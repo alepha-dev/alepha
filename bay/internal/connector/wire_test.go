@@ -197,7 +197,7 @@ func TestWireClientFramesEncode(t *testing.T) {
 			return ack
 		}()},
 		{"log.json", NewLogFrame("5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e", "stdout", 0, "{\"type\":\"system\",\"subtype\":\"init\"}\n")},
-		{"stats.json", Stats{Type: "stats", CPUPercent: 34.5, MemoryPercent: 61, At: "2026-09-05T12:00:00Z"}},
+		{"stats.json", Stats{Type: "stats", CPUPercent: 34.5, MemoryPercent: 61, DiskPercent: ptr(25.4), Load1: ptr(0.52), At: "2026-09-05T12:00:00Z"}},
 		{"inventory.json", sampleInventoryFrame()},
 		{"event.json", Event{
 			Type: "event", ID: "evt-01JB6Q3V9W2X5Y7Z8A1B2C3D4E", Kind: "backup.failed",

@@ -242,11 +242,17 @@ func cut(s string, n int) string {
 }
 
 // Stats is the gauge this Bay pushes on its interval (#1623).
+//
+// DiskPercent (the filesystem holding Bay's root) and Load1 are optional: a
+// gauge that cannot read them leaves them out, and Lore keeps the CPU and
+// memory series either way.
 type Stats struct {
-	Type          string  `json:"type"`
-	CPUPercent    float64 `json:"cpuPercent"`
-	MemoryPercent float64 `json:"memoryPercent"`
-	At            string  `json:"at"`
+	Type          string   `json:"type"`
+	CPUPercent    float64  `json:"cpuPercent"`
+	MemoryPercent float64  `json:"memoryPercent"`
+	DiskPercent   *float64 `json:"diskPercent,omitempty"`
+	Load1         *float64 `json:"load1,omitempty"`
+	At            string   `json:"at"`
 }
 
 // serverFrame is the union of everything Lore sends, decoded once and
