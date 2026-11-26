@@ -396,8 +396,29 @@ describe("prompts", () => {
       "does not hold the pull request back",
     );
     expect(byName["work-quest"]!.text).toContain(
-      "turn it on once the review's fixes are pushed",
+      "once the review's fixes are pushed, turn on auto-merge",
     );
+  });
+
+  it("has every work prompt land its pull request by auto-merge, banning only a merge that skips CI (#Q4527)", async ({
+    expect,
+  }) => {
+    const byName = Object.fromEntries(
+      (await list()).map((it) => [it.name, it]),
+    );
+    for (const name of [
+      "work-quest",
+      "work-epic",
+      "work-loose-quests",
+      "work-feedback",
+      "dependency-update",
+    ]) {
+      const text = byName[name]!.text;
+      expect(text).toContain("`gh pr merge --auto --rebase`");
+      expect(text).toContain("that is how the pull request lands");
+      expect(text).toContain("Never merge it at once without CI");
+      expect(text).not.toContain("Never merge it yourself");
+    }
   });
 
   it("freezes a built-in's words, while its source is the project's to change, on a row of its own", async ({
