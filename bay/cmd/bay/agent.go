@@ -85,6 +85,10 @@ func newAgentClient(root string, log *slog.Logger) *connector.Client {
 		Log:     log,
 		Handler: monitorHandler{log: log},
 		Gauge:   connector.HostGauge(root),
+		// A monitor reports what happened as well as what is: a watched unit
+		// that failed at 3am is an event, spooled until Lore takes it.
+		Events:  connector.NewEventSpool(root, 0),
+		Units:   connector.SystemctlUnits,
 		Version: version,
 		Mode:    connector.ModeMonitor,
 		// An agent is upgraded on the machine, never by a command.

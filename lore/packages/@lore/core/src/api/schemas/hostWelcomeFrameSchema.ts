@@ -43,6 +43,12 @@ export const hostWelcomeFrameSchema = z.object({
   statsIntervalSeconds: z.integer(),
   /** Absent from an older Lore, which a machine reads as "none". */
   features: z.array(z.enum(HOST_FEATURES)).optional(),
+  /**
+   * The systemd units the machine reports (#Q4421): their state on the
+   * inventory, a `unit.changed` event on every change. Absent means none, and
+   * an older Bay ignores it.
+   */
+  watchUnits: z.array(z.string().max(200)).max(20).optional(),
 });
 
 export type HostWelcomeFrame = Infer<typeof hostWelcomeFrameSchema>;

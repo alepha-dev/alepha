@@ -45,8 +45,11 @@ type Host struct {
 	DiskUsedBytes  *uint64  `json:"diskUsedBytes,omitempty"`
 	Load1          *float64 `json:"load1,omitempty"`
 	UptimeSeconds  *uint64  `json:"uptimeSeconds,omitempty"`
-	BayVersion     string   `json:"bayVersion,omitempty"`
-	UpgradeMode    string   `json:"upgradeMode,omitempty"`
+	// Units are the watched systemd units as last read (units.go), stamped
+	// by the client rather than read by the gauge.
+	Units       []UnitState `json:"units,omitempty"`
+	BayVersion  string      `json:"bayVersion,omitempty"`
+	UpgradeMode string      `json:"upgradeMode,omitempty"`
 	// Mode is `monitor` for a Bay that only reports (`bay agent`, #Q4002),
 	// absent for one that serves: Lore offers no action on a monitor.
 	Mode string `json:"mode,omitempty"`

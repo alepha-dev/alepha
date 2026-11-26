@@ -274,6 +274,7 @@ type serverFrame struct {
 	JobsAllowed          bool     `json:"jobsAllowed,omitempty"`
 	StatsIntervalSeconds int      `json:"statsIntervalSeconds,omitempty"`
 	Features             []string `json:"features,omitempty"`
+	WatchUnits           []string `json:"watchUnits,omitempty"`
 
 	// command
 	ID          string          `json:"id,omitempty"`
@@ -393,6 +394,12 @@ type Client struct {
 	// Mode is stamped on the inventory's host block: ModeMonitor for `bay
 	// agent` (#Q4002), empty for `bay serve`.
 	Mode string
+	// Units reads the systemd units Lore asks this machine to watch; nil
+	// watches nothing.
+	Units UnitReader
+	// UnitPollInterval is how often the watched units are read;
+	// DefaultUnitPollInterval when zero.
+	UnitPollInterval time.Duration
 	// MinStatsInterval floors whatever interval Lore names.
 	MinStatsInterval time.Duration
 	// MinInventoryInterval is the floor between two inventory pushes,
@@ -426,6 +433,13 @@ type Client struct {
 	inventoryMu   sync.Mutex
 	lastInventory time.Time
 
+	// unitsMu guards the watched list and the states last read from it;
+	// unitsKick asks the units loop to read now.
+	unitsMu      sync.Mutex
+	watchedUnits []string
+	units        []UnitState
+	unitsKick    chan struct{}
+
 	// generation counts the connections this client has held, so a job's log
 	// streamer can tell a socket that dropped and came back (and rewind what
 	// it sent into the dying one) from one that stayed up.
@@ -449,6 +463,9 @@ func (c *Client) ensureChannels() {
 		}
 		if c.inventoryKick == nil {
 			c.inventoryKick = make(chan struct{}, 1)
+		}
+		if c.unitsKick == nil {
+			c.unitsKick = make(chan struct{}, 1)
 		}
 	})
 }
@@ -507,6 +524,14 @@ func gorillaDial(ctx context.Context, url string, header http.Header) (Conn, err
 // does: cancelling closes the open socket. It never returns early.
 func (c *Client) Run(ctx context.Context) {
 	c.defaults()
+	// The watched units are read connected or not: a change while Lore is
+	// unreachable is spooled and sent on the next connection.
+	if c.Units != nil {
+		if w, ok, _ := c.Store.LoadWelcome(); ok {
+			c.SetWatchedUnits(w.WatchUnits)
+		}
+		go c.unitsLoop(ctx)
+	}
 	outage := false
 	backoff := c.MinBackoff
 	for ctx.Err() == nil {
@@ -685,8 +710,10 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			JobsAllowed:          frame.JobsAllowed,
 			StatsIntervalSeconds: frame.StatsIntervalSeconds,
 			Features:             frame.Features,
+			WatchUnits:           frame.WatchUnits,
 			ReceivedAt:           c.Now(),
 		}
+		c.SetWatchedUnits(frame.WatchUnits)
 		if err := c.Store.SaveWelcome(w); err != nil {
 			c.Log.Warn("could not cache the welcome frame", "err", err)
 		}
