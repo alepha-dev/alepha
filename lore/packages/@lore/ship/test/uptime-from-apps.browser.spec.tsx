@@ -77,6 +77,7 @@ const aMonitor = (
     intervalSecs: 60,
     timeoutSecs: 10,
     confirmations: 2,
+    graceSecs: 1500,
     expect: {},
     notifications: { email: true, recipients: [] },
     active: true,

@@ -36,6 +36,7 @@ const monitor = (target: string, expect = {}, timeoutSecs = 1) =>
     intervalSecs: 60,
     timeoutSecs,
     confirmations: 2,
+    graceSecs: 1500,
     expect,
     notifications: { email: true, recipients: [] },
     active: true,
