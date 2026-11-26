@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 
 import { type LoreSpriteMood, LoreSpriteMoods } from "./LoreSpriteMoods.ts";
 import { LoreSpritePortraitRenderer } from "./LoreSpritePortraitRenderer.ts";
+import type { LoreSpriteSeekingLook } from "./LoreSpriteSeekingRenderer.ts";
 
 export interface LoreLogoAnimatedProps {
   /**
@@ -20,6 +21,12 @@ export interface LoreLogoAnimatedProps {
    */
   mood?: LoreSpriteMood;
   /**
+   * Where the `seeking` mood searches: `left`, at the list beside a pane
+   * (the default), or `around`, across a full page that has no list. The
+   * other moods ignore it.
+   */
+  look?: LoreSpriteSeekingLook;
+  /**
    * Frame her orb and the roots of her wings, for an avatar of 30 to 48 px
    * (`LoreSpritePortraitRenderer`). A portrait has no mood and follows no
    * pointer.
@@ -35,7 +42,7 @@ export interface LoreLogoAnimatedProps {
  * The canvas is empty in the server render and the companion assembles
  * itself on mount (the dust gathers, the core lights, the wings unfold), so
  * hydration has nothing to disagree with and the first paint is an entrance
- * rather than a flash. A change of `mood` is a new entrance.
+ * rather than a flash. A change of `mood` or `look` is a new entrance.
  *
  * Small marks (header, favicon) keep the raster `LoreLogo`: this one is drawn
  * for a box of 120 px and up, or as a `portrait` for an avatar.
@@ -58,10 +65,14 @@ const LoreLogoAnimated = (props: LoreLogoAnimatedProps) => {
     }
     const renderer = props.portrait
       ? new LoreSpritePortraitRenderer(canvas, {})
-      : LoreSpriteMoods.create(canvas, { follow: props.follow }, props.mood);
+      : LoreSpriteMoods.create(
+          canvas,
+          { follow: props.follow, look: props.look },
+          props.mood,
+        );
     renderer.start();
     return () => renderer.destroy();
-  }, [props.follow, props.mood, props.portrait]);
+  }, [props.follow, props.mood, props.look, props.portrait]);
 
   return (
     <canvas

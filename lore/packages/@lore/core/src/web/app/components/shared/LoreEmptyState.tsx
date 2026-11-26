@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import LoreLogoAnimated from "./LoreLogoAnimated.tsx";
 import type { LoreSpriteMood } from "./LoreSpriteMoods.ts";
+import type { LoreSpriteSeekingLook } from "./LoreSpriteSeekingRenderer.ts";
 
 export interface LoreEmptyStateProps {
   /**
@@ -11,6 +12,12 @@ export interface LoreEmptyStateProps {
    * nothing selected, `glitch` for something that broke.
    */
   mood: LoreSpriteMood;
+  /**
+   * Where a `seeking` companion searches: `left` (the default) for a pane
+   * with its list on the left, `around` for a full page, which has no list
+   * to look at.
+   */
+  look?: LoreSpriteSeekingLook;
   /**
    * One short line naming the state.
    */
@@ -51,7 +58,11 @@ const LoreEmptyState = (props: LoreEmptyStateProps) => {
     >
       <div aria-hidden className="relative -mb-2">
         <div className="lore-empty-dots pointer-events-none absolute top-1/2 left-1/2 h-[30rem] w-[40rem] -translate-x-1/2 -translate-y-1/2" />
-        <LoreLogoAnimated mood={props.mood} className="relative size-48" />
+        <LoreLogoAnimated
+          mood={props.mood}
+          look={props.look}
+          className="relative size-48"
+        />
       </div>
       <p className="relative text-base font-medium">{props.title}</p>
       {props.description && (
