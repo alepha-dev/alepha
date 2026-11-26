@@ -102,6 +102,8 @@ export type {
   McpToolCallResult,
   // Tool types
   McpToolDescriptor,
+  McpUiResourceMeta,
+  McpUiToolVisibility,
   PromptHandler,
   PromptHandlerArgs,
   PromptMessage,
@@ -114,6 +116,7 @@ export type {
   // Handler types
   ToolPrimitiveSchema,
 } from "./interfaces/McpTypes.ts";
+export { MCP_APP_MIME_TYPE, MCP_APPS_EXTENSION } from "./helpers/mcpApps.ts";
 export type { PromptPrimitiveOptions } from "./primitives/$prompt.ts";
 export { $prompt, PromptPrimitive } from "./primitives/$prompt.ts";
 export type { ResourcePrimitiveOptions } from "./primitives/$resource.ts";
@@ -129,6 +132,7 @@ export {
 export type {
   McpToolOptions,
   ToolPrimitiveOptions,
+  ToolUiOptions,
 } from "./primitives/$tool.ts";
 export { $tool, mcpToolOptions, ToolPrimitive } from "./primitives/$tool.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";

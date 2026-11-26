@@ -44,6 +44,7 @@ import {
   SUPPORTED_PROTOCOL_VERSIONS,
 } from "../helpers/jsonrpc.ts";
 import { McpActionTool } from "../helpers/McpActionTool.ts";
+import { MCP_APP_MIME_TYPE, MCP_APPS_EXTENSION } from "../helpers/mcpApps.ts";
 import { McpElicitationSession } from "../helpers/McpElicitationSession.ts";
 import type {
   JsonRpcError,
@@ -388,6 +389,12 @@ export class McpServerProvider {
     this.log.trace(`Registering MCP resource: ${resource.uri}`);
     this.assertUnregistered(this.resources, resource.uri, "resource");
     this.resources.set(resource.uri, resource);
+    // The MCP Apps extension is declared by the first view a server has.
+    if (resource.isUi && !this.hasExtension(MCP_APPS_EXTENSION)) {
+      this.registerExtension(MCP_APPS_EXTENSION, {
+        mimeTypes: [MCP_APP_MIME_TYPE],
+      });
+    }
   }
 
   /**
@@ -1977,6 +1984,7 @@ export class McpServerProvider {
         uri,
         resource.mimeType,
         await resource.read(context),
+        resource.contentMeta,
       );
     }
 
@@ -2005,8 +2013,12 @@ export class McpServerProvider {
     uri: string,
     mimeType: string,
     content: { text?: string; blob?: Uint8Array },
+    meta?: Record<string, unknown>,
   ): McpResourceReadResult {
     const resourceContent: McpResourceContent = { uri, mimeType };
+    if (meta) {
+      resourceContent._meta = meta;
+    }
 
     if (content.text !== undefined) {
       resourceContent.text = content.text;

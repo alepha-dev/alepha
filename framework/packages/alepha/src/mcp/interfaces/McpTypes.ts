@@ -396,7 +396,61 @@ export interface McpResourceContent {
   mimeType?: string;
   text?: string;
   blob?: string;
+  /**
+   * Metadata on the content itself: an MCP Apps view carries its `ui`
+   * (CSP, domain, border) here as well as on its descriptor, and a host
+   * reads it from the `resources/read` result.
+   */
+  _meta?: Record<string, unknown>;
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// MCP Apps (io.modelcontextprotocol/ui, spec 2026-01-26)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * What a `ui://` resource tells the host about its view, written to
+ * `_meta.ui` on its descriptor and on its `resources/read` content.
+ */
+export interface McpUiResourceMeta {
+  /**
+   * The origins the sandboxed iframe may reach. With none, it reaches
+   * nothing but itself.
+   */
+  csp?: {
+    /**
+     * Origins for `fetch`, XHR and WebSocket (`connect-src`).
+     */
+    connectDomains?: string[];
+    /**
+     * Origins for scripts, styles, images, fonts and media.
+     */
+    resourceDomains?: string[];
+    /**
+     * Origins the view may nest in its own iframes (`frame-src`).
+     */
+    frameDomains?: string[];
+    /**
+     * Origins allowed as the document's base URI (`base-uri`).
+     */
+    baseUriDomains?: string[];
+  };
+  /**
+   * A dedicated origin for the view, when it needs a stable one (an OAuth
+   * redirect, an API allow-list). Host-specific in format.
+   */
+  domain?: string;
+  /**
+   * Whether the host should draw a border around the view.
+   */
+  prefersBorder?: boolean;
+}
+
+/**
+ * Who may call a tool that has a view: `model` (the agent) and `app` (the
+ * view, through the host). Both when omitted.
+ */
+export type McpUiToolVisibility = "model" | "app";
 
 // ---------------------------------------------------------------------------------------------------------------------
 // Prompt Types

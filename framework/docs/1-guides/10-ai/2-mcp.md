@@ -253,19 +253,20 @@ class Resources {
 
 **Options:**
 
-| Option        | Type       | Description                                                                                                         |
-| ------------- | ---------- | ------------------------------------------------------------------------------------------------------------------- |
-| `uri`         | `string`   | Required. Unique identifier (e.g. `app://projects`, `file:///readme`).                                              |
-| `description` | `string`   | What this resource contains.                                                                                        |
-| `mimeType`    | `string`   | Content type. Defaults to `text/plain`.                                                                             |
-| `size`        | `number`   | Raw content size in bytes, when known, so a client can estimate context use before reading.                         |
-| `handler`     | `function` | Receives `{ context }`. Returns `{ text }` for text content or `{ blob }` (a `Uint8Array`) for binary.              |
-| `name`        | `string`   | Display name. Defaults to the property key.                                                                         |
-| `title`       | `string`   | Human-friendly display name for client pickers.                                                                     |
-| `icons`       | `array`    | Icons shown in client resource lists.                                                                               |
-| `annotations` | `object`   | `audience`, `priority` and `lastModified` hints. `lastModified` lets a client skip re-reading a copy still current. |
-| `_meta`       | `object`   | Arbitrary metadata passed through on the descriptor.                                                                |
-| `cache`       | `object`   | `{ ttlMs, cacheScope }` hints on `resources/read`, modern clients only. See [Caching hints](#caching-hints).        |
+| Option        | Type       | Description                                                                                                          |
+| ------------- | ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| `uri`         | `string`   | Required. Unique identifier (e.g. `app://projects`, `file:///readme`).                                               |
+| `description` | `string`   | What this resource contains.                                                                                         |
+| `mimeType`    | `string`   | Content type. Defaults to `text/plain`, or `text/html;profile=mcp-app` for a `ui://` URI.                            |
+| `size`        | `number`   | Raw content size in bytes, when known, so a client can estimate context use before reading.                          |
+| `handler`     | `function` | Receives `{ context }`. Returns `{ text }` for text content or `{ blob }` (a `Uint8Array`) for binary.               |
+| `name`        | `string`   | Display name. Defaults to the property key.                                                                          |
+| `title`       | `string`   | Human-friendly display name for client pickers.                                                                      |
+| `icons`       | `array`    | Icons shown in client resource lists.                                                                                |
+| `annotations` | `object`   | `audience`, `priority` and `lastModified` hints. `lastModified` lets a client skip re-reading a copy still current.  |
+| `_meta`       | `object`   | Arbitrary metadata passed through on the descriptor.                                                                 |
+| `cache`       | `object`   | `{ ttlMs, cacheScope }` hints on `resources/read`, modern clients only. See [Caching hints](#caching-hints).         |
+| `ui`          | `object`   | What an MCP Apps view tells the host: `csp`, `domain`, `prefersBorder`. See [MCP Apps](#mcp-apps-interactive-views). |
 
 ### $resourceTemplate: Parameterized Resources
 
@@ -977,6 +978,68 @@ descriptor blob is what you are trying to keep out of the model's context:
 ```typescript
 alepha.inject(McpServerProvider).pageSize = 25;
 ```
+
+### MCP Apps: interactive views
+
+The MCP Apps extension (`io.modelcontextprotocol/ui`) lets a tool show an
+interactive view. A host that supports it renders a `ui://` resource, an HTML
+page, in a sandboxed iframe, hands it the tool's input and result, and lets it
+call tools back.
+
+The view is a `$resource` whose URI starts with `ui://`: it is served as
+`text/html;profile=mcp-app` unless `mimeType` says otherwise. The tool points
+to it with `ui.resource`, the resource itself or its URI:
+
+```typescript
+import { z } from "alepha";
+import { $resource, $tool } from "alepha/mcp";
+
+class Charts {
+  chart = $resource({
+    uri: "ui://charts/sales",
+    description: "The sales chart",
+    ui: {
+      csp: { connectDomains: ["https://api.example.app"] },
+      prefersBorder: true,
+    },
+    handler: async () => ({ text: "<!doctype html>..." }),
+  });
+
+  sales = $tool({
+    description: "Sales for a quarter",
+    schema: {
+      params: z.object({ quarter: z.text() }),
+      result: z.object({ total: z.number() }),
+    },
+    ui: { resource: this.chart },
+    handler: async () => ({ total: 42 }),
+  });
+
+  refresh = $tool({
+    description: "Reload the chart's data",
+    ui: { resource: "ui://charts/sales", visibility: ["app"] },
+    handler: async () => "refreshed",
+  });
+}
+```
+
+- The resource's `ui` becomes `_meta.ui` on its descriptor and on its
+  `resources/read` content: `csp` (`connectDomains`, `resourceDomains`,
+  `frameDomains`, `baseUriDomains`; the iframe reaches no other origin),
+  `domain` and `prefersBorder`.
+- The tool's `ui` becomes `_meta.ui.resourceUri`, plus `visibility`: `["app"]`
+  hides the tool from the agent and leaves it to the view. It is still a normal
+  `tools/call`, authorized like any other.
+- A typed `ui` and a hand-written `_meta.ui` merge: the typed keys win, a key
+  only `_meta.ui` sets survives.
+- The server declares `io.modelcontextprotocol/ui` as soon as one `ui://`
+  resource is registered.
+
+`_meta.ui` is sent to **every** client, on every era and transport, whether or
+not it declared the extension: a legacy HTTP client's declaration cannot be
+known, and a client that does not know the extension ignores `_meta`. So the
+tool's text result must make sense on its own; the view is an addition, not a
+replacement.
 
 ### Tracing
 
