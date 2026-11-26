@@ -2514,7 +2514,9 @@ test.describe("Quest hold", () => {
         .fill("Waiting on the vendor API key");
       // A dated hold (#Q4408): the quick pick fills the day.
       await page.getByRole("button", { name: "1 week" }).click();
-      await expect(page.getByTestId("quest-hold-until")).not.toHaveValue("");
+      // The day is the kit's date control (#Q4446), whose trigger is a
+      // button: a picked day shows "No date" beside it.
+      await expect(page.getByRole("button", { name: "No date" })).toBeVisible();
       await submit.click();
     });
 
