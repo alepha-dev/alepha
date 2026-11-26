@@ -1,3 +1,4 @@
+import { DialogProvider } from "@alepha/ui";
 import type { HostJobResource } from "@lore/core/schemas";
 import { projectFixture } from "@lore/core/testing";
 import { I18n, currentProjectAtom } from "@lore/core/web";
@@ -124,7 +125,9 @@ describe("ProjectJob", () => {
     } as never);
     render(
       <AlephaContext.Provider value={alepha}>
-        <ProjectJob jobId={jobId} />
+        <DialogProvider>
+          <ProjectJob jobId={jobId} />
+        </DialogProvider>
       </AlephaContext.Provider>,
     );
     await screen.findByTestId("project-job");
@@ -436,9 +439,28 @@ describe("ProjectJob", () => {
     expect(cancel.getAttribute("data-variant")).toBe("destructive");
     expect(screen.queryByTestId("job-log")).toBeNull();
 
-    // The menu item still cancels the job.
+    // The trigger is a minimal button, and a separator stands before
+    // Cancel (#Q4493).
+    expect(more.className).toContain("hover:bg-hover");
+    expect(more.className).not.toContain("bg-transparent");
+    expect(cancel.previousElementSibling?.getAttribute("data-slot")).toBe(
+      "dropdown-menu-separator",
+    );
+
+    // Cancel asks first: dismissed, the job is left running (#Q4493).
     world.calls = [];
     fireEvent.click(cancel);
+    const ask = await screen.findByRole("alertdialog");
+    expect(ask.textContent).toContain("Cancel this job?");
+    fireEvent.click(screen.getByRole("button", { name: "Keep it running" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(world.calls).not.toContain("cancelJob");
+
+    // Confirmed, the menu item cancels the job.
+    fireEvent.click(screen.getByTestId("job-more"));
+    fireEvent.click(await screen.findByTestId("job-cancel"));
+    await screen.findByRole("alertdialog");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel the job" }));
     await waitFor(() => expect(world.calls).toContain("cancelJob"));
   });
 

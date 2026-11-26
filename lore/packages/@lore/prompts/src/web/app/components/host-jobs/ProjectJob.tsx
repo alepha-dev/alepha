@@ -3,7 +3,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  useDialog,
   useToast,
 } from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
@@ -61,6 +63,7 @@ const ProjectJob = (props: ProjectJobProps) => {
   const api = useClient<HostJobController>();
   const promptApi = useClient<PromptController>();
   const toaster = useToast();
+  const dialog = useDialog();
   // A page name another router declares: the Jobs tab is core's own.
   const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
@@ -138,9 +141,19 @@ const ProjectJob = (props: ProjectJobProps) => {
     [log.stdout, row?.input.agent],
   );
 
+  // Asked first (#Q4493): a cancel kills the agent mid-run, and the menu
+  // item sits one row under harmless ones.
   const cancel = useAction<[], void>(
     {
       handler: async () => {
+        const ok = await dialog.confirm({
+          title: tr("jobs.cancel.title"),
+          description: tr("jobs.cancel.confirm"),
+          confirmLabel: tr("jobs.cancel.yes"),
+          cancelLabel: tr("jobs.cancel.no"),
+          destructive: true,
+        });
+        if (!ok) return;
         await api.cancelJob({ params: { jobId } });
         await job.refetch();
       },
@@ -246,7 +259,7 @@ const ProjectJob = (props: ProjectJobProps) => {
           render={
             <Button
               type="button"
-              variant="outlined"
+              variant="minimal"
               size="icon-lg"
               aria-label={tr("jobs.more")}
               title={tr("jobs.more")}
@@ -279,6 +292,7 @@ const ProjectJob = (props: ProjectJobProps) => {
               {tr("jobs.poke")}
             </DropdownMenuItem>
           )}
+          {inFlight && <DropdownMenuSeparator />}
           {inFlight && (
             <DropdownMenuItem
               variant="destructive"

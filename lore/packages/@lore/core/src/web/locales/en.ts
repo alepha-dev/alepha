@@ -3235,6 +3235,11 @@ export default {
   "jobs.poke.sent": "Message sent to the job",
   "jobs.poke.from": "Poke from $1",
   "jobs.poke.someone": "a member",
+  "jobs.cancel.title": "Cancel this job?",
+  "jobs.cancel.confirm":
+    "Its agent is stopped where it is: what it has not committed or pushed stays in the workspace, and Run again continues from there.",
+  "jobs.cancel.yes": "Cancel the job",
+  "jobs.cancel.no": "Keep it running",
   "jobs.more": "More actions",
   "jobs.runAgain": "Run again",
   "jobs.startFresh": "Start fresh",
