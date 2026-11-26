@@ -62,7 +62,7 @@ describe("PromptRunDialog", () => {
     alepha = undefined;
   });
 
-  const show = async (mode: "copy" | "run") => {
+  const show = async (mode: "copy" | "run", busy = false) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -89,6 +89,7 @@ describe("PromptRunDialog", () => {
           mode={mode}
           hosts={["desktop"]}
           agents={world.agents}
+          busy={busy}
           onSubmit={(body) => submitted.push(body)}
         />
       </AlephaContext.Provider>,
@@ -175,5 +176,19 @@ describe("PromptRunDialog", () => {
     world.agents = [{ host: "desktop", agent: "claude", signedIn: true }];
     await show("copy");
     expect(screen.queryByRole("combobox", { name: /Model/ })).toBeNull();
+  });
+  it("spins its submit button while the run is in flight, and only then (#Q4505)", async ({
+    expect,
+  }) => {
+    await show("run");
+    const submit = screen.getByTestId("prompt-run-submit");
+    expect(submit.getAttribute("aria-busy")).toBeNull();
+    cleanup();
+    await alepha?.stop();
+
+    await show("run", true);
+    const busy = screen.getByTestId("prompt-run-submit");
+    expect(busy.getAttribute("aria-busy")).toBe("true");
+    expect(busy.hasAttribute("disabled")).toBe(true);
   });
 });

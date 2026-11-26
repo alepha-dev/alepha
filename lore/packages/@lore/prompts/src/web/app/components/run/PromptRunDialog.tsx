@@ -262,7 +262,10 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={props.busy}
+              // The kit's spinner while the run (or the copy) is in flight
+              // (#Q4505): starting a job takes seconds, and a still button
+              // read as broken.
+              loading={props.busy}
               data-testid="prompt-run-submit"
             >
               {props.mode === "run" ? tr("prompts.run") : tr("prompts.copy")}
