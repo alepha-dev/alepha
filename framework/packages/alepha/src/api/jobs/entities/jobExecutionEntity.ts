@@ -81,6 +81,20 @@ export const jobExecutionEntity = $entity({
      */
     steps: z.record(z.text(), jobStepSchema).nullable().optional(),
 
+    /**
+     * The handler's return value, written at success for a job that declares
+     * `keepResult: true`, and null for every other job. JSON.
+     */
+    result: z.any().optional(),
+
+    /**
+     * A retention floor for this row: an `ok`, `error` or `cancelled` row is
+     * never deleted before this instant, neither when its run ends (a job
+     * that records no successes keeps it until then) nor by the trim. Past
+     * it, the job's retention applies. Set by `push({ expiresAt })`.
+     */
+    expiresAt: z.datetime().optional(),
+
     triggeredBy: z.text().optional(),
     triggeredByName: z.text().optional(),
     cancelledBy: z.text().optional(),

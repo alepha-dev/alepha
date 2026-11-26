@@ -22,6 +22,8 @@ export {
   McpMissingRequiredClientCapabilityError,
   McpPromptNotFoundError,
   McpResourceNotFoundError,
+  McpTaskNotFoundError,
+  McpTaskNotWaitingError,
   McpToolNotFoundError,
   McpToolOutputError,
   McpUnauthorizedError,
@@ -137,6 +139,13 @@ export type {
 } from "./primitives/$tool.ts";
 export { $tool, mcpToolOptions, ToolPrimitive } from "./primitives/$tool.ts";
 export { McpServerProvider } from "./providers/McpServerProvider.ts";
+export {
+  type McpTaskInit,
+  type McpTaskRun,
+  type McpTaskState,
+  type McpTaskStatus,
+  McpTaskStore,
+} from "./providers/McpTaskStore.ts";
 export { StdioMcpTransport } from "./transports/StdioMcpTransport.ts";
 export {
   mcpSseOptions,

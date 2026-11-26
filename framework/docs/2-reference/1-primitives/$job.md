@@ -17,15 +17,16 @@ queue job that handles them.
 
 ## Options
 
-| Option        | Type                  | Required | Description                                                                                                                           |
-| ------------- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`        | `string`              | Yes      | The job's name: `<domain>.<action>`, lowercase kebab-case segments, such as `hosts.sweep-commands` or `quests.send-due-reminders`     |
-| `description` | `string`              | Yes      | What the job does, in one sentence, shown to operators in the admin                                                                   |
-| `schema`      | `T`                   | No       | Payload schema (Zod)                                                                                                                  |
-| `cron`        | `string`              | No       | Cron expression for recurring execution                                                                                               |
-| `retry`       | `JobRetryOptions`     | No       | Retry policy for queue-mode and direct-mode jobs                                                                                      |
-| `lock`        | `boolean`             | No       | **Cron-mode only.** Whether to claim each cron tick so that only one instance of a multi-replica deployment runs the handler per tick |
-| `timeout`     | `DurationLike`        | No       | Max execution time per attempt                                                                                                        |
-| `inline`      | `boolean`             | No       | Run the handler inline and make the caller wait for it                                                                                |
-| `retention`   | `JobRetentionOptions` | No       | How long the job's executions are kept, per status                                                                                    |
-| `handler`     | `Object`              | Yes      | Handler function                                                                                                                      |
+| Option        | Type                  | Required | Description                                                                                                                                |
+| ------------- | --------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `name`        | `string`              | Yes      | The job's name: `<domain>.<action>`, lowercase kebab-case segments, such as `hosts.sweep-commands` or `quests.send-due-reminders`          |
+| `description` | `string`              | Yes      | What the job does, in one sentence, shown to operators in the admin                                                                        |
+| `schema`      | `T`                   | No       | Payload schema (Zod)                                                                                                                       |
+| `cron`        | `string`              | No       | Cron expression for recurring execution                                                                                                    |
+| `retry`       | `JobRetryOptions`     | No       | Retry policy for queue-mode and direct-mode jobs                                                                                           |
+| `lock`        | `boolean`             | No       | **Cron-mode only.** Whether to claim each cron tick so that only one instance of a multi-replica deployment runs the handler per tick      |
+| `timeout`     | `DurationLike`        | No       | Max execution time per attempt                                                                                                             |
+| `inline`      | `boolean`             | No       | Run the handler inline and make the caller wait for it                                                                                     |
+| `retention`   | `JobRetentionOptions` | No       | How long the job's executions are kept, per status                                                                                         |
+| `keepResult`  | `boolean`             | No       | Store the handler's return value in the execution's `result` column at success, for whoever reads the run afterwards (a poller, the admin) |
+| `handler`     | `Object`              | Yes      | Handler function                                                                                                                           |

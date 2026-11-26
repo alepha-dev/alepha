@@ -657,6 +657,7 @@ export const uiFr: Record<string, DictionaryEntry> = {
   "admin.jobs.originApp": "Application",
   "admin.jobs.originSystem": "Système",
   "admin.jobs.payloadTitle": "Charge utile",
+  "admin.jobs.resultTitle": "Résultat",
   "admin.jobs.retention.days": "$1 jours",
   "admin.jobs.statsTitle": "Dernières 24 heures",
   "admin.jobs.statsError": "Échecs",

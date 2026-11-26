@@ -138,6 +138,33 @@ export const McpViewNotBuiltError = McpError.extend({
 export type McpViewNotBuiltError = InstanceType<typeof McpViewNotBuiltError>;
 
 /**
+ * A `tasks/*` call naming no task the caller may see: unknown, expired, or
+ * started by another client (which is answered exactly like unknown).
+ */
+export const McpTaskNotFoundError = McpError.extend({
+  name: "MCP_TASK_NOT_FOUND",
+  schema: z.object({ taskId: z.text() }),
+  default: { code: JsonRpcErrorCodes.INVALID_PARAMS },
+  message: "Failed to retrieve task: Task not found",
+});
+
+export type McpTaskNotFoundError = InstanceType<typeof McpTaskNotFoundError>;
+
+/**
+ * `tasks/update` on a task that is not waiting for input.
+ */
+export const McpTaskNotWaitingError = McpError.extend({
+  name: "MCP_TASK_NOT_WAITING",
+  schema: z.object({ taskId: z.text() }),
+  default: { code: JsonRpcErrorCodes.INVALID_PARAMS },
+  message: "Invalid params: the task is not waiting for input",
+});
+
+export type McpTaskNotWaitingError = InstanceType<
+  typeof McpTaskNotWaitingError
+>;
+
+/**
  * A prompt the server does not declare.
  */
 export const McpPromptNotFoundError = McpError.extend({

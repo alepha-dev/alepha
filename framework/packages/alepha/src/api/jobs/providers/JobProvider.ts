@@ -30,6 +30,8 @@ import {
   type JobStatus,
   jobExecutionEntity,
 } from "../entities/jobExecutionEntity.ts";
+import { JobInputExpiredError } from "../errors/JobInputExpiredError.ts";
+import { JobInputNotAwaitedError } from "../errors/JobInputNotAwaitedError.ts";
 import type {
   JobPrimitiveOptions,
   JobRescheduleOptions,
@@ -76,6 +78,12 @@ export interface PushOptions {
    * handler in the caller, on purpose, so call it after the commit.
    */
   inline?: boolean;
+  /**
+   * A retention floor for this execution: its row, once the run ended `ok`,
+   * `error` or `cancelled`, is not deleted before this instant, whatever the
+   * job's retention. For a result a caller polls for, such as an MCP task's.
+   */
+  expiresAt?: Date;
 }
 
 export interface PushManyItem<T extends ZType = ZType> {
@@ -1046,6 +1054,9 @@ export class JobProvider {
         triggeredBy: options.triggeredBy,
         triggeredByName: options.triggeredByName,
         ...(seed?.steps ? { steps: seed.steps } : {}),
+        ...(options.expiresAt
+          ? { expiresAt: options.expiresAt.toISOString() }
+          : {}),
       });
       if (!created) {
         // Lost the race to a concurrent same-key push, the winner dispatches.
@@ -1074,6 +1085,9 @@ export class JobProvider {
       triggeredBy: options?.triggeredBy,
       triggeredByName: options?.triggeredByName,
       ...(seed?.steps ? { steps: seed.steps } : {}),
+      ...(options?.expiresAt
+        ? { expiresAt: options.expiresAt.toISOString() }
+        : {}),
     });
 
     if (inline) {
@@ -1227,6 +1241,7 @@ export class JobProvider {
     triggeredBy?: string;
     triggeredByName?: string;
     steps?: Record<string, JobStep>;
+    expiresAt?: string;
   }): Promise<{ id: string; created: boolean }> {
     try {
       const execution = await this.executions.create(fields);
@@ -1620,6 +1635,7 @@ export class JobProvider {
       run: async () => refuse(),
       sleep: async () => refuse(),
       sleepUntil: async () => refuse(),
+      input: async () => refuse(),
     };
   }
 
@@ -1645,6 +1661,8 @@ export class JobProvider {
         ),
       sleepUntil: async (name, date) =>
         this.sleepStep(registration, run, name, date.toISOString()),
+      input: async (name, requests, until) =>
+        this.inputStep(registration, run, name, requests, until.toISOString()),
     };
   }
 
@@ -1861,6 +1879,11 @@ export class JobProvider {
         `Job '${registration.name}' called a sleep '${name}', but this run recorded '${name}' as a step.run. One name, one kind of step.`,
       );
     }
+    if (existing?.requests) {
+      throw new AlephaError(
+        `Job '${registration.name}' called a sleep '${name}', but this run recorded '${name}' as a step.input. One name, one kind of step.`,
+      );
+    }
     const entry: JobStep = existing ?? {
       at: this.dt.nowISOString(),
       ms: 0,
@@ -1874,6 +1897,145 @@ export class JobProvider {
     );
     run.suspend = { name, entry, signal, intercepted: false };
     throw signal;
+  }
+
+  /**
+   * `step.input`: the answers when the run's record holds them; otherwise
+   * park the run on an input entry until `until`, the way a sleep parks it,
+   * and unwind the handler. Reached past `until` unanswered (the sweep woke
+   * the run at expiry), the call throws {@link JobInputExpiredError}, which
+   * fails the run without a retry.
+   */
+  protected async inputStep(
+    registration: JobRuntimeRegistration,
+    run: JobStepRun,
+    name: string,
+    requests: Record<string, unknown>,
+    until: string,
+  ): Promise<Record<string, unknown>> {
+    this.assertStepCall(registration, run, name);
+    if (run.rescheduled) {
+      throw new AlephaError(
+        `Job '${registration.name}' called step.input('${name}') after reschedule() in the same run. One of them parks the row, not both.`,
+      );
+    }
+    const existing = run.steps[name];
+    if (existing && !existing.requests) {
+      throw new AlephaError(
+        `Job '${registration.name}' called step.input('${name}'), but this run recorded '${name}' as another kind of step. One name, one kind of step.`,
+      );
+    }
+    if (existing?.answers) {
+      return existing.answers;
+    }
+    const entry: JobStep = existing ?? {
+      at: this.dt.nowISOString(),
+      ms: 0,
+      until,
+      requests,
+    };
+    this.assertStepResult(registration.name, name, entry.requests, "requests");
+    if (new Date(entry.until!).getTime() <= this.dt.nowMillis()) {
+      throw new JobInputExpiredError({
+        job: registration.name,
+        step: name,
+        until: entry.until!,
+      });
+    }
+    const signal = new AlephaError(
+      `Job '${registration.name}' is waiting for input '${name}' until ${entry.until}. This is the signal that unwinds the handler: do not catch it.`,
+    );
+    run.suspend = { name, entry, signal, intercepted: false };
+    throw signal;
+  }
+
+  /**
+   * Answer the input a run is parked on, and wake it.
+   *
+   * One guarded write: the row must still be `scheduled` and unchanged
+   * since it was read (its `updatedAt`), with the entry `name` an input
+   * entry holding no answers. It writes the answers into the entry and
+   * `scheduledAt = now`, then dispatches the row with no delay, so the run
+   * resumes without waiting for the sweep. Anything else (an unknown
+   * execution, a running, finished or cancelled one, an input answered
+   * already or past its `until`, a concurrent answer) is a
+   * {@link JobInputNotAwaitedError}.
+   */
+  public async answerInput(
+    executionId: string,
+    name: string,
+    answers: Record<string, unknown>,
+  ): Promise<void> {
+    const refuse = () =>
+      new JobInputNotAwaitedError({ executionId, step: name });
+    const row = await this.executions
+      .findById(executionId)
+      .catch(() => undefined);
+    const entry = row?.steps?.[name];
+    if (
+      !row ||
+      row.status !== "scheduled" ||
+      !entry?.requests ||
+      entry.answers !== undefined ||
+      (entry.until !== undefined &&
+        new Date(entry.until).getTime() <= this.dt.nowMillis())
+    ) {
+      throw refuse();
+    }
+    const now = this.dt.nowISOString();
+    const steps = { ...row.steps, [name]: { ...entry, answers } };
+    try {
+      await this.executions.updateOne(
+        {
+          id: { eq: executionId },
+          status: { eq: "scheduled" },
+          updatedAt: { eq: row.updatedAt },
+        },
+        { steps, scheduledAt: now },
+      );
+    } catch (e) {
+      if (e instanceof DbEntityNotFoundError) {
+        throw refuse();
+      }
+      throw e;
+    }
+    await this.dispatchDelayed(row.jobName, executionId, now);
+  }
+
+  /**
+   * The where-clause that spares a row its retention floor: no
+   * `expiresAt`, or one already past.
+   */
+  protected floorWhere(): Record<string, any> {
+    const now = this.dt.nowISOString();
+    return {
+      or: [{ expiresAt: { isNull: true } }, { expiresAt: { lte: now } }],
+    };
+  }
+
+  /**
+   * End a finished run whose status the job does not record: delete its row
+   * (guarded on `statuses` and the claim's fence), unless the row's
+   * `expiresAt` floor keeps it, in which case `patch` (its terminal status)
+   * is written instead. Returns whether either write happened.
+   */
+  protected async dropOrKeep(
+    executionId: string,
+    statuses: JobStatus[],
+    fence: JobClaimFence | undefined,
+    patch: Parameters<typeof this.executions.updateById>[1],
+    label: string,
+  ): Promise<boolean> {
+    const deleted = await this.executions.deleteMany({
+      id: { eq: executionId },
+      status: { inArray: statuses },
+      ...this.fenceWhere(fence),
+      ...this.floorWhere(),
+    });
+    if (deleted.length > 0) {
+      return true;
+    }
+    return this.guardedUpdate(executionId, statuses, patch, label, fence);
   }
 
   /**
@@ -2084,6 +2246,7 @@ export class JobProvider {
     await this.executions.deleteMany({
       id: { eq: executionId },
       status: { eq: "cancelled" },
+      ...this.floorWhere(),
     });
   }
 
@@ -2184,6 +2347,8 @@ export class JobProvider {
           // Set by the handler's `reschedule()`; read once it resolves. A
           // throw discards it, which is what makes "throw wins" true.
           let parkAgain: RescheduleIntent | undefined;
+          // What the handler returned, kept for `keepResult`.
+          let returned: unknown;
           try {
             // Inside the `try`: the row is already `running`, so a listener
             // that throws has to take the failure path like a handler that
@@ -2198,7 +2363,7 @@ export class JobProvider {
               this.underRunSignal(abortController.signal, () =>
                 this.withTimeout(opts.timeout, async (signal) => {
                   try {
-                    await opts.handler({
+                    returned = await opts.handler({
                       payload: execution.payload,
                       attempt: execution.attempt,
                       now,
@@ -2273,27 +2438,33 @@ export class JobProvider {
             // job does not record successes. Guarded on 'running' either
             // way: a cancellation that landed while the handler was finishing
             // must not be stomped to 'ok' or erased.
+            const success = {
+              status: "ok" as const,
+              completedAt: this.dt.nowISOString(),
+              key: null,
+              logs: this.logBuffer.snapshot(),
+              ...(opts.keepResult && returned !== undefined
+                ? { result: returned }
+                : {}),
+            };
             let recorded: boolean;
             if (this.retention.records(registration.retention, "ok")) {
               recorded = await this.guardedUpdate(
                 executionId,
                 ["running"],
-                {
-                  status: "ok",
-                  completedAt: this.dt.nowISOString(),
-                  key: null,
-                  logs: this.logBuffer.snapshot(),
-                },
+                success,
                 "success",
                 fence,
               );
             } else {
-              const deleted = await this.executions.deleteMany({
-                id: { eq: executionId },
-                status: { eq: "running" },
-                ...this.fenceWhere(fence),
-              });
-              recorded = deleted.length > 0;
+              // Deleted, unless the row's `expiresAt` floor keeps it.
+              recorded = await this.dropOrKeep(
+                executionId,
+                ["running"],
+                fence,
+                success,
+                "success",
+              );
             }
 
             // Only for the claim that owned the row to the end: a run whose
@@ -2346,6 +2517,7 @@ export class JobProvider {
                   await this.executions.deleteMany({
                     id: { eq: executionId },
                     status: { eq: "cancelled" },
+                    ...this.floorWhere(),
                   });
                 }
                 // A resolved `push({ inline: true })` claims the handler ran
@@ -2391,11 +2563,19 @@ export class JobProvider {
                   fence,
                 );
               } else {
-                await this.executions.deleteMany({
-                  id: { eq: executionId },
-                  status: { eq: "running" },
-                  ...this.fenceWhere(fence),
-                });
+                await this.dropOrKeep(
+                  executionId,
+                  ["running"],
+                  fence,
+                  {
+                    status: "error",
+                    error: this.rowError(err.message),
+                    completedAt: this.dt.nowISOString(),
+                    key: null,
+                    logs: this.logBuffer.snapshot(),
+                  },
+                  "inline-failure",
+                );
               }
               await this.alepha.events.emit(
                 "job:error",
@@ -2558,8 +2738,10 @@ export class JobProvider {
     // maxAttempts. The off-by-one fix: previously this was
     // `currentAttempt + 1 < maxAttempts`, which only ran 2 attempts for
     // `retries: 2`.
+    // An input nobody answered in time: nobody will answer a retry either.
     const canRetry =
       retry &&
+      !(error instanceof JobInputExpiredError) &&
       currentAttempt < maxAttempts &&
       (retry.when ? retry.when(error) : true);
 
@@ -2626,13 +2808,22 @@ export class JobProvider {
           fence,
         );
       } else {
-        // The job records no failures, so its outbox row ends here. Guarded
-        // like the write it replaces: a cancel that won keeps its row.
-        await this.executions.deleteMany({
-          id: { eq: executionId },
-          status: { eq: "running" },
-          ...this.fenceWhere(fence),
-        });
+        // The job records no failures, so its outbox row ends here, unless
+        // its `expiresAt` floor keeps it. Guarded like the write it
+        // replaces: a cancel that won keeps its row.
+        await this.dropOrKeep(
+          executionId,
+          ["running"],
+          fence,
+          {
+            status: "error",
+            error: this.rowError(error.message),
+            completedAt: this.dt.nowISOString(),
+            key: null,
+            logs,
+          },
+          "terminal-failure",
+        );
       }
     }
 
@@ -2857,14 +3048,18 @@ export class JobProvider {
           { attempt: exec.attempt, startedAt: exec.startedAt },
         );
       } else {
-        await this.executions.deleteMany({
-          id: { eq: exec.id },
-          status: { eq: "pending" },
-          ...this.fenceWhere({
-            attempt: exec.attempt,
-            startedAt: exec.startedAt,
-          }),
-        });
+        await this.dropOrKeep(
+          exec.id,
+          ["pending"],
+          { attempt: exec.attempt, startedAt: exec.startedAt },
+          {
+            status: "error",
+            error: `Never claimed after ${count} sweep re-dispatch(es) (jobConfig.maxRedispatch)`,
+            completedAt: this.dt.nowISOString(),
+            key: null,
+          },
+          "redispatch-exhausted",
+        );
       }
       await this.alepha.events.emit(
         "job:error",
@@ -3117,7 +3312,7 @@ export class JobProvider {
         // The unknown names are a handful of bound parameters on top of a
         // chunk of ids, which keeps the delete under D1's 999.
         const rows = await this.executions.findMany({
-          where: { jobName: { inArray: unknown } },
+          where: { jobName: { inArray: unknown }, ...this.floorWhere() },
           columns: ["id"],
           limit: chunk,
         });
@@ -3272,8 +3467,13 @@ export class JobProvider {
           // `offset: last` past a newest-first ordering is the tail. Re-read
           // each round rather than paging: the previous chunk is gone, so the
           // same offset lands on the next-oldest rows.
+          // A row inside its `expiresAt` floor is never trimmed.
           const rows = await this.executions.findMany({
-            where: { jobName: { eq: jobName }, status: { eq: status } },
+            where: {
+              jobName: { eq: jobName },
+              status: { eq: status },
+              ...this.floorWhere(),
+            },
             orderBy: newestFirst,
             columns: ["id"],
             offset: plan.last,
@@ -3311,6 +3511,7 @@ export class JobProvider {
           where.jobName = { eq: jobName };
           where.status = { eq: status };
           where.completedAt = { lt: plan.cutoff };
+          Object.assign(where, this.floorWhere());
           if (spare) where.id = { ne: spare };
           const rows = await this.executions.findMany({
             where,

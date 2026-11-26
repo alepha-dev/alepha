@@ -16,6 +16,16 @@ export const schema = <TDocument extends ZType>(
   }>({
     dataType: () => "jsonb",
     toDriver: (value) => JSON.stringify(value),
-    fromDriver: (value: TDocument | string) =>
-      value && typeof value === "string" ? JSON.parse(value) : value,
+    // A driver that parses `jsonb` itself hands a JSON string document back
+    // as a plain string ("done"), which is not JSON text: it is the value.
+    fromDriver: (value: TDocument | string) => {
+      if (!value || typeof value !== "string") {
+        return value;
+      }
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    },
   })(name, { document }).$type<Infer<TDocument>>();

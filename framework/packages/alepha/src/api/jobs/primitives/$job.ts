@@ -134,6 +134,22 @@ export interface JobSteps {
    * {@link sleep} until `date` instead of for a duration.
    */
   sleepUntil: (name: string, date: Date) => Promise<void>;
+
+  /**
+   * Wait, durably, for something outside the run to answer `requests`.
+   *
+   * On the first pass the handler is unwound, like a sleep, and the row is
+   * parked `scheduled` until `until` with an input entry holding the
+   * requests. `JobProvider.answerInput` writes the answers and wakes the
+   * run; on that pass the call returns them. Reached at `until` with no
+   * answer, the call throws `JobInputExpiredError` and the run fails
+   * without a retry.
+   */
+  input: (
+    name: string,
+    requests: Record<string, unknown>,
+    until: Date,
+  ) => Promise<Record<string, unknown>>;
 }
 
 export interface JobRescheduleOptions<T extends ZType = ZType> {
@@ -405,9 +421,22 @@ export interface JobPrimitiveOptions<
   retention?: JobRetentionOptions;
 
   /**
-   * Handler function. For cron-mode, `payload` is `undefined`.
+   * Store the handler's return value in the execution's `result` column at
+   * success, for whoever reads the run afterwards (a poller, the admin).
+   * It must be JSON. Every other job writes nothing there.
+   *
+   * A success is kept only when the job records successes (`retention.ok`)
+   * or the row carries an `expiresAt` floor: pair it with one of them.
+   *
+   * @default false
    */
-  handler: (args: JobHandlerArgs<T>) => Async<void>;
+  keepResult?: boolean;
+
+  /**
+   * Handler function. For cron-mode, `payload` is `undefined`. What it
+   * returns is kept only with {@link keepResult}.
+   */
+  handler: (args: JobHandlerArgs<T>) => Async<unknown>;
 }
 
 // -----------------------------------------------------------------------------------------------------------------
