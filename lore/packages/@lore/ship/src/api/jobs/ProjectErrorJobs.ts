@@ -6,6 +6,7 @@ import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
 import { projectErrors } from "../entities/projectErrors.ts";
+import { ProjectErrorThread } from "../services/ProjectErrorThread.ts";
 
 /**
  * Keeps the errors inbox from growing without bound.
@@ -31,6 +32,7 @@ export class ProjectErrorJobs {
   protected readonly projects = $repository(projects);
   protected readonly projectErrors = $repository(projectErrors);
   protected readonly dt = $inject(DateTimeProvider);
+  protected readonly thread = $inject(ProjectErrorThread);
 
   /**
    * Hourly purge of stale errors.
@@ -81,6 +83,9 @@ export class ProjectErrorJobs {
               lastSeenAt: { lt: cutoff },
             });
             totalDeleted += purged.length;
+            // A purged error's events cascade; its comments are core's rows
+            // and go by hand, chunked (#E185).
+            await this.thread.deleteFor(purged.map(Number));
           } catch (err) {
             this.log.warn(
               `Error purge failed for ${chunk.length} project(s) at ${retentionDays}d retention: ${String(err)}`,

@@ -1,5 +1,9 @@
 import { ProjectCapabilityController, ProjectController } from "@lore/core/api";
-import { ProjectErrorController } from "@lore/ship/api";
+import { QuestController } from "@lore/plan/api";
+import {
+  ProjectErrorController,
+  ProjectErrorThreadController,
+} from "@lore/ship/api";
 import { projectErrors } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -11,6 +15,10 @@ import { AlephaFake } from "alepha/testing/faker";
 import { afterEach, beforeEach, describe, it } from "vitest";
 
 import { bootLore } from "./fixtures/bootLore.ts";
+import {
+  createTestQuest,
+  TestEntityRepositories,
+} from "./fixtures/entities.ts";
 
 class Probe {
   projectErrors = $repository(projectErrors);
@@ -29,6 +37,7 @@ const setup = async () => {
   bootLore(alepha, ["api"]);
   const probe = alepha.inject(Probe);
   const users = alepha.inject(UserService);
+  alepha.inject(TestEntityRepositories);
   await alepha.start();
 
   const created = await users.createUser({ username: "owner" });
@@ -60,9 +69,12 @@ const setup = async () => {
   return {
     alepha,
     owner,
+    project,
     projectId: project.id,
     errorId: filed.id,
     errors: alepha.inject(ProjectErrorController),
+    thread: alepha.inject(ProjectErrorThreadController),
+    quests: alepha.inject(QuestController),
     capabilities: alepha.inject(ProjectCapabilityController),
   };
 };
@@ -138,5 +150,119 @@ describe("getProjectError and the quest an error was forwarded to", () => {
     expect(detail.quest).toBeUndefined();
     expect(detail.error.status).toBe(`quest:${forwarded.questId}`);
     expect(detail.kind).toBe("sigil");
+  });
+});
+
+/**
+ * The lines a forward, a link and a hand back leave on an error's thread
+ * (#E185): the three events that need a quest, so Plan booted.
+ */
+describe("an error's thread and its quest", () => {
+  let w: World;
+  beforeEach(async () => {
+    w = await setup();
+  });
+  afterEach(async () => {
+    await w.alepha.stop();
+  });
+
+  const at = () => ({
+    params: { projectId: w.projectId, errorId: w.errorId },
+  });
+  const entries = async () =>
+    (await w.thread.listProjectErrorThread.run(at(), { user: w.owner }))
+      .entries;
+
+  it("records a forward to a new quest, then the hand back when that quest is deleted", async ({
+    expect,
+  }) => {
+    const forwarded = await w.errors.forwardProjectErrorToQuest.run(
+      { ...at(), body: {} },
+      { user: w.owner },
+    );
+    expect(await entries()).toMatchObject([
+      {
+        type: "event",
+        kind: "forwarded",
+        userId: w.owner.id,
+        quest: {
+          id: forwarded.questId,
+          shortId: forwarded.questShortId,
+          title: "[Error] TypeError: Cannot read properties of undefined",
+        },
+      },
+    ]);
+
+    await w.quests.deleteQuest.run(
+      { params: { id: forwarded.questId } },
+      { user: w.owner },
+    );
+    const after = await entries();
+
+    expect((await read(w)).error.status).toBe("open");
+    expect(after.map((entry) => entry.kind)).toEqual([
+      "forwarded",
+      "handed_back",
+    ]);
+    // Lore did it: no member behind the line. The quest is gone, so only
+    // its id is left on both.
+    expect(after[1]?.userId).toBeUndefined();
+    expect(after.map((entry) => entry.quest)).toEqual([
+      { id: forwarded.questId },
+      { id: forwarded.questId },
+    ]);
+  });
+
+  it("records a link to a quest already filed, and hides the quest once Plan is off", async ({
+    expect,
+  }) => {
+    const quest = await createTestQuest(w.alepha, w.project, {
+      title: "Cart crashes on an empty basket",
+    });
+
+    await w.errors.forwardProjectErrorToQuest.run(
+      { ...at(), body: { questShortId: quest.shortId } },
+      { user: w.owner },
+    );
+
+    expect(await entries()).toMatchObject([
+      {
+        kind: "linked",
+        userId: w.owner.id,
+        quest: {
+          id: quest.id,
+          shortId: quest.shortId,
+          title: "Cart crashes on an empty basket",
+        },
+      },
+    ]);
+
+    await w.capabilities.setCapability.run(
+      {
+        params: { projectId: w.projectId, key: "plan" },
+        body: { enabled: false },
+      },
+      { user: w.owner },
+    );
+    expect((await entries()).map((entry) => entry.quest)).toEqual([
+      { id: quest.id },
+    ]);
+  });
+
+  it("writes one line when a forward is refused the second time, not two", async ({
+    expect,
+  }) => {
+    await w.errors.forwardProjectErrorToQuest.run(
+      { ...at(), body: {} },
+      { user: w.owner },
+    );
+    await expect(
+      w.errors.forwardProjectErrorToQuest.run(
+        { ...at(), body: {} },
+        { user: w.owner },
+      ),
+    ).rejects.toThrow("already forwarded");
+
+    expect((await entries()).map((entry) => entry.kind)).toEqual(["forwarded"]);
   });
 });

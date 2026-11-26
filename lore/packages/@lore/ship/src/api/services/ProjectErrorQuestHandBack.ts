@@ -4,6 +4,7 @@ import { $repository, DbEntityNotFoundError } from "alepha/orm";
 
 import { projectErrors } from "../entities/projectErrors.ts";
 import { QUEST_STATUS_PREFIX } from "../schemas/projectErrorQuestStatus.ts";
+import { ProjectErrorThread } from "./ProjectErrorThread.ts";
 
 /**
  * Hands a forwarded error back to the inbox when its quest is deleted.
@@ -26,6 +27,7 @@ import { QUEST_STATUS_PREFIX } from "../schemas/projectErrorQuestStatus.ts";
 export class ProjectErrorQuestHandBack {
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly projectErrors = $repository(projectErrors);
+  protected readonly thread = $inject(ProjectErrorThread);
 
   constructor() {
     this.resources.onDeleted("quest", async (event) => {
@@ -35,7 +37,7 @@ export class ProjectErrorQuestHandBack {
       // an error re-forwarded to another quest belongs to that one now, and
       // must not be reopened by this delete. A miss means somebody else moved
       // it, which is fine.
-      await this.projectErrors
+      const handedBack = await this.projectErrors
         .updateOne(
           {
             id: { eq: source.projectErrorId },
@@ -45,7 +47,14 @@ export class ProjectErrorQuestHandBack {
         )
         .catch((error: unknown) => {
           if (!(error instanceof DbEntityNotFoundError)) throw error;
+          return undefined;
         });
+      // Only when the write hit (#E185): Lore reopened it, nobody did.
+      if (handedBack) {
+        await this.thread.record(source.projectErrorId, "handed_back", {
+          questId: Number(event.id),
+        });
+      }
     });
   }
 }

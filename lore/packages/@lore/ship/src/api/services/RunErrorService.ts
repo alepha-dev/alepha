@@ -1,6 +1,8 @@
+import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { projectErrors } from "../entities/projectErrors.ts";
+import { ProjectErrorThread } from "./ProjectErrorThread.ts";
 
 /**
  * The errors a use case run opens and resolves (#E153), written by Plan's
@@ -10,6 +12,7 @@ import { projectErrors } from "../entities/projectErrors.ts";
  */
 export class RunErrorService {
   protected readonly projectErrors = $repository(projectErrors);
+  protected readonly thread = $inject(ProjectErrorThread);
 
   public fingerprint(useCaseId: number, criterionKey: string): string {
     return `usecase:${useCaseId}:${criterionKey}`;
@@ -48,6 +51,10 @@ export class RunErrorService {
         // A forwarded error keeps its quest; a resolved one reopens.
         ...(existing.status === "resolved" ? { status: "open" } : {}),
       });
+      // Lore reopened it, nobody did (#E185): no actor.
+      if (existing.status === "resolved") {
+        await this.thread.record(existing.id, "run_reopened");
+      }
       return;
     }
     await this.projectErrors.create({
@@ -89,6 +96,7 @@ export class RunErrorService {
       status: "resolved",
       lastSeenAt: input.at,
     });
+    await this.thread.record(existing.id, "run_resolved");
     return true;
   }
 }
