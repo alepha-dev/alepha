@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 
+import { hostInventoryCertificateSchema } from "./hostInventoryCertificateSchema.ts";
 import { hostInventoryUnitSchema } from "./hostInventoryUnitSchema.ts";
 
 /**
@@ -31,6 +32,11 @@ export const hostInventoryMachineSchema = z.object({
    * Bounded like the list Lore sends.
    */
   units: z.array(hostInventoryUnitSchema).max(20).optional(),
+  /**
+   * The certificates of the domains this Bay serves, from its TLS store
+   * (#Q4441). Absent on a Bay without TLS or one that predates them.
+   */
+  certificates: z.array(hostInventoryCertificateSchema).max(200).optional(),
   bayVersion: z.string().max(100).optional(),
   /**
    * Whether this Bay can take an `upgrade`: `handoff`, `restart` or `manual`

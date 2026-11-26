@@ -16,7 +16,7 @@ sequenceDiagram
   participant You as Operator (browser)
   Bay->>Lore: dial wss://lore.example.com/ws/estates with the host secret
   Lore-->>Bay: accepted, with the host's name
-  Bay->>Lore: inventory: host load, apps, releases, backups
+  Bay->>Lore: inventory: host load, apps, releases, backups, certificates
   You->>Lore: queue "restart myapp/production"
   Lore-->>Bay: command (arrives immediately over the open socket)
   Bay->>Bay: validate the verb, run it

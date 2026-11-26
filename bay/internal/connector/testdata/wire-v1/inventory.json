@@ -22,6 +22,18 @@
         "subState": "running"
       }
     ],
+    "certificates": [
+      {
+        "domain": "lore.alepha.dev",
+        "notAfter": "2026-11-20T08:12:00Z",
+        "issuer": "R11"
+      },
+      {
+        "domain": "www.lore.alepha.dev",
+        "notAfter": "2026-11-20T08:12:00Z",
+        "issuer": "R11"
+      }
+    ],
     "bayVersion": "0.31.0",
     "upgradeMode": "handoff"
   },

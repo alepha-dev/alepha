@@ -4387,7 +4387,7 @@ export default {
     "la dernière vérification d'un moniteur http et son temps de réponse moyen par jour",
   "dashboard.metric.certExpiry": "Certificats",
   "dashboard.metric.certExpiry.hint":
-    "les certificats TLS lus par les moniteurs, et les jours qui leur restent",
+    "les certificats TLS lus par les moniteurs et servis par vos hôtes Bay, et les jours qui leur restent",
   "dashboard.metric.incidents": "Incidents",
   "dashboard.metric.incidents.hint":
     "pannes et changements des unités surveillées, pour voir redémarrages et déploiements à côté",

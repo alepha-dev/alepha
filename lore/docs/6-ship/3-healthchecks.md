@@ -55,6 +55,13 @@ save or resume one, with a message saying so. HTTP and push monitors work on bot
 `lore.alepha.app` runs on Workers; a
 [self-hosted image](/lore/docs/start-self-hosting) runs on Node.
 
+A domain served by a Bay host of the project's own, started with TLS, needs no
+certificate monitor: Bay obtains and renews its certificates, reports their
+expiry with the rest of the host, and the **Certificates** card on the
+dashboard lists them beside the monitors', on Workers as on Node. They turn
+amber 14 days before expiry. A host lent by another project is not listed, nor
+a proxy Bay does not run.
+
 | Setting              | Default | Range                       | What it does                                                                               |
 | -------------------- | ------- | --------------------------- | ------------------------------------------------------------------------------------------ |
 | Interval             | 60 s    | From 60 s, in whole minutes | How often it is checked. On a push monitor, labelled **Stale after**, the silence allowed. |

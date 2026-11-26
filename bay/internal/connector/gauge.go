@@ -47,9 +47,12 @@ type Host struct {
 	UptimeSeconds  *uint64  `json:"uptimeSeconds,omitempty"`
 	// Units are the watched systemd units as last read (units.go), stamped
 	// by the client rather than read by the gauge.
-	Units       []UnitState `json:"units,omitempty"`
-	BayVersion  string      `json:"bayVersion,omitempty"`
-	UpgradeMode string      `json:"upgradeMode,omitempty"`
+	Units []UnitState `json:"units,omitempty"`
+	// Certificates are the TLS certificates of the domains this Bay serves,
+	// read from its own store (#Q4441), stamped by the client like Units.
+	Certificates []CertificateState `json:"certificates,omitempty"`
+	BayVersion   string             `json:"bayVersion,omitempty"`
+	UpgradeMode  string             `json:"upgradeMode,omitempty"`
 	// Mode is `monitor` for a Bay that only reports (`bay agent`, #Q4002),
 	// absent for one that serves: Lore offers no action on a monitor.
 	Mode string `json:"mode,omitempty"`
