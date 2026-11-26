@@ -126,3 +126,11 @@ func lockFileForRead(path string, whileAlone func() error) (unlock func(), alone
 	}
 	return unlock, false, true, nil
 }
+
+// foreground keeps a process in the caller's process group, for a sign-in
+// that reads the caller's terminal (bay jobs setup).
+func foreground(attr *syscall.SysProcAttr) {
+	if attr != nil {
+		attr.Setpgid = false
+	}
+}

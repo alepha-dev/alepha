@@ -145,7 +145,12 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 				c.Detail += ", signed in"
 			case t.SignedIn != nil:
 				c.OK, c.Warn = false, true
-				c.Detail += ", signed out: " + signInCommand(t.Name, username)
+				fix := signInCommand(t.Name, username)
+				// The sign-ins `bay jobs setup` walks through (#Q4526).
+				if t.Kind == "agent" || t.Name == "gh" {
+					fix = "sudo bay jobs setup, or " + fix
+				}
+				c.Detail += ", signed out: " + fix
 			case t.Name != "git":
 				c.Detail += ", sign-in unknown"
 			}
@@ -164,7 +169,7 @@ func toolChecks(tools []connector.InventoryTool, username string) []check {
 	}
 	if agents == 0 {
 		checks = append(checks, check{Name: "agent jobs", Warn: true,
-			Detail: fmt.Sprintf("no supported agent CLI (%s) answers for %s: this host cannot run agent jobs", strings.Join(adapterNames(), ", "), username)})
+			Detail: fmt.Sprintf("no supported agent CLI (%s) answers for %s: this host cannot run agent jobs (sudo bay jobs setup says how to install one)", strings.Join(adapterNames(), ", "), username)})
 	}
 	return checks
 }
