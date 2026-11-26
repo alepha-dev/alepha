@@ -4,7 +4,7 @@ import { AlephaError } from "alepha";
  * A mote of the sprite's dust: a soft point of light or a small square
  * "pixel", in the canvas's 200 x 200 logical space.
  */
-interface LoreSpriteMote {
+export interface LoreSpriteMote {
   x: number;
   y: number;
   vx: number;
@@ -19,7 +19,7 @@ interface LoreSpriteMote {
 /**
  * One wing, drawn for the right side and mirrored for the left.
  */
-interface LoreSpriteWing {
+export interface LoreSpriteWing {
   rootX: number;
   rootY: number;
   angle: number;

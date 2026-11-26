@@ -1,12 +1,14 @@
 import { Button } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
-import { ArrowLeft, Heart, Home, RotateCw } from "lucide-react";
+import { ArrowLeft, Home, RotateCw } from "lucide-react";
 
 import type { I18n } from "../../services/I18n.ts";
+import LoreEmptyState from "./LoreEmptyState.tsx";
 
 /**
  * Full-page error boundary, returned by the router's error handler in
- * production.
+ * production: the companion in her `glitch` mood (a wing down, the lens
+ * red), what went wrong, and three ways out.
  *
  * The height triplet is load-bearing, because the handler is declared on the
  * root layout but replaces whichever layer actually threw — so this component
@@ -28,38 +30,30 @@ import type { I18n } from "../../services/I18n.ts";
 const ErrorPage = () => {
   const { tr } = useI18n<I18n, "en">();
   return (
-    <div className="flex h-svh max-h-full flex-1 items-center justify-center">
-      <div className="flex flex-col items-center justify-center gap-4">
-        <div className="text-muted-foreground">
-          <Heart className="size-12" />
-        </div>
-        <div className="flex flex-col items-center justify-center gap-1">
-          <span className="text-lg font-bold">{tr("error.title")}</span>
-          <span className="text-muted-foreground text-sm">
-            {tr("error.description")}
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outlined" onClick={() => window.history.back()}>
-            <ArrowLeft className="size-4" />
-            {tr("error.back")}
-          </Button>
-          <Button variant="outlined" onClick={() => window.location.reload()}>
-            <RotateCw className="size-4" />
-            {tr("error.reload")}
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              window.location.href = "/";
-            }}
-          >
-            <Home className="size-4" />
-            {tr("error.home")}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <LoreEmptyState
+      mood="glitch"
+      className="h-svh max-h-full flex-1"
+      title={tr("error.title")}
+      description={tr("error.description")}
+    >
+      <Button variant="outlined" onClick={() => window.history.back()}>
+        <ArrowLeft className="size-4" />
+        {tr("error.back")}
+      </Button>
+      <Button variant="outlined" onClick={() => window.location.reload()}>
+        <RotateCw className="size-4" />
+        {tr("error.reload")}
+      </Button>
+      <Button
+        variant="outlined"
+        onClick={() => {
+          window.location.href = "/";
+        }}
+      >
+        <Home className="size-4" />
+        {tr("error.home")}
+      </Button>
+    </LoreEmptyState>
   );
 };
 

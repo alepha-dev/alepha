@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import { LoreSpriteRenderer } from "./LoreSpriteRenderer.ts";
+import { type LoreSpriteMood, LoreSpriteMoods } from "./LoreSpriteMoods.ts";
 
 export interface LoreLogoAnimatedProps {
   /**
@@ -13,6 +13,11 @@ export interface LoreLogoAnimatedProps {
    * screen has no pointer to follow, so there it glances around on its own.
    */
   follow?: boolean;
+  /**
+   * The state she is in: `calm`, `asleep`, `seeking` or `glitch`
+   * (`LoreSpriteMoods`). Absent, the companion of the Home page.
+   */
+  mood?: LoreSpriteMood;
 }
 
 /**
@@ -23,7 +28,7 @@ export interface LoreLogoAnimatedProps {
  * The canvas is empty in the server render and the companion assembles
  * itself on mount (the dust gathers, the core lights, the wings unfold), so
  * hydration has nothing to disagree with and the first paint is an entrance
- * rather than a flash.
+ * rather than a flash. A change of `mood` is a new entrance.
  *
  * Small marks (header, favicon) keep the raster `LoreLogo`: this one is drawn
  * for a box of 120 px and up.
@@ -34,10 +39,24 @@ const LoreLogoAnimated = (props: LoreLogoAnimatedProps) => {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
-    const renderer = new LoreSpriteRenderer(canvas, { follow: props.follow });
+    // Nothing to draw on: jsdom has no 2D context and neither observer (a
+    // spec may stub the observers, never the context), and the companion is
+    // never the only thing a screen says.
+    if (
+      typeof CanvasRenderingContext2D === "undefined" ||
+      typeof ResizeObserver === "undefined" ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+    const renderer = LoreSpriteMoods.create(
+      canvas,
+      { follow: props.follow },
+      props.mood,
+    );
     renderer.start();
     return () => renderer.destroy();
-  }, [props.follow]);
+  }, [props.follow, props.mood]);
 
   return (
     <canvas

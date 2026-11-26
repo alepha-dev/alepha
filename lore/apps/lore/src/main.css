@@ -925,6 +925,27 @@ body::before {
 }
 
 /*
+ * The patch of dot grid behind the companion of an empty state
+ * (`LoreEmptyState`): the page's own 16px grid, on a pane that does not
+ * carry it, fading to nothing around her so it has no edge. A step louder
+ * than `.lore-page-dots` in both modes, because the mask takes most of it
+ * away again.
+ */
+.lore-empty-dots {
+  background-image: radial-gradient(
+    oklch(0.145 0 0 / 11%) 1px,
+    transparent 1px
+  );
+  background-size: 16px 16px;
+  background-position: center;
+  mask-image: radial-gradient(closest-side, #000 0%, transparent 100%);
+}
+
+.dark .lore-empty-dots {
+  background-image: radial-gradient(oklch(0.985 0 0 / 9%) 1px, transparent 1px);
+}
+
+/*
  * The project dashboard's content area: the page's own background, so the
  * dots of `.lore-page-dots` do not show through between the rules the board
  * draws for its tiles (`DashboardGridBackdropCell`).
