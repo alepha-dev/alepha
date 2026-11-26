@@ -1,8 +1,9 @@
 import { Badge, TimeAgo } from "@alepha/ui";
-import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Bot, MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
+
+import type { I18n } from "../../../services/I18n.ts";
 
 export interface DiscussionCommentProps {
   /**
@@ -30,11 +31,16 @@ export interface DiscussionCommentProps {
    * Under the body: a comment's attachments.
    */
   footer?: ReactNode;
+  /**
+   * `data-testid` of the row, for a feed whose specs tell its comments from
+   * its events.
+   */
+  testId?: string;
 }
 
 /**
- * One comment in a discussion feed, shared by a quest's and a feedback
- * item's: a glyph in the gutter, the header line ("X commented", the agent
+ * One comment in a discussion feed, shared by a quest's, a feedback item's
+ * and an error's (in core since #E185, so Ship can draw one): a glyph in the gutter, the header line ("X commented", the agent
  * badge, the time), then the body in a box underneath.
  *
  * The body is the caller's, because the two differ in what they may render:
@@ -45,7 +51,7 @@ const DiscussionComment = (props: DiscussionCommentProps) => {
   const { tr } = useI18n<I18n, "en">();
 
   return (
-    <li className="flex gap-3 py-3">
+    <li className="flex gap-3 py-3" data-testid={props.testId}>
       {/* The same bordered circle every event uses, carrying a chat glyph.
           A comment is an entry in the feed like any other, so the gutter
           keeps one shape: an avatar there made comments the only rows with

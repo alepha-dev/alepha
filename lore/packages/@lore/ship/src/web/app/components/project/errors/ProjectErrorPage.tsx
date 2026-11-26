@@ -11,6 +11,7 @@ import ProjectErrorHeader from "./ProjectErrorHeader.tsx";
 import ProjectErrorRail from "./ProjectErrorRail.tsx";
 import ProjectErrorRulesDialog from "./ProjectErrorRulesDialog.tsx";
 import ProjectErrorStack from "./ProjectErrorStack.tsx";
+import ProjectErrorThread from "./ProjectErrorThread.tsx";
 import ProjectErrorTrendChart from "./ProjectErrorTrendChart.tsx";
 import { useProjectErrorVerbs } from "./useProjectErrorVerbs.ts";
 
@@ -26,7 +27,7 @@ export interface ProjectErrorPageProps {
  * One error, at `/:projectSlug/errors/:errorId` (#E185): everything Lore
  * knows about it and every triage verb, in the two-column shell of the
  * quest view. A main column (where it stands, what it is, its counts, its
- * thirty days, its stack) and a rail (details, apps, linked error, quest,
+ * thirty days, its stack, then its activity and discussion) and a rail (details, apps, linked error, quest,
  * ignore rules, the run or the monitor behind it).
  *
  * ⚠️ SECURITY: `name`, `message`, `stack` and `sourceUrl` are 100%
@@ -81,6 +82,10 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
       params: { projectSlug, errorId: String(id) },
     });
   const inboxHref = router.path("projectErrors", { params: { projectSlug } });
+  const questHref = (shortId: number) =>
+    router.path("projectQuest", {
+      params: { projectSlug, shortId: String(shortId) },
+    });
 
   const verbs = useProjectErrorVerbs({
     projectId,
@@ -121,6 +126,14 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
             message={detail.error.message}
             stack={detail.error.stack}
           />
+          <ProjectErrorThread
+            detail={detail}
+            projectId={projectId}
+            projectSlug={projectSlug}
+            questHref={questHref}
+            busy={verbs.busy}
+            onTrust={verbs.canTriage ? () => void verbs.trust.run() : undefined}
+          />
         </div>
       </div>
       <aside
@@ -136,10 +149,7 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
             app: (app, env) =>
               router.path("app", { params: { projectSlug, app, env } }),
             error: errorHref,
-            quest: (shortId) =>
-              router.path("projectQuest", {
-                params: { projectSlug, shortId: String(shortId) },
-              }),
+            quest: questHref,
             useCase: (number) =>
               router.path("projectUseCase", {
                 params: { projectSlug, useCaseNumber: String(number) },

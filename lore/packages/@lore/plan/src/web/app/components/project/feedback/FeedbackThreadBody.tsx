@@ -1,16 +1,13 @@
 import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import {
+  expandCommentReferences,
   LoreViewer,
   mentionPattern,
+  protectedSegments,
   resolveMentionCapture,
 } from "@lore/core/web";
 import { Link } from "alepha/react/router";
 import { Fragment, type ReactNode } from "react";
-
-import {
-  expandCommentReferences,
-  protectedSegments,
-} from "../quest/commentReferences.ts";
 
 export interface FeedbackThreadBodyProps {
   body: string;

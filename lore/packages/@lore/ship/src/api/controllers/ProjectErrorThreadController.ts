@@ -1,4 +1,9 @@
-import { $ownsProject, CommentService } from "@lore/core/api";
+import {
+  $ownsProject,
+  CommentService,
+  MentionNotifier,
+  type MentionSubject,
+} from "@lore/core/api";
 import {
   type Comment,
   commentSourceSchema,
@@ -13,8 +18,10 @@ import {
   okSchema,
 } from "alepha/server";
 
+import type { ProjectError } from "../entities/projectErrors.ts";
 import { projectErrorThreadEntrySchema } from "../schemas/projectErrorThreadEntrySchema.ts";
 import { ProjectErrorAccess } from "../services/ProjectErrorAccess.ts";
+import { ProjectErrorKinds } from "../services/ProjectErrorKinds.ts";
 import { ProjectErrorThread } from "../services/ProjectErrorThread.ts";
 
 /**
@@ -30,12 +37,17 @@ import { ProjectErrorThread } from "../services/ProjectErrorThread.ts";
  * - **A comment is the member's or the agent's markdown.** Nothing here
  *   copies the error's `name`, `message`, `stack` or `sourceUrl` into a
  *   body or an event: that text comes from an application's runtime.
+ * - **`@name` reaches a member**, as in a quest's discussion, and the
+ *   message names the error by its id and its kind, never by its text
+ *   ({@link mentionSubject}).
  */
 export class ProjectErrorThreadController {
   protected readonly access = $inject(ProjectErrorAccess);
   protected readonly thread = $inject(ProjectErrorThread);
   protected readonly comments = $inject(CommentService);
   protected readonly owned = $inject(OwnedResourceProvider);
+  protected readonly mentions = $inject(MentionNotifier);
+  protected readonly kinds = $inject(ProjectErrorKinds);
 
   listProjectErrorThread = $action({
     use: [$ownsProject({ requires: "error:read", param: "projectId" })],
@@ -100,6 +112,19 @@ export class ProjectErrorThreadController {
         body: body.body,
         source: body.source,
       });
+      // After the write, and never thrown: a comment that saved does not
+      // fail on a message. Over MCP the author is the key's owner, so only
+      // `source` says an agent wrote it, and only then may its own owner be
+      // reached (#Q2348).
+      await this.mentions.notify({
+        subject: this.mentionSubject(error),
+        authorId: user.id,
+        body: body.body,
+        agent:
+          body.source?.kind === "mcp"
+            ? { client: body.source.client }
+            : undefined,
+      });
       return await this.thread.entryOf(comment);
     },
   });
@@ -133,6 +158,17 @@ export class ProjectErrorThreadController {
       const updated = await this.comments.edit(comment.id, {
         body: body.body,
       });
+      // Only the handles the edit added: fixing a typo re-pings nobody.
+      if (comment.body !== body.body) {
+        await this.mentions.notify({
+          subject: this.mentionSubject(
+            await this.access.load(params.projectId, params.errorId),
+          ),
+          authorId: user.id,
+          body: body.body,
+          previousBody: comment.body,
+        });
+      }
       return await this.thread.entryOf(updated);
     },
   });
@@ -161,6 +197,35 @@ export class ProjectErrorThreadController {
       return { ok: true };
     },
   });
+
+  /**
+   * Where a mention on this error points, and what it is called.
+   *
+   * ⚠️ **By its id and its kind, never by its text.** A quest's mention
+   * carries the quest's title; an error's `name` and `message` are written
+   * by whatever runs in a browser, so by anyone, and an inbox message (and
+   * its e-mail) would carry them to a member unread and untrusted. An error
+   * has no typed reference either: it is `Error 42`.
+   */
+  protected mentionSubject(error: ProjectError): MentionSubject {
+    const project = this.owned.authority<Project>();
+    const slug = project.slug || `project-${project.id}`;
+    const kind = this.kinds.of(error);
+    return {
+      projectId: error.projectId,
+      projectTitle: project.title,
+      reference: `Error ${error.id}`,
+      title:
+        kind === "uptime"
+          ? "Monitor outage"
+          : kind === "run"
+            ? "Use case run error"
+            : error.origin === "server"
+              ? "Server error"
+              : "Browser error",
+      href: `/${slug}/errors/${error.id}`,
+    };
+  }
 
   /**
    * The caller's own comment on this error of this project: the error is

@@ -1,6 +1,9 @@
-import { CommentService } from "@lore/core/api";
+import {
+  CommentService,
+  MentionNotifier,
+  type MentionSubject,
+} from "@lore/core/api";
 import type { Comment } from "@lore/core/schemas";
-import { MentionNotifier, type MentionSubject } from "@lore/plan/api";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
@@ -15,7 +18,7 @@ import type { RequirementsCommentResource } from "../schemas/requirementsComment
  * The discussion of a persona or a use case (#E153), on core's `comments`
  * since #E185: the two are subjects registered here, `persona` and
  * `usecase`, the values the old `requirements_comments.subjectKind` held. A
- * mention in a body notifies the way a quest comment's does, through Plan's
+ * mention in a body notifies the way a quest comment's does, through core's
  * `MentionNotifier`.
  *
  * What a caller reads has not changed shape: `agentClient` and `byAgent`

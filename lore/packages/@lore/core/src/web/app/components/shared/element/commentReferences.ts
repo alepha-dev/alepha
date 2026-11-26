@@ -1,9 +1,8 @@
 import {
   mentionPattern,
   resolveMentionCapture,
-  formatReference,
-  parseTypedReference,
-} from "@lore/core/web";
+} from "../../../services/mentions.ts";
+import { formatReference, parseTypedReference } from "./typedReference.ts";
 
 /**
  * Expands the two reference shapes that belong to comments alone, into

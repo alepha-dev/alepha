@@ -6,12 +6,12 @@ import {
   type ProjectUser,
   mentionHandle,
   DiscussionAttachments,
+  DiscussionComment,
+  expandCommentReferences,
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
-import DiscussionComment from "../discussion/DiscussionComment.tsx";
-import { expandCommentReferences } from "./commentReferences.ts";
 import type { QuestDiscussionEntry } from "./questDiscussionEntries.ts";
 
 export interface QuestDiscussionCommentProps {

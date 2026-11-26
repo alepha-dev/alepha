@@ -41,7 +41,6 @@ import { EpicWorkflowService } from "./services/EpicWorkflowService.ts";
 import { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
 import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
-import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { PlanCommentSubjects } from "./services/PlanCommentSubjects.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
@@ -184,7 +183,6 @@ export const LorePlanApi = $module({
     EpicJobs,
     // Turns `@name` in a comment into a message. Injected by the quest and
     // feedback comment controllers.
-    MentionNotifier,
     FeedbackRateLimiter,
     QuestCsvFormatter,
     QuestService,
@@ -273,10 +271,6 @@ export const LorePlanApi = $module({
 
 export { feedbackOptionsAtom } from "./atoms/feedbackOptionsAtom.ts";
 export { AreaController } from "./controllers/AreaController.ts";
-export {
-  type MentionSubject,
-  MentionNotifier,
-} from "./services/MentionNotifier.ts";
 export { EpicController } from "./controllers/EpicController.ts";
 export { EpicReviewController } from "./controllers/EpicReviewController.ts";
 export { FeedbackCommentController } from "./controllers/FeedbackCommentController.ts";

@@ -123,6 +123,7 @@ import { LiveQuestRegistry } from "./services/LiveQuestRegistry.ts";
 import { LoreAudits } from "./services/LoreAudits.ts";
 import { LoreAuditService } from "./services/LoreAuditService.ts";
 import { McpProjectScope } from "./services/McpProjectScope.ts";
+import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { MomentumMetric } from "./services/MomentumMetric.ts";
 import { NeedsYouMetric } from "./services/NeedsYouMetric.ts";
 import { NoteMetric } from "./services/NoteMetric.ts";
@@ -295,6 +296,8 @@ export const LoreCoreApi = $module({
     // The shared `comments` table (#E185): listed so the table is there
     // whichever package registers the first subject.
     CommentService,
+    // `@name` in a comment of any thread (#E185).
+    MentionNotifier,
     ProjectChannelController,
     // Registers the configured channels as notification channel instances
     // (#Q3614); nothing else may inject it before an event is delivered.
@@ -579,6 +582,10 @@ export {
   CommentService,
   type CommentSubject,
 } from "./services/CommentService.ts";
+export {
+  MentionNotifier,
+  type MentionSubject,
+} from "./services/MentionNotifier.ts";
 export { DashboardCardService } from "./services/DashboardCardService.ts";
 export { ProjectDashboardCardService } from "./services/ProjectDashboardCardService.ts";
 export { ProjectDashboardPresets } from "./services/ProjectDashboardPresets.ts";

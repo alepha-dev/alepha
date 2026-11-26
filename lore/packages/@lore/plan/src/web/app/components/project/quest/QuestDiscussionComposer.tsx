@@ -3,6 +3,7 @@ import {
   currentProjectAtom,
   DiscussionAttachments,
   type DiscussionAttachment,
+  DiscussionComposer,
   type I18n,
 } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
@@ -16,7 +17,6 @@ import type { QuestController } from "../../../../../api/controllers/QuestContro
 import type { QuestCommentResource } from "../../../../../api/schemas/questCommentResourceSchema.ts";
 import { QUEST_NEEDS_ANSWER_TAG } from "../../../../../api/schemas/questPresets.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
-import DiscussionComposer from "../discussion/DiscussionComposer.tsx";
 
 export interface QuestDiscussionComposerProps {
   quest: QuestResource;

@@ -233,6 +233,24 @@ export {
 export { default as CollapsibleBlock } from "./app/components/shared/CollapsibleBlock.tsx";
 export { default as CommitLink } from "./app/components/shared/CommitLink.tsx";
 export { default as StackTraceViewer } from "./app/components/shared/StackTraceViewer.tsx";
+// The comment card and the composer every thread draws (#E185): a quest's,
+// a feedback item's, an error's.
+export {
+  default as DiscussionComment,
+  type DiscussionCommentProps,
+} from "./app/components/shared/discussion/DiscussionComment.tsx";
+export {
+  default as DiscussionComposer,
+  type DiscussionComposerProps,
+} from "./app/components/shared/discussion/DiscussionComposer.tsx";
+// What a comment's body means beyond markdown: `#Q12` and `@member`, and
+// the stretches neither is expanded in. Read by the api too.
+export {
+  type CommentReferenceOptions,
+  expandCommentReferences,
+  outsideProtected,
+  protectedSegments,
+} from "./app/components/shared/element/commentReferences.ts";
 // What `StackTraceViewer` injects at render: a spec mounting it outside
 // `LoreCoreWeb` injects this before `start()`.
 export { StackTraceParser } from "./app/services/StackTraceParser.ts";

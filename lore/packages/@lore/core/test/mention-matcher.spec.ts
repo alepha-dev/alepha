@@ -1,7 +1,10 @@
 import { matchMentions, mentionHandle } from "@lore/core/web";
 import { describe, it } from "vitest";
 
-import { expandCommentReferences, outsideProtected } from "../src/web/index.ts";
+import {
+  expandCommentReferences,
+  outsideProtected,
+} from "../src/web/app/components/shared/element/commentReferences.ts";
 
 /**
  * The roster, built the way BOTH sides have to build it: through

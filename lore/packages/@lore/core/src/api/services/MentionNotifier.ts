@@ -1,13 +1,10 @@
-import {
-  LoreInboxNotifications,
-  ProjectRoster,
-  type ProjectRosterEntry,
-} from "@lore/core/api";
-import { matchMentions } from "@lore/core/web";
 import { $inject, Alepha } from "alepha";
 import { $logger } from "alepha/logger";
 
-import { outsideProtected } from "../../web/app/components/project/quest/commentReferences.ts";
+import { outsideProtected } from "../../web/app/components/shared/element/commentReferences.ts";
+import { matchMentions } from "../../web/app/services/mentions.ts";
+import { LoreInboxNotifications } from "../notifications/LoreInboxNotifications.ts";
+import { ProjectRoster, type ProjectRosterEntry } from "./ProjectRoster.ts";
 
 /**
  * What a mention points at, resolved by the caller.
@@ -17,11 +14,17 @@ export interface MentionSubject {
   projectTitle: string;
   /**
    * The typed reference, already formatted: `#Q402`, `#P120`. Built through
-   * `formatReference`, never by hand.
+   * `formatReference`, never by hand. A subject with no typed reference
+   * names itself in plain words: an error is `Error 42`.
    */
   reference: string;
   /**
    * The quest's or feedback item's own title, for the second line.
+   *
+   * ⚠️ Never text the subject did not write itself. An error's `name` and
+   * `message` come from an application's runtime, open to anyone who reaches
+   * it: an error's title here is its kind ("browser error"), or that text
+   * would ride into a member's inbox and e-mail unread and untrusted.
    */
   title: string;
   /**
@@ -33,9 +36,11 @@ export interface MentionSubject {
 /**
  * Turns `@name` in a comment into a message in somebody's inbox.
  *
- * Its own service because two surfaces need it - quest comments and feedback
- * comments - and the rules below are the kind discovered by annoyance rather
- * than by review, so they belong in one place.
+ * Its own service because every thread needs it - a quest's, a feedback
+ * item's, a persona's, a use case's and an error's - and the rules below are
+ * the kind discovered by annoyance rather than by review, so they belong in
+ * one place. In core since #E185: Ship's error thread may not import Plan,
+ * and this builds on nothing but core's roster and inbox.
  *
  * ## The rules, and why each one exists
  *

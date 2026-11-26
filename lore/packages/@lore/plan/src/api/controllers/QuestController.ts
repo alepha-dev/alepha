@@ -1,10 +1,11 @@
 import {
-  CommentService,
-  $ownsProject,
   BestEffort,
   BoundParameters,
+  CommentService,
   HostJobs,
   LoreAudits,
+  MentionNotifier,
+  $ownsProject,
   ProjectSecurityService,
   ResourceLinkService,
 } from "@lore/core/api";
@@ -72,7 +73,6 @@ import { AreaService } from "../services/AreaService.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
 import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
-import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { PlanLiveQuests } from "../services/PlanLiveQuests.ts";
