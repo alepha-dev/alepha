@@ -10,26 +10,18 @@ export default {
     "M'avertir quand ce moniteur tombe ou se rétablit",
   "uptime.subscription.description":
     "Vous serez notifié dans l'application quand une panne de ce moniteur est confirmée, puis quand il se rétablit. Réglez-le dans Paramètres > Notifications.",
-  "uptime.subscription.offDescription":
-    "Vous ne serez plus averti des pannes et rétablissements de ce moniteur.",
   "uptime.subscription.allLabel":
     "M'avertir quand un moniteur tombe ou se rétablit",
   "uptime.subscription.allDescription":
     "Vous serez notifié dans l'application quand une panne est confirmée sur n'importe quel moniteur de ce projet, puis quand il se rétablit. Réglez-le dans Paramètres > Notifications.",
-  "uptime.subscription.allOffDescription":
-    "Vous ne serez plus averti des pannes et rétablissements de ce projet.",
   "hosts.subscription.label":
     "M'avertir quand cet hôte demande une intervention",
   "hosts.subscription.description":
     "Vous serez notifié dans l'application quand cet hôte dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Réglez-le dans Paramètres > Notifications.",
-  "hosts.subscription.offDescription":
-    "Vous ne serez plus averti au sujet de cet hôte.",
   "hosts.subscription.allLabel":
     "M'avertir quand un hôte demande une intervention",
   "hosts.subscription.allDescription":
     "Vous serez notifié dans l'application quand un hôte de ce projet dépasse sa durée de vie, se déconnecte ou revient en ligne, ou que son jeton Cloudflare cesse de fonctionner. Réglez-le dans Paramètres > Notifications.",
-  "hosts.subscription.allOffDescription":
-    "Vous ne serez plus averti au sujet des hôtes de ce projet.",
   "project.settings.tab.notificationChannels": "Canaux",
 
   "project.settings.nav.notifications": "Notifications",
@@ -98,9 +90,8 @@ export default {
     "Aucun canal ne correspond à ces filtres",
   "notifications.bell.on": "Vous êtes notifié",
   "notifications.bell.partial": "Vous êtes notifié d'une partie",
-  "notifications.bell.offTitle": "Ne plus vous notifier ?",
-  "notifications.bell.offConfirm": "Ne plus me notifier",
-  "notifications.bell.channel": "Comment",
+  "notifications.bell.channel": "Canaux",
+  "notifications.bell.none": "Aucun",
   "notifications.bell.events": "De quoi",
   "notifications.bell.authors": "De qui",
   "notifications.bell.confirm": "Me notifier",
@@ -3398,16 +3389,12 @@ export default {
   "release.subscription.label": "M'avertir à chaque version publiée",
   "release.subscription.description":
     "Vous serez notifié dans l'application de chaque version publiée dans ce projet. Réglez-le dans Paramètres > Notifications.",
-  "release.subscription.offDescription":
-    "Vous ne serez plus averti quand une version est publiée.",
   "feedback.subscription.label": "Me notifier des nouveaux retours",
   "feedback.subscription.description":
     "Vous serez notifié dans l'application de chaque nouveau retour dans ce projet.",
   "feedback.subscription.all": "Tous les retours",
   "feedback.subscription.notMine": "Tous sauf les miens",
   "feedback.subscription.notMembers": "Tous sauf ceux des membres du projet",
-  "feedback.subscription.offDescription":
-    "Vous ne serez plus notifié des nouveaux retours dans ce projet.",
   "feedback.filter.label": "Statut",
   "feedback.filter.pending": "En attente",
   "feedback.filter.accepted": "Acceptés",

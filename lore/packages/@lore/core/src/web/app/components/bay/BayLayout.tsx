@@ -115,7 +115,6 @@ const BayLayout = () => {
                 filter={host.id}
                 label={tr("hosts.subscription.label")}
                 description={tr("hosts.subscription.description")}
-                offDescription={tr("hosts.subscription.offDescription")}
                 testId="host-subscription-bell"
               />
             </div>

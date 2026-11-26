@@ -344,7 +344,6 @@ const ProjectApps = () => {
               events={["monitor.down", "monitor.up"]}
               label={tr("uptime.subscription.allLabel")}
               description={tr("uptime.subscription.allDescription")}
-              offDescription={tr("uptime.subscription.allOffDescription")}
               testId="apps-uptime-bell"
             />
           ) : undefined

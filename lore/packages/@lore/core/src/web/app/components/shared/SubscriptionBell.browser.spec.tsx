@@ -138,7 +138,6 @@ describe("SubscriptionBell", () => {
             {...(filter ? { filter } : {})}
             label="Notify me"
             description="You are notified of it."
-            offDescription="You are no longer notified."
             {...(authors ? { authors } : {})}
             testId="bell"
           />
@@ -210,6 +209,19 @@ describe("SubscriptionBell", () => {
     expect(server.rows[0]?.notMine).toBeUndefined();
   });
 
+  it("keeps Save off on a bell that is off while no channel is picked (#Q4452)", async ({
+    expect,
+  }) => {
+    await show(["feedback.created"], undefined, [], AUTHORS);
+    await waitFor(() => expect(bell().hasAttribute("disabled")).toBe(false));
+    fireEvent.click(bell());
+    await screen.findByRole("dialog");
+    const confirm = screen.getByTestId("subscription-bell-confirm");
+    expect(confirm.hasAttribute("disabled")).toBe(false);
+    await pick("subscription-bell-channels", "Inbox");
+    await waitFor(() => expect(confirm.hasAttribute("disabled")).toBe(true));
+  });
+
   it("offers a plain member In-app and Email only, and never asks for the project's channels (#Q4290)", async ({
     expect,
   }) => {
@@ -277,7 +289,9 @@ describe("SubscriptionBell", () => {
     expect(server.rows).toHaveLength(1);
   });
 
-  it("shows partly on, and stops from its dialog", async ({ expect }) => {
+  it("shows partly on, and stops when its dialog saves no channel: no Stop button (#Q4452)", async ({
+    expect,
+  }) => {
     const server = await show(["monitor.down", "monitor.up"], undefined, [
       {
         id: "row-0",
@@ -293,13 +307,21 @@ describe("SubscriptionBell", () => {
     );
     fireEvent.click(bell());
     const dialog = await screen.findByRole("dialog");
-    fireEvent.click(
-      within(dialog).getByRole("button", { name: "Stop notifying me" }),
-    );
-    const confirm = await screen.findByRole("alertdialog");
-    fireEvent.click(
-      within(confirm).getByRole("button", { name: "Stop notifying me" }),
-    );
+    // The footer is Cancel and Save, and the field is Channels.
+    expect(within(dialog).queryByRole("button", { name: /Stop/ })).toBeNull();
+    expect(
+      within(dialog)
+        .getAllByRole("button")
+        .map((it) => it.textContent),
+    ).toEqual(expect.arrayContaining(["Cancel", "Save"]));
+    const channels = screen.getByTestId("subscription-bell-channels");
+    expect(channels.textContent).toContain("Channels");
+
+    // Inbox unpicked leaves Channels empty, which reads None; Save turns
+    // the bell off.
+    await pick("subscription-bell-channels", "Inbox");
+    await waitFor(() => expect(channels.textContent).toContain("None"));
+    fireEvent.click(screen.getByTestId("subscription-bell-confirm"));
     await waitFor(() => expect(server.rows).toHaveLength(0));
   });
 });

@@ -8,7 +8,6 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  useDialog,
 } from "@alepha/ui";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
@@ -44,8 +43,6 @@ export interface SubscriptionBellProps {
   label: string;
   /** The dialog's sentence on what turning it on does. */
   description: string;
-  /** The confirmation's sentence on what turning it off stops. */
-  offDescription: string;
   /**
    * Who caused the event, as a From whom select in the dialog (#Q4055,
    * #Q4290): All, All except from me, All except from project members.
@@ -78,7 +75,6 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<SubscriptionController>();
   const catalogApi = useClient<ProjectEventController>();
-  const dialog = useDialog();
   const auth = useAuth();
   const [project] = useStore(currentProjectAtom);
   const channelApi = useClient<ProjectChannelController>();
@@ -266,17 +262,6 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
     });
     setOpen(true);
   };
-  const off = async () => {
-    if (
-      await dialog.confirm({
-        title: tr("notifications.bell.offTitle"),
-        description: props.offDescription,
-        confirmLabel: tr("notifications.bell.offConfirm"),
-        destructive: true,
-      })
-    )
-      await save.run(false);
-  };
   const title = (event: string) => {
     const entry = catalog.data?.items.find((it) => it.name === event);
     return NotificationLabels.event(tr, {
@@ -342,8 +327,8 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
               {...(props.authors ? { authors: props.authors } : {})}
               on={subscribed || partial}
               busy={save.loading}
-              onSave={(pick) => void save.run(true, pick)}
-              onOff={() => void off()}
+              // No channel picked turns it off (#Q4452).
+              onSave={(pick) => void save.run(pick.channels.length > 0, pick)}
               onCancel={() => setOpen(false)}
             />
           )}

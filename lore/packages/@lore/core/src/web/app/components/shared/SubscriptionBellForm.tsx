@@ -35,12 +35,14 @@ export interface SubscriptionBellFormProps {
   events: Array<{ value: string; label: string }>;
   authors?: SubscriptionBellAuthors;
   /**
-   * Whether the viewer is notified already: the footer offers to stop it.
+   * Whether the viewer is notified already: the confirm button says Save.
    */
   on: boolean;
   busy: boolean;
+  /**
+   * Saves the pick; with no channel, it turns the bell off (#Q4452).
+   */
   onSave: (pick: SubscriptionBellPick) => void;
-  onOff: () => void;
   onCancel: () => void;
 }
 
@@ -54,14 +56,16 @@ export interface SubscriptionBellAuthors {
  * The body of a bell's dialog (#Q4290): Channels, a multi select, and for a
  * bell with authors, From whom, a single select; the events as checkboxes
  * when the bell has several. Mounted each time the dialog opens, so it
- * starts from what the viewer's rows say.
+ * starts from what the viewer's rows say. No Stop button (#Q4452): Channels
+ * may be left empty, and Save then turns the bell off.
  */
 const SubscriptionBellForm = (props: SubscriptionBellFormProps) => {
   const { tr } = useI18n<I18n, "en">();
   const [events, setEvents] = useState(props.initial.events);
   const form = useForm({
     schema: z.object({
-      channels: z.array(z.text()),
+      // Optional: empty is how a bell is turned off (#Q4452).
+      channels: z.array(z.text()).optional(),
       from: z.enum(["all", "notMine", "notMembers"]),
     }),
     initialValues: {
@@ -80,6 +84,7 @@ const SubscriptionBellForm = (props: SubscriptionBellFormProps) => {
           input={form.input.channels}
           label={tr("notifications.bell.channel")}
           items={props.channels}
+          clearLabel={tr("notifications.bell.none")}
         />
       </div>
       {props.events.length > 1 && (
@@ -126,20 +131,9 @@ const SubscriptionBellForm = (props: SubscriptionBellFormProps) => {
         </div>
       )}
       <DialogFooter>
-        {props.on ? (
-          <Button
-            variant="outlined"
-            intent="danger"
-            disabled={props.busy}
-            onClick={props.onOff}
-          >
-            {tr("notifications.bell.offConfirm")}
-          </Button>
-        ) : (
-          <Button variant="outlined" onClick={props.onCancel}>
-            {tr("notifications.form.cancel")}
-          </Button>
-        )}
+        <Button variant="outlined" onClick={props.onCancel}>
+          {tr("notifications.form.cancel")}
+        </Button>
         <Button
           onClick={() =>
             props.onSave({
@@ -148,7 +142,13 @@ const SubscriptionBellForm = (props: SubscriptionBellFormProps) => {
               from: (values.from ?? "all") as SubscriptionBellFrom,
             })
           }
-          disabled={props.busy || channels.length === 0 || events.length === 0}
+          // With channels, an event at least; with none, Save turns it off,
+          // which an off bell has nothing to do.
+          disabled={
+            props.busy ||
+            (channels.length > 0 && events.length === 0) ||
+            (!props.on && channels.length === 0)
+          }
           data-testid="subscription-bell-confirm"
         >
           {props.on
