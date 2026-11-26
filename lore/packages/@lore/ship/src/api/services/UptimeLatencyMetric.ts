@@ -16,7 +16,7 @@ type CardValue = Omit<DashboardCardValue, "cardId" | "ok" | "scopeNames">;
 
 /**
  * `uptimeLatency` (#Q4426): one http monitor's mean response time per day
- * over the board's window (at least 30 days), from the `uptime_probes`
+ * over the board's window, from the `uptime_probes`
  * totals, with its last check as the value.
  *
  * The totals hold a latency sum over passing checks only and their count
@@ -61,7 +61,7 @@ export class UptimeLatencyMetric implements DashboardMetricResolver {
     });
     if (!monitor) return { empty: "noData", detail: {} };
 
-    const days = Math.max(entry.windowDays, 30);
+    const days = entry.windowDays;
     const since = new Date(
       this.dateTime.nowMillis() - days * 24 * 3600_000,
     ).toISOString();
