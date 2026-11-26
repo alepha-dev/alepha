@@ -1,5 +1,6 @@
 import type {
   ProjectErrorController,
+  ProjectErrorThreadController,
   InsightsController,
 } from "@lore/ship/api";
 import { $inject, z } from "alepha";
@@ -16,11 +17,14 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore projectError list | resolve | forward` and `lore insights read`: what is
- * failing, what was decided about it, and whether it is still happening.
+ * `lore error list | get | comment add | resolve | forward` and
+ * `lore insights read`: what is failing, what was said and decided about it,
+ * and whether it is still happening.
  *
  * ```bash
  * lore error list -p alepha
+ * lore error get B12 -p alepha
+ * lore error comment add B12 -p alepha --body "Seen on staging too"
  * lore insights read -p alepha --segment errors
  * lore error forward B12 -p alepha
  * ```
@@ -47,6 +51,9 @@ export class ErrorCommand {
    * below it sees `undefined`.
    */
   protected readonly projectErrorApi = $client<ProjectErrorController>(
+    this.client.scope(),
+  );
+  protected readonly threadApi = $client<ProjectErrorThreadController>(
     this.client.scope(),
   );
   protected readonly insightsApi = $client<InsightsController>(
@@ -108,6 +115,181 @@ export class ErrorCommand {
           "No open errors.",
         );
       });
+    },
+  });
+
+  public readonly get = $command({
+    name: "get",
+    description:
+      "Read one error whole: where it stands, the apps that reported it, its quest, its 30 days and its thread",
+    args: ErrorCommand.REF_ARG,
+    flags: z.object({
+      ...ErrorCommand.PROJECT_FLAG,
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const errorId = this.refs.projectError(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+        const at = { params: { projectId, errorId } };
+
+        // The read first, alone: it is what refuses an unknown id.
+        const detail = await this.projectErrorApi.getProjectError(at);
+        const [trend, thread] = await Promise.all([
+          this.projectErrorApi.getProjectErrorTrend(at),
+          this.threadApi.listProjectErrorThread(at),
+        ]);
+
+        if (flags.output === "json") {
+          this.render.json(print, { ...detail, trend, thread: thread.entries });
+          return;
+        }
+
+        const { error } = detail;
+        this.render.entity(print, {
+          fields: [
+            ["Error", `B${error.id}  ${error.name}`],
+            ["Message", error.message],
+            ["Status", error.status],
+            ["Kind", detail.kind],
+            ["Origin", error.origin],
+            [
+              "Trust",
+              !error.trustedAt
+                ? "awaiting trust"
+                : error.trustedBy
+                  ? `trusted by ${error.trustedByName ?? error.trustedBy}`
+                  : "trusted on arrival",
+            ],
+            ["Occurrences", String(error.count)],
+            ["First seen", error.firstSeenAt],
+            ["Last seen", error.lastSeenAt],
+            ["Page", error.sourceUrl],
+            [
+              "Quest",
+              detail.quest
+                ? `Q${detail.quest.shortId}  ${detail.quest.title}${detail.quest.status ? `  (${detail.quest.status})` : ""}`
+                : undefined,
+            ],
+            [
+              "Linked",
+              error.linkedError
+                ? `B${error.linkedError.id}  (${error.linkedError.origin}, same request)`
+                : undefined,
+            ],
+            ["Monitor", detail.monitor?.id],
+            [
+              "Use case",
+              detail.run?.useCase
+                ? `${detail.run.useCase.title}  (criterion ${detail.run.criterionKey ?? "?"})`
+                : detail.run?.criterionKey,
+            ],
+          ],
+          sections: [
+            ...(detail.apps.length
+              ? [
+                  {
+                    title: "Apps",
+                    lines: detail.apps.map(
+                      (app) =>
+                        `${app.label}  x${app.count}  last ${app.lastSeenAt}`,
+                    ),
+                  },
+                ]
+              : []),
+            ...(detail.rules.length
+              ? [
+                  {
+                    title: "Ignore rules that match",
+                    lines: detail.rules.map((rule) => rule.pattern),
+                  },
+                ]
+              : []),
+            ...(trend.empty
+              ? []
+              : [
+                  {
+                    title: `Last 30 days (${trend.total})`,
+                    lines: [
+                      ...trend.series
+                        .filter((point) => point.value > 0)
+                        .map((point) => `${point.at}  ${point.value}`),
+                      ...trend.markers.map(
+                        (marker) => `${marker.at}  ${marker.kind}`,
+                      ),
+                    ],
+                  },
+                ]),
+            { title: "Stack", lines: [error.stack || "(none)"] },
+            {
+              title: "Thread",
+              lines: thread.entries.length
+                ? thread.entries.map((entry) =>
+                    entry.type === "comment"
+                      ? `${entry.at}  ${entry.userName ?? "(deleted account)"}${entry.source ? `  (agent${entry.source.client ? `: ${entry.source.client}` : ""})` : ""}\n${entry.body ?? ""}`
+                      : `${entry.at}  ${entry.kind}${entry.userName ? `  by ${entry.userName}` : "  by Lore"}${entry.quest?.shortId ? `  Q${entry.quest.shortId}` : ""}`,
+                  )
+                : ["Nothing yet."],
+            },
+          ],
+        });
+      });
+    },
+  });
+
+  public readonly commentAdd = $command({
+    name: "add",
+    description: "Leave a comment on an error's thread",
+    args: ErrorCommand.REF_ARG,
+    flags: z.object({
+      ...ErrorCommand.PROJECT_FLAG,
+      body: z.text({
+        size: "rich",
+        atFile: true,
+        description:
+          "The comment, in Markdown. Quote the error's own text in a code span, never as markup.",
+      }),
+      as: z
+        .text({
+          description:
+            "Your name if you are an agent, e.g. claude-code: the comment shows as agent-written instead of as this account's owner.",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const errorId = this.refs.projectError(args);
+        const { projectId } = await this.projects.named(flags.project, context);
+
+        const comment = await this.threadApi.createProjectErrorComment({
+          params: { projectId, errorId },
+          body: {
+            body: flags.body,
+            ...(flags.as
+              ? { source: { kind: "cli" as const, client: flags.as } }
+              : {}),
+          },
+        });
+
+        this.render.written(
+          print,
+          flags.output,
+          comment,
+          `Commented on B${errorId}`,
+        );
+      });
+    },
+  });
+
+  public readonly comment = $command({
+    name: "comment",
+    description: "An error's thread: add a comment",
+    children: [this.commentAdd],
+    handler: async ({ help }) => {
+      help();
     },
   });
 
@@ -187,8 +369,8 @@ export class ErrorCommand {
   public readonly projectError = $command({
     name: "error",
     description:
-      "A project's errors, the failures its apps report: list, resolve and forward them",
-    children: [this.list, this.resolve, this.forward],
+      "A project's errors, the failures its apps report: list, read, discuss, resolve and forward them",
+    children: [this.list, this.get, this.comment, this.resolve, this.forward],
     handler: async ({ help }) => {
       help();
     },
