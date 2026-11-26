@@ -43,6 +43,12 @@ export const promptWriteSchema = z.object({
   maxRunsPerHour: z.integer().min(1).max(60).optional(),
   maxRunsPerDay: z.integer().min(1).max(1000).optional(),
   /**
+   * How long a triggered run whose event fills no item waits after a
+   * burst's first event (#Q4501), in seconds; 0 starts it at once, `null`
+   * returns to the default. Writable on a built-in.
+   */
+  settleSeconds: z.integer().min(0).max(3600).nullable().optional(),
+  /**
    * A custom prompt's answer to a second run while one of the same args
    * runs (#Q4354): `queue` waits for it, `unique` refuses it. A built-in's
    * is Lore's.

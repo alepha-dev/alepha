@@ -40,6 +40,15 @@ import { PromptService } from "./PromptService.ts";
  *   arg of that type, one run per event and item, at once (#Q4354). A run
  *   asked for while one of the same args runs waits behind it, as one run,
  *   when the prompt's concurrency is `queue`, and is a skip when `unique`.
+ * - **The settle window** (#Q4501): an event that fills no item, on a prompt
+ *   whose `settleSeconds` is above 0 (triage: 300), marks the prompt
+ *   pending and pushes its settle job that long after the burst's FIRST
+ *   event. Later events find it pending and add nothing, so the window
+ *   never restarts. When it ends, one run reads everything its sources
+ *   hold. An event while a job of the prompt runs leaves it pending, and
+ *   the job's end starts one follow-up. A ceiling's refusal re-arms the
+ *   settle job for when the window frees up, so a refused burst is never
+ *   left with nothing to pick it up.
  * - **Schedule**: hourly, every 6 hours, daily or weekly at a UTC hour, run
  *   by the existing hourly job on an indexed `nextRunAt`, claimed by a
  *   conditional write.
@@ -159,6 +168,21 @@ export class PromptTriggers {
     retention: { ok: { days: 2 }, error: { days: 14 } },
     handler: async ({ payload }) => {
       await this.startQueued(payload.projectId, payload.prompt, payload.key);
+    },
+  });
+
+  /**
+   * The run a burst of events asked for, once its settle window ended
+   * (#Q4501), or at once as the follow-up of a job that was still running.
+   */
+  public readonly settle = $job({
+    name: "prompts.settle",
+    description:
+      "Starts the one run a burst of a prompt's events asked for, once its settle window ended.",
+    schema: z.object({ promptId: z.uuid() }),
+    retention: { ok: { days: 2 }, error: { days: 14 } },
+    handler: async ({ payload }) => {
+      await this.settled(payload.promptId);
     },
   });
 
@@ -384,6 +408,9 @@ export class PromptTriggers {
     if (body.maxRunsPerDay !== undefined) {
       patch.maxRunsPerDay = body.maxRunsPerDay;
     }
+    if (body.settleSeconds !== undefined) {
+      patch.settleSeconds = body.settleSeconds as number;
+    }
     // Enabled again by hand: a fresh count.
     if (body.enabled === true) patch.consecutiveFailures = 0;
     return patch;
@@ -433,6 +460,12 @@ export class PromptTriggers {
         ? prompt.args.find((it) => it.type === fills)
         : undefined;
       const cause: PromptJobCause = { kind: "event", event: event.name };
+      // An event that fills no item waits out the prompt's settle window,
+      // with the rest of its burst (#Q4501).
+      if (!(arg && event.subjectId) && this.settleOf(row) > 0) {
+        await this.ask(row, event);
+        continue;
+      }
       // At once: one run per event and item, or, with no item, a run that
       // waits behind the running one as one (#Q4354).
       await this.runTriggered(
@@ -442,6 +475,130 @@ export class PromptTriggers {
         event.jobId ?? undefined,
       );
     }
+  }
+
+  /**
+   * The prompt's settle window in seconds (#Q4501): its own, else its
+   * built-in's, else 0.
+   */
+  public settleOf(row: Pick<Prompt, "builtin" | "name" | "settleSeconds">) {
+    if (typeof row.settleSeconds === "number") return row.settleSeconds;
+    if (!row.builtin) return 0;
+    return this.registry.get(row.name)?.settleSeconds ?? 0;
+  }
+
+  /**
+   * Marks the prompt pending and, on a burst's first event only, pushes its
+   * settle job `settleSeconds` later: an event that finds it pending adds
+   * nothing, so the window does not restart.
+   */
+  protected async ask(row: Prompt, event: ProjectEvent): Promise<void> {
+    const claimed = await this.rows.updateMany(
+      { id: { eq: row.id }, pending: { eq: false } },
+      {
+        pending: true,
+        pendingEvent: event.name,
+        pendingAt: this.dateTime.nowISOString(),
+        ...(event.jobId
+          ? { pendingJobId: event.jobId }
+          : { pendingJobId: null as never }),
+      },
+    );
+    if (this.count(claimed) === 0) {
+      // Already pending. An event a member caused makes the burst theirs:
+      // the run is no longer a job's follow-up, so the chain guard does not
+      // hold back what they asked for.
+      if (!event.jobId) {
+        await this.rows.updateMany(
+          { id: { eq: row.id }, pending: { eq: true } },
+          { pendingJobId: null as never },
+        );
+      }
+      return;
+    }
+    await this.settle.push(
+      { promptId: row.id },
+      {
+        key: `settle:${row.id}:${event.id}`,
+        delay: [this.settleOf(row), "seconds"],
+      },
+    );
+  }
+
+  /**
+   * The settled run: one run over everything the prompt's sources hold,
+   * unless a job of the prompt still runs (its end starts it). A ceiling's
+   * refusal leaves the prompt pending and pushes the settle job again for
+   * when the window frees up.
+   */
+  public async settled(promptId: string): Promise<void> {
+    const row = await this.rows.findOne({ where: { id: { eq: promptId } } });
+    if (!row?.pending) return;
+    if (
+      !row.enabled ||
+      !row.eventKeys?.length ||
+      !(await this.agents.isOn(row.projectId))
+    ) {
+      await this.clear(row.id);
+      return;
+    }
+    if (await this.active(row)) return;
+    if (!(await this.clear(row.id))) return;
+    const outcome = await this.runTriggered(
+      row,
+      { kind: "event", event: row.pendingEvent ?? row.eventKeys[0]! },
+      {},
+      row.pendingJobId ?? undefined,
+    );
+    if (outcome.retryAt) await this.rearm(row, outcome.retryAt);
+  }
+
+  /**
+   * Puts a refused burst back to pending, its settle job pushed for `at`.
+   */
+  protected async rearm(row: Prompt, at: number): Promise<void> {
+    const claimed = await this.rows.updateMany(
+      { id: { eq: row.id }, pending: { eq: false } },
+      {
+        pending: true,
+        pendingAt: this.dateTime.nowISOString(),
+        ...(row.pendingEvent ? { pendingEvent: row.pendingEvent } : {}),
+        ...(row.pendingJobId ? { pendingJobId: row.pendingJobId } : {}),
+      },
+    );
+    if (this.count(claimed) === 0) return;
+    const seconds = Math.max(
+      1,
+      Math.ceil((at - this.dateTime.nowMillis()) / 1000),
+    );
+    await this.settle.push(
+      { promptId: row.id },
+      { key: `settle:${row.id}:retry:${at}`, delay: [seconds, "seconds"] },
+    );
+  }
+
+  protected async active(row: Prompt): Promise<boolean> {
+    const running = await this.jobs.findOne({
+      where: {
+        projectId: { eq: row.projectId },
+        prompt: { eq: row.name },
+        status: { inArray: ["queued", "running"] },
+      },
+    });
+    return !!running;
+  }
+
+  protected async clear(promptId: string): Promise<boolean> {
+    const cleared = await this.rows.updateMany(
+      { id: { eq: promptId }, pending: { eq: true } },
+      {
+        pending: false,
+        pendingJobId: null as never,
+        pendingEvent: null as never,
+        pendingAt: null as never,
+      },
+    );
+    return this.count(cleared) > 0;
   }
 
   /**
@@ -544,8 +701,8 @@ export class PromptTriggers {
     cause: PromptJobCause,
     filled: Record<string, string>,
     startedByJobId?: string,
-  ): Promise<{ jobId?: string; skipped?: string }> {
-    let outcome: { jobId?: string; skipped?: string };
+  ): Promise<PromptTriggeredOutcome> {
+    let outcome: PromptTriggeredOutcome;
     try {
       outcome = await this.attempt(row, cause, filled, startedByJobId);
     } catch (error) {
@@ -576,7 +733,7 @@ export class PromptTriggers {
     cause: PromptJobCause,
     filled: Record<string, string>,
     startedByJobId?: string,
-  ): Promise<{ jobId?: string; skipped?: string }> {
+  ): Promise<PromptTriggeredOutcome> {
     if (!row.createdBy) {
       return {
         skipped:
@@ -584,7 +741,7 @@ export class PromptTriggers {
       };
     }
     const gate = await this.gate(row);
-    if (gate) return { skipped: gate };
+    if (gate) return gate;
     if (!(await this.hasWork(row))) return { skipped: "Nothing to do" };
     const prompt = await this.prompts.get(row.projectId, row.name);
     for (const arg of prompt.args) {
@@ -619,15 +776,17 @@ export class PromptTriggers {
    * What stops a triggered run before a host is asked: the project's pause,
    * its host offline or gone (a skip, never a failure), and the ceilings.
    */
-  protected async gate(row: Prompt): Promise<string | undefined> {
+  protected async gate(
+    row: Prompt,
+  ): Promise<{ skipped: string; retryAt?: number } | undefined> {
     const project = await this.projects.findOne({
       where: { id: { eq: row.projectId } },
     });
     if (!(await this.agents.isOn(row.projectId))) {
-      return "Prompts is off in this project";
+      return { skipped: "Prompts is off in this project" };
     }
     if (project?.promptsPausedAt) {
-      return "Prompts' triggers are paused in this project";
+      return { skipped: "Prompts' triggers are paused in this project" };
     }
     try {
       const { host } = await this.agents.resolve(row.projectId, {
@@ -635,28 +794,42 @@ export class PromptTriggers {
         ...(row.agent ? { agent: row.agent } : {}),
         firstAgent: true,
       });
-      if (host.offline) return `Host "${host.slug}" is offline`;
+      if (host.offline) return { skipped: `Host "${host.slug}" is offline` };
       if (host.status && host.status !== "available") {
-        return `Host "${host.slug}" is ${host.status}`;
+        return { skipped: `Host "${host.slug}" is ${host.status}` };
       }
     } catch (error) {
-      return error instanceof Error ? error.message : "No Agent host";
+      return {
+        skipped: error instanceof Error ? error.message : "No Agent host",
+      };
     }
     const now = this.dateTime.nowMillis();
     const since = (ms: number) => new Date(now - ms).toISOString();
     const triggered = await this.triggeredSince(row, since(86_400_000));
     const hour = triggered.filter((at) => at >= since(3_600_000)).length;
+    // When the oldest run counted leaves the window, a run fits again.
+    const frees = (window: number, times: string[]) =>
+      Math.min(...times.map((at) => new Date(at).getTime())) + window;
     if (hour >= row.maxRunsPerHour) {
-      return this.ceiling(
-        row,
-        `Ceiling reached: ${row.maxRunsPerHour} triggered runs in the last hour`,
-      );
+      return {
+        skipped: await this.ceiling(
+          row,
+          `Ceiling reached: ${row.maxRunsPerHour} triggered runs in the last hour`,
+        ),
+        retryAt: frees(
+          3_600_000,
+          triggered.filter((at) => at >= since(3_600_000)),
+        ),
+      };
     }
     if (triggered.length >= row.maxRunsPerDay) {
-      return this.ceiling(
-        row,
-        `Ceiling reached: ${row.maxRunsPerDay} triggered runs in the last day`,
-      );
+      return {
+        skipped: await this.ceiling(
+          row,
+          `Ceiling reached: ${row.maxRunsPerDay} triggered runs in the last day`,
+        ),
+        retryAt: frees(86_400_000, triggered),
+      };
     }
     return undefined;
   }
@@ -737,6 +910,24 @@ export class PromptTriggers {
         },
       });
       if (!row) return;
+      // Events arrived while it ran: their one follow-up starts once their
+      // window is over (#Q4501), at once if it already is, never earlier:
+      // the rest of the burst still lands in that one run.
+      if (row.pending) {
+        const ends = row.pendingAt
+          ? Date.parse(row.pendingAt) + this.settleOf(row) * 1000
+          : 0;
+        const wait = Math.ceil((ends - this.dateTime.nowMillis()) / 1000);
+        await this.settle.push(
+          { promptId: row.id },
+          {
+            key: `settle:${row.id}:after:${job.id}`,
+            ...(wait > 0
+              ? { delay: [wait, "seconds"] as [number, "seconds"] }
+              : {}),
+          },
+        );
+      }
       if (!job.cause || job.cause.kind === "hand") return;
       if (job.status === "succeeded") {
         if (row.consecutiveFailures > 0) {
@@ -827,6 +1018,16 @@ export class PromptTriggers {
 }
 
 /**
+ * What a triggered run did: the job it started, or why it started nothing,
+ * and, for a ceiling, when a run fits again.
+ */
+export interface PromptTriggeredOutcome {
+  jobId?: string;
+  skipped?: string;
+  retryAt?: number;
+}
+
+/**
  * A trigger as `on` reads: its events, and its schedule.
  */
 export interface PromptTrigger {
@@ -845,5 +1046,6 @@ export interface PromptTriggerWrite {
   argValues?: Record<string, string> | null;
   maxRunsPerHour?: number;
   maxRunsPerDay?: number;
+  settleSeconds?: number | null;
   enabled?: boolean;
 }

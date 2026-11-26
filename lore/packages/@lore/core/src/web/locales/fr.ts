@@ -5382,6 +5382,9 @@ export default {
   "prompts.trigger.argValue": "$1 pour ses exécutions déclenchées",
   "prompts.trigger.perHour": "Exécutions par heure",
   "prompts.trigger.perDay": "Exécutions par jour",
+  "prompts.trigger.settle": "Attente après le premier événement (secondes)",
+  "prompts.trigger.settle.description":
+    "Les événements d'une rafale lancent une seule exécution, ce délai après le premier. 0 la lance tout de suite.",
   "prompts.trigger.manual": "À la main",
   "prompts.trigger.enable": "Activer le déclencheur",
   "prompts.trigger.disable": "Désactiver le déclencheur",

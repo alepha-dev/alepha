@@ -38,7 +38,8 @@ export interface PromptTriggerDialogProps {
 /**
  * A prompt's trigger (#Q4280): when it runs (the one word the CLI takes:
  * events, a schedule, or both), what it checks first, the value stored for
- * each arg the trigger does not fill, and its two ceilings. A refusal (an
+ * each arg the trigger does not fill, its two ceilings, and its settle
+ * window (#Q4501). A refusal (an
  * arg left empty, an unknown event) lands on the `on` field.
  */
 const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
@@ -48,11 +49,13 @@ const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
     on: z.string().max(1024),
     maxRunsPerHour: z.integer().min(1).max(60),
     maxRunsPerDay: z.integer().min(1).max(1000),
+    settleSeconds: z.integer().min(0).max(3600),
   };
   const initial: Record<string, unknown> = {
     on: props.prompt.on,
     maxRunsPerHour: props.prompt.maxRunsPerHour,
     maxRunsPerDay: props.prompt.maxRunsPerDay,
+    settleSeconds: props.prompt.settleSeconds,
   };
   for (const check of PROMPT_CHECKS) {
     shape[`check_${check}`] = z.boolean().optional();
@@ -85,6 +88,11 @@ const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
             ),
             maxRunsPerHour: Number(values.maxRunsPerHour),
             maxRunsPerDay: Number(values.maxRunsPerDay),
+            // Only when changed: an untouched field keeps following the
+            // built-in's default rather than copying it onto the row.
+            ...(Number(values.settleSeconds) !== props.prompt.settleSeconds
+              ? { settleSeconds: Number(values.settleSeconds) }
+              : {}),
           },
         });
         props.onSaved(row);
@@ -187,6 +195,13 @@ const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
               disabled={busy}
             />
           </div>
+          <Control
+            input={input.settleSeconds}
+            label={tr("prompts.trigger.settle")}
+            description={tr("prompts.trigger.settle.description")}
+            number
+            disabled={busy}
+          />
           <DialogFooter>
             <Button
               type="button"

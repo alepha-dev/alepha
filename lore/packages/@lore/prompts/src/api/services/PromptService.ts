@@ -206,6 +206,9 @@ export class PromptService {
         ? { timeoutSeconds: body.timeoutSeconds }
         : {}),
       ...(body.concurrency ? { concurrency: body.concurrency } : {}),
+      ...(typeof body.settleSeconds === "number"
+        ? { settleSeconds: body.settleSeconds }
+        : {}),
     });
     return this.toResource(undefined, row);
   }
@@ -663,6 +666,7 @@ export class PromptService {
       concurrency: builtin
         ? (builtin.concurrency ?? "unique")
         : (row?.concurrency ?? "queue"),
+      settleSeconds: row?.settleSeconds ?? builtin?.settleSeconds ?? 0,
       ...(row?.nextRunAt ? { nextRunAt: row.nextRunAt } : {}),
       ...(row?.lastRunAt ? { lastRunAt: row.lastRunAt } : {}),
       ...(row?.lastJobId ? { lastJobId: row.lastJobId } : {}),

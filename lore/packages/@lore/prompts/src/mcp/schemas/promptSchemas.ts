@@ -62,6 +62,14 @@ export const promptCreateParamsSchema = projectParamsSchema.extend({
       "A second run while one with the same args runs: queue (it waits, as one run, and starts when the running one ends; the default) or unique (it is refused). Custom prompts only.",
     )
     .optional(),
+  settle_seconds: z
+    .integer()
+    .min(0)
+    .max(3600)
+    .describe(
+      "How long a triggered run whose event fills no item waits after a burst's first event, so the burst lands in one run, in seconds; 0 starts it at once. The window does not restart with later events.",
+    )
+    .optional(),
   timeout_seconds: z
     .integer()
     .min(0)

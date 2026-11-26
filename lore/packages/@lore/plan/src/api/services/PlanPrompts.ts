@@ -128,6 +128,9 @@ export class PlanPrompts {
       permission: "feedback:triage",
       // Each run reads the whole inbox: one asked for meanwhile waits.
       concurrency: "queue",
+      // A review session posts several items in minutes: one run over all
+      // of them, 5 min after the first (#Q4501).
+      settleSeconds: 300,
       pins: ["feedback"],
       needs: feedbackOption,
       text: triagePromptText,
@@ -146,6 +149,8 @@ export class PlanPrompts {
       timeoutSeconds: AGENT_JOB_LONG_TIMEOUT_SECONDS,
       // Each run reads every loose quest: one asked for meanwhile waits.
       concurrency: "queue",
+      // Quests are filed in batches: one run over the batch (#Q4501).
+      settleSeconds: 300,
       pins: ["quests"],
       text: workLooseQuestsPromptText,
       // A quest under an epic or held for a person plans no run (#Q4331).
@@ -182,6 +187,8 @@ export class PlanPrompts {
       description:
         "Audit the dependencies and file a quest per real vulnerability.",
       args: [],
+      // A burst of events lands in one run, a minute after the first (#Q4501).
+      settleSeconds: 60,
       source: "read",
       permission: "quest:create",
       text: securityCheckPromptText,
@@ -194,6 +201,8 @@ export class PlanPrompts {
       description:
         "Update the dependencies a minor or a patch behind into a pull request.",
       args: [],
+      // A burst of events lands in one run, a minute after the first (#Q4501).
+      settleSeconds: 60,
       source: "write",
       permission: "quest:update",
       text: dependencyUpdatePromptText,

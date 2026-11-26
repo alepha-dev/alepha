@@ -47,6 +47,11 @@ export const promptResourceSchema = z.object({
    * it, `unique` is refused.
    */
   concurrency: z.enum(PROMPT_CONCURRENCIES),
+  /**
+   * How long a triggered run whose event fills no item waits after a
+   * burst's first event (#Q4501), in seconds: 0 starts it at once.
+   */
+  settleSeconds: z.integer(),
   nextRunAt: z.string().optional(),
   lastRunAt: z.string().optional(),
   lastJobId: z.uuid().optional(),
