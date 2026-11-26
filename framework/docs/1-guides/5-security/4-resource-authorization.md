@@ -324,6 +324,26 @@ The one flag a gate without permissions honors is the identity's own: a user **b
 
 This is deliberately strict - `undefined` does **not** bypass. `undefined` only means no permission check ran, which is not the same as "this caller is privileged". If you are migrating hand-written authz that treated `!user.ownership` as the bypass, note that `undefined` used to pass and now does not.
 
+### Administrators who must join first: `privileged: "identity"`
+
+Some applications refuse that bypass to an administrator of the whole deployment: inside a tenant's resource, they are a stranger until they join it. `privileged: "identity"` keeps the bypass for an identity **built** unrestricted, the system user or an operator passed to `run(..., { user })`, and refuses it to a role whose `*` grant answers `ownership: false`:
+
+```typescript
+$owns({
+  repository: () => this.projects,
+  param: "id",
+  via: {
+    repository: () => this.members,
+    resource: "projectId",
+    user: "userId",
+  },
+  requires: "project:read",
+  privileged: "identity",
+});
+```
+
+The administrator still passes the permission check, and is then checked like anybody else: refused without a membership row, and held to their grants with one. The user the handler and `currentUserAtom` receive carries no `ownership: false` either, so a rank check further on reads their rank too. `$secure` takes the same option. With `alepha/api/organizations`, setting `privileged: "identity"` in the organizations config applies it to every `$ownsOrganization` gate, the module's own routes included.
+
 ## Raw guards
 
 For rules that are not owner- or membership-shaped, `$secure`'s `guard` sees the whole request:

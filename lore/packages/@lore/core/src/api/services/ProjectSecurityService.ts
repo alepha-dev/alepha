@@ -3,6 +3,7 @@ import { organizationMembers, RankService } from "alepha/api/organizations";
 import { $repository } from "alepha/orm";
 import {
   ResourceGateMemoProvider,
+  SecurityProvider,
   type UserAccountToken,
 } from "alepha/security";
 import { BadRequestError } from "alepha/server";
@@ -165,6 +166,41 @@ export class ProjectSecurityService {
       { cache: { ttl: ProjectSecurityService.PROJECT_CACHE_TTL_MS } },
     );
     return project.organizationId!;
+  }
+
+  /**
+   * Whether the caller passes a project's membership check without being a
+   * member: only an identity BUILT unrestricted (the system user, a sweep's
+   * writer, `run(..., { user })` with `ownership: false`).
+   *
+   * ⚠️ An instance admin is NOT one (#Q4538). Their role's `*` grant answers
+   * `ownership: false` to a permission check, and that answer opens nothing
+   * inside a project: an admin who is not a member gets the 404 anybody else
+   * gets, and joins from /admin, in plain sight, to get in. The gate does the
+   * same with `privileged: "identity"` (`$ownsProject`).
+   */
+  public bypassesMembership(
+    user: Pick<UserAccountToken, "id" | "ownership">,
+  ): boolean {
+    return (
+      this.alepha
+        .inject(SecurityProvider)
+        .identityOwnership(user as UserAccountToken) === false
+    );
+  }
+
+  /**
+   * The caller as a project sees them: the same identity, with a role's
+   * unrestricted answer dropped, so `RankService.can` and `assert` read an
+   * instance admin's rank like anybody else's (#Q4538). An identity built
+   * unrestricted keeps its `ownership: false`.
+   */
+  public asProjectCaller(user: UserAccountToken): UserAccountToken {
+    const security = this.alepha.inject(SecurityProvider);
+    return security.withOwnershipDecision(
+      user,
+      security.identityOwnership(user),
+    );
   }
 
   /**

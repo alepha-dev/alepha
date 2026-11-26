@@ -4836,6 +4836,8 @@ export default {
   "activity.review.filed":
     "filed a review (questions: $1, decisions: $2, changes: $3)",
   "activity.review.answered": "answered item $1",
+  // An instance admin joining from /admin (#Q4538), not an invitation.
+  "activity.member.instanceAdmin": "joined as instance admin ($1)",
   "activity.review.waived": "waived item $1",
   "activity.review.overturned": "overturned item $1, replaced by item $2",
 

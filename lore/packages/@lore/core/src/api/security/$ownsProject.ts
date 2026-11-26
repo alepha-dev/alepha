@@ -95,6 +95,11 @@ export const $ownsProject = (options: OwnsProjectOptions): SecureMiddleware => {
     },
     message: "Not a member of this project",
 
+    // An instance admin is checked like anybody else (#Q4538): their role's
+    // `*` grant does not open a project they are not a member of. Only an
+    // identity built unrestricted, the system user, still passes.
+    privileged: "identity",
+
     // The same window `assertMember` used, kept so the port is not a latency
     // regression: that call read the project row through the ORM's keyed
     // cache, and `$owns` on its own does not.
