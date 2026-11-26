@@ -97,7 +97,8 @@ describe("PlateLayout", () => {
 
   /**
    * Folder tabs end on a thin strip in the active tile's fill, ruled at its
-   * foot, and the body below it is content, on `bg-card`. The band itself
+   * foot, and the body below it takes the shell header's fill,
+   * `bg-background` (#Q4520), scrolling or not. The band itself
    * draws no rule, or there would be two.
    */
   it("ends folder tabs on a ruled grey strip over a content body", async () => {
@@ -118,10 +119,26 @@ describe("PlateLayout", () => {
       expect.arrayContaining(["bg-muted", "border-b"]),
     );
     const body = classes(folder.getByText("body").parentElement);
-    expect(body).toContain("bg-card");
+    expect(body).toContain("bg-background");
+    expect(body).not.toContain("bg-card");
     expect(body).not.toContain("bg-muted");
     expect(body).not.toContain("bg-linear-to-b");
     folder.unmount();
+
+    const fixed = await mount(
+      <PlateLayout
+        tabs={stateTabs}
+        active="overview"
+        tabsTestId="probe-tabs"
+        scroll={false}
+      >
+        <p>body</p>
+      </PlateLayout>,
+    );
+    const fixedBody = classes(fixed.getByText("body").parentElement);
+    expect(fixedBody).toContain("bg-background");
+    expect(fixedBody).not.toContain("bg-card");
+    fixed.unmount();
 
     const underline = await mount(
       <PlateLayout
