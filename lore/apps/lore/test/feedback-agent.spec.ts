@@ -3,10 +3,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { HostCommandTransport, HostCommandService } from "@lore/core/api";
-import { hostJobs, hosts, projects } from "@lore/core/schemas";
+import { comments, hostJobs, hosts, projects } from "@lore/core/schemas";
 import { createTestHost } from "@lore/core/testing/hosts";
 import { FeedbackAgentService } from "@lore/plan/api";
-import { feedback, feedbackComments } from "@lore/plan/schemas";
+import { feedback } from "@lore/plan/schemas";
 import {
   AgentRunPreamble,
   AgentHostService,
@@ -40,7 +40,7 @@ class Repos {
   jobs = $repository(hostJobs);
   hosts = $repository(hosts);
   feedback = $repository(feedback);
-  comments = $repository(feedbackComments);
+  comments = $repository(comments);
   projects = $repository(projects);
 }
 
@@ -231,7 +231,10 @@ describe("feedback triaged by an agent job", () => {
     expect((await triageInbox(w)).queuedBehind).toBe(out.jobId);
     expect(
       await w.repos.comments.findMany({
-        where: { feedbackId: { eq: untrusted.id } },
+        where: {
+          subjectType: { eq: "feedback" },
+          subjectId: { eq: untrusted.id },
+        },
       }),
     ).toHaveLength(1);
   });

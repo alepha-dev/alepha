@@ -120,7 +120,8 @@ export const feedback = $entity({
     agentTriagedAt: z.string().optional(),
   }),
   /**
-   * ⚠️ `feedback` is a CASCADE parent since `feedback_comments` (#1281).
+   * ⚠️ `feedback` is a CASCADE parent since `feedback_comments` (#1281), a
+   * table retired by #E185 and still on disk until its drop.
    * Any future migration that REBUILDS this table (the drizzle
    * `CREATE __new` / `INSERT FROM SELECT` / `DROP` pattern) wipes every
    * thread unless `PRAGMA foreign_keys=OFF` holds, which D1 does not

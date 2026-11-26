@@ -1,9 +1,15 @@
 import {
   BoundParameters,
+  CommentService,
   LoreAudits,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { commentSourceSchema, projects } from "@lore/core/schemas";
+import {
+  type Comment,
+  comments,
+  commentSourceSchema,
+  projects,
+} from "@lore/core/schemas";
 // The helper the UI labels a user with, so a name reads identically in a
 // thread and on the rest of the page. Same precedent as `ProjectController`.
 import { formatReference, displayName } from "@lore/core/web";
@@ -24,11 +30,11 @@ import {
 } from "alepha/server";
 
 import { feedback } from "../entities/feedback.ts";
-import { feedbackComments } from "../entities/feedbackComments.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
+import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { WorkEventSources } from "../services/WorkEventSources.ts";
 
 /**
@@ -57,9 +63,14 @@ import { WorkEventSources } from "../services/WorkEventSources.ts";
  * The thread still renders no markdown, deliberately - see `FeedbackThread`
  * - so a mention there is React elements built from the shared matcher, not
  * a markdown link.
+ *
+ * The rows are core's `comments`, under the `feedback` subject (#E185).
+ * Every rule above stays here: the subject's `load` only says the item is
+ * its project's, never who may read it.
  */
 export class FeedbackCommentController {
-  comments = $repository(feedbackComments);
+  comments = $repository(comments);
+  commentService = $inject(CommentService);
   feedback = $repository(feedback);
   users = $repository(users);
   projects = $repository(projects);
@@ -80,6 +91,31 @@ export class FeedbackCommentController {
    * the recent end of a conversation is the part that still matters.
    */
   protected readonly cap = 200;
+
+  /**
+   * A row of core's table as the feedback thread has always answered it:
+   * `feedbackId` for the subject, and `attachments` always an array.
+   */
+  protected toResource<T extends Comment>(comment: T) {
+    return {
+      ...comment,
+      feedbackId: comment.subjectId,
+      attachments: comment.attachments ?? [],
+    };
+  }
+
+  /**
+   * The comment by its id, when it is a feedback item's. A quest or an
+   * error comment reached through a feedback route does not exist here: a
+   * 404, never the row.
+   */
+  protected async feedbackComment(id: number): Promise<Comment> {
+    const comment = await this.comments.findById(id);
+    if (!comment || comment.subjectType !== PlanCommentSubjects.FEEDBACK) {
+      throw new NotFoundError("Comment not found");
+    }
+    return comment;
+  }
 
   /**
    * Attach display names to a page of comments, in one lookup for the
@@ -185,7 +221,10 @@ export class FeedbackCommentController {
       await this.loadReadable(params.id, user);
 
       const rows = await this.comments.findMany({
-        where: { feedbackId: { eq: params.id } },
+        where: {
+          subjectType: { eq: PlanCommentSubjects.FEEDBACK },
+          subjectId: { eq: params.id },
+        },
         // `id` breaks the tie for the same reason as on quest comments:
         // `createdAt` is millisecond-resolution, so a burst lands several
         // rows on one stamp and the tail would otherwise be an arbitrary
@@ -197,7 +236,9 @@ export class FeedbackCommentController {
         limit: query?.limit ?? this.cap,
       });
 
-      return await this.withAuthors(rows.toReversed());
+      return await this.withAuthors(
+        rows.toReversed().map((comment) => this.toResource(comment)),
+      );
     },
   });
 
@@ -252,13 +293,17 @@ export class FeedbackCommentController {
         await this.assertAttachmentsBelongToUser(attachments, user.id);
       }
 
-      const created = await this.comments.create({
-        feedbackId: row.id,
-        authorId: user.id,
-        body: body.body,
-        attachments,
-        source: body.source,
-      });
+      const created = this.toResource(
+        await this.commentService.add({
+          type: PlanCommentSubjects.FEEDBACK,
+          projectId: row.projectId,
+          subjectId: row.id,
+          authorId: user.id,
+          body: body.body,
+          attachments,
+          source: body.source,
+        }),
+      );
       // Filed under `feedback` rather than a comment type of its own, for the
       // reason a quest comment is filed under `quest`: the reader filtering by
       // resource is asking what happened to the feedback.
@@ -389,8 +434,8 @@ export class FeedbackCommentController {
       response: feedbackCommentResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const comment = await this.comments.getById(params.id);
-      await this.loadReadable(comment.feedbackId, user);
+      const comment = await this.feedbackComment(params.id);
+      await this.loadReadable(comment.subjectId, user);
 
       // Editing is the author's alone, not the owner's. An owner rewriting
       // what a reporter said, under their name, is a different feature from
@@ -399,10 +444,9 @@ export class FeedbackCommentController {
         throw new ForbiddenError("Only the author can edit this comment");
       }
 
-      const updated = await this.comments.updateById(params.id, {
-        body: body.body,
-        editedAt: this.dt.nowISOString(),
-      });
+      const updated = this.toResource(
+        await this.commentService.edit(params.id, { body: body.body }),
+      );
       const [resource] = await this.withAuthors([updated]);
       return resource;
     },
@@ -417,8 +461,8 @@ export class FeedbackCommentController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const comment = await this.comments.getById(params.id);
-      const row = await this.loadReadable(comment.feedbackId, user);
+      const comment = await this.feedbackComment(params.id);
+      const row = await this.loadReadable(comment.subjectId, user);
 
       // Deleting IS moderation, so somebody who triages feedback here may do
       // it too, through their rank (#Q2515). It was `project.createdBy`,
@@ -447,7 +491,7 @@ export class FeedbackCommentController {
         }
       }
 
-      await this.comments.deleteById(params.id);
+      await this.commentService.remove(params.id);
       return { ok: true };
     },
   });

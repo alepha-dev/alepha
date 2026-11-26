@@ -5,29 +5,19 @@ import { $entity, db } from "alepha/orm";
 import { feedback } from "./feedback.ts";
 
 /**
- * One comment on a feedback item.
+ * ⚠️ RETIRED (#E185): the table a feedback item's thread lived in until the
+ * comments moved to core's `comments` (subject `feedback`). Nothing reads or
+ * writes it any more.
  *
- * Triage used to be a verdict with nowhere to put the reasoning: an owner
- * (or an agent) could accept or reject an item but could not ask its
- * reporter a question, and a finding like "reproduced on Safari only" had
- * to live on a quest that might never be created.
+ * Still declared, and only that, for the reason `questComments` gives: the
+ * table is still on disk. Its rows were copied by
+ * `20261126215004_feedback_comments_to_comments`, and one later migration drops it once the
+ * counts are compared on production (review of #E185, item 26). Registered
+ * by `RetiredCommentTables` so the snapshot and the migration safety spec
+ * still hold it; `feedback` stays its cascade parent until then.
  *
- * A copy of `quest_comments` in shape, with one difference that is not
- * cosmetic: **the reporter is often not a project member**. They reach
- * their own item through the account dialog's Feedback section, so the read/write gate here
- * is "member of the project OR the reporter of this item", not membership
- * alone. See `FeedbackCommentController`.
- *
- * **⚠️ Only a project MEMBER's comment can reach anybody** (epic #E42). A
- * `@name` written by a member puts a message in the named member's inbox; a
- * comment written by anybody else notifies nobody, whatever it contains.
- * The gate is on the author, not on the matched handle, because a reporter
- * is usually an outsider and a public feedback form is not going to be an
- * unsolicited-message channel.
- *
- * So for a reporter the old promise still holds and the copy still says so:
- * the thread is there when they come back. What changed is that a member
- * answering in that thread can now reach a colleague.
+ * Do not import it: a comment is a row of `comments`, written through
+ * `CommentService`.
  */
 export const feedbackComments = $entity({
   name: "feedback_comments",

@@ -4,7 +4,6 @@ import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
-import { feedbackComments } from "../entities/feedbackComments.ts";
 import { quests } from "../entities/quests.ts";
 import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
 import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
@@ -29,7 +28,6 @@ export class WorkFileAccess {
   protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);
   protected readonly comments = $repository(comments);
-  protected readonly feedbackComments = $repository(feedbackComments);
 
   constructor() {
     this.registry.register(
@@ -41,17 +39,18 @@ export class WorkFileAccess {
         if (row) {
           return { projectId: row.projectId, permission: "feedback:triage" };
         }
-        const [comment] = await this.feedbackComments.findMany({
-          where: { attachments: { like: `%"${fileId}"%` } },
-          columns: ["feedbackId"],
+        // A comment of core's table carries its project (#E185): no second
+        // read of the item.
+        const [comment] = await this.comments.findMany({
+          where: {
+            subjectType: { eq: PlanCommentSubjects.FEEDBACK },
+            attachments: { like: `%"${fileId}"%` },
+          },
+          columns: ["projectId"],
           limit: 1,
         });
-        if (!comment) return undefined;
-        const item = await this.feedback.findById(comment.feedbackId, {
-          force: true,
-        });
-        return item
-          ? { projectId: item.projectId, permission: "feedback:triage" }
+        return comment
+          ? { projectId: comment.projectId, permission: "feedback:triage" }
           : undefined;
       },
     );

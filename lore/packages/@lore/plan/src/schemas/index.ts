@@ -14,7 +14,6 @@
 export { areas } from "../api/entities/areas.ts";
 export { epics } from "../api/entities/epics.ts";
 export { feedback } from "../api/entities/feedback.ts";
-export { feedbackComments } from "../api/entities/feedbackComments.ts";
 export { quests } from "../api/entities/quests.ts";
 export { releases } from "../api/entities/releases.ts";
 export { KanbanColumnConfig } from "../api/schemas/KanbanColumnConfig.ts";
