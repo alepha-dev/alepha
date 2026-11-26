@@ -362,6 +362,13 @@ describe("HostJobService", () => {
     expect(live.stdout).toBe("one\ntwo\nthree\n");
     const tail = await w.service.readLog(job.id, { stdout: 4 });
     expect(tail.stdout).toBe("two\nthree\n");
+    // The last bytes only, and where they start (#Q4514).
+    expect(await w.service.readTail(job.id, 6)).toMatchObject({
+      stdout: "three\n",
+      start: 8,
+      next: { stdout: 14 },
+    });
+    expect((await w.service.readTail(job.id, 100)).start).toBe(0);
 
     await w.commands.ack(w.host.id, { id: command.id, status: "done" });
     const ended = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
@@ -370,6 +377,9 @@ describe("HostJobService", () => {
       await w.repos.logs.findMany({ where: { jobId: { eq: job.id } } }),
     ).toHaveLength(0);
     expect((await w.service.readLog(job.id)).stdout).toBe("one\ntwo\nthree\n");
+    expect((await w.service.readTail(job.id, 10)).stdout).toBe(
+      "two\nthree\n",
+    );
   });
 
   it("keeps a frame that lands after the one following it, so a long line is never cut (#Q4296)", async ({

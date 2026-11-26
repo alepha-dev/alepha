@@ -193,8 +193,13 @@ family. Left on **The host's default**, the run takes the first agent CLI the
 host reports, with its default model. The code the run finds is the
 prompt's own setting.
 
-The run opens its job's page, where its progress shows. The agent's final
-reply is the first thing on it, once the job ends. See
+The run leaves you on the page you were on. **Jobs**, the robot button beside
+the bell, says the job is queued, counts the jobs in flight with a ring turning
+while one runs, and says the job's name again when it ends. Open it for the
+project's jobs in flight and those that ended in the last 15 minutes, each with
+its host, its time and, while it runs, the last line of its transcript; a row
+opens the job's page, where the agent's final reply is the first thing once the
+job ends. **Run again** on a job's page opens the new job's page. See
 [Agent jobs](/lore/docs/agents-jobs).
 
 A prompt that takes a **member** emails its final reply to that member when
@@ -209,7 +214,7 @@ the first one is going, depending on the prompt:
 
 - **Waits**: the run is queued, and starts when the running one ends. Ask
   again while it waits and nothing more is added, since the next run reads
-  everything anyway. **Run** says **Queued** and opens the run in progress.
+  everything anyway. **Run** says **Queued**.
   **Triage** and **Work on loose quests** wait, and so does a prompt of your
   own unless its editor says otherwise.
 - **Is refused**: **Run** says which job is already running. Every other

@@ -1,27 +1,41 @@
 import { useToast } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
-import { useAction, useClient } from "alepha/react";
+import { DateTimeProvider } from "alepha/datetime";
+import { useAction, useAlepha, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
+import {
+  jobsAnnouncementAtom,
+  jobsStartedHereAtom,
+} from "../jobs-header/jobsHeaderAtoms.ts";
 
 /**
  * Copy and Run of a prompt (#Q4280), one place for the Prompts tab, the
  * pinned button and the spotlight (#Q4284). Copy renders through the API
- * and puts the text on the clipboard; Run starts the job on a host and opens
- * the job's page, where its progress shows, or, queued behind a run of the
- * same args, that run's page.
+ * and puts the text on the clipboard.
+ *
+ * Run starts the job on a host and stays on the page (#Q4514): the job
+ * shows in the header's jobs list as queued, and the jobs button names it,
+ * then names it again when it ends. A run queued behind one of the same
+ * args (#Q4354) says so in a toast. With `open` (the job page's Run again
+ * and Start fresh), it opens the new job's page instead, or the one it
+ * waits behind.
  */
 export const usePromptActions = (
   projectId: number | undefined,
   slug: string,
+  options: { open?: boolean } = {},
 ) => {
   const { tr } = useI18n<I18n, "en">();
   const api = useClient<PromptController>();
   const toaster = useToast();
   // A page name another router declares: the job page is core's own.
   const router = useRouter<any>();
+  const dateTime = useInject(DateTimeProvider);
+  const alepha = useAlepha();
+  const open = options.open ?? false;
 
   const copy = useAction<[name: string, args: Record<string, string>], boolean>(
     {
@@ -63,20 +77,39 @@ export const usePromptActions = (
           params: { projectId, name },
           body,
         });
-        // Queued behind a run of the same args (#Q4354): its page, where
-        // the run in progress shows, and a word that this one waits.
+        // Queued behind a run of the same args (#Q4354): a word that this
+        // one waits.
         if (out.queuedBehind) toaster.info(tr("prompts.queued"));
-        const jobId = out.jobId ?? out.queuedBehind;
-        if (jobId) {
-          await router.push("projectJob", {
-            params: { projectSlug: slug, jobId },
+        if (open) {
+          const jobId = out.jobId ?? out.queuedBehind;
+          if (jobId) {
+            await router.push("projectJob", {
+              params: { projectSlug: slug, jobId },
+            });
+          }
+          return true;
+        }
+        if (out.jobId) {
+          const jobId = out.jobId;
+          alepha.store.set(jobsStartedHereAtom, [
+            ...(alepha.store.get(jobsStartedHereAtom) ?? []),
+            jobId,
+          ]);
+          alepha.store.set(jobsAnnouncementAtom, {
+            jobId,
+            prompt: name,
+            word: "queued",
+            at: dateTime.nowMillis(),
           });
         }
         return true;
       },
-      invalidates: [["project-prompts", projectId]],
+      invalidates: [
+        ["project-prompts", projectId],
+        ["host-jobs-header", projectId],
+      ],
     },
-    [api, projectId, slug],
+    [api, projectId, slug, open],
   );
 
   return { copy, run };

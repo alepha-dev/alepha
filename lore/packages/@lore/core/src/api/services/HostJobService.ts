@@ -625,6 +625,62 @@ export class HostJobService {
   }
 
   /**
+   * How many of a running job's last log frames a tail read loads (#Q4514).
+   */
+  public static readonly TAIL_FRAMES = 64;
+
+  /**
+   * The last `bytes` of a job's stdout (#Q4514), and where they start: a
+   * running job's last line, read without the rest of the log reaching the
+   * caller. Its text may begin inside a line.
+   */
+  public async readTail(
+    jobId: string,
+    bytes: number,
+  ): Promise<{
+    stdout: string;
+    stderr: string;
+    next: { stdout: number; stderr: number };
+    start: number;
+  }> {
+    const job = await this.getRow(jobId);
+    if (job.logFileId) {
+      const whole = await this.stored(job);
+      const size = this.bytes(whole.stdout);
+      const start = Math.max(0, size - bytes);
+      return {
+        stdout: this.tail(whole.stdout, start),
+        stderr: "",
+        next: { stdout: size, stderr: this.bytes(whole.stderr) },
+        start,
+      };
+    }
+    // The last frames only, never the whole log: a frame is a few
+    // kilobytes, so the tail lies within the last ones.
+    const rows = await this.logs.findMany({
+      where: { jobId: { eq: jobId }, stream: { eq: "stdout" } },
+      orderBy: [{ column: "offset", direction: "desc" }],
+      limit: HostJobService.TAIL_FRAMES,
+    });
+    const size = rows.reduce(
+      (end, row) => Math.max(end, row.offset + this.bytes(row.data)),
+      0,
+    );
+    const start = Math.max(0, size - bytes);
+    const out = this.assemble(
+      rows.filter((row) => row.offset + this.bytes(row.data) > start),
+      "stdout",
+      start,
+    );
+    return {
+      stdout: out.text,
+      stderr: "",
+      next: { stdout: out.next, stderr: 0 },
+      start,
+    };
+  }
+
+  /**
    * One frame's row, keyed by its offset (unique per job and stream): kept
    * when the offset is new, its data replaced when a replay at the same
    * offset carries more, and nothing done when the row holds as much. A
