@@ -7,6 +7,11 @@ export class ThemesProvider {
   /**
    * The themes Lore offers, on the class so a test or a subclass can replace
    * the list.
+   *
+   * A swatch is the theme's own tokens, read from `apps/lore/src/main.css`
+   * and never picked by eye: for Forest, Lavandula and Winter, the light
+   * primary, the dark primary, the light page and the dark card. A token
+   * that moves takes its swatch with it.
    */
   protected readonly themes: UiTheme[] = [
     {
@@ -18,19 +23,19 @@ export class ThemesProvider {
     {
       id: "forest",
       label: "Forest",
-      swatch: ["#2f6b3b", "#6fa44c", "#e9efde", "#1d2a1a"],
+      swatch: ["#146720", "#53a640", "#ebf3e7", "#0c2310"],
       fontHref: "/fonts/forest.css",
     },
     {
       id: "lavandula",
       label: "Lavandula",
-      swatch: ["#5a3a9c", "#8a6cc9", "#ece6f6", "#20183c"],
+      swatch: ["#683ecf", "#9b76ff", "#f1eefd", "#181330"],
       fontHref: "/fonts/lavandula.css",
     },
     {
       id: "winter",
       label: "Winter",
-      swatch: ["#3a78c9", "#9fb6d8", "#ecf0f5", "#1c2436"],
+      swatch: ["#006aa8", "#00aee9", "#eef7fc", "#0b1f2e"],
       fontHref: "/fonts/winter.css",
     },
     {
