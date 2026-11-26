@@ -101,12 +101,19 @@ test.describe("Feedback", () => {
 
       // The request form is a single free-text field — the feedback title is
       // derived from the first line server-side.
+      await page.locator("textarea").first().fill(feedbackTitle);
+      await page.locator("textarea").first().press("Enter");
       await page
         .locator("textarea")
         .first()
-        .fill(`${feedbackTitle}\n${feedbackDescription}`);
+        .pressSequentially(feedbackDescription.replaceAll("\n", " / "));
+      await expect(page.locator("textarea").first()).toHaveValue(
+        `${feedbackTitle}\n${feedbackDescription.replaceAll("\n", " / ")}`,
+      );
 
-      await page.getByRole("button", { name: /^submit feedback$/i }).click();
+      // Cmd+Enter (Ctrl+Enter off macOS) submits (#Q4453); the plain
+      // Enters typed above stayed new lines of the message.
+      await page.locator("textarea").first().press("ControlOrMeta+Enter");
 
       // The reporter here is the project's owner, a member, so a successful
       // submit lands back in the project, on the inbox the report joined. An
