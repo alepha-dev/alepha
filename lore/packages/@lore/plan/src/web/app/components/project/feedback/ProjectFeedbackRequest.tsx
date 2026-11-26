@@ -39,7 +39,13 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter, useRouterState } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
 import { ArrowLeft, Info, Loader2, Paperclip, X } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
 import type { FeedbackSource } from "../../../../../api/schemas/feedbackSourceSchema.ts";
@@ -48,6 +54,7 @@ import {
   feedbackTrailSchema,
   newestFeedbackTrail,
 } from "../../../../../api/schemas/feedbackTrailSchema.ts";
+import { FeedbackSubmitShortcut } from "./FeedbackSubmitShortcut.ts";
 import { type DraftContext, readDraftFromQuery } from "./readDraftFromQuery.ts";
 
 // Renamed from "lor.petition.draft" in the 2026-08 great rename (Task 4).
@@ -667,7 +674,16 @@ const ProjectFeedbackRequest = () => {
                     // the question already. The height is a class because
                     // `Textarea` is `field-sizing-content`, which ignores
                     // `rows`; it still grows with what is typed.
-                    inputProps={{ className: "min-h-32" }}
+                    inputProps={{
+                      className: "min-h-32",
+                      // Cmd+Enter on macOS, Ctrl+Enter elsewhere, submits
+                      // (#Q4453).
+                      onKeyDown: (event: KeyboardEvent<HTMLTextAreaElement>) =>
+                        FeedbackSubmitShortcut.onKeyDown(
+                          event,
+                          submitting || uploading,
+                        ),
+                    }}
                   />
                   <p className="text-muted-foreground text-xs">
                     {tr("feedback.request.pasteHint")}
