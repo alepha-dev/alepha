@@ -61,8 +61,10 @@ Acceptance criteria:
 1. Work in a git worktree of your own, on a new branch cut from the latest main.
 2. Write one test per acceptance criterion, each tagged \`@U{{useCase.number}}\` and naming its key (\`C2\`) in its title, so the Lore Playwright reporter (\`@alepha/lore/playwright\`) records the run from CI.
 3. Sign in as {{useCase.persona}} through an account the test creates itself, or the demo account ({{useCase.demoAccount}}) the app's own seed provides; never commit a password.
-4. Run the project's local checks, push, open a pull request into main, and wait for CI. Never merge it yourself.
-5. Record the spec's path and tag on the use case with \`usecase_update\` (automatedTestPath, automatedTestTag), and end with the pull request's link.`;
+4. Run the project's local checks, push, and open a pull request into main. If the project verifies on CI, the run on the pull request is the source of truth: fix and push until it is green.
+5. Before auto-merge, start a sub-agent to review the pull request: give it the diff against main, the use case with its criteria, and the repository's AGENTS.md or CLAUDE.md, never your own reasoning. Ask it for a criterion a test does not really check, a test that passes for the wrong reason, and anything the repository's instructions require. Fix each finding that holds in the same commit, and push.
+6. Then turn on auto-merge as a rebase merge (\`gh pr merge --auto --rebase\`) if the project's AGENTS.md or CLAUDE.md lets an agent do so: that is how the pull request lands, once CI is green. Otherwise it waits for review. Never merge it at once without CI (\`gh pr merge\` without \`--auto\`), and never push to main.
+7. Record the spec's path and tag on the use case with \`usecase_update\` (automatedTestPath, automatedTestTag), and end with the pull request's link.`;
 
 export const prepareUseCaseDemoPromptText = `Prepare a demo of use case {{useCase.reference}}, "{{useCase.title}}", of the Lore project "{{project}}" ({{useCase.url}}).
 
