@@ -25,7 +25,7 @@ export class HostTools {
   host_stats = $tool({
     title: "Read a host's stats",
     description:
-      "A host's CPU and memory: the current reading, then one mean per day over a window (30 days by default). Readable by the members of its home project whose rank grants host:read; with a project, the slug resolves among that project's own hosts and the ones it borrows, and `home` picks between two of one slug. The daily series is recorded only while somebody switched it on; `collecting` says which.",
+      "A host's CPU and memory: the current reading, then one mean per day of CPU, memory, disk and load over a window (30 days by default). Readable by the members of its home project whose rank grants host:read; with a project, the slug resolves among that project's own hosts and the ones it borrows, and `home` picks between two of one slug. The daily series is recorded only while somebody switched it on; `collecting` says which.",
     annotations: { readOnlyHint: true },
     schema: {
       params: hostStatsParamsSchema,

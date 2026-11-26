@@ -220,6 +220,40 @@ describe("HostStatsService", () => {
     expect(series.estimated).toBe(false);
   });
 
+  it("keeps disk and load as their own means, absent on a day no reading carried them", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const host = await createHost(ctx, owner, "disked", true);
+    const old = await createHost(ctx, owner, "older-bay", true);
+
+    await ctx.service.record(host, {
+      ...frame(20, 10),
+      diskPercent: 50,
+      load1: 1,
+    });
+    // A reading without the disk (an older Bay, or a gauge that could not
+    // read it) must not drag the disk mean towards zero.
+    await ctx.service.record(host, frame(40, 20));
+    await ctx.service.record(host, {
+      ...frame(60, 30),
+      diskPercent: 60,
+      load1: 3,
+    });
+    await ctx.service.record(old, frame(10, 10));
+
+    const series = await ctx.service.series(host.id, "2000-01-01");
+    expect(series.points[0]).toMatchObject({
+      cpuPercent: 40,
+      diskPercent: 55,
+      load1: 2,
+      samples: 3,
+    });
+    const older = await ctx.service.series(old.id, "2000-01-01");
+    expect(older.points[0].diskPercent).toBeUndefined();
+    expect(older.points[0].load1).toBeUndefined();
+  });
+
   it("declares the dataset on the host, pinned, with hot retention under the Analytics Engine ceiling", async ({
     expect,
   }) => {
@@ -229,12 +263,25 @@ describe("HostStatsService", () => {
     expect(Object.keys(dataset.dimensions.shape)).toEqual(["hostId"]);
     expect(Object.keys(dataset.measures.shape).sort()).toEqual([
       "cpu",
+      "disk",
+      "diskSamples",
+      "load",
+      "loadSamples",
       "memory",
       "samples",
     ]);
+    // Append-only: the first three never move, #Q4420's four come after.
     expect(dataset.slots).toEqual({
       dimensions: ["hostId"],
-      measures: ["cpu", "memory", "samples"],
+      measures: [
+        "cpu",
+        "memory",
+        "samples",
+        "disk",
+        "diskSamples",
+        "load",
+        "loadSamples",
+      ],
     });
     // `WaeAnalyticsProvider.assertRetention` refuses anything above roughly
     // 90 days at declaration time, on the one backend the tests never boot.

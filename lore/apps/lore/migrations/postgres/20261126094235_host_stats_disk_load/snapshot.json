@@ -1,0 +1,259 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "061c4db5-3141-4387-b99d-26a470909fb6",
+  "prevIds": ["8a17cca0-819c-4e48-b464-752046d2051f"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_raw",
+        "disk"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_raw.disk",
+        "n|col|public.analytics_host_stats_raw.disk",
+        "e|col|public.analytics_host_stats_raw.disk"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_raw", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_raw",
+        "disk_samples"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_raw.disk_samples",
+        "n|col|public.analytics_host_stats_raw.disk_samples",
+        "e|col|public.analytics_host_stats_raw.disk_samples"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_raw", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_raw",
+        "load"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_raw.load",
+        "n|col|public.analytics_host_stats_raw.load",
+        "e|col|public.analytics_host_stats_raw.load"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_raw", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_raw",
+        "load_samples"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_raw.load_samples",
+        "n|col|public.analytics_host_stats_raw.load_samples",
+        "e|col|public.analytics_host_stats_raw.load_samples"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_raw", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_rolled",
+        "disk"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_rolled.disk",
+        "n|col|public.analytics_host_stats_rolled.disk",
+        "e|col|public.analytics_host_stats_rolled.disk"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_rolled", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_rolled",
+        "disk_samples"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_rolled.disk_samples",
+        "n|col|public.analytics_host_stats_rolled.disk_samples",
+        "e|col|public.analytics_host_stats_rolled.disk_samples"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_rolled", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_rolled",
+        "load"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_rolled.load",
+        "n|col|public.analytics_host_stats_rolled.load",
+        "e|col|public.analytics_host_stats_rolled.load"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_rolled", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "analytics_host_stats_rolled",
+        "load_samples"
+      ],
+      "writes": [
+        "s|col|public.analytics_host_stats_rolled.load_samples",
+        "n|col|public.analytics_host_stats_rolled.load_samples",
+        "e|col|public.analytics_host_stats_rolled.load_samples"
+      ],
+      "reads": ["n|tbl|public.analytics_host_stats_rolled", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_raw",
+        "name": "disk",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_raw",
+        "name": "disk_samples",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_raw",
+        "name": "load",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_raw",
+        "name": "load_samples",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_rolled",
+        "name": "disk",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_rolled",
+        "name": "disk_samples",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_rolled",
+        "name": "load",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_host_stats_rolled",
+        "name": "load_samples",
+        "type": "double precision",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "0",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

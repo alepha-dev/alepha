@@ -271,10 +271,27 @@ export class ProjectAnalytics {
       cpu: z.number(),
       memory: z.number(),
       samples: z.number(),
+      // #Q4420: disk and load, each with its own count, since a Bay older
+      // than the frame field sends neither and its samples must not drag the
+      // disk mean towards zero.
+      // A default, so the columns can be added to the relational tables'
+      // existing rows (SQLite refuses a NOT NULL column without one).
+      disk: z.number().default(0),
+      diskSamples: z.number().default(0),
+      load: z.number().default(0),
+      loadSamples: z.number().default(0),
     }),
     slots: {
       dimensions: ["hostId"],
-      measures: ["cpu", "memory", "samples"],
+      measures: [
+        "cpu",
+        "memory",
+        "samples",
+        "disk",
+        "diskSamples",
+        "load",
+        "loadSamples",
+      ],
     },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
   });

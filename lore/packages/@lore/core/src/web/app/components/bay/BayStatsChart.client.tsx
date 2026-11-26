@@ -15,7 +15,8 @@ import { currentHostAtom } from "../../atoms/currentHostAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 
 /**
- * CPU and memory over the last thirty days, one point per day.
+ * CPU, memory and disk over the last thirty days, one point per day. The
+ * disk line is drawn only from the days a reading carried it (#Q4420).
  *
  * ⚠️ **The series is off by default.** `collectSeries` starts false, so most
  * hosts have no history at all, and an empty grid would read as "this
@@ -61,6 +62,7 @@ const BayStatsChart = () => {
   const config = {
     cpuPercent: { label: tr("bay.chart.cpu"), color: "var(--chart-1)" },
     memoryPercent: { label: tr("bay.chart.memory"), color: "var(--chart-2)" },
+    diskPercent: { label: tr("bay.chart.disk"), color: "var(--chart-3)" },
   } satisfies ChartConfig;
 
   const points = data?.points ?? [];
@@ -121,6 +123,12 @@ const BayStatsChart = () => {
                 dataKey="memoryPercent"
                 stroke="var(--color-memoryPercent)"
                 dot={false}
+              />
+              <Line
+                dataKey="diskPercent"
+                stroke="var(--color-diskPercent)"
+                dot={false}
+                connectNulls
               />
             </LineChart>
           </ChartContainer>
