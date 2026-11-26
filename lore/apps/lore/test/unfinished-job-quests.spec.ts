@@ -76,7 +76,9 @@ describe("an agent job that ends unfinished", () => {
     return quest;
   };
   const commentsOn = (questId: number) =>
-    w.repos.comments.findMany({ where: { questId: { eq: questId } } });
+    w.repos.comments.findMany({
+      where: { subjectType: { eq: "quest" }, subjectId: { eq: questId } },
+    });
 
   it("comments on each quest a timed-out job accepted and left open, and on no other", async ({
     expect,

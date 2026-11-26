@@ -8,7 +8,6 @@ import { epicReviewItems } from "../api/entities/epicReviewItems.ts";
 import { epicReviews } from "../api/entities/epicReviews.ts";
 import { type Epic, epics } from "../api/entities/epics.ts";
 import { feedback } from "../api/entities/feedback.ts";
-import { questComments } from "../api/entities/questComments.ts";
 import { questFlowDaily } from "../api/entities/questFlowDaily.ts";
 import {
   type Quest,
@@ -22,8 +21,8 @@ type EpicInsert = Infer<typeof epics.insertSchema>;
 /**
  * Work's repository bag (#E75, #Q2613): core's tables plus the ones a quest
  * reaches through its foreign keys (`releases`, `feedback`, `areas`,
- * `epics`), plus `questComments`, the one table of `workRelations` no
- * foreign key reaches: a relational read needs every table its map names.
+ * `epics`): a relational read needs every table its map names. A quest's
+ * discussion is core's `comments` (#E185), which core's bag already holds.
  * Constructed before `start()` so the whole closure is registered up front. The app's fixture extends it with Knowledge's tables.
  */
 export class WorkTestEntities extends CoreTestEntities {
@@ -34,7 +33,6 @@ export class WorkTestEntities extends CoreTestEntities {
   epicReviews = $repository(epicReviews);
   epicReviewItems = $repository(epicReviewItems);
   quests = $repository(quests);
-  questComments = $repository(questComments);
   questFlowDaily = $repository(questFlowDaily);
 
   /**

@@ -8,6 +8,7 @@ import {
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 
+import { comments } from "../api/entities/comments.ts";
 import { folioLinks } from "../api/entities/folioLinks.ts";
 import { projectCapabilities } from "../api/entities/projectCapabilities.ts";
 import { type Project, projects } from "../api/entities/projects.ts";
@@ -61,6 +62,9 @@ export class CoreTestEntities {
   // fails at BOOT with "Referenced table not found", nowhere near the call
   // that needed it.
   capabilities = $repository(projectCapabilities);
+  // Every thread of every subject (#E185): a spec reads a quest's, an
+  // error's or a feedback item's comments here, by `subjectType`.
+  comments = $repository(comments);
 
   constructor() {
     CoreTestEntities.registered.set(this.alepha, this);

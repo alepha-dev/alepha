@@ -161,8 +161,8 @@ describe("the assistant's write tools", () => {
       isError: false,
     });
 
-    const [comment] = await entities.questComments.findMany({
-      where: { questId: { eq: quest.id } },
+    const [comment] = await entities.comments.findMany({
+      where: { subjectType: { eq: "quest" }, subjectId: { eq: quest.id } },
     });
     expect(comment.body).toBe("Looks good to me.");
     expect(comment.source).toMatchObject({ kind: "mcp", client: "lore-ai" });
@@ -197,8 +197,8 @@ describe("the assistant's write tools", () => {
       isError: true,
     });
     expect(
-      await entities.questComments.findMany({
-        where: { questId: { eq: theirs.id } },
+      await entities.comments.findMany({
+        where: { subjectType: { eq: "quest" }, subjectId: { eq: theirs.id } },
       }),
     ).toEqual([]);
     await alepha.stop();

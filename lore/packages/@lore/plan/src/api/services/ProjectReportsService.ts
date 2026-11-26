@@ -1,5 +1,5 @@
 import { type DashboardReadShare, ReportStatistics } from "@lore/core/api";
-import { projects, type ReportsQuery } from "@lore/core/schemas";
+import { comments, projects, type ReportsQuery } from "@lore/core/schemas";
 import {
   reportsOverviewSchema,
   reportsPeriodFiguresSchema,
@@ -16,11 +16,11 @@ import {
   SqlExpressionProvider,
 } from "alepha/orm";
 
-import { questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { byPriorityDesc } from "../schemas/questPriority.ts";
 import { DashboardFlowSeries } from "./DashboardFlowSeries.ts";
 import { EpicVisibilityService } from "./EpicVisibilityService.ts";
+import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 import { QuestHoldTime } from "./QuestHoldTime.ts";
 import { QuestTagTallyService } from "./QuestTagTallyService.ts";
 
@@ -34,7 +34,7 @@ import { QuestTagTallyService } from "./QuestTagTallyService.ts";
  */
 export class ProjectReportsService {
   protected readonly quests = $repository(quests);
-  protected readonly comments = $repository(questComments);
+  protected readonly comments = $repository(comments);
   protected readonly members = $repository(organizationMembers);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
@@ -360,13 +360,14 @@ export class ProjectReportsService {
           "completedBy",
         ],
       }),
+      // Core's `comments` carries its project (#E185): the window scan is
+      // `(projectId, createdAt)`, with no join to `quests`. Quest comments
+      // only, as before the tables were one.
       this.comments.findMany({
         where: {
+          projectId: { eq: projectId },
           createdAt: within,
-          exists: this.quests.subquery({
-            id: { eq: this.comments.table.questId },
-            projectId: { eq: projectId },
-          }),
+          subjectType: { eq: PlanCommentSubjects.QUEST },
         },
         columns: ["authorId"],
       }),

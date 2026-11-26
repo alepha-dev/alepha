@@ -1,11 +1,15 @@
-import { type HostJobSummary, projectEvents } from "@lore/core/api";
+import {
+  CommentService,
+  type HostJobSummary,
+  projectEvents,
+} from "@lore/core/api";
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
 
-import { questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 import { QuestResourceMapper } from "./QuestResourceMapper.ts";
 
 /**
@@ -31,7 +35,7 @@ export class UnfinishedJobQuests {
   protected readonly log = $logger();
   protected readonly events = $repository(projectEvents);
   protected readonly quests = $repository(quests);
-  protected readonly comments = $repository(questComments);
+  protected readonly comments = $inject(CommentService);
   protected readonly mapper = $inject(QuestResourceMapper);
   protected readonly dateTime = $inject(DateTimeProvider);
 
@@ -106,8 +110,10 @@ export class UnfinishedJobQuests {
       }
       const handBack = quest.agentJobId === job.id;
       if (how && job.startedBy) {
-        await this.comments.create({
-          questId: quest.id,
+        await this.comments.add({
+          type: PlanCommentSubjects.QUEST,
+          projectId: quest.projectId,
+          subjectId: quest.id,
           authorId: job.startedBy,
           body: this.bodyOf(job, how, handBack),
           source: { kind: "mcp", client: UnfinishedJobQuests.CLIENT },

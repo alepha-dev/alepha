@@ -155,8 +155,8 @@ describe("Quest hold until a date", () => {
     );
     expect(resource.data.metadata.status).toBe("todo");
 
-    const comments = await rows.questComments.findMany({
-      where: { questId: { eq: id } },
+    const comments = await rows.comments.findMany({
+      where: { subjectType: { eq: "quest" }, subjectId: { eq: id } },
     });
     const lines = comments.filter(
       (comment) => comment.source?.client === QuestHoldLifts.CLIENT,

@@ -809,7 +809,7 @@ export class ProjectController {
    * ## One indexed table, not six range scans
    *
    * This used to be `ProjectActivityService`, which derived events at read
-   * time by scanning `quests`, `quest_comments`, `feedback`,
+   * time by scanning `quests`, their comments, `feedback`,
    * `folio_revisions`, `epics` and `releases`, unioning them in JS and
    * clamping the window to 30 days. That shape could not sort, could not
    * paginate and could not filter server-side, which is why the page had a

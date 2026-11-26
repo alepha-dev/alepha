@@ -1,4 +1,5 @@
 import {
+  CommentService,
   LoreAudits,
   ResourceLinkService,
   ResourceRegistry,
@@ -8,6 +9,7 @@ import { $repository } from "alepha/orm";
 import type { UserAccountToken } from "alepha/security";
 
 import { type Quest, quests } from "../entities/quests.ts";
+import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 
 /**
  * The one way a quest row goes: `QuestController.deleteQuest` for a single
@@ -29,6 +31,7 @@ export class QuestDeletionService {
   protected readonly resources = $inject(ResourceRegistry);
   protected readonly linkService = $inject(ResourceLinkService);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly comments = $inject(CommentService);
 
   async delete(
     quest: Quest,
@@ -63,6 +66,12 @@ export class QuestDeletionService {
     // what the reader should see.
     await this.linkService.deleteLinksFrom({ kind: "quest", id: quest.id });
     await this.quests.deleteById(quest.id);
+    // Its discussion goes with it, by hand (#E185): the comments are rows of
+    // core's table, and nothing cascades from a quest any more. After the
+    // row, so a failed delete never leaves a quest without its thread.
+    await this.comments.deleteForSubjects(PlanCommentSubjects.QUEST, [
+      quest.id,
+    ]);
 
     // Logged from the row the caller read: once it is gone, an id names
     // nothing and the feed has no title to print. Same row shape as
