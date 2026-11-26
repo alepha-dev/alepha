@@ -4363,6 +4363,10 @@ export default {
   "dashboard.metric.hostStats": "Charge de l'hôte",
   "dashboard.metric.hostStats.hint":
     "le CPU, la mémoire, le disque ou la charge d'un hôte, et ses moyennes par jour",
+  "dashboard.subtitle.cpu": "CPU %",
+  "dashboard.subtitle.memory": "Mémoire %",
+  "dashboard.subtitle.disk": "Disque %",
+  "dashboard.subtitle.load": "Charge",
   "dashboard.metric.hostUnits": "Unités surveillées",
   "dashboard.metric.hostUnits.hint":
     "les unités systemd qu'un hôte surveille et leur état",

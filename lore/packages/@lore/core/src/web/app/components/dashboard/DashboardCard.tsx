@@ -223,6 +223,10 @@ const DashboardCard = (props: DashboardCardProps) => {
         <Icon className="text-muted-foreground size-3.5 shrink-0" />
         <span className="text-muted-foreground truncate text-[11.5px] font-medium tracking-[0.05em] uppercase">
           {tr(props.labelKey)}
+          {/* What one card of a metric shows when several sit on a board,
+              by key: `Host usage · Disk %` (#Q4425). */}
+          {typeof props.value?.detail?.subtitle === "string" &&
+            ` · ${tr(`dashboard.subtitle.${props.value.detail.subtitle}`)}`}
         </span>
         <span className="flex-1" />
         {/* ⚠️ ABSENT without the permission, never disabled. A greyed kebab

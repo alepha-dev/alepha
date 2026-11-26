@@ -95,12 +95,12 @@ export class IncidentsMetric implements DashboardMetricResolver {
       ...outages.map((incident): Row => {
         const monitor = names.get(incident.monitorId);
         return {
-          id: incident.id,
           title: `${monitor?.name ?? "monitor"} down`,
-          meta: incident.endedAt
-            ? this.duration(incident.startedAt, incident.endedAt)
-            : "ongoing",
-          badge: incident.cause,
+          excerpt: `${
+            incident.endedAt
+              ? this.duration(incident.startedAt, incident.endedAt)
+              : "ongoing"
+          }, ${incident.cause}`,
           at: incident.startedAt,
           state: incident.endedAt ? "warn" : "bad",
           ...(project.slug && monitor
@@ -119,9 +119,8 @@ export class IncidentsMetric implements DashboardMetricResolver {
         const from = typeof data.from === "string" ? data.from : "?";
         const to = typeof data.to === "string" ? data.to : "?";
         return {
-          id: event.id,
           title: `${unit}: ${from} to ${to}`,
-          meta: slugs.get(event.hostId) ?? "",
+          excerpt: slugs.get(event.hostId) ?? "",
           at: event.at,
           state:
             to === "failed" || to === "not-found"

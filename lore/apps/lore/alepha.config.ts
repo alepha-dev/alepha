@@ -314,6 +314,8 @@ export default defineConfig({
         // progress segments. All four are values on the wire, never literals.
         "dashboard.empty.",
         "dashboard.badge.",
+        // A card's subtitle, by the key its value names (#Q4425).
+        "dashboard.subtitle.",
         "dashboard.marker.",
         "dashboard.segment.",
         // tr(`dashboard.source.${key}`): a "needs you" source's "N more".

@@ -56,11 +56,9 @@ export class CertExpiryMetric implements DashboardMetricResolver {
         );
         const warning = monitor.expect.certWarningDays ?? 14;
         return {
-          id: monitor.id,
           title: monitor.name,
           value: days,
-          badge: `${days} d`,
-          at: monitor.certExpiresAt,
+          meta: `${days} d`,
           state:
             days < 0
               ? ("bad" as const)

@@ -72,7 +72,9 @@ export class HostUnitsMetric implements DashboardMetricResolver {
     const rows = units.map((unit) => ({
       id: unit.name,
       title: unit.name,
-      badge: unit.activeState,
+      meta: unit.subState
+        ? `${unit.activeState} (${unit.subState})`
+        : unit.activeState,
       ...(unit.since ? { at: unit.since } : {}),
       state:
         unit.activeState === "active"
