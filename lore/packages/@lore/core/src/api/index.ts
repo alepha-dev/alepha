@@ -82,6 +82,7 @@ import { ProjectRankPresets } from "./security/ProjectRankPresets.ts";
 import { ActivityChannel } from "./services/ActivityChannel.ts";
 import { ActivityFeedMetric } from "./services/ActivityFeedMetric.ts";
 import { AgentJobs } from "./services/AgentJobs.ts";
+import { AgentJobSteps } from "./services/AgentJobSteps.ts";
 import { BayReleaseTarget } from "./services/BayReleaseTarget.ts";
 import { ChannelRoomRegistry } from "./services/ChannelRoomRegistry.ts";
 import { CommentService } from "./services/CommentService.ts";
@@ -400,6 +401,9 @@ export const LoreCoreApi = $module({
     // The port agent jobs start through (#Q3988): `@lore/prompts`
     // registers its runner (#E175).
     AgentJobs,
+    // The port a job's steps are read through (#Q4433): Plan registers its
+    // reader over the quests.
+    AgentJobSteps,
     // Prompts (#E174): the built-ins Plan registers. The engine is
     // `@lore/prompts`' (#E175).
     PromptRegistry,
@@ -680,6 +684,11 @@ export type {
   AgentJobRunner,
   AgentRunOption,
 } from "./services/AgentJobs.ts";
+export { AgentJobSteps } from "./services/AgentJobSteps.ts";
+export type {
+  AgentJobStepsJob,
+  AgentJobStepsReader,
+} from "./services/AgentJobSteps.ts";
 export { AgentJobsUnavailableError } from "./errors/AgentJobsUnavailableError.ts";
 export { HostJobs } from "./services/HostJobs.ts";
 export {

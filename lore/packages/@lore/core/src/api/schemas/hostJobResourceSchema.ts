@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 
+import { agentJobStepsSchema } from "./agentJobStepsSchema.ts";
 import { hostJobInputSchema } from "./hostJobInputSchema.ts";
 import { hostJobPokeSchema } from "./hostJobPokeSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "./hostJobValues.ts";
@@ -70,6 +71,12 @@ export const hostJobResourceSchema = z.object({
    */
   pokeable: z.boolean().optional(),
   pokes: z.array(hostJobPokeSchema).optional(),
+  /**
+   * The job's steps (#Q4433): the quests its key accepted, done of total,
+   * read from the quests while it runs and fixed at its end. Absent for a
+   * job that accepted no quest (a triage, a review).
+   */
+  steps: agentJobStepsSchema.optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

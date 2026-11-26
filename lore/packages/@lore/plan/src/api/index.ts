@@ -63,6 +63,7 @@ import { QuestFlowHistory } from "./services/QuestFlowHistory.ts";
 import { QuestFlowService } from "./services/QuestFlowService.ts";
 import { QuestHoldLifts } from "./services/QuestHoldLifts.ts";
 import { QuestHoldTime } from "./services/QuestHoldTime.ts";
+import { QuestJobSteps } from "./services/QuestJobSteps.ts";
 import { QuestProjectDeletion } from "./services/QuestProjectDeletion.ts";
 import { QuestReminders } from "./services/QuestReminders.ts";
 import { QuestService } from "./services/QuestService.ts";
@@ -197,6 +198,9 @@ export const LorePlanApi = $module({
     // Comments on the quests an agent job left open when it ends
     // unfinished (#Q4341); listed because nothing injects it.
     UnfinishedJobQuests,
+    // A job's steps read from its quests, Plan's reader on core's
+    // `AgentJobSteps` port (#Q4433); listed because nothing injects it.
+    QuestJobSteps,
     AreaService,
     // What "open quests" means, shared by the sidebar badge, the dashboard
     // rail and the Active Quests tile — all three are visible together.
