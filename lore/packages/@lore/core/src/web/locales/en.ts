@@ -5261,6 +5261,8 @@ export default {
   "prompts.run.description":
     "It runs on the Agent host you pick, with the prompt's own source, and opens the job's page.",
   "prompts.run.host": "Agent host",
+  "prompts.run.model": "Model",
+  "prompts.run.model.default": "The host's default",
   "prompts.run.fix": "Push fixes to the pull request's branch",
   "prompts.run.trust": "I trust the pull request's author",
   "prompts.arg.epic": "Epic",

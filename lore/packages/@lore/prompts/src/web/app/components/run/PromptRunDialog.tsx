@@ -8,16 +8,17 @@ import {
   DialogTitle,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
-import type { PromptResource } from "@lore/core/schemas";
+import { AGENT_MODELS, type PromptResource } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery } from "alepha/react";
 import { useAuth } from "alepha/react/auth";
-import { useForm } from "alepha/react/form";
+import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useEffect } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
+import type { PromptHostAgent } from "../../../../api/schemas/promptHostAgentSchema.ts";
 import PromptArgSelect from "./PromptArgSelect.tsx";
 
 export interface PromptRunDialogProps {
@@ -37,10 +38,17 @@ export interface PromptRunDialogProps {
    * The Agent hosts a run may pick; Run is offered only with one.
    */
   hosts?: string[];
+  /**
+   * Each host's agent CLIs and whether each is signed in (#Q4504): the
+   * Model select lists the models of the chosen host's signed-in ones.
+   */
+  agents?: PromptHostAgent[];
   busy?: boolean;
   onSubmit: (body: {
     args: Record<string, string>;
     host?: string;
+    agent?: string;
+    model?: string;
     fix?: boolean;
     trust?: boolean;
   }) => void;
@@ -49,10 +57,12 @@ export interface PromptRunDialogProps {
 /**
  * Copy or Run a prompt (#Q4280): one select per arg the page did not give,
  * listing only the items whose status the arg accepts (never free text),
- * and, for a run, the Agent host. Nothing else is asked: the source is the
- * prompt's, and a run takes the host's first agent CLI and its default
- * model. `review-pr` adds its fix and trust options. Shared with the pinned
- * button and the spotlight (#Q4284).
+ * and, for a run, the Agent host and, when the host has a signed-in agent
+ * CLI with a known list (`AGENT_MODELS`), its model (#Q4504). Empty, a run
+ * takes the host's first agent CLI and its default model; a model picked
+ * names its agent CLI too. The source is the prompt's. `review-pr` adds
+ * its fix and trust options. Shared with the pinned button and the
+ * spotlight (#Q4284).
  *
  * A member arg starts on the signed-in member (#Q4294), which is what the
  * server takes for a member left out, so the default is visible and one
@@ -66,6 +76,7 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
   const missing = props.prompt.args.filter((arg) => !props.given?.[arg.name]);
   const shape: Record<string, z.ZType> = {
     host: z.text({ maxLength: 64 }).optional(),
+    model: z.text({ maxLength: 120 }).optional(),
     fix: z.boolean().optional(),
     trust: z.boolean().optional(),
   };
@@ -87,6 +98,11 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
           const value = values[`arg_${arg.name}`];
           if (typeof value === "string" && value) args[arg.name] = value;
         }
+        // `<agent>|<model>`, one of the chosen host's (#Q4504).
+        const [agent, model] =
+          props.mode === "run" && typeof values.model === "string"
+            ? values.model.split("|")
+            : [];
         props.onSubmit({
           args,
           ...(props.mode === "run" &&
@@ -94,6 +110,7 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
           values.host
             ? { host: values.host }
             : {}),
+          ...(agent && model ? { agent, model } : {}),
           ...(values.fix ? { fix: true } : {}),
           ...(values.trust ? { trust: true } : {}),
         });
@@ -102,6 +119,31 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
     [props.open, props.prompt.name],
   );
   const input = form.input as Record<string, never>;
+  const values = useFormValues(form) as Record<string, unknown>;
+  // The models of the chosen host's agent CLIs that are signed in, or say
+  // nothing of it (#Q4504): a CLI signed out offers none.
+  const chosenHost =
+    typeof values.host === "string" && values.host
+      ? values.host
+      : props.hosts?.[0];
+  const models = (props.agents ?? [])
+    .filter((it) => it.host === chosenHost && it.signedIn !== false)
+    .flatMap((it) =>
+      (AGENT_MODELS[it.agent] ?? []).map((choice) => ({
+        value: `${it.agent}|${choice.model}`,
+        label: choice.alias,
+      })),
+    );
+  // The select follows the host: a model the new host does not offer goes.
+  const picked = typeof values.model === "string" ? values.model : "";
+  useEffect(() => {
+    if (picked && !models.some((it) => it.value === picked)) {
+      form.setInitialValues(
+        { ...form.currentValues, model: "" },
+        { keepDirty: true },
+      );
+    }
+  }, [chosenHost, picked]);
   // The options of every missing arg, read once the dialog opens.
   const options = useQuery(
     {
@@ -179,6 +221,18 @@ const PromptRunDialog = (props: PromptRunDialogProps) => {
                 label: host,
               }))}
               disabled={props.busy}
+            />
+          )}
+          {props.mode === "run" && models.length > 0 && (
+            <Control
+              input={input.model}
+              label={tr("prompts.run.model")}
+              select
+              clearable
+              clearLabel={tr("prompts.run.model.default")}
+              items={models}
+              disabled={props.busy}
+              data-testid="prompt-run-model"
             />
           )}
           {props.mode === "run" && props.prompt.name === "review-pr" && (

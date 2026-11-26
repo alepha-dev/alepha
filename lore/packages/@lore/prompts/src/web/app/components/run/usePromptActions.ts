@@ -45,6 +45,9 @@ export const usePromptActions = (
       body: {
         args: Record<string, string>;
         host?: string;
+        // The Model select's pick (#Q4504): a model with its agent CLI.
+        agent?: string;
+        model?: string;
         fix?: boolean;
         trust?: boolean;
         // A job that ended unfinished, continued (#Q4340).

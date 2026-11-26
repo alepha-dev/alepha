@@ -772,6 +772,7 @@ const ProjectSettingsPromptsPage = () => {
             prompt={open.prompt}
             mode={open.kind}
             hosts={hosts.data?.hosts}
+            agents={hosts.data?.agents}
             busy={copy.loading || run.loading}
             onSubmit={async (body) => {
               const done =

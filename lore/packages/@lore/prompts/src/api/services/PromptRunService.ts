@@ -6,6 +6,7 @@ import {
   PromptRegistry,
 } from "@lore/core/api";
 import {
+  AGENT_MODELS,
   AgentTranscript,
   type HostJob,
   type PromptJobArg,
@@ -177,7 +178,8 @@ export class PromptRunService {
     const { after, skipped, ...changes } = plan;
     const host = previous?.hostId ?? body.host ?? prompt.host;
     const agent = body.agent ?? previous?.input.agent ?? prompt.agent;
-    const model = body.model ?? prompt.model;
+    // A family alias (`claude-opus`) is its latest model id (#Q4504).
+    const model = PromptRunService.modelOf(agent, body.model ?? prompt.model);
     const timeoutSet = await this.prompts.timeoutSet(projectId, name);
     const resumed = previous
       ? await this.resumeOf(previous, changes.source ?? source)
@@ -264,6 +266,26 @@ export class PromptRunService {
       if (started) out.session = { id: session.id, resume: true };
     }
     return out;
+  }
+
+  /**
+   * A model as a run sends it (#Q4504): a family alias of `AGENT_MODELS`
+   * resolved to the family's latest id, for the run's agent or, with none
+   * named, any; an id or an unknown name as given.
+   */
+  public static modelOf(
+    agent: string | undefined,
+    model: string | undefined,
+  ): string | undefined {
+    if (!model) return undefined;
+    const lists = agent
+      ? [AGENT_MODELS[agent] ?? []]
+      : Object.values(AGENT_MODELS);
+    for (const list of lists) {
+      const hit = list.find((it) => it.alias === model);
+      if (hit) return hit.model;
+    }
+    return model;
   }
 
   /**

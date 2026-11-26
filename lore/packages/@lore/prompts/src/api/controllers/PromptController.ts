@@ -9,6 +9,7 @@ import { $inject, z } from "alepha";
 import { $action, okSchema } from "alepha/server";
 
 import { promptCreateSchema } from "../schemas/promptCreateSchema.ts";
+import { promptHostAgentSchema } from "../schemas/promptHostAgentSchema.ts";
 import { promptWriteSchema } from "../schemas/promptWriteSchema.ts";
 import { PromptRunService } from "../services/PromptRunService.ts";
 import { PromptService } from "../services/PromptService.ts";
@@ -246,15 +247,34 @@ export class PromptController {
     path: "/projects/:projectId/prompt-hosts",
     schema: {
       params: z.object({ projectId: z.integer() }),
-      response: z.object({ hosts: z.array(z.string()) }),
+      response: z.object({
+        hosts: z.array(z.string()),
+        /**
+         * Each host's agent CLIs and whether each says it is signed in
+         * (#Q4504): the run dialog's Model select reads them.
+         */
+        agents: z.array(promptHostAgentSchema),
+      }),
     },
-    handler: async ({ params }) => ({
-      hosts: [
-        ...new Set(
-          (await this.agents.choices(params.projectId)).map((it) => it.host),
+    handler: async ({ params }) => {
+      const choices = await this.agents.choices(params.projectId);
+      return {
+        hosts: [...new Set(choices.map((it) => it.host))],
+        agents: choices.flatMap((it) =>
+          it.agent
+            ? [
+                {
+                  host: it.host,
+                  agent: it.agent,
+                  ...(it.signedIn === undefined
+                    ? {}
+                    : { signedIn: it.signedIn }),
+                },
+              ]
+            : [],
         ),
-      ],
-    }),
+      };
+    },
   });
 
   /**
