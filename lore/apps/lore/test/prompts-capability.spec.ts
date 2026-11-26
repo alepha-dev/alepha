@@ -262,7 +262,7 @@ describe("the prompts capability", () => {
       on: "daily@7",
       argValues: { epic: String(epic.number) },
     });
-    await set("triage", { on: "event:feedback.created" });
+    await set("triage", { on: "event:feedback.created", settleSeconds: 0 });
     const row = (name: string) =>
       w.repos.prompts.getOne({
         where: { projectId: { eq: w.projectId }, name: { eq: name } },

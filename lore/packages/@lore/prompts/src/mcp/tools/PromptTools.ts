@@ -133,13 +133,16 @@ export class PromptTools {
             ? { timeoutSeconds: params.timeout_seconds }
             : {}),
           ...(params.concurrency ? { concurrency: params.concurrency } : {}),
+          ...(params.settle_seconds === undefined
+            ? {}
+            : { settleSeconds: params.settle_seconds }),
         },
       });
     },
   });
 
   prompt_update = $tool({
-    description: `Change a prompt in one call: a custom one's words, title, description and args; on any prompt, built-in included, its source and ref, where it runs (host, agent, model), its trigger (on, check, a stored value per arg with set, its two ceilings), whether it is enabled, the pages it is pinned to, and a run's time (timeout_seconds). Only the fields given change. The events of a trigger are event_catalog's. Needs prompt:manage. ${PromptTools.WHAT}`,
+    description: `Change a prompt in one call: a custom one's words, title, description and args; on any prompt, built-in included, its source and ref, where it runs (host, agent, model), its trigger (on, check, a stored value per arg with set, its two ceilings, its settle window), whether it is enabled, the pages it is pinned to, and a run's time (timeout_seconds). Only the fields given change. The events of a trigger are event_catalog's. Needs prompt:manage. ${PromptTools.WHAT}`,
     annotations: { readOnlyHint: false, destructiveHint: false },
     schema: { params: promptUpdateParamsSchema, result: promptResourceSchema },
     handler: async ({ params }) => {
@@ -164,6 +167,9 @@ export class PromptTools {
         ...(params.max_per_day ? { maxRunsPerDay: params.max_per_day } : {}),
         ...(params.pins ? { pins: params.pins } : {}),
         ...(params.concurrency ? { concurrency: params.concurrency } : {}),
+        ...(params.settle_seconds === undefined
+          ? {}
+          : { settleSeconds: params.settle_seconds }),
         ...(params.timeout_seconds === undefined
           ? {}
           : { timeoutSeconds: params.timeout_seconds || null }),

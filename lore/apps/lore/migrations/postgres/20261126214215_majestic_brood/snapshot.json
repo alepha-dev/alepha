@@ -1,0 +1,141 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "0319173a-b0b1-4f30-aea8-f18e23cdff61",
+  "prevIds": ["a6a00eaa-bc24-4246-b1cf-500b3a76e9cc"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "settle_seconds"],
+      "writes": [
+        "s|col|public.prompts.settle_seconds",
+        "n|col|public.prompts.settle_seconds",
+        "e|col|public.prompts.settle_seconds"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pending"],
+      "writes": [
+        "s|col|public.prompts.pending",
+        "n|col|public.prompts.pending",
+        "e|col|public.prompts.pending"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pending_job_id"],
+      "writes": [
+        "s|col|public.prompts.pending_job_id",
+        "n|col|public.prompts.pending_job_id",
+        "e|col|public.prompts.pending_job_id"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pending_event"],
+      "writes": [
+        "s|col|public.prompts.pending_event",
+        "n|col|public.prompts.pending_event",
+        "e|col|public.prompts.pending_event"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "prompts", "pending_at"],
+      "writes": [
+        "s|col|public.prompts.pending_at",
+        "n|col|public.prompts.pending_at",
+        "e|col|public.prompts.pending_at"
+      ],
+      "reads": ["n|tbl|public.prompts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "settle_seconds",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pending",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "false",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pending_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pending_event",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "prompts",
+        "name": "pending_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

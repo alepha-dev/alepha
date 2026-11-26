@@ -149,10 +149,10 @@ describe("prompt triggers", () => {
     );
   });
 
-  it("starts a prompt without args at once, and queues a burst during its run as one follow-up", async ({
+  it("starts a prompt without args at once with no settle window, and queues a burst during its run as one follow-up", async ({
     expect,
   }) => {
-    await set("triage", { on: "event:feedback.created" });
+    await set("triage", { on: "event:feedback.created", settleSeconds: 0 });
     await w.submit("One");
     await w.drain();
     const [first] = await agentJobs();
@@ -173,6 +173,149 @@ describe("prompt triggers", () => {
       event: "feedback.created",
     });
     expect(await w.waiting()).toHaveLength(0);
+  });
+
+  it("settles a burst of 8 feedback items into ONE triage run 300 s after the first, its key listing all 8 (#Q4501)", async ({
+    expect,
+  }) => {
+    const done = await set("triage", { on: "event:feedback.created" });
+    expect(done.settleSeconds).toBe(300);
+    await w.submit("One");
+    await w.drain();
+    // The window opened with the first event; nothing runs yet.
+    expect(await agentJobs()).toHaveLength(0);
+    expect((await row("triage")).pending).toBe(true);
+
+    // Later events add nothing and never restart the window.
+    await time.travel(200, "seconds");
+    for (const title of ["2", "3", "4", "5", "6", "7", "8"]) {
+      await w.submit(title);
+    }
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(0);
+    const settles = await w.repos.executions.findMany({
+      where: { jobName: { eq: "prompts.settle" } },
+    });
+    expect(settles).toHaveLength(1);
+
+    // 300 s after the FIRST event, not after the last.
+    await time.travel(101, "seconds");
+    await w.drain();
+    const jobs = await agentJobs();
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]?.input.key?.feedbackIds).toHaveLength(8);
+    expect(jobs[0]?.cause).toEqual({
+      kind: "event",
+      event: "feedback.created",
+    });
+    expect((await row("triage")).pending).toBe(false);
+  });
+
+  it("leaves one follow-up for the events that arrive during a settled run, started by its end (#Q4501)", async ({
+    expect,
+  }) => {
+    await set("triage", { on: "event:feedback.created", settleSeconds: 60 });
+    await w.submit("One");
+    await w.drain();
+    await time.travel(61, "seconds");
+    await w.drain();
+    const [first] = await agentJobs();
+    expect(first).toBeDefined();
+
+    for (const title of ["Two", "Three"]) await w.submit(title);
+    await w.drain();
+    await time.travel(61, "seconds");
+    await w.drain();
+    // Its window ended while the first runs: still one job, still pending.
+    expect(await agentJobs()).toHaveLength(1);
+    expect((await row("triage")).pending).toBe(true);
+
+    await endJob(first!.id, "done");
+    await w.drain();
+    const jobs = await agentJobs();
+    expect(jobs).toHaveLength(2);
+    // Everything pending: the two of the burst, and the first, which the
+    // test's host did not triage.
+    expect(
+      jobs.find((it) => it.id !== first!.id)?.input.key?.feedbackIds,
+    ).toHaveLength(3);
+    expect((await row("triage")).pending).toBe(false);
+  });
+
+  it("never starts the follow-up before the burst's window is over, even when the running job ends first (#Q4501)", async ({
+    expect,
+  }) => {
+    await set("triage", { on: "event:feedback.created", settleSeconds: 60 });
+    await w.submit("One");
+    await w.drain();
+    await time.travel(61, "seconds");
+    await w.drain();
+    const [first] = await agentJobs();
+
+    // A burst starts while the first job runs, and the job ends at once.
+    await w.submit("Two");
+    await w.drain();
+    await endJob(first!.id, "done");
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(1);
+
+    // The rest of the burst, inside the window, still lands in the one run.
+    await time.travel(30, "seconds");
+    await w.submit("Three");
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(1);
+
+    await time.travel(31, "seconds");
+    await w.drain();
+    const jobs = await agentJobs();
+    expect(jobs).toHaveLength(2);
+    expect(
+      jobs.find((it) => it.id !== first!.id)?.input.key?.feedbackIds,
+    ).toHaveLength(3);
+  });
+
+  it("re-arms a settled burst a ceiling refused, for when the hour frees up (#Q4501)", async ({
+    expect,
+  }) => {
+    await set("triage", {
+      on: "event:feedback.created",
+      settleSeconds: 60,
+      maxRunsPerHour: 1,
+    });
+    await w.submit("One");
+    await w.drain();
+    await time.travel(61, "seconds");
+    await w.drain();
+    const [first] = await agentJobs();
+    await endJob(first!.id, "done");
+    await w.drain();
+
+    await w.submit("Two");
+    await w.drain();
+    await time.travel(61, "seconds");
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(1);
+    const refused = await row("triage");
+    expect(refused.lastSkippedReason).toContain("Ceiling reached");
+    // Still pending, its settle job pushed again for when a run fits.
+    expect(refused.pending).toBe(true);
+
+    await time.travel(1, "hours");
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(2);
+    expect((await row("triage")).pending).toBe(false);
+  });
+
+  it("never makes a run by hand wait out the settle window (#Q4501)", async ({
+    expect,
+  }) => {
+    await set("triage", { on: "event:feedback.created" });
+    await w.submit("One");
+    const out = await w.controller.runPrompt.run(
+      { params: { projectId: w.projectId, name: "triage" }, body: {} },
+      { user: w.owner },
+    );
+    expect(out.jobId).toBeDefined();
   });
 
   it("runs on its schedule from the hourly check, with its stored arg, claimed once", async ({

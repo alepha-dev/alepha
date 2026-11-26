@@ -38,6 +38,7 @@ const WORK_EPIC = {
   maxRunsPerHour: 6,
   maxRunsPerDay: 48,
   concurrency: "queue",
+  settleSeconds: 0,
   pins: ["epic"],
 } as unknown as PromptResource;
 

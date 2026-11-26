@@ -185,6 +185,12 @@ export interface BuiltinPrompt {
    */
   concurrency?: PromptConcurrency;
   /**
+   * How long a triggered run whose event fills no item waits after a
+   * burst's first event, so the burst lands in one run (#Q4501). Seconds,
+   * absent 0: at once. A project may change it on the prompt.
+   */
+  settleSeconds?: number;
+  /**
    * The pages it is pinned to until a project sets its own (#Q4339), by
    * page key: a view whose item fills its arg, or a list for a prompt that
    * takes none. A project that unpins it from every page keeps none.

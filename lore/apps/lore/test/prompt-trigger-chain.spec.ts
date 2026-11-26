@@ -65,10 +65,13 @@ describe("automatic triggers", () => {
     await set("triage", {
       on: "event:feedback.created,feedback.commented,error.trusted",
       check: ["feedback", "errors"],
+      // At once: this chain is about what starts what, not the window.
+      settleSeconds: 0,
     });
     await set("work-loose-quests", {
       on: "event:quest.created",
       check: ["quests"],
+      settleSeconds: 0,
     });
     await set("work-epic", { on: "event:epic.ready" });
   };
@@ -212,7 +215,10 @@ describe("automatic triggers", () => {
   });
 
   it("starts triage on a feedback comment", async ({ expect }) => {
-    await set("triage", { on: "event:feedback.commented" });
+    await set("triage", {
+      on: "event:feedback.commented",
+      settleSeconds: 0,
+    });
     const item = await w.submit("The save button fails");
     await w.drain();
     expect(await agentJobs()).toEqual([]);
@@ -232,7 +238,11 @@ describe("automatic triggers", () => {
   it("starts triage once per error group trusted, never per occurrence", async ({
     expect,
   }) => {
-    await set("triage", { on: "event:error.trusted", check: ["errors"] });
+    await set("triage", {
+      on: "event:error.trusted",
+      check: ["errors"],
+      settleSeconds: 0,
+    });
     const sigil = await w.repos.sigils.create({
       projectId: w.projectId,
       name: "acme/production",

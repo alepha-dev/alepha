@@ -77,6 +77,26 @@ export const prompts = $entity({
      * is the registry's, never stored.
      */
     concurrency: z.enum(PROMPT_CONCURRENCIES).meta({ mode: "text" }).optional(),
+    /**
+     * How long a triggered run whose event fills no item waits after a
+     * burst's first event, so the burst lands in one run (#Q4501). Seconds;
+     * absent, the built-in's (triage 300) or 0, at once.
+     */
+    settleSeconds: z.integer().min(0).max(3600).optional(),
+    /**
+     * An event asked for a run that has not started yet: its settle job is
+     * pushed, or a job of the prompt still runs and its end starts it. The
+     * job that raised the burst's events, when only jobs did (the chain
+     * guard reads it), and the first event's name, the run's cause.
+     */
+    pending: db.default(z.boolean(), false),
+    pendingJobId: z.uuid().optional(),
+    pendingEvent: z.string().max(64).optional(),
+    /**
+     * When the burst's first event arrived: its window ends `settleSeconds`
+     * after, which a job's end waits for before its follow-up.
+     */
+    pendingAt: z.string().optional(),
     schedule: z.enum(PROMPT_SCHEDULES).meta({ mode: "text" }).optional(),
     /**
      * A daily or weekly schedule's hour, and a weekly one's day

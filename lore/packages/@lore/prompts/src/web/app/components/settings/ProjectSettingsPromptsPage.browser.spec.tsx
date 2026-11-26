@@ -37,6 +37,7 @@ const prompt = (over: Partial<PromptResource> = {}): PromptResource => ({
   maxRunsPerHour: 4,
   maxRunsPerDay: 20,
   concurrency: "queue",
+  settleSeconds: 0,
   consecutiveFailures: 0,
   pins: [],
   ...over,

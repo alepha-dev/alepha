@@ -122,6 +122,14 @@ export class PromptCommand {
         "A second run while one with the same args runs: queue (it waits, as one run, and starts when the running one ends; the default) or unique (it is refused). Custom prompts only.",
       )
       .optional(),
+    settleSeconds: z
+      .integer()
+      .min(0)
+      .max(3600)
+      .describe(
+        "How long a triggered run whose event fills no item waits after a burst's first event, so the burst lands in one run, in seconds; 0 starts it at once.",
+      )
+      .optional(),
     timeoutSeconds: z
       .integer()
       .min(0)
@@ -364,6 +372,9 @@ export class PromptCommand {
               ? { timeoutSeconds: flags.timeoutSeconds }
               : {}),
             ...(flags.concurrency ? { concurrency: flags.concurrency } : {}),
+            ...(flags.settleSeconds === undefined
+              ? {}
+              : { settleSeconds: flags.settleSeconds }),
           },
         });
         this.render.written(print, flags.output, it, `Created ${it.name}`);
@@ -437,6 +448,9 @@ export class PromptCommand {
             ...(flags.maxPerDay ? { maxRunsPerDay: flags.maxPerDay } : {}),
             ...(flags.pin ? { pins: flags.pin } : {}),
             ...(flags.concurrency ? { concurrency: flags.concurrency } : {}),
+            ...(flags.settleSeconds === undefined
+              ? {}
+              : { settleSeconds: flags.settleSeconds }),
             ...(flags.timeoutSeconds === undefined
               ? {}
               : { timeoutSeconds: flags.timeoutSeconds || null }),
@@ -653,6 +667,7 @@ export class PromptCommand {
     flags: z.object({
       ...PromptCommand.PROJECT,
       ...PromptCommand.TRIGGER_FLAGS,
+      settleSeconds: PromptCommand.FIELD_FLAGS.settleSeconds,
       set: PromptCommand.ARG_FLAGS.set,
       ...LoreOutput.FLAGS,
     }),
@@ -668,6 +683,9 @@ export class PromptCommand {
             ...(flags.set ? { argValues: this.setOf(flags.set) } : {}),
             ...(flags.maxPerHour ? { maxRunsPerHour: flags.maxPerHour } : {}),
             ...(flags.maxPerDay ? { maxRunsPerDay: flags.maxPerDay } : {}),
+            ...(flags.settleSeconds === undefined
+              ? {}
+              : { settleSeconds: flags.settleSeconds }),
           },
         });
         this.render.written(

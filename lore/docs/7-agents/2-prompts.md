@@ -283,10 +283,14 @@ what you paste.
   `pull_request.added` and the others. An event about a quest fills the
   prompt's quest arg, one about a feedback item its feedback arg, one about an
   epic its epic arg, one about a pull request its pull request arg: one run
-  per item. A prompt that takes nothing starts at once; the events that arrive
-  while it runs start one more run when it ends, if the prompt waits (see
-  [A second run while one is going](#a-second-run-while-one-is-going)), and
-  are skipped if it is refused.
+  per item. A prompt that takes nothing waits out its **Wait after the first
+  event**, set on the trigger, so a burst of events starts one run that reads
+  all of them: 300 seconds for **Triage feedback and errors** and **Work on
+  loose quests**, 60 for **Security check** and **Dependency update**, 0 (at
+  once) for a prompt of your own. The wait counts from the first event of the
+  burst, and later events do not start it again. The events that arrive while
+  a run is going start one more run when it ends. A run by hand or on a
+  schedule never waits.
 - **On a schedule**: `hourly`, `6h` (00:00, 06:00, 12:00 and 18:00 UTC),
   `daily@<hour>` or `weekly@<day>@<hour>`, hours in UTC. A schedule fills no
   arg, so each arg gets a stored value: the member **Weekly status** mails,
@@ -333,7 +337,8 @@ A triggered prompt runs unattended, so it stops by itself:
 
 - **Ceilings**: 6 runs an hour and 48 a day by default, set on the trigger. A
   run past one is skipped, and the event **Prompt ceiling reached** says so
-  once.
+  once. A burst a ceiling held back is kept, and runs as soon as the hour or
+  the day has room again.
 - **Three failed runs in a row** turn the trigger off, and the event **Prompt
   disabled** says why. A successful run resets the count. A trigger that is
   off says **off** in the **Trigger** column; **Enable trigger** in the row's

@@ -221,7 +221,11 @@ export const automationWorld = async (env: Record<string, unknown> = {}) => {
      * is left.
      */
     drain: async (
-      names: string[] = ["project-events.deliver", "prompts.dequeue"],
+      names: string[] = [
+        "project-events.deliver",
+        "prompts.dequeue",
+        "prompts.settle",
+      ],
     ) => {
       const jobs = alepha.inject(JobProvider);
       const now = alepha.inject(DateTimeProvider).nowISOString();

@@ -5328,6 +5328,9 @@ export default {
   "prompts.trigger.argValue": "$1 for its triggered runs",
   "prompts.trigger.perHour": "Runs per hour",
   "prompts.trigger.perDay": "Runs per day",
+  "prompts.trigger.settle": "Wait after the first event (seconds)",
+  "prompts.trigger.settle.description":
+    "The events of a burst start one run, this long after the first. 0 starts it at once.",
   "prompts.trigger.manual": "By hand",
   "prompts.trigger.enable": "Enable trigger",
   "prompts.trigger.disable": "Disable trigger",
