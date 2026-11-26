@@ -40,7 +40,8 @@ import { PromptService } from "./PromptService.ts";
  *   run continues a job that ended unfinished (#Q4340): it then runs on that
  *   job's host, in its workspace and on its branch, Bay reusing the worktree
  *   the job kept, and resumes its agent session when the job's agent got as
- *   far as reporting one.
+ *   far as reporting one. Its item may have moved on since, a quest
+ *   completed by the job itself: only a gone one refuses it (#Q4440).
  * - **One run at a time per prompt and per arg value** (#Q4354): a second
  *   waits as ONE queued run when the prompt's concurrency is `queue`
  *   (started by the running job's end), and is refused with the running
@@ -91,16 +92,17 @@ export class PromptRunService {
     const previous = body.continue
       ? await this.continuable(projectId, name, body)
       : undefined;
+    // What the job a run continues was given: its args stand when the run
+    // names none, and its items pass their status gate (#Q4440).
+    const kept = Object.fromEntries(
+      (previous?.args ?? []).map((arg) => [arg.name, arg.value]),
+    );
     const { values, items } = await this.prompts.resolveArgs(
       projectId,
       user,
       prompt,
-      body.args ??
-        (previous
-          ? Object.fromEntries(
-              (previous.args ?? []).map((arg) => [arg.name, arg.value]),
-            )
-          : {}),
+      body.args ?? kept,
+      kept,
     );
     const args: PromptJobArg[] = items.map(({ arg, value, item }) => ({
       name: arg.name,
