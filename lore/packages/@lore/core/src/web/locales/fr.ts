@@ -5488,6 +5488,9 @@ export default {
   "prompts.editor.argAccepts": "Accepte (statuts, séparés par des virgules)",
   "prompts.editor.text": "Mots",
   "prompts.editor.legend": "Variables : $1",
+  "prompts.editor.tab.general": "Général",
+  "prompts.editor.tab.args": "Arguments",
+  "prompts.editor.tab.words": "Mots",
   "prompts.trigger.title": "Déclencheur de $1",
   "prompts.trigger.description":
     "Quand ses exécutions démarrent seules, au nom de son propriétaire. Une exécution à la main fonctionne toujours.",

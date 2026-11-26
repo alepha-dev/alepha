@@ -5430,6 +5430,9 @@ export default {
   "prompts.editor.argAccepts": "Accepts (statuses, comma-separated)",
   "prompts.editor.text": "Words",
   "prompts.editor.legend": "Placeholders: $1",
+  "prompts.editor.tab.general": "General",
+  "prompts.editor.tab.args": "Args",
+  "prompts.editor.tab.words": "Words",
   "prompts.trigger.title": "Trigger of $1",
   "prompts.trigger.description":
     "When its runs start on their own, as its owner. A run by hand always works.",
