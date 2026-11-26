@@ -210,6 +210,15 @@ export const AdminJobExecutionSheet = (props: AdminJobExecutionSheetProps) => {
                   <AdminJobsPayloadBody payload={execution.payload} />
                 </section>
               )}
+
+              {execution.result !== undefined && execution.result !== null && (
+                <section className="flex flex-col gap-2">
+                  <h3 className="text-sm font-semibold">
+                    {tr("admin.jobs.resultTitle", { default: "Result" })}
+                  </h3>
+                  <AdminJobsPayloadBody payload={execution.result} />
+                </section>
+              )}
             </>
           )}
         </div>

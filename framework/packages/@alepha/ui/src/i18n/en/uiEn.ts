@@ -619,6 +619,7 @@ export const uiEn: Record<string, DictionaryEntry> = {
   "admin.jobs.originApp": "App",
   "admin.jobs.originSystem": "System",
   "admin.jobs.payloadTitle": "Payload",
+  "admin.jobs.resultTitle": "Result",
   "admin.jobs.retention.days": "$1 days",
   "admin.jobs.statsTitle": "Last 24 hours",
   "admin.jobs.statsError": "Failed",

@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3c53c4da-8b4a-4e86-81ec-0bd99318781a",
+  "prevIds": ["1b3d985f-aabf-4c90-be7f-95b62770e5dd"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "job_executions", "result"],
+      "writes": [
+        "s|col|public.job_executions.result",
+        "n|col|public.job_executions.result",
+        "e|col|public.job_executions.result"
+      ],
+      "reads": ["n|tbl|public.job_executions", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "job_executions", "expires_at"],
+      "writes": [
+        "s|col|public.job_executions.expires_at",
+        "n|col|public.job_executions.expires_at",
+        "e|col|public.job_executions.expires_at"
+      ],
+      "reads": ["n|tbl|public.job_executions", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "job_executions",
+        "name": "result",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "job_executions",
+        "name": "expires_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

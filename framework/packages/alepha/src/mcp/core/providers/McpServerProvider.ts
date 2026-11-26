@@ -78,6 +78,7 @@ import type { PromptPrimitive } from "../primitives/$prompt.ts";
 import type { ResourcePrimitive } from "../primitives/$resource.ts";
 import type { ResourceTemplatePrimitive } from "../primitives/$resourceTemplate.ts";
 import type { ToolPrimitive } from "../primitives/$tool.ts";
+import type { McpTaskRun } from "./McpTaskStore.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -1908,6 +1909,56 @@ export class McpServerProvider {
         isError: true,
       };
     }
+  }
+
+  /**
+   * Run a task's tool, in the task's worker rather than in a request: what
+   * the `$job` behind an `McpTaskStore` calls.
+   *
+   * The tool runs as the creating call did, from what the task stored:
+   * `context.data` and `clientKey` from the task, its `$tool` permission
+   * checks against that `data` (published as the current user), no
+   * `headers` and no `reportProgress`, `signal` the run's. `context.elicit`
+   * is a modern session with the client's declared `elicitation` capability,
+   * the answers of every round so far, and the task's id as its digest. An
+   * unanswered `elicit` throws `McpInputRequiredSignal` out of here, for the
+   * worker to park the task on; the tool is replayed from the top once
+   * answered, as an MRTR retry is.
+   *
+   * Answers what `tools/call` would: a result, an `isError` result, or a
+   * thrown `McpError`.
+   */
+  public async runTask(task: McpTaskRun): Promise<McpToolCallResult> {
+    this.materialize();
+    const capabilities = task.elicitation
+      ? { elicitation: task.elicitation }
+      : {};
+    const session = new McpElicitationSession(this.alepha, {
+      modern: true,
+      capabilities,
+      answers: task.answers,
+      requestDigest: task.taskId,
+    });
+    // Published as the current user only when it looks like one (an id
+    // and roles), as the default `buildContext` stores it: an app that puts
+    // something else in `data` gets no user, and its `$secure` refuses.
+    if (
+      this.isPlainObject(task.data) &&
+      typeof task.data.id === "string" &&
+      Array.isArray(task.data.roles)
+    ) {
+      this.alepha.store.set("alepha.security.user" as any, task.data as any);
+    }
+    return this.handleToolsCall(
+      { name: task.tool, arguments: task.arguments },
+      {
+        clientKey: task.clientKey,
+        data: task.data,
+        signal: task.signal,
+        clientCapabilities: capabilities,
+        elicit: session.elicit as never,
+      },
+    );
   }
 
   /**

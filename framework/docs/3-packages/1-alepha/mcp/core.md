@@ -33,3 +33,4 @@ Model Context Protocol for AI tool integration.
 ### Providers
 
 - [`McpServerProvider`](/docs/reference-providers-mcpserverprovider) - Core MCP server provider that handles protocol messages.
+- [`McpTaskStore`](/docs/reference-providers-mcptaskstore) - Where the Tasks extension (`io.modelcontextprotocol/tasks`) keeps a task:

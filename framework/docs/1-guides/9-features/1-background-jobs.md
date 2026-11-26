@@ -484,6 +484,49 @@ admin (`cancelByKey` cancels it like any parked row), and the sleep spends no
 attempt. It wakes as precisely as a delayed push does: see
 [What a transport does with a delay](#what-a-transport-does-with-a-delay).
 
+### Waiting for an answer: `step.input`
+
+`step.input(name, requests, until)` parks the run until something outside it
+answers. The row goes `scheduled` until `until`, with an input entry holding
+`requests`; `JobProvider.answerInput(executionId, name, answers)` writes the
+answers and wakes the run at once, and on that pass the call returns them.
+
+```typescript check
+import { z } from "alepha";
+import { $inject } from "alepha";
+import { $job, JobProvider } from "alepha/api/jobs";
+
+class Approvals {
+  jobs = $inject(JobProvider);
+
+  approve = $job({
+    name: "orders.approve",
+    description: "Waits a day for a manager's approval.",
+    schema: z.object({ orderId: z.uuid(), until: z.datetime() }),
+    handler: async ({ payload, step }) => {
+      const answer = await step.input(
+        "approval",
+        { question: `Approve order ${payload.orderId}?` },
+        new Date(payload.until),
+      );
+      return answer.approved;
+    },
+  });
+
+  // From the manager's request:
+  async answer(executionId: string, approved: boolean) {
+    await this.jobs.answerInput(executionId, "approval", { approved });
+  }
+}
+```
+
+`answerInput` is one guarded write: it succeeds only while the run is parked on
+that input and the input is unanswered, and otherwise throws
+`JobInputNotAwaitedError`, so two answers never both land. Reached at `until`
+with no answer, `step.input` throws `JobInputExpiredError` and the run fails
+without a retry. Several rounds use several names (`approval.1`,
+`approval.2`), each parking in turn.
+
 ### The handler runs from the top
 
 **Every pass runs the handler from its first line; only steps are skipped.** A
@@ -754,6 +797,42 @@ what is left and the next tick continues.
 
 The effective rule of every job, defaults filled in, is in the admin's job list
 and in [`alepha mcp`](/docs/guides-core-dev-mcp)'s `jobs_list`, with where it came from.
+
+### Keeping a result, and a row, for a caller
+
+Two options serve a caller that polls for what a run produced:
+
+- **`keepResult: true`** on the job stores the handler's return value (JSON) in
+  the execution's `result` column at success. Every other job writes nothing
+  there.
+- **`push(payload, { expiresAt })`** sets a retention floor on that row: once
+  its run ended `ok`, `error` or `cancelled`, it is not deleted before
+  `expiresAt`, neither when the run ends (a job with `ok: false` keeps it until
+  then) nor by the trim. Past it, the job's retention applies.
+
+```typescript check
+import { z } from "alepha";
+import { $job } from "alepha/api/jobs";
+
+class Reports {
+  build = $job({
+    name: "reports.build",
+    description: "Builds a report the caller polls for.",
+    schema: z.object({ month: z.text() }),
+    keepResult: true,
+    retention: { ok: false },
+    handler: async ({ payload }) => ({ month: payload.month, rows: 42 }),
+  });
+
+  async start(month: string) {
+    const expiresAt = new Date(Date.parse("2026-12-01T00:00:00Z"));
+    return this.build.push({ month }, { expiresAt });
+  }
+}
+```
+
+This is what an MCP task is made of: see
+[MCP Server](/docs/guides-ai-mcp).
 
 ### A rename loses the history
 

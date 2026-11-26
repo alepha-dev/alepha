@@ -106,6 +106,7 @@ shared expression.
 
 - [`DirectJobDispatcher`](/docs/reference-providers-directjobdispatcher) - Default `JobDispatcher` for environments without `AlephaApiJobsQueue`.
 - [`JobDispatcher`](/docs/reference-providers-jobdispatcher) - Abstract dispatcher for queued/direct job executions.
+- [`JobMcpTaskStore`](/docs/reference-providers-jobmcptaskstore) - The `$job`-backed `McpTaskStore`: an MCP task is a run of the `system.mcp.task`
 - [`JobProvider`](/docs/reference-providers-jobprovider) - Coordinates cron and push jobs with a durable outbox table and a single
 - [`JobQueueProvider`](/docs/reference-providers-jobqueueprovider) - Queue-backed `JobDispatcher` registered by `AlephaApiJobsQueue`.
 - [`JobRetentionProvider`](/docs/reference-providers-jobretentionprovider) - Turns a job's declared `retention` into the rule each status actually
