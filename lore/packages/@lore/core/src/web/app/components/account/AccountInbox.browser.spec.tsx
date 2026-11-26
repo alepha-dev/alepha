@@ -41,6 +41,10 @@ const ALL = Array.from({ length: TOTAL }, (_, i) => message(i + 1));
  */
 class FakeLinkProvider extends LinkProvider {
   calls: Array<{ scope?: string; cursor?: string; limit?: number }> = [];
+  /**
+   * Every message the account holds. Emptied by a spec of the empty inbox.
+   */
+  all = ALL;
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -51,7 +55,7 @@ class FakeLinkProvider extends LinkProvider {
         }) => {
           const query = config.query ?? {};
           this.calls.push(query);
-          const rows = query.scope ? ALL.slice(0, 3) : ALL;
+          const rows = query.scope ? this.all.slice(0, 3) : this.all;
           const start = query.cursor
             ? rows.findIndex((row) => row.id === query.cursor) + 1
             : 0;
@@ -61,7 +65,7 @@ class FakeLinkProvider extends LinkProvider {
             items,
             nextCursor:
               last && start + items.length < rows.length ? last.id : undefined,
-            unreadCount: query.scope ? 3 : TOTAL,
+            unreadCount: rows.length,
           };
         },
       } as Record<string, unknown>,
@@ -81,7 +85,7 @@ describe("AccountInbox - paging and the Project filter", () => {
     cleanup();
   });
 
-  const mount = async () => {
+  const mount = async (options: { empty?: boolean } = {}) => {
     const alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
@@ -90,6 +94,7 @@ describe("AccountInbox - paging and the Project filter", () => {
       .with(AlephaReactI18n)
       .with(AlephaReactRouter);
     await alepha.start();
+    if (options.empty) alepha.inject(FakeLinkProvider).all = [];
     // The Project filter's options, as the layout's loader leaves them.
     alepha.store.set(userProjectsAtom, {
       projects: [
@@ -204,5 +209,25 @@ describe("AccountInbox - paging and the Project filter", () => {
     await act(async () => fireEvent.click(reset));
     await waitFor(() => expect(root.textContent).toContain("Message number 4"));
     expect(fake.calls.at(-1)?.scope).toBe(undefined);
+  });
+
+  it("says an empty inbox with the calm companion, and a filter with no result with the table's No match (#Q4499)", async ({
+    expect,
+  }) => {
+    const { rendered } = await mount({ empty: true });
+    const root = rendered.container as HTMLElement;
+    const companion = () =>
+      root.querySelector('[data-slot="lore-empty-state"]');
+
+    // No message and no filter: good news, in the companion's words.
+    await waitFor(() => expect(companion()).toBeTruthy());
+    expect(companion()?.getAttribute("data-mood")).toBe("calm");
+    expect(companion()?.textContent).toContain("inbox.empty");
+    expect(root.textContent).not.toContain("inbox.noMatch");
+
+    // A project with no message is a filter that matched nothing.
+    await pickProject("Lore");
+    await waitFor(() => expect(root.textContent).toContain("inbox.noMatch"));
+    expect(companion()).toBeNull();
   });
 });

@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { userProjectsAtom } from "../../atoms/userProjectsAtom.ts";
 import type { I18n } from "../../services/I18n.ts";
 import { DOCK_UNREAD_KEY } from "../project/useDockUnread.ts";
+import LoreEmptyState from "../shared/LoreEmptyState.tsx";
 import { useUserProjects } from "./useUserProjects.ts";
 
 interface InboxRow {
@@ -55,8 +56,10 @@ const PAGE_SIZE = 25;
  * ## Two different emptinesses
  *
  * "This inbox has no messages" and "your filters matched none of them" are
- * different answers and the table already distinguishes them by
- * `activeFilterCount`.
+ * different answers. The first is good news, said by the Lore companion in
+ * her `calm` mood (`LoreEmptyState`); the second stays the table's own "No
+ * match". The table's `empty` node replaces both, so it is passed only while
+ * no filter is set (`filtered`).
  *
  * ## The Project filter drives the server read
  *
@@ -99,6 +102,11 @@ const AccountInbox = () => {
    */
   const [projectId, setProjectId] = useState<string | undefined>();
   const scope = projectId ? `project:${projectId}` : undefined;
+  /**
+   * Whether a search or a project narrows the list: an empty page is then
+   * "No match", never the empty inbox.
+   */
+  const [filtered, setFiltered] = useState(false);
 
   /**
    * Every page read so far, one `useInfiniteQuery` keyed on the scope by the
@@ -285,18 +293,25 @@ const AccountInbox = () => {
               disabled: unreadOnScreen === 0 || markAllAction.loading,
             },
           ]}
-          emptyState={{
-            title: tr("inbox.empty"),
-            description: tr("inbox.empty.description"),
-          }}
+          empty={
+            filtered ? undefined : (
+              <LoreEmptyState
+                mood="calm"
+                title={tr("inbox.empty")}
+                description={tr("inbox.empty.description")}
+              />
+            )
+          }
           noMatchState={{
             title: tr("inbox.noMatch"),
             description: tr("inbox.noMatch.description"),
           }}
           filters={{
             fields: filterFields,
-            onChange: (values) =>
-              setProjectId(values.project ? String(values.project) : undefined),
+            onChange: (values) => {
+              setProjectId(values.project ? String(values.project) : undefined);
+              setFiltered(!!values.project || !!values.search?.trim());
+            },
           }}
           filter={(row, values) => {
             const search = (values.search ?? "").toLowerCase();
