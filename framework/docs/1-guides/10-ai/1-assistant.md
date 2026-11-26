@@ -133,16 +133,21 @@ class Support {
   than the user could. Without a user the call runs anonymous and a secured action refuses;
   there is no "system" fallback. A refusal, a validation error or a thrown error goes back to
   the model as a tool error, never to the browser as a 403.
-- **Bounds.** `maxSteps` (10 model calls by default) ends the turn with `end: length`;
-  `timeout` and the ambient abort signal cancel the call in flight.
+- **Bounds.** `maxSteps` (10 model calls by default) bounds the turn: the tool results the
+  last call reads tell the model to answer, and a call it still asks for is answered with an
+  error, not run, and ends the turn with `end: length`. `timeout` and the ambient abort signal
+  cancel the call in flight.
 - **Cost.** Every model call resends the system prompt, the tool definitions and the whole
   turn so far, so a turn of eight tool calls costs about eight times its context. `turnTokens`
   bounds what one turn spends: when the next call would cross it, the last tool results tell
   the model to answer, a call it still asks for is answered with an error and not run, and the
   turn ends with `end: length`. A turn's `tokenBudget` lowers it (`alepha/api/ai` passes what is
-  left of the user's budget). An identical call (same tool, same input) never runs twice in a
-  turn, `maxCallsPerTool` caps the calls of one tool, and `maxResultLength` (32768 characters
-  by default) cuts each tool result.
+  left of the user's budget). Both count a token the vendor read from its prompt cache as a
+  tenth of one (`AiUsageWeight`), as the budget does: on Anthropic the tool definitions and the
+  system prompt are cached, so a turn pays them in full once, on its first call. On a vendor
+  with no prompt cache every call counts in full. An identical call (same tool, same input)
+  never runs twice in a turn, `maxCallsPerTool` caps the calls of one tool, and
+  `maxResultLength` (32768 characters by default) cuts each tool result.
 
 ### One definition for the assistant and for outside agents
 

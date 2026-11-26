@@ -176,6 +176,44 @@ describe("AnthropicAiProvider", () => {
     expect(alepha.inject(AiProvider)).toBeInstanceOf(AnthropicAiProvider);
   });
 
+  it("reports the tokens a call wrote to the cache, which the next call reads back", async ({
+    expect,
+  }) => {
+    const { ai, recorded } = await setup();
+    recorded.replies.push(
+      sse(
+        {
+          type: "message_start",
+          message: {
+            usage: {
+              input_tokens: 20,
+              cache_read_input_tokens: 0,
+              cache_creation_input_tokens: 100,
+              output_tokens: 1,
+            },
+          },
+        },
+        { type: "message_delta", delta: { stop_reason: "end_turn" } },
+        { type: "message_stop" },
+      ),
+    );
+
+    const events = [];
+    for await (const event of ai.chat({
+      system: "Be brief.",
+      messages: [{ role: "user", content: "hi" }],
+    })) {
+      events.push(event);
+    }
+
+    expect(events.find((it) => it.type === "usage")).toEqual({
+      type: "usage",
+      inputTokens: 120,
+      outputTokens: 1,
+      cacheWriteInputTokens: 100,
+    });
+  });
+
   it("streams text and usage, counting cached input tokens", async ({
     expect,
   }) => {

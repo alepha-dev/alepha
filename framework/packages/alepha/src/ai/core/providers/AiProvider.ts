@@ -103,6 +103,9 @@ export abstract class AiProvider {
           ...(event.cachedInputTokens
             ? { cachedInputTokens: event.cachedInputTokens }
             : {}),
+          ...(event.cacheWriteInputTokens
+            ? { cacheWriteInputTokens: event.cacheWriteInputTokens }
+            : {}),
         };
       } else if (event.type === "vendor") {
         completion.vendor = { provider: event.provider, data: event.data };
@@ -310,6 +313,7 @@ export type AiEvent =
       inputTokens: number;
       outputTokens: number;
       cachedInputTokens?: number;
+      cacheWriteInputTokens?: number;
     }
   | { type: "vendor"; provider: string; data: unknown }
   | { type: "end"; reason: AiEndReason };
@@ -341,4 +345,10 @@ export interface AiUsage {
    * the vendor caches nothing or does not say.
    */
   cachedInputTokens?: number;
+  /**
+   * The part of `inputTokens` the vendor wrote to its prompt cache on this
+   * call: the next call sending the same prefix reads it back, at the
+   * cache-read price. Absent when the vendor caches nothing or does not say.
+   */
+  cacheWriteInputTokens?: number;
 }

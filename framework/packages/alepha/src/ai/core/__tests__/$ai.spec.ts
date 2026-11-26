@@ -5,6 +5,8 @@ import { describe, it } from "vitest";
 
 import {
   $ai,
+  AI_TURN_SPENT,
+  AI_TURN_WRAP_UP,
   type AiChatRequest,
   AiConfigError,
   type AiEvent,
@@ -537,7 +539,9 @@ describe("$ai", () => {
     expect(result.messages[0]).toEqual(sent.messages[2]);
   });
 
-  it("stops at maxSteps with end length", async ({ expect }) => {
+  it("stops at maxSteps with end length, the last call's own calls not run", async ({
+    expect,
+  }) => {
     const { support, ai } = await setup({ maxSteps: 2 });
     for (let i = 0; i < 3; i++) {
       ai.script([{ type: "tool_call", id: `c${i}`, name: "list", input: {} }]);
@@ -545,6 +549,39 @@ describe("$ai", () => {
     const result = await support.run({ messages: ask("loop"), user: member });
     expect(result.reason).toBe("length");
     expect(ai.requests).toHaveLength(2);
+    expect(result.messages.at(-1)).toMatchObject({
+      role: "tool",
+      callId: "c1",
+      isError: true,
+      content: AI_TURN_SPENT,
+    });
+  });
+
+  it("asks for the answer before the last call maxSteps allows", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ maxSteps: 3 });
+    ai.script([{ type: "tool_call", id: "c1", name: "list", input: {} }]);
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c2",
+        name: "list",
+        input: { query: { status: "open" } },
+      },
+    ]);
+    ai.script([{ type: "text", text: "Two lists." }]);
+
+    const result = await support.run({ messages: ask("list"), user: member });
+
+    expect(result.reason).toBe("stop");
+    expect(result.text).toBe("Two lists.");
+    // Not after the first round, which leaves two calls: after the second.
+    const [first, second] = ai.requests[2].messages.filter(
+      (it) => it.role === "tool",
+    );
+    expect(first.content).not.toContain(AI_TURN_WRAP_UP);
+    expect(second.content).toContain(AI_TURN_WRAP_UP);
   });
 
   it("never runs the same call twice in a turn", async ({ expect }) => {
@@ -625,10 +662,10 @@ describe("$ai", () => {
     expect(result.reason).toBe("length");
     expect(ai.requests).toHaveLength(2);
     const sent = ai.requests[1].messages.at(-1);
-    expect(sent?.content).toContain("This turn is out of tokens");
+    expect(sent?.content).toContain(AI_TURN_WRAP_UP);
     const last = result.messages.at(-1);
     expect(last).toMatchObject({ role: "tool", callId: "c2", isError: true });
-    expect(last?.content).toContain("Not run");
+    expect(last?.content).toBe(AI_TURN_SPENT);
   });
 
   it("ends with the answer of the last call under a turn's tokenBudget", async ({
@@ -650,9 +687,135 @@ describe("$ai", () => {
     });
     expect(result.reason).toBe("stop");
     expect(result.text).toBe("Two invoices.");
-    expect(ai.requests[1].messages.at(-1)?.content).toContain(
-      "This turn is out of tokens",
+    expect(ai.requests[1].messages.at(-1)?.content).toContain(AI_TURN_WRAP_UP);
+  });
+
+  it("counts a token read from the prompt cache as a tenth against turnTokens", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ turnTokens: 1000 });
+    // 300 tokens a call. At full price the second call's results ask for
+    // the answer (600 spent, two more calls do not fit) and the third call
+    // is refused. The vendor serves 270 of them from its cache after the
+    // first call: 300, then 57 a call, so every round fits.
+    const cached = {
+      inputTokens: 290,
+      outputTokens: 10,
+      cachedInputTokens: 270,
+    };
+    ai.script([
+      { type: "tool_call", id: "c1", name: "list", input: {} },
+      { type: "usage", inputTokens: 290, outputTokens: 10 },
+    ]);
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c2",
+        name: "list",
+        input: { query: { status: "open" } },
+      },
+      { type: "usage", ...cached },
+    ]);
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c3",
+        name: "list",
+        input: { query: { status: "paid" } },
+      },
+      { type: "usage", ...cached },
+    ]);
+    ai.script([
+      { type: "text", text: "Three lists." },
+      { type: "usage", ...cached },
+    ]);
+
+    const result = await support.run({ messages: ask("list"), user: member });
+
+    expect(result.reason).toBe("stop");
+    expect(result.text).toBe("Three lists.");
+    const results = result.messages.filter((it) => it.role === "tool");
+    expect(results.map((it) => it.callId)).toEqual(["c1", "c2", "c3"]);
+    expect(results.some((it) => it.isError)).toBe(false);
+    expect(results.some((it) => it.content.includes(AI_TURN_WRAP_UP))).toBe(
+      false,
     );
+  });
+
+  it("expects the next call to read back what this one wrote to the cache", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ turnTokens: 1000 });
+    // A first call of 400 tokens on a cold cache: at that price two more
+    // calls do not fit, and the turn would get one round. It wrote 360 of
+    // them to the cache, so the next call weighs 76.
+    ai.script([
+      { type: "tool_call", id: "c1", name: "list", input: {} },
+      {
+        type: "usage",
+        inputTokens: 390,
+        outputTokens: 10,
+        cacheWriteInputTokens: 360,
+      },
+    ]);
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c2",
+        name: "list",
+        input: { query: { status: "open" } },
+      },
+      {
+        type: "usage",
+        inputTokens: 390,
+        outputTokens: 10,
+        cachedInputTokens: 360,
+      },
+    ]);
+    ai.script([{ type: "text", text: "Two lists." }]);
+
+    const result = await support.run({ messages: ask("list"), user: member });
+
+    expect(result.text).toBe("Two lists.");
+    expect(
+      result.messages.some((it) => it.content.includes(AI_TURN_WRAP_UP)),
+    ).toBe(false);
+  });
+
+  it("still wraps up at turnTokens once the weighed calls add up to it", async ({
+    expect,
+  }) => {
+    const { support, ai } = await setup({ turnTokens: 1000 });
+    // 4000 tokens a call, 3600 of them cached: 760 a call. Two more do not
+    // fit after the first, so its results ask for the answer.
+    const cached = {
+      inputTokens: 3990,
+      outputTokens: 10,
+      cachedInputTokens: 3600,
+    };
+    ai.script([
+      { type: "tool_call", id: "c1", name: "list", input: {} },
+      { type: "usage", ...cached },
+    ]);
+    ai.script([
+      {
+        type: "tool_call",
+        id: "c2",
+        name: "list",
+        input: { query: { status: "open" } },
+      },
+      { type: "usage", ...cached },
+    ]);
+
+    const result = await support.run({ messages: ask("list"), user: member });
+
+    expect(result.reason).toBe("length");
+    expect(ai.requests[1].messages.at(-1)?.content).toContain(AI_TURN_WRAP_UP);
+    expect(result.messages.at(-1)).toMatchObject({
+      role: "tool",
+      callId: "c2",
+      isError: true,
+    });
   });
 
   it("ends on the caller's abort signal", async ({ expect }) => {

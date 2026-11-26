@@ -5,6 +5,7 @@ import {
   type AiPendingCall,
   type AiToolCall,
   type AiUsage,
+  AiUsageWeight,
   type AiVendorData,
 } from "alepha/ai";
 import { $repository } from "alepha/orm";
@@ -180,9 +181,10 @@ export class AiConversationService {
   /**
    * What a token read from the vendor's prompt cache weighs against a
    * budget: a tenth, Anthropic's price for a cache read. Without it a
-   * cached tool list cost the budget its full size on every call.
+   * cached tool list cost the budget its full size on every call. The rule
+   * is `AiUsageWeight`'s, which a turn's own bound counts by too.
    */
-  public static readonly CACHE_READ_WEIGHT = 0.1;
+  public static readonly CACHE_READ_WEIGHT = AiUsageWeight.CACHE_READ;
 
   /**
    * What one message's tokens weigh against a budget: input and output,
@@ -193,12 +195,7 @@ export class AiConversationService {
     outputTokens?: number | null;
     cachedInputTokens?: number | null;
   }): number {
-    const cached = Math.min(row.cachedInputTokens ?? 0, row.inputTokens ?? 0);
-    return Math.ceil(
-      (row.inputTokens ?? 0) -
-        cached * (1 - AiConversationService.CACHE_READ_WEIGHT) +
-        (row.outputTokens ?? 0),
-    );
+    return AiUsageWeight.of(row);
   }
 
   /**

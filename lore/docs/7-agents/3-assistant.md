@@ -85,10 +85,12 @@ name with the agent badge and the client `lore-ai`.
 - Each user has a token budget (1,000,000 tokens per 24 hours by default) and a
   limit of 20 messages a minute. Past either, the assistant refuses until the
   window moves on. Every tool it runs makes the question cost more, so one
-  answer stops reading at 100,000 tokens, or before your budget runs out, and
-  answers from what it has read so far. A token the model reads back from its
-  cache, such as the list of tools sent with every question, counts as a
-  tenth of one.
+  answer stops reading at 100,000 tokens, after nine rounds of tools, or
+  before your budget runs out, and answers from what it has read so far. A
+  token the model reads back from its cache, such as the list of tools sent
+  with every question, counts as a tenth of one, in the 100,000 as in your
+  budget. On Workers AI, which has no such cache, the list counts in full
+  every round, and an answer stops reading after two.
 
 ## Turning it on
 
