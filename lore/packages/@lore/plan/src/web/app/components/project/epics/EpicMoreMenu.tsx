@@ -117,8 +117,8 @@ const EpicMoreMenu = (props: EpicMoreMenuProps) => {
         render={
           <Button
             type="button"
-            variant="outlined"
-            size="icon-lg"
+            variant="minimal"
+            size="icon"
             disabled={move.loading || remove.loading}
             aria-label={tr("epic.more")}
             title={tr("epic.more")}
