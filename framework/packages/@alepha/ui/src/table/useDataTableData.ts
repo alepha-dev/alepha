@@ -67,7 +67,12 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
     setSize(next);
     setPage(0);
     if (props.persistenceKey) {
-      writePersisted(props.persistenceKey, "size", next);
+      writePersisted(
+        props.persistenceKey,
+        "size",
+        next,
+        props.persistenceStorage,
+      );
     }
   };
 
@@ -91,7 +96,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   });
 
   const [sort, setSort] = useState<SortState | null>(() =>
-    persistedSort(sortKey, props.defaultSort),
+    persistedSort(sortKey, props.defaultSort, props.persistenceStorage),
   );
   const [fetchedData, setData] = useState<T[]>([]);
   const [fetchedMeta, setMeta] = useState<Page<T>["page"] | null>(null);
@@ -285,7 +290,7 @@ export const useDataTableData = <T>(options: UseDataTableDataOptions<T>) => {
   const applySort = (next: SortState | null) => {
     setSort(next);
     if (sortKey) {
-      writePersisted(sortKey, "sort", next);
+      writePersisted(sortKey, "sort", next, props.persistenceStorage);
     }
     props.onSortChange?.(next);
   };

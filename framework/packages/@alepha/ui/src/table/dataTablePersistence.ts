@@ -7,17 +7,91 @@ import type {
 } from "./dataTableTypes.ts";
 
 /**
- * Synchronous localStorage read of `<key>.<suffix>`. Returns undefined on
- * miss or error, and on the server.
+ * Where a table keeps what it persists: the filters, the filters on the bar,
+ * the columns and their order, the sort, the page size and the summary
+ * panel, each under its `persistenceKey` and a suffix naming the facet.
+ *
+ * Synchronous on both sides, and that is the contract: the table reads its
+ * state in `useState` initializers, so a store reached over the network has
+ * to be loaded before the table mounts and answer from memory after that.
+ * `write` with `undefined` deletes the value; `writePersisted` turns an empty
+ * object or array into `undefined` before it gets here.
+ *
+ * The default is {@link localStorageDataTableStorage}. Pass another one as a
+ * table's `persistenceStorage` to keep its state somewhere else, a user's
+ * preferences on the server for one. It should keep one identity for the
+ * table's lifetime: it is read when the table mounts and when its
+ * `persistenceKey` changes, not when the storage does.
+ */
+export interface DataTablePersistenceStorage {
+  /**
+   * The value stored for one facet of one key, or `undefined` when there is
+   * none. Never throws.
+   */
+  read(key: string, suffix: string): unknown;
+  /**
+   * Store one facet of one key; `undefined` deletes it. Never throws.
+   */
+  write(key: string, suffix: string, value: unknown): void;
+}
+
+/**
+ * Every suffix a DataTable stores under its `persistenceKey`, one per facet.
+ * What a storage moving a table's state from one place to another (say, from
+ * `localStorage` to a server) has to carry over.
+ */
+export const DATA_TABLE_PERSISTED_SUFFIXES = [
+  "filters",
+  "filterVisibility",
+  "columns",
+  "columnOrder",
+  "sort",
+  "size",
+  "summaryOpen",
+] as const;
+
+/**
+ * The default storage: `localStorage`, under `<key>.<suffix>`, as JSON.
+ * Answers nothing on the server, and skips a write the browser refuses
+ * (private mode, quota).
+ */
+export const localStorageDataTableStorage: DataTablePersistenceStorage = {
+  read: (key, suffix) => {
+    if (typeof window === "undefined") return undefined;
+    try {
+      const raw = window.localStorage.getItem(`${key}.${suffix}`);
+      return raw == null ? undefined : JSON.parse(raw);
+    } catch {
+      return undefined;
+    }
+  },
+  write: (key, suffix, value) => {
+    if (typeof window === "undefined") return;
+    const fullKey = `${key}.${suffix}`;
+    try {
+      if (value === undefined) {
+        window.localStorage.removeItem(fullKey);
+        return;
+      }
+      window.localStorage.setItem(fullKey, JSON.stringify(value));
+    } catch {
+      // localStorage may be unavailable (private mode, quota). Skip.
+    }
+  },
+};
+
+/**
+ * Synchronous read of `<key>.<suffix>` from `storage`, `localStorage` by
+ * default. Returns undefined on miss or error, and on the server.
  */
 export const readPersisted = <V>(
   key: string,
   suffix: string,
+  storage: DataTablePersistenceStorage = localStorageDataTableStorage,
 ): V | undefined => {
-  if (typeof window === "undefined") return undefined;
   try {
-    const raw = window.localStorage.getItem(`${key}.${suffix}`);
-    return raw == null ? undefined : (JSON.parse(raw) as V);
+    const value = storage.read(key, suffix);
+    return value === undefined || value === null ? undefined : (value as V);
   } catch {
     return undefined;
   }
@@ -26,7 +100,7 @@ export const readPersisted = <V>(
 /**
  * Reshape persisted filter values that no longer match the schema.
  *
- * Filters are stored in localStorage per `persistenceKey`, so a filter whose
+ * Filters are stored per `persistenceKey` (in localStorage by default), so a filter whose
  * shape changes meets values written by the previous shape - on the machine
  * of anyone who has used the page, and only there, which is precisely the
  * class of bug no test environment contains. The first case was the Quests
@@ -68,35 +142,27 @@ export const reconcilePersistedFilters = (
 };
 
 /**
- * Synchronous localStorage write of `<key>.<suffix>`. Empty objects and null
- * delete the key.
+ * Synchronous write of `<key>.<suffix>` to `storage`, `localStorage` by
+ * default. Empty objects, empty arrays and null delete the key.
  */
 export const writePersisted = (
   key: string,
   suffix: string,
   value: unknown,
+  storage: DataTablePersistenceStorage = localStorageDataTableStorage,
 ): void => {
-  if (typeof window === "undefined") return;
-  const fullKey = `${key}.${suffix}`;
+  const isEmptyObject =
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value as object).length === 0;
+  const isEmptyArray = Array.isArray(value) && value.length === 0;
+  const empty =
+    value === undefined || value === null || isEmptyObject || isEmptyArray;
   try {
-    const isEmptyObject =
-      value !== null &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      Object.keys(value as object).length === 0;
-    const isEmptyArray = Array.isArray(value) && value.length === 0;
-    if (
-      value === undefined ||
-      value === null ||
-      isEmptyObject ||
-      isEmptyArray
-    ) {
-      window.localStorage.removeItem(fullKey);
-      return;
-    }
-    window.localStorage.setItem(fullKey, JSON.stringify(value));
+    storage.write(key, suffix, empty ? undefined : value);
   } catch {
-    // localStorage may be unavailable (private mode, quota). Skip.
+    // A storage that throws loses the write, never the table.
   }
 };
 
@@ -112,16 +178,20 @@ export const writePersisted = (
 export const persistedSort = (
   key: string | undefined,
   fallback: SortState | null | undefined,
+  storage?: DataTablePersistenceStorage,
 ): SortState | null => {
-  const stored = key ? readPersisted<SortState>(key, "sort") : undefined;
+  const stored = key
+    ? readPersisted<SortState>(key, "sort", storage)
+    : undefined;
   return stored ?? fallback ?? null;
 };
 
 export const persistedSize = (
   key: string | undefined,
   fallback: number | undefined,
+  storage?: DataTablePersistenceStorage,
 ): number => {
-  const stored = key ? readPersisted<number>(key, "size") : undefined;
+  const stored = key ? readPersisted<number>(key, "size", storage) : undefined;
   return stored ?? fallback ?? 20;
 };
 
@@ -131,19 +201,27 @@ export const persistedSize = (
  * Stored with the key whatever `persist` says, like the page size: it is how
  * the reader arranged the page, not a question they asked it.
  */
-export const persistedSummaryOpen = (key: string | undefined): boolean => {
-  const stored = key ? readPersisted<unknown>(key, "summaryOpen") : undefined;
+export const persistedSummaryOpen = (
+  key: string | undefined,
+  storage?: DataTablePersistenceStorage,
+): boolean => {
+  const stored = key
+    ? readPersisted<unknown>(key, "summaryOpen", storage)
+    : undefined;
   return typeof stored === "boolean" ? stored : true;
 };
 
 export const persistedColumns = <T>(
   key: string | undefined,
   columns: Record<string, ColumnDef<T>>,
+  storage?: DataTablePersistenceStorage,
 ): Set<string> => {
   const declared = new Set(
     Object.keys(columns).filter((k) => !columns[k]!.defaultHidden),
   );
-  const stored = key ? readPersisted<string[]>(key, "columns") : undefined;
+  const stored = key
+    ? readPersisted<string[]>(key, "columns", storage)
+    : undefined;
   if (!Array.isArray(stored)) return declared;
   const kept = new Set(stored.filter((k) => k in columns));
   // A stored set that names none of today's columns is a snapshot of an
@@ -187,9 +265,10 @@ export const reconcileOrder = (
 export const persistedOrder = <T>(
   key: string | undefined,
   columns: Record<string, ColumnDef<T>>,
+  storage?: DataTablePersistenceStorage,
 ): string[] =>
   reconcileOrder(
-    key ? readPersisted<string[]>(key, "columnOrder") : undefined,
+    key ? readPersisted<string[]>(key, "columnOrder", storage) : undefined,
     Object.keys(columns),
   );
 
@@ -225,10 +304,15 @@ export const declaredShownFilters = (
 export const persistedShownFilters = (
   key: string | undefined,
   modes: Record<string, DataTableFilterMode>,
+  storage?: DataTablePersistenceStorage,
 ): string[] => {
   const declared = declaredShownFilters(modes);
   const stored = key
-    ? readPersisted<Partial<PersistedFilterVisibility>>(key, "filterVisibility")
+    ? readPersisted<Partial<PersistedFilterVisibility>>(
+        key,
+        "filterVisibility",
+        storage,
+      )
     : undefined;
   if (!stored) return declared;
   const listOf = (value: unknown): string[] =>

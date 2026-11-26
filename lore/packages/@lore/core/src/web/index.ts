@@ -300,6 +300,12 @@ export {
   type ProjectUser,
   useProjectUsers,
 } from "./app/components/shared/useProjectUsers.ts";
+export {
+  createUserPreferenceStorage,
+  legacyTableState,
+  type UserPreferenceStorage,
+  useUserPreferenceStorage,
+} from "./app/components/shared/useUserPreferenceStorage.ts";
 export { usePageCrumb } from "./app/components/shared/usePageCrumb.ts";
 export { pageCrumbAtom } from "./app/atoms/pageCrumbAtom.ts";
 export {

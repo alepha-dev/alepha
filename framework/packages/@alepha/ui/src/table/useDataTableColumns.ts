@@ -46,7 +46,7 @@ export const useDataTableColumns = <T>(
   );
 
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(() =>
-    persistedColumns(columnsKey, props.columns),
+    persistedColumns(columnsKey, props.columns, props.persistenceStorage),
   );
 
   /**
@@ -55,7 +55,7 @@ export const useDataTableColumns = <T>(
    * the same code path as a stale stored array.
    */
   const [columnOrder, setColumnOrder] = useState<string[]>(() =>
-    persistedOrder(columnsKey, props.columns),
+    persistedOrder(columnsKey, props.columns, props.persistenceStorage),
   );
 
   const orderedKeys = useMemo(
@@ -110,7 +110,7 @@ export const useDataTableColumns = <T>(
   const commitOrder = (next: string[]) => {
     setColumnOrder(next);
     if (columnsKey) {
-      writePersisted(columnsKey, "columnOrder", next);
+      writePersisted(columnsKey, "columnOrder", next, props.persistenceStorage);
     }
   };
 
@@ -139,7 +139,12 @@ export const useDataTableColumns = <T>(
     else next.add(id);
     setVisibleColumns(next);
     if (columnsKey) {
-      writePersisted(columnsKey, "columns", [...next]);
+      writePersisted(
+        columnsKey,
+        "columns",
+        [...next],
+        props.persistenceStorage,
+      );
     }
   };
 

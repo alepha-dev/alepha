@@ -34,6 +34,7 @@ import {
   useBulkReport,
   useOptimisticWrite,
   useProjectUsers,
+  useUserPreferenceStorage,
   ProjectUserChip,
   PinnedPromptsButton,
   usePinnedPrompts,
@@ -133,6 +134,11 @@ const ProjectQuestsTable = () => {
   // `["project-users", projectId]` (#E59, #Q2331), rather than a second copy
   // of the same read in an effect.
   const users = useProjectUsers();
+  // The table's filters, columns and sort live in the reader's preferences
+  // on the server (#Q4417), not in this browser, so they follow them to
+  // another device. Read before the table mounts: `ready` gates it below.
+  const persistenceKey = project ? `lor.board.${project.id}` : undefined;
+  const preferences = useUserPreferenceStorage(persistenceKey);
   // The row whose edit drawer is open, or nothing. Held here rather than per
   // row: one Sheet for the table, the same way the delete confirm is one
   // dialog rather than 25.
@@ -847,6 +853,18 @@ const ProjectQuestsTable = () => {
     });
   }
 
+  // Nothing until the saved state is in, as the server render draws nothing
+  // inside the table's own `ClientOnly`: mounted before, the table would
+  // open on its defaults and never read the saved ones.
+  if (!preferences.ready) {
+    return (
+      <div
+        data-testid="quests-table"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      />
+    );
+  }
+
   return (
     <div
       data-testid="quests-table"
@@ -863,9 +881,10 @@ const ProjectQuestsTable = () => {
         className="min-h-0 flex-1"
         emptyMessage={tr("common.noResults")}
         // DataTable owns the filter form + toolbar, and persists filter
-        // values, column visibility, and sort under this key (replaces the
-        // hand-rolled toolbar + localStorage that used to live here).
-        persistenceKey={`lor.board.${project.id}`}
+        // values, column visibility, and sort under this key, in the
+        // reader's preferences on the server (#Q4417).
+        persistenceKey={persistenceKey}
+        persistenceStorage={preferences.storage}
         refreshSignal={reload}
         // Back on the tab, the rows read again (#Q4069): an agent may have
         // finished three quests meanwhile.

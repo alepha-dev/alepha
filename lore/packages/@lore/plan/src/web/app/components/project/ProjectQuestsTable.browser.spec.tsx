@@ -16,7 +16,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
@@ -96,6 +96,16 @@ class FakeLinkProvider extends LinkProvider {
    * mount.
    */
   static jobStatus = "running";
+  /**
+   * The user's preferences as the server holds them (#Q4417), by key. Static
+   * so a spec can seed what "another device" saved before the mount, and
+   * reset between specs.
+   */
+  static preferences: Record<string, Record<string, unknown>> = {};
+  /**
+   * Every `setMyPreference` asked, as `[key, value]`.
+   */
+  savedPreferences: Array<[string, Record<string, unknown>]> = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
@@ -112,6 +122,22 @@ class FakeLinkProvider extends LinkProvider {
       Object.assign(fn, { can: () => true });
     return new Proxy(
       {
+        getMyPreference: action(
+          async (config: { params: { key: string } }) => ({
+            key: config.params.key,
+            value: FakeLinkProvider.preferences[config.params.key] ?? null,
+          }),
+        ),
+        setMyPreference: action(
+          async (config: {
+            params: { key: string };
+            body: { value: Record<string, unknown> };
+          }) => {
+            this.savedPreferences.push([config.params.key, config.body.value]);
+            FakeLinkProvider.preferences[config.params.key] = config.body.value;
+            return { key: config.params.key, value: config.body.value };
+          },
+        ),
         getQuests: action(
           async (config: { query: Record<string, unknown> }) => {
             this.queries.push(config.query);
@@ -235,6 +261,12 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     // writes it on every mount. Without this, the set one test seeds is the
     // set the next one renders with.
     window.localStorage.clear();
+  });
+
+  // Before each rather than after: the table flushes its pending save when
+  // it unmounts, which is after this file's `afterEach`.
+  beforeEach(() => {
+    FakeLinkProvider.preferences = {};
   });
 
   const mount = async (
@@ -971,6 +1003,115 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
         expect(screen.getByRole("link", { name: /^#Q1 - / })).toBeTruthy(),
       );
       expect(screen.queryByText("#Q1 deleted")).toBeNull();
+    });
+  });
+  /**
+   * The table's state is the reader's preference on the server (#Q4417), not
+   * this browser's: a phone opens the Quests list as the laptop left it.
+   */
+  describe("state saved in the user's preferences", () => {
+    it("opens on the filters and sort saved on another device, with nothing in this browser", async () => {
+      FakeLinkProvider.preferences["lor.board.1"] = {
+        filters: { search: "from the laptop" },
+        sort: { field: "title", direction: "desc" },
+      };
+      const { links } = await mount();
+
+      // The very first request already carries them: the table did not
+      // open on its defaults and then correct itself.
+      expect(links.queries[0]?.search).toBe("from the laptop");
+      expect(links.queries[0]?.sort).toBe("-title");
+      expect(window.localStorage.length).toBe(0);
+    });
+
+    it("saves nothing when the reader only opens the table", async () => {
+      const { links } = await mount();
+
+      // Long enough for a debounced save to have gone out.
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      expect(links.savedPreferences).toEqual([]);
+    });
+
+    it("opens on a change the last page never got to save, saves it, then forgets the copy", async () => {
+      // The server holds the state before the change; the page that made it
+      // reloaded before its debounced save went out.
+      FakeLinkProvider.preferences["lor.board.1"] = {
+        filters: { search: "before" },
+      };
+      window.localStorage.setItem(
+        "lor.board.1.unsaved",
+        JSON.stringify({ filters: { search: "after" } }),
+      );
+      const { links } = await mount();
+
+      expect(links.queries[0]?.search).toBe("after");
+      await waitFor(() =>
+        expect(links.savedPreferences[0]).toEqual([
+          "lor.board.1",
+          { filters: { search: "after" } },
+        ]),
+      );
+      await waitFor(() =>
+        expect(window.localStorage.getItem("lor.board.1.unsaved")).toBeNull(),
+      );
+    });
+
+    it("drops what this browser kept once the server holds the key, and opens on the server's", async () => {
+      FakeLinkProvider.preferences["lor.board.1"] = {
+        filters: { search: "on the server" },
+      };
+      window.localStorage.setItem(
+        "lor.board.1.filters",
+        JSON.stringify({ search: "left over" }),
+      );
+      const { links } = await mount();
+
+      expect(links.queries[0]?.search).toBe("on the server");
+      await waitFor(() =>
+        expect(window.localStorage.getItem("lor.board.1.filters")).toBeNull(),
+      );
+      expect(links.savedPreferences).toEqual([]);
+    });
+
+    it("saves what the reader changes to the server, not to localStorage", async () => {
+      const { view, links } = await mount();
+
+      fireEvent.keyDown(view.getByRole("button", { name: "Add filters" }), {
+        key: "ArrowDown",
+      });
+      fireEvent.click(await view.findByRole("menuitem", { name: /Release/ }));
+
+      await waitFor(
+        () =>
+          expect(links.savedPreferences.at(-1)).toEqual([
+            "lor.board.1",
+            { filterVisibility: { added: ["release"], removed: [] } },
+          ]),
+        { timeout: 3000 },
+      );
+      expect(window.localStorage.getItem("lor.board.1.filterVisibility")).toBe(
+        null,
+      );
+    });
+
+    it("carries the state this browser kept over to the server, once", async () => {
+      window.localStorage.setItem(
+        "lor.board.1.filters",
+        JSON.stringify({ search: "kept locally" }),
+      );
+      const { links } = await mount();
+
+      expect(links.queries[0]?.search).toBe("kept locally");
+      await waitFor(() =>
+        expect(links.savedPreferences[0]).toEqual([
+          "lor.board.1",
+          { filters: { search: "kept locally" } },
+        ]),
+      );
+      // Moved, not copied: the browser no longer holds it.
+      await waitFor(() =>
+        expect(window.localStorage.getItem("lor.board.1.filters")).toBeNull(),
+      );
     });
   });
 });
