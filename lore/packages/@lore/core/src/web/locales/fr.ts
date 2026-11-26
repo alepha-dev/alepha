@@ -2815,8 +2815,9 @@ export default {
   "insights.vitals.needsImprovement": "À améliorer",
   "insights.vitals.poor": "Médiocre",
 
-  "errors.empty":
-    "Aucun fléau. Les plantages capturés par vos sigils apparaîtront ici.",
+  "errors.empty.title": "Aucun fléau ouvert",
+  "errors.empty.description":
+    "Les plantages capturés par vos sigils apparaîtront ici.",
   "errors.filter.open": "Ouverts",
   "errors.filter.resolved": "Résolus",
   "errors.filter.allStatuses": "Tous les statuts",
