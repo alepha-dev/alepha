@@ -878,9 +878,12 @@ const QuestView = (props: QuestViewProps) => {
                     </span>
                   </Button>
                 ) : (
+                  // The default Button, so the page's main action is the
+                  // theme's primary. It was a fixed blue-600 under a border
+                  // the Button mixes from `--primary`: a blue button with a
+                  // green edge in Forest, an orange one in Tangor (#Q4500).
                   <Button
                     type="button"
-                    className="bg-blue-600 text-white hover:bg-blue-700"
                     disabled={
                       busy ||
                       !questApi.acceptQuest.can() ||
