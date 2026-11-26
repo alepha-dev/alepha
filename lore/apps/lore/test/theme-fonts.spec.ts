@@ -37,7 +37,7 @@ describe("theme fonts", () => {
   );
 
   /** The themes `ThemesProvider` publishes, minus `default` where noted. */
-  const NAMED_THEMES = ["forest", "lavandula", "winter", "tangor"];
+  const NAMED_THEMES = ["forest", "lavandula", "winter", "tangor", "mona"];
   const ALL_THEMES = ["default", ...NAMED_THEMES];
 
   /**
