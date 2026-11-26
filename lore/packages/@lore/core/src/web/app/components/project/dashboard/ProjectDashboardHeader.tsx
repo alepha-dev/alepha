@@ -1,4 +1,4 @@
-import { Button } from "@alepha/ui";
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { Check, Pencil, Plus } from "lucide-react";
 import type { ReactNode } from "react";
@@ -94,39 +94,62 @@ const ProjectDashboardHeader = (props: ProjectDashboardHeaderProps) => {
       </div>
       {/* No Customize step (#Q3675): Add card and Edit are offered on the
           computed board too, and the page stores it on the first. */}
+      {/* Add card and Edit / Save are minimal icon buttons (#Q4442), sized
+          and coloured like the "…" menu trigger beside them; the label is
+          their accessible name and their tooltip. */}
       {props.canEdit && (
-        <Button
-          variant="outlined"
-          onClick={props.onAdd}
-          disabled={props.busy}
-          data-testid="dashboard-add"
-          size="sm"
-          className="shrink-0"
-        >
-          <Plus className="size-4" />
-          {tr("dashboard.addCard")}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="minimal"
+                size="icon-sm"
+                onClick={props.onAdd}
+                disabled={props.busy}
+                data-testid="dashboard-add"
+                aria-label={tr("dashboard.addCard")}
+                className="text-muted-foreground shrink-0"
+              >
+                <Plus className="size-4" />
+              </Button>
+            }
+          />
+          <TooltipContent>{tr("dashboard.addCard")}</TooltipContent>
+        </Tooltip>
       )}
       {/* Save leaves edit mode. Every edit is already stored as it is made
           (a move, a resize, an added card), so there is nothing to flush:
-          the button names the moment the reader is done. */}
+          the button names the moment the reader is done. In edit mode it
+          stays pressed, with the hover background, so the mode shows
+          without a border or a solid fill. */}
       {props.canEdit && (
-        <Button
-          variant={props.editing ? "solid" : "outlined"}
-          onClick={props.onToggleEditing}
-          disabled={props.busy}
-          data-testid="dashboard-edit"
-          aria-pressed={props.editing}
-          size="sm"
-          className="shrink-0"
-        >
-          {props.editing ? (
-            <Check className="size-4" />
-          ) : (
-            <Pencil className="size-4" />
-          )}
-          {tr(props.editing ? "dashboard.save" : "dashboard.edit")}
-        </Button>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="minimal"
+                size="icon-sm"
+                onClick={props.onToggleEditing}
+                disabled={props.busy}
+                data-testid="dashboard-edit"
+                aria-pressed={props.editing}
+                aria-label={tr(
+                  props.editing ? "dashboard.save" : "dashboard.edit",
+                )}
+                className="text-muted-foreground aria-pressed:bg-hover aria-pressed:text-foreground shrink-0"
+              >
+                {props.editing ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Pencil className="size-4" />
+                )}
+              </Button>
+            }
+          />
+          <TooltipContent>
+            {tr(props.editing ? "dashboard.save" : "dashboard.edit")}
+          </TooltipContent>
+        </Tooltip>
       )}
       {props.canEdit && (
         <ProjectDashboardMenu
