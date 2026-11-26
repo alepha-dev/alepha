@@ -265,8 +265,12 @@ describe("ProjectDashboard", () => {
       "true",
     );
     expect(screen.queryByTestId("dashboard-customize")).toBeNull();
-    expect(screen.getByTestId("dashboard-add")).toBeTruthy();
+    // Icon buttons (#Q4442): the label is the accessible name, not text.
+    const add = screen.getByTestId("dashboard-add");
+    expect(add.getAttribute("aria-label")).toBe("Add card");
+    expect(add.textContent).toBe("");
     const edit = screen.getByTestId("dashboard-edit");
+    expect(edit.getAttribute("aria-label")).toBe("Edit");
     expect(links.calls).not.toContain("customizeProjectDashboard");
 
     // Once the stored copy is on screen, reads answer it.
@@ -285,6 +289,9 @@ describe("ProjectDashboard", () => {
         screen.getByTestId("dashboard-edit").getAttribute("aria-pressed"),
       ).toBe("true"),
     );
+    expect(
+      screen.getByTestId("dashboard-edit").getAttribute("aria-label"),
+    ).toBe("Save");
     expect(
       links.calls.filter((it) => it === "customizeProjectDashboard"),
     ).toHaveLength(1);
