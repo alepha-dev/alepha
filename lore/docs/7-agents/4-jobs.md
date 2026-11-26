@@ -249,7 +249,11 @@ filter keeps those quests with **An agent**.
 **Jobs**, the robot button beside the bell, follows the jobs you are waiting
 for from any page of the project: the count of jobs in flight, and in its list
 the jobs queued, running or ended in the last 15 minutes, a running one with
-its time and the last line of its transcript. A row opens the job's page.
+its time and the last line of its transcript. A row opens the job in a panel
+on the right, over the page: its transcript live, its final reply first once it
+has ended, **Open job** for its page and **Cancel** while it runs. The panel
+stays open as you move between the project's pages, and closes with its button
+or Escape; opening the assistant closes it, and the reverse.
 
 **Settings ▸ Prompts ▸ Jobs** lists every job of the project, newest first:
 its prompt and the items it was given, what started it (you, an event, the

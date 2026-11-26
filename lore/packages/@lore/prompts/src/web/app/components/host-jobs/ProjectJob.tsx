@@ -10,10 +10,9 @@ import {
 } from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import type { HostJobController } from "@lore/core/api";
-import {
-  AgentTranscript,
-  type AgentTranscriptTotals,
-  type HostJobResource,
+import type {
+  AgentTranscriptTotals,
+  HostJobResource,
 } from "@lore/core/schemas";
 import { type I18n, currentProjectAtom } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
@@ -28,14 +27,14 @@ import {
   RotateCcw,
   Square,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import { usePromptActions } from "../run/usePromptActions.ts";
-import { jobInFlight } from "./jobStatusIcon.ts";
 import ProjectJobAside from "./ProjectJobAside.tsx";
 import ProjectJobPokeDialog from "./ProjectJobPokeDialog.tsx";
 import ProjectJobTranscript from "./ProjectJobTranscript.tsx";
+import { useJobReader } from "./useJobReader.ts";
 
 export interface ProjectJobProps {
   jobId: string;
@@ -55,7 +54,8 @@ type TabKey = "transcript" | "prompt";
  *
  * The log is read by byte offsets: each poll asks for what lies past what
  * the page already holds, every two seconds while the job is in flight,
- * and stops once it has ended.
+ * and stops once it has ended. The reading is `useJobReader`'s, which the
+ * side panel shares (#Q4515).
  */
 const ProjectJob = (props: ProjectJobProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -75,56 +75,10 @@ const ProjectJob = (props: ProjectJobProps) => {
   // Run again and Start fresh open the new job's page (#Q4514): the member
   // is already watching a job here.
   const { run } = usePromptActions(project?.id, slug, { open: true });
-  // Keyed by the job it holds, so moving to another job starts it empty.
-  const [held, setLog] = useState({ jobId, stdout: "", stderr: "" });
-  const log = held.jobId === jobId ? held : { stdout: "", stderr: "" };
-  // Keyed by its job too: a job just opened is live until its log says not.
-  const [liveOf, setLiveOf] = useState({ jobId, live: true });
-  const live = liveOf.jobId === jobId ? liveOf.live : true;
+  // The job and its log, read through the hook the side panel shares
+  // (#Q4515).
+  const { job, row, log, live, transcript, inFlight } = useJobReader(jobId);
 
-  const job = useQuery(
-    {
-      key: ["host-job", jobId],
-      keepPreviousData: true,
-      runEvery: live ? 3000 : undefined,
-      handler: async () => api.getJob({ params: { jobId } }),
-    },
-    [jobId, live],
-  );
-
-  useEffect(() => {
-    let stopped = false;
-    let offsets = { stdout: 0, stderr: 0 };
-    const poll = async () => {
-      while (!stopped) {
-        const part = await api
-          .getJobLog({ params: { jobId }, query: offsets })
-          .catch(() => undefined);
-        if (stopped || !part) return;
-        offsets = part.next;
-        if (part.stdout || part.stderr) {
-          setLog((current) =>
-            current.jobId === jobId
-              ? {
-                  jobId,
-                  stdout: current.stdout + part.stdout,
-                  stderr: current.stderr + part.stderr,
-                }
-              : { jobId, stdout: part.stdout, stderr: part.stderr },
-          );
-        }
-        setLiveOf({ jobId, live: part.live });
-        if (!part.live) return;
-        await new Promise((resolve) => globalThis.setTimeout(resolve, 2000));
-      }
-    };
-    void poll();
-    return () => {
-      stopped = true;
-    };
-  }, [jobId]);
-
-  const row = job.data?.id === jobId ? job.data : undefined;
   const prompts = useQuery(
     {
       enabled: Boolean(project) && Boolean(row?.prompt),
@@ -138,11 +92,6 @@ const ProjectJob = (props: ProjectJobProps) => {
     [promptApi, project?.id, row?.prompt],
   );
   const prompt = prompts.data?.items.find((it) => it.name === row?.prompt);
-  const transcript = useMemo(
-    () => AgentTranscript.parse(log.stdout, row?.input.agent),
-    [log.stdout, row?.input.agent],
-  );
-
   // Asked first (#Q4493): a cancel kills the agent mid-run, and the menu
   // item sits one row under harmless ones.
   const cancel = useAction<[], void>(
@@ -177,7 +126,6 @@ const ProjectJob = (props: ProjectJobProps) => {
     [jobId],
   );
 
-  const inFlight = row ? jobInFlight(row.status) : true;
   const tabs: DetailTab[] = [
     {
       value: "transcript",

@@ -136,6 +136,7 @@ export { QualityRouter } from "./app/QualityRouter.ts";
 export { QualityShell } from "./app/shell/QualityShell.ts";
 export { HostShell } from "./app/shell/HostShell.ts";
 export { currentProjectAtom } from "./app/atoms/currentProjectAtom.ts";
+export { sidePanelAtom } from "./app/atoms/sidePanelAtom.ts";
 export { spotlightOpenAtom } from "./app/atoms/spotlightOpenAtom.ts";
 export { currentProjectMemberAtom } from "./app/atoms/currentProjectMemberAtom.ts";
 export {

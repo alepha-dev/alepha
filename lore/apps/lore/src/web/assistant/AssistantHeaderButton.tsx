@@ -1,5 +1,5 @@
 import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import { currentProjectAtom, type I18n, sidePanelAtom } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Sparkles } from "lucide-react";
@@ -18,6 +18,7 @@ const AssistantHeaderButton = () => {
   const enabled = useAssistantStatus();
   const [open, setOpen] = useStore(assistantOpenAtom);
   const [project] = useStore(currentProjectAtom);
+  const [, setSidePanel] = useStore(sidePanelAtom);
   const label = tr("assistant.open");
 
   if (!enabled || project?.id === undefined) {
@@ -37,7 +38,12 @@ const AssistantHeaderButton = () => {
             // The cluster's `gap-1` reads as cramped against the round
             // account avatar that follows (#Q3235).
             className="me-1.5"
-            onClick={() => setOpen(!open)}
+            onClick={() => {
+              // One panel on the right at a time (#Q4515): opening the
+              // assistant closes a watched job.
+              if (!open) setSidePanel({ panel: "assistant" });
+              setOpen(!open);
+            }}
           >
             <Sparkles className="size-4" />
           </Button>

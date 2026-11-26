@@ -11,16 +11,18 @@ import {
   currentProjectAtom,
   hasCapability,
   type I18n,
+  sidePanelAtom,
   useRank,
 } from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Link, useRouter } from "alepha/react/router";
+import { Link } from "alepha/react/router";
 import { ArrowUpRight, Bot } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
+import { jobPanelAtom } from "../../atoms/jobPanelAtom.ts";
 import { jobInFlight } from "../host-jobs/jobStatusIcon.ts";
 import {
   jobsAnnouncementAtom,
@@ -39,7 +41,8 @@ import PromptJobsRow from "./PromptJobsRow.tsx";
  * - **Its popover**: the counts, then one row per job, newest first: the
  *   project's agent jobs in flight, whoever started them, and those that
  *   ended in the last 15 minutes with their end state (a call of the quest,
- *   the owner's to change). A row opens the job's page.
+ *   the owner's to change). A row opens the job in the side panel
+ *   (#Q4515).
  * - **What it says**: for about three seconds, it widens with the name of a
  *   job this tab started, once queued and once ended. No motion under
  *   reduced motion.
@@ -54,11 +57,11 @@ const PromptJobsButton = () => {
   const prompts = useClient<PromptController>();
   const { can } = useRank();
   const dateTime = useInject(DateTimeProvider);
-  // The job page is core's own: another router declares it.
-  const router = useRouter<any>();
   const [project] = useStore(currentProjectAtom);
   const [started, setStarted] = useStore(jobsStartedHereAtom);
   const [announcement, setAnnouncement] = useStore(jobsAnnouncementAtom);
+  const [, setJobPanel] = useStore(jobPanelAtom);
+  const [, setSidePanel] = useStore(sidePanelAtom);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => dateTime.nowMillis());
@@ -174,11 +177,12 @@ const PromptJobsButton = () => {
     .filter(Boolean)
     .join(" · ");
   const label = tr("jobs.header.open");
+  // A row opens the job in the side panel (#Q4515), which takes the right
+  // of the page from the assistant.
   const openJob = (job: HostJobResource) => {
     setOpen(false);
-    void router.push("projectJob", {
-      params: { projectSlug: slug, jobId: job.id },
-    });
+    setSidePanel({ panel: "job" });
+    setJobPanel({ jobId: job.id });
   };
 
   return (

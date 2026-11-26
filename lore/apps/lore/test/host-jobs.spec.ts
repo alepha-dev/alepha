@@ -377,9 +377,7 @@ describe("HostJobService", () => {
       await w.repos.logs.findMany({ where: { jobId: { eq: job.id } } }),
     ).toHaveLength(0);
     expect((await w.service.readLog(job.id)).stdout).toBe("one\ntwo\nthree\n");
-    expect((await w.service.readTail(job.id, 10)).stdout).toBe(
-      "two\nthree\n",
-    );
+    expect((await w.service.readTail(job.id, 10)).stdout).toBe("two\nthree\n");
   });
 
   it("keeps a frame that lands after the one following it, so a long line is never cut (#Q4296)", async ({
