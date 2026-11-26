@@ -7,12 +7,23 @@ import { monitorIncidents } from "../entities/monitorIncidents.ts";
 import { type Monitor, monitors } from "../entities/monitors.ts";
 import type { MonitorConfig } from "../schemas/monitorConfigSchema.ts";
 import { UptimePushService } from "./UptimePushService.ts";
+import { UptimeSocketProber } from "./UptimeSocketProber.ts";
 
 export class UptimeMonitorService {
   protected readonly monitors = $repository(monitors);
   protected readonly incidents = $repository(monitorIncidents);
   protected readonly pushes = $inject(UptimePushService);
   protected readonly clock = $inject(DateTimeProvider);
+  protected readonly sockets = $inject(UptimeSocketProber);
+
+  /**
+   * A `tcp` or `cert` monitor where the runtime has no sockets (Workers)
+   * would fail every check and open an outage (#Q4431): refuse it instead.
+   */
+  protected assertRunnable(kind: Monitor["kind"]): void {
+    if ((kind === "tcp" || kind === "cert") && !this.sockets.available())
+      throw new BadRequestError(this.sockets.unavailableReason);
+  }
 
   /**
    * ⚠️ `appInstanceId` is optional here only for the specs and the adoption
@@ -24,6 +35,7 @@ export class UptimeMonitorService {
     config: MonitorConfig,
     owner: { appInstanceId?: string } = {},
   ): Promise<{ monitor: Monitor; token?: string }> {
+    this.assertRunnable(config.kind);
     const clean = {
       ...config,
       name: config.name.trim(),
@@ -48,6 +60,7 @@ export class UptimeMonitorService {
     // A new kind is a new series and, for push, a different credential model.
     if (monitor.kind !== config.kind)
       throw new BadRequestError("Create a new monitor to change its kind");
+    this.assertRunnable(monitor.kind);
     Object.assign(monitor, config, {
       name: config.name.trim(),
       target: monitor.kind === "push" ? "" : config.target.trim(),
@@ -57,6 +70,8 @@ export class UptimeMonitorService {
   }
 
   public async setActive(monitor: Monitor, active: boolean): Promise<Monitor> {
+    // Resuming one made before the refusal would fail every check again.
+    if (active) this.assertRunnable(monitor.kind);
     if (monitor.active === active) return monitor;
     const open = active
       ? await this.incidents.findOne({

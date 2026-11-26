@@ -14,8 +14,21 @@ export class UptimeSocketProber {
   protected readonly alepha = $inject(Alepha);
   protected readonly clock = $inject(DateTimeProvider);
 
+  /** Why a `tcp` or `cert` monitor cannot run here: a check's error and a refusal's. */
+  public readonly unavailableReason =
+    "TCP and certificate monitors require the self-hosted Node runtime with socket support";
+
   protected supportsSockets(): boolean {
     return this.alepha.meta.build.runtime !== "workerd";
+  }
+
+  /**
+   * Whether this runtime can run a `tcp` or `cert` check at all: creating or
+   * updating one is refused where it cannot (#Q4431), rather than accepted
+   * and failed on every check.
+   */
+  public available(): boolean {
+    return this.supportsSockets();
   }
 
   protected tlsOptions(): ConnectionOptions {
@@ -30,8 +43,7 @@ export class UptimeSocketProber {
         ok: false,
         result: "connection",
         latencyMs: 0,
-        error:
-          "TCP and certificate monitors require the self-hosted Node runtime with socket support",
+        error: this.unavailableReason,
       };
     }
     try {

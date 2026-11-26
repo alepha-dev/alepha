@@ -4835,6 +4835,8 @@ export default {
   "uptime.invalidTarget": "Use a valid target for this monitor kind.",
   "uptime.target": "Target",
   "uptime.httpTarget": "An http or https URL.",
+  "uptime.socketsUnavailable":
+    "TCP and certificate checks need a self-hosted Lore on Node, with socket support. This Lore has none, so it cannot run them.",
   "uptime.socketTarget":
     "A host and port, such as example.com:443. TCP and certificate checks require self-hosted Lore.",
   "uptime.pushDescription":

@@ -249,6 +249,7 @@ const AppSettingsMonitor = () => {
           key={monitor.id}
           projectId={project.id}
           monitor={monitor}
+          sockets={query.data?.sockets}
           onClose={() => setEditing(false)}
         />
       )}
