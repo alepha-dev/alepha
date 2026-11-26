@@ -77,7 +77,7 @@ export class LoreSpriteRenderer {
    * How large the figure is drawn in its 200-unit box: as large as it can
    * be with room left for the upper wingtips to beat and the body to drift.
    */
-  protected readonly zoom = 1.25;
+  protected readonly zoom: number = 1.25;
 
   protected dark = true;
   protected scale = 1;

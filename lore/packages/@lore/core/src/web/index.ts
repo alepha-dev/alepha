@@ -296,6 +296,10 @@ export {
   default as LoreEmptyState,
   type LoreEmptyStateProps,
 } from "./app/components/shared/LoreEmptyState.tsx";
+export {
+  default as LoreLogoAnimated,
+  type LoreLogoAnimatedProps,
+} from "./app/components/shared/LoreLogoAnimated.tsx";
 export type { LoreSpriteMood } from "./app/components/shared/LoreSpriteMoods.ts";
 export {
   ProjectUserChip,
