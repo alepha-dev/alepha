@@ -213,9 +213,64 @@ export class McpServerProvider {
     cacheScope: "public",
   };
 
+  /**
+   * The extensions this server declares under `capabilities.extensions`,
+   * keyed by id. See {@link registerExtension}.
+   */
+  protected readonly extensions = new Map<string, Record<string, unknown>>();
+
   // -----------------------------------------------------------------------------------------------------------------
   // Registration Methods
   // -----------------------------------------------------------------------------------------------------------------
+
+  /**
+   * Declare an MCP extension (2026-07-28 `capabilities.extensions`), such as
+   * `io.modelcontextprotocol/ui`, with its settings. Listed by
+   * `server/discover` and `initialize`. Registering an id again replaces its
+   * settings: an extension is declared once, whoever asks for it first.
+   */
+  public registerExtension(
+    id: string,
+    settings: Record<string, unknown> = {},
+  ): void {
+    this.log.trace(`Registering MCP extension: ${id}`);
+    this.extensions.set(id, settings);
+  }
+
+  /**
+   * Whether this server declares an extension.
+   */
+  public hasExtension(id: string): boolean {
+    return this.extensions.has(id);
+  }
+
+  /**
+   * What the client of a request declared for an extension:
+   *
+   * - its **settings object**, when it declared the extension;
+   * - `false`, when its capabilities are known and do not declare it;
+   * - `undefined`, when they cannot be known: a legacy HTTP request carries
+   *   none, and nothing ties it to the `initialize` that declared them.
+   *
+   * A modern request's capabilities come from its `_meta`, on either
+   * transport; a legacy stdio request's from its connection's `initialize`,
+   * kept by `StdioMcpTransport`. Takes the {@link McpContext} a handler
+   * already receives.
+   */
+  public clientExtension(
+    context: McpContext | undefined,
+    id: string,
+  ): Record<string, unknown> | false | undefined {
+    const capabilities = context?.clientCapabilities;
+    if (!this.isPlainObject(capabilities)) {
+      return undefined;
+    }
+    const extensions = capabilities.extensions;
+    const settings = this.isPlainObject(extensions)
+      ? extensions[id]
+      : undefined;
+    return this.isPlainObject(settings) ? settings : false;
+  }
 
   /**
    * Register a tool with the MCP server.
@@ -393,6 +448,10 @@ export class McpServerProvider {
       // nothing would have every client offering an autocomplete that always
       // comes back empty.
       completions: this.hasCompletions() ? {} : undefined,
+      extensions:
+        this.extensions.size > 0
+          ? Object.fromEntries(this.extensions)
+          : undefined,
     };
   }
 
@@ -677,7 +736,9 @@ export class McpServerProvider {
     }
 
     // Decided here, from the request, and written over whatever the caller
-    // put in the context: on a legacy request all three stay undefined.
+    // put in the context: on a legacy request the version and the client's
+    // identity stay undefined, and its capabilities are the ones the
+    // transport kept from `initialize` (legacy stdio), or none.
     const modern = this.resolveModernRequest(request, context?.headers);
     if (modern) {
       const rejection = this.checkModernRequest(modern, request);
@@ -716,7 +777,9 @@ export class McpServerProvider {
             signal,
             protocolVersion: modern?.protocolVersion,
             clientInfo: modern?.clientInfo,
-            clientCapabilities: modern?.clientCapabilities,
+            clientCapabilities: modern
+              ? modern.clientCapabilities
+              : context?.clientCapabilities,
             ...(session ? { elicit: session.elicit as never } : {}),
           });
         },

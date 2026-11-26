@@ -48,6 +48,12 @@ export interface McpCapabilities {
    * actually perform is worse than advertising nothing.
    */
   completions?: Record<string, never>;
+  /**
+   * The extensions this side supports (2026-07-28), keyed by extension id
+   * (`io.modelcontextprotocol/ui`), each with its settings object. An
+   * extension is in use only when both sides declare it. Omitted when empty.
+   */
+  extensions?: Record<string, Record<string, unknown>>;
 }
 
 /**
@@ -606,8 +612,12 @@ export interface McpContext<T = unknown> {
   clientInfo?: McpClientInfo;
 
   /**
-   * The capabilities a modern request declares, `{}` when it declares none.
-   * Undefined on a legacy request.
+   * The capabilities the client declared: a modern request's, from its
+   * `_meta` (`{}` when it declares none), or, on legacy stdio, the ones its
+   * connection's `initialize` carried, kept by `StdioMcpTransport`. Undefined
+   * on a legacy HTTP request: nothing ties it to the `initialize` that
+   * declared them. Read an extension through
+   * `McpServerProvider.clientExtension`.
    */
   clientCapabilities?: Record<string, unknown>;
 

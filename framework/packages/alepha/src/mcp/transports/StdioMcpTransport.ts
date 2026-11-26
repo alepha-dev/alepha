@@ -46,6 +46,16 @@ export class StdioMcpTransport {
   protected readonly mcpServer = $inject(McpServerProvider);
 
   /**
+   * The capabilities this connection's legacy `initialize` declared, kept for
+   * the life of the connection and passed on every request as
+   * `McpContext.clientCapabilities`. A stdio transport is one connection, so
+   * it can remember what the stateless provider cannot. Undefined until an
+   * `initialize` is read; a modern client sends none, and its requests carry
+   * their capabilities in `_meta`.
+   */
+  protected clientCapabilities?: Record<string, unknown>;
+
+  /**
    * Bytes read from stdin that do not yet form a complete line.
    */
   protected buffer = "";
@@ -121,8 +131,21 @@ export class StdioMcpTransport {
     let response: JsonRpcResponse | null;
     try {
       const request = parseMessage(trimmed);
-      const context: McpContext = { clientKey: "stdio" };
+      const context: McpContext = {
+        clientKey: "stdio",
+        ...(this.clientCapabilities
+          ? { clientCapabilities: this.clientCapabilities }
+          : {}),
+      };
       response = await this.mcpServer.handleMessage(request, context);
+      // Kept from an `initialize` the server accepted, never a refused one.
+      if (request.method === "initialize" && response && "result" in response) {
+        const declared = request.params?.capabilities;
+        this.clientCapabilities =
+          declared && typeof declared === "object" && !Array.isArray(declared)
+            ? (declared as Record<string, unknown>)
+            : {};
+      }
     } catch (error) {
       if (!(error instanceof JsonRpcParseError)) {
         this.log.error("Failed to process MCP stdio message", error);
