@@ -90,10 +90,11 @@ export const quests = $entity({
      * exactly as it did. Within a column, cards are therefore either all
      * ranked or all unranked, never mixed.
      *
-     * NB: `z.optional` with NO `db.default(...)`. `quests` is the CASCADE
-     * parent of `quest_comments` and of its own `dependsOn` self-reference,
-     * so a table rebuild on D1 would erase every discussion and every
-     * questline link. The migration is a single nullable `ADD COLUMN`,
+     * NB: `z.optional` with NO `db.default(...)`. `quests` is the parent of
+     * its own `dependsOn` self-reference and of cascade children, so a table
+     * rebuild on D1 would erase every questline link (the discussion left
+     * for core's `comments` with #E185; the rule stands for what remains).
+     * The migration is a single nullable `ADD COLUMN`,
      * copying `20260820173939_fuzzy_pandemic` (`dueAt`).
      */
     boardRank: z.string().min(1).max(64).optional(),
@@ -147,8 +148,8 @@ export const quests = $entity({
      * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
      * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
      * rebuild, and on D1 `DROP TABLE quests` fires `dependsOn`'s SET NULL
-     * against the copied rows AND cascades `quest_comments`, wiping every
-     * questline link and every discussion. See `apps/lore/AGENTS.md` →
+     * against the copied rows AND cascades into its children, wiping every
+     * questline link. See `apps/lore/AGENTS.md` →
      * "Migration safety on D1". Same reasoning as `epicId` and `commits`.
      */
     heldAt: z.datetime().optional(),
@@ -453,8 +454,8 @@ export const quests = $entity({
      * ⚠️ Optional with NO `db.default(...)` so the migration is a plain
      * additive `ALTER TABLE ADD COLUMN`. A column DEFAULT triggers a table
      * rebuild, and on D1 `DROP TABLE quests` fires `dependsOn`'s SET NULL
-     * against the copied rows AND cascades `quest_comments`, wiping every
-     * questline link and every discussion. See `apps/lore/AGENTS.md` →
+     * against the copied rows AND cascades into its children, wiping every
+     * questline link. See `apps/lore/AGENTS.md` →
      * "Migration safety on D1". Same reasoning as `epicId`.
      *
      * A JSON array rather than a `quest_commits` table because a handful of

@@ -4,7 +4,6 @@ import { $relations } from "alepha/orm";
 
 import { epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
-import { questComments } from "../entities/questComments.ts";
 import { quests } from "../entities/quests.ts";
 import { releases } from "../entities/releases.ts";
 
@@ -23,7 +22,6 @@ const schema = {
   releases,
   epics,
   quests,
-  questComments,
   feedback,
 };
 
@@ -70,20 +68,6 @@ export const workRelations = $relations(schema, (r) => ({
      */
     blockedBy: r.one.quests({ from: r.quests.dependsOn, to: r.quests.id }),
     blocks: r.many.quests({ from: r.quests.id, to: r.quests.dependsOn }),
-    comments: r.many.questComments({
-      from: r.quests.id,
-      to: r.questComments.questId,
-    }),
-  },
-
-  /**
-   * A comment carries no `projectId` of its own: the quest it hangs off is
-   * what scopes it. Declared here so that scoping can be a join rather than
-   * a filter applied to every comment in the instance.
-   */
-  questComments: {
-    quest: r.one.quests({ from: r.questComments.questId, to: r.quests.id }),
-    author: r.one.users({ from: r.questComments.authorId, to: r.users.id }),
   },
 
   feedback: {

@@ -1,5 +1,6 @@
 import {
   BoundParameters,
+  CommentService,
   ResourceRegistry,
   SearchPreview,
 } from "@lore/core/api";
@@ -8,6 +9,7 @@ import { $repository } from "alepha/orm";
 import { BadRequestError, NotFoundError } from "alepha/server";
 
 import { quests } from "../entities/quests.ts";
+import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 import {
   type CreateQuestInput,
@@ -28,6 +30,7 @@ export class QuestResourceKind {
   protected readonly bound = $inject(BoundParameters);
   protected readonly search = $inject(SearchPreview);
   protected readonly mapper = $inject(QuestResourceMapper);
+  protected readonly comments = $inject(CommentService);
 
   constructor() {
     this.resources.register({
@@ -102,6 +105,10 @@ export class QuestResourceKind {
       },
       discard: async (id) => {
         await this.quests.deleteById(id, { force: true });
+        // Nothing points at a quest made a moment ago, but its thread is no
+        // longer a cascade (#E185): removed by hand, like every quest
+        // delete.
+        await this.comments.deleteForSubjects(PlanCommentSubjects.QUEST, [id]);
       },
       adopt: async ({ projectId, shortId, source }) => {
         const quest = await this.quests.findOne({

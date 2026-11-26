@@ -1,8 +1,8 @@
 import type { HostJobSummary } from "@lore/core/api";
-import { hostJobs, hosts, jobKeys } from "@lore/core/schemas";
+import { comments, hostJobs, hosts, jobKeys } from "@lore/core/schemas";
 import { createTestProject } from "@lore/core/testing";
 import { QuestTools } from "@lore/plan/mcp";
-import { questComments, quests } from "@lore/plan/schemas";
+import { quests } from "@lore/plan/schemas";
 import { createTestQuest } from "@lore/plan/testing";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -22,7 +22,7 @@ class Repos {
   hosts = $repository(hosts);
   jobs = $repository(hostJobs);
   quests = $repository(quests);
-  comments = $repository(questComments);
+  comments = $repository(comments);
 }
 
 /**
@@ -216,7 +216,9 @@ describe("a quest and the agent job working it", () => {
     });
     // A job that ended done says nothing: the quest is just free again.
     expect(
-      await repos.comments.findMany({ where: { questId: { eq: held.id } } }),
+      await repos.comments.findMany({
+        where: { subjectType: { eq: "quest" }, subjectId: { eq: held.id } },
+      }),
     ).toEqual([]);
     expect((await row(mine.id)).acceptedBy).toBe(ownerId);
   });
@@ -230,7 +232,7 @@ describe("a quest and the agent job working it", () => {
       await ended(status);
       expect((await row(held.id)).acceptedAt).toBeUndefined();
       const [comment] = await repos.comments.findMany({
-        where: { questId: { eq: held.id } },
+        where: { subjectType: { eq: "quest" }, subjectId: { eq: held.id } },
       });
       expect(comment?.body).toContain("The quest is back in To do");
     });

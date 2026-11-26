@@ -474,14 +474,13 @@ that guards a state change puts the precondition in the write's WHERE. Never
 re-read the row in the handler and write that: the version it carries is not
 the one the decision was made on.
 
-`hops` covers the one two-hop case in the app: a quest comment references a
-quest, and only the quest references the project.
+`hops` reaches a project through a parent row, for a child that carries no `projectId` of its own (a quest comment did, until the comments moved to core's `comments`, #E185, whose rows carry their project).
 
 ```typescript
 $ownsProject({
-  repository: () => this.comments,
+  repository: () => this.reviewItems,
   param: "id",
-  hops: [{ column: "questId", repository: () => this.quests }],
+  hops: [{ column: "epicId", repository: () => this.epics }],
 });
 ```
 

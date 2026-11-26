@@ -300,7 +300,7 @@ What this package holds, with the notes that are not obvious from the code. Move
 
 **Controllers (8)** - `Feedback`, `FeedbackComment`, `Kanban`, `Release`, `ProjectQuestPortability`, `ProjectReports`, `Quest`, `QuestComment`.
 
-**Entities (5)** - `feedback`, `feedbackComments`, `releases`, `questComments`, `quests`.
+**Entities (4)** - `feedback`, `feedbackComments`, `releases`, `quests`. A quest's discussion is rows of core's `comments` under the `quest` subject since #E185 (`PlanCommentSubjects` registers it, `QuestCommentController` keeps the routes and `questCommentResourceSchema`, and every quest delete removes the thread by hand through `CommentService.deleteForSubjects`). ⚠️ The old `quest_comments` table is still on disk, read by nothing: its rows were copied by `20261126205234_quest_comments_to_comments`, its entity stays registered by `RetiredCommentTables` so the snapshot and the safety spec still hold it, and one later migration drops it with the two other old comment tables once the counts are compared on production (the owner's call in #E185's review).
 
 **Services (6)** - `FeedbackRateLimiter`, `QuestCsvFormatter`, `QuestDeletionService` (the one quest delete, shared by `deleteQuest` and `deleteEpic`), `QuestResourceMapper`, `QuestService`, `QuestShelvingService` (the quest shelve and unshelve writes, shared with the epic shelve).
 

@@ -43,6 +43,7 @@ import { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { MentionNotifier } from "./services/MentionNotifier.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
+import { PlanCommentSubjects } from "./services/PlanCommentSubjects.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
 import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { PlanLiveQuests } from "./services/PlanLiveQuests.ts";
@@ -76,6 +77,7 @@ import { ReleaseProgressMetric } from "./services/ReleaseProgressMetric.ts";
 import { ReleasePublishGuards } from "./services/ReleasePublishGuards.ts";
 import { ReleasesToPublishMetric } from "./services/ReleasesToPublishMetric.ts";
 import { RemindersDueMetric } from "./services/RemindersDueMetric.ts";
+import { RetiredCommentTables } from "./services/RetiredCommentTables.ts";
 import { TagCompletionMetric } from "./services/TagCompletionMetric.ts";
 import { UnfinishedJobQuests } from "./services/UnfinishedJobQuests.ts";
 import { UntriagedFeedbackMetric } from "./services/UntriagedFeedbackMetric.ts";
@@ -114,6 +116,12 @@ export const LorePlanApi = $module({
     FeedbackAgentService,
     // The built-in prompts and their epic, quest and feedback args (#E174).
     PlanPrompts,
+    // Registers Plan's subjects on core's `comments` (#E185); nothing
+    // injects it.
+    PlanCommentSubjects,
+    // Keeps the retired comment tables declared until their drop (#E185);
+    // nothing injects it.
+    RetiredCommentTables,
     // What a job key may not read: outside text nobody trusted (#Q4287).
     PlanOutsideText,
     // Quests worked by an agent job that pushes lore/q<n> (#Q3989).
@@ -309,6 +317,7 @@ export { ProjectReportsService } from "./services/ProjectReportsService.ts";
 export { FeedbackAgentService } from "./services/FeedbackAgentService.ts";
 export { PlanOutsideText } from "./services/PlanOutsideText.ts";
 export { PlanPrompts } from "./services/PlanPrompts.ts";
+export { PlanCommentSubjects } from "./services/PlanCommentSubjects.ts";
 export { QuestAgentController } from "./controllers/QuestAgentController.ts";
 export { EpicAgentService } from "./services/EpicAgentService.ts";
 export { QuestAgentService } from "./services/QuestAgentService.ts";

@@ -1,5 +1,15 @@
-import { $ownsProject, BoundParameters, LoreAudits } from "@lore/core/api";
-import { commentSourceSchema, type Project } from "@lore/core/schemas";
+import {
+  $ownsProject,
+  BoundParameters,
+  CommentService,
+  LoreAudits,
+} from "@lore/core/api";
+import {
+  type Comment,
+  comments,
+  commentSourceSchema,
+  type Project,
+} from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject, z } from "alepha";
 import { files } from "alepha/api/files";
@@ -11,14 +21,15 @@ import {
   $action,
   BadRequestError,
   ForbiddenError,
+  NotFoundError,
   okSchema,
 } from "alepha/server";
 
-import { type QuestComment, questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
 import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
+import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { WorkFileAccess } from "../services/WorkFileAccess.ts";
 
 /**
@@ -40,9 +51,14 @@ import { WorkFileAccess } from "../services/WorkFileAccess.ts";
  * `$ownsProject` covers the membership half and nothing more. The author
  * rules below it are about the COMMENT, not the quest, and no gate expresses
  * them.
+ *
+ * The rows are core's `comments`, under the `quest` subject (#E185): this
+ * controller keeps its routes, its permissions and its resource schema, and
+ * `CommentService` writes.
  */
 export class QuestCommentController {
-  comments = $repository(questComments);
+  comments = $repository(comments);
+  commentService = $inject(CommentService);
   quests = $repository(quests);
   dt = $inject(DateTimeProvider);
   audits = $inject(LoreAudits);
@@ -65,20 +81,16 @@ export class QuestCommentController {
     $ownsProject({ requires, repository: () => this.quests, param: "id" });
 
   /**
-   * Member gate reached from a COMMENT id, which takes two hops: a comment
-   * references a quest, and only the quest references the project.
-   *
-   * This is the one place in the app that needs a chain, and it is why
-   * `$owns` grew one. Denormalising `projectId` onto `quest_comments` would
-   * be the alternative, and it is not one: the table hangs off a CASCADE
-   * parent, so a rebuild of it on D1 is the expensive kind of migration.
+   * Member gate reached from a COMMENT id. A row of core's `comments`
+   * carries its project, so this is one hop; the handler then checks the
+   * row is a QUEST's comment ({@link questComment}), since the table holds
+   * every subject's.
    */
   protected ownsComment = (requires: string | string[]) =>
     $ownsProject({
       requires,
       repository: () => this.comments,
       param: "id",
-      hops: [{ column: "questId", repository: () => this.quests }],
     });
 
   /**
@@ -101,9 +113,29 @@ export class QuestCommentController {
       requires,
       repository: () => this.comments,
       param: "id",
-      hops: [{ column: "questId", repository: () => this.quests }],
       capability: "plan",
     });
+
+  /**
+   * The comment the gate loaded, when it is a quest's. A feedback or an
+   * error comment reached by its id through a quest route does not exist
+   * here: a 404, never the row.
+   */
+  protected questComment(): Comment {
+    const comment = this.owned.get<Comment>();
+    if (comment.subjectType !== PlanCommentSubjects.QUEST) {
+      throw new NotFoundError("Comment not found");
+    }
+    return comment;
+  }
+
+  /**
+   * A row of core's table as the quest thread has always answered it:
+   * `questId` for the subject.
+   */
+  protected toResource<T extends Comment>(comment: T) {
+    return { ...comment, questId: comment.subjectId };
+  }
 
   /**
    * Comment counts and the newest comment stamp for a page of quests, in
@@ -129,14 +161,17 @@ export class QuestCommentController {
     }
 
     const rows = await this.comments.findMany({
-      where: { questId: { inArray: [...questIds] } },
-      columns: ["questId", "createdAt"],
+      where: {
+        subjectType: { eq: PlanCommentSubjects.QUEST },
+        subjectId: { inArray: [...questIds] },
+      },
+      columns: ["subjectId", "createdAt"],
     });
 
     for (const row of rows) {
-      const current = stats.get(row.questId);
+      const current = stats.get(row.subjectId);
       if (!current) {
-        stats.set(row.questId, { count: 1, lastAt: row.createdAt });
+        stats.set(row.subjectId, { count: 1, lastAt: row.createdAt });
         continue;
       }
       current.count += 1;
@@ -235,7 +270,10 @@ export class QuestCommentController {
    */
   async latestCommentsOf(questId: number, limit: number) {
     const rows = await this.comments.findMany({
-      where: { questId: { eq: questId } },
+      where: {
+        subjectType: { eq: PlanCommentSubjects.QUEST },
+        subjectId: { eq: questId },
+      },
       // `id` breaks the tie, and it is not decoration: `createdAt` has
       // millisecond resolution, so a burst of comments (an agent posting
       // several in a loop, most obviously) lands several rows on the same
@@ -247,7 +285,7 @@ export class QuestCommentController {
       limit,
     });
 
-    return rows.toReversed();
+    return rows.toReversed().map((row) => this.toResource(row));
   }
 
   createQuestComment = $action({
@@ -300,13 +338,17 @@ export class QuestCommentController {
         await this.assertAttachmentsBelongToUser(attachments, user.id);
       }
 
-      const comment = await this.comments.create({
-        questId: quest.id,
-        authorId: user.id,
-        body: body.body,
-        source: body.source,
-        ...(attachments.length > 0 ? { attachments } : {}),
-      });
+      const comment = this.toResource(
+        await this.commentService.add({
+          type: PlanCommentSubjects.QUEST,
+          projectId: quest.projectId,
+          subjectId: quest.id,
+          authorId: user.id,
+          body: body.body,
+          source: body.source,
+          attachments,
+        }),
+      );
 
       if (body.answer && quest.tags?.includes(QUEST_NEEDS_ANSWER_TAG)) {
         // After the comment, so a refused comment never clears the tag. The
@@ -399,7 +441,7 @@ export class QuestCommentController {
       response: questCommentResourceSchema,
     },
     handler: async ({ params, body, user }) => {
-      const comment = this.owned.get<QuestComment>();
+      const comment = this.questComment();
 
       // Editing is the author's alone — not the owner's. An owner rewriting
       // what someone else said, under their name, is a different feature
@@ -408,20 +450,19 @@ export class QuestCommentController {
         throw new ForbiddenError("Only the author can edit this comment");
       }
 
-      const updated = await this.comments.updateById(params.id, {
-        body: body.body,
-        editedAt: this.dt.nowISOString(),
-      });
+      const updated = this.toResource(
+        await this.commentService.edit(params.id, { body: body.body }),
+      );
 
       // Only the handles that were not there before. Fixing a typo elsewhere
       // in the body must not re-ping everyone, which is why the edit path
       // diffs rather than repeating the create path.
       //
       // The quest is read here rather than taken from the gate: `ownsComment`
-      // resolves the COMMENT and its authority is the project, so the hop in
-      // between is not exposed. One read, and only on a body that changed.
+      // resolves the COMMENT and its authority is the project. One read, and
+      // only on a body that changed.
       if (comment.body !== body.body) {
-        const quest = await this.quests.findById(comment.questId);
+        const quest = await this.quests.findById(comment.subjectId);
         if (quest) {
           // No `agent`, even on a comment an agent wrote: there is no MCP
           // edit tool, so an edit is typed by a person, and a person's own
@@ -449,7 +490,7 @@ export class QuestCommentController {
       response: okSchema,
     },
     handler: async ({ params, user }) => {
-      const comment = this.owned.get<QuestComment>();
+      const comment = this.questComment();
       const project = this.owned.authority<Project>();
 
       // Deleting IS moderation, so somebody who may moderate the work may do
@@ -472,7 +513,7 @@ export class QuestCommentController {
         );
       }
 
-      await this.comments.deleteById(params.id);
+      await this.commentService.remove(params.id);
       return { ok: true };
     },
   });

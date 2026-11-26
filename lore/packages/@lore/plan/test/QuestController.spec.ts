@@ -1,3 +1,4 @@
+import { comments } from "@lore/core/schemas";
 import { Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
@@ -11,7 +12,6 @@ import { afterEach, beforeEach, describe, it } from "vitest";
 import { QuestController } from "../src/api/index.ts";
 import { LorePlanApi } from "../src/api/index.ts";
 import { questPresetQuery } from "../src/api/schemas/questPresets.ts";
-import { questComments } from "../src/schemas/index.ts";
 import {
   createTestProject,
   createTestQuest,
@@ -19,10 +19,8 @@ import {
 } from "../src/testing/index.ts";
 
 /**
- * The comment table, registered before `start()` for the reason
- * `WorkTestEntities` documents: `quest_comments.questId` refs
- * `quests`, and a table first reached after boot fails at BOOT with
- * "Referenced table not found", nowhere near the call that needed it.
+ * Core's comment table, where a quest's discussion lives (#E185), read
+ * through a repository constructed before `start()`.
  *
  * ⚠️ A SIBLING of `WorkTestEntities`, never a subclass. The
  * `createTest*` fixtures inject that class by identity, and a subclass is a
@@ -30,7 +28,7 @@ import {
  * and every fixture call fails with `ContainerLockedError` after `start()`.
  */
 class QuestCommentRepositories {
-  comments = $repository(questComments);
+  comments = $repository(comments);
 }
 
 interface TestContext {
@@ -348,7 +346,7 @@ describe("QuestController hold", () => {
       );
 
       const comments = await ctx.repos.comments.findMany({
-        where: { questId: { eq: quest.id } },
+        where: { subjectType: { eq: "quest" }, subjectId: { eq: quest.id } },
       });
 
       expect(comments).toHaveLength(1);
@@ -398,7 +396,7 @@ describe("QuestController hold", () => {
       ).rejects.toThrow();
 
       const comments = await ctx.repos.comments.findMany({
-        where: { questId: { eq: quest.id } },
+        where: { subjectType: { eq: "quest" }, subjectId: { eq: quest.id } },
       });
       expect(comments).toHaveLength(1);
     });

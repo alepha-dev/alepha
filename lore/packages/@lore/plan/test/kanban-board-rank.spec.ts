@@ -17,7 +17,7 @@ import { WorkTestEntities } from "../src/testing/index.ts";
  *
  * The load-bearing claim is the LAZY ranking: `board_rank` shipped as a
  * bare nullable `ADD COLUMN` with no backfill — the only shape that is safe
- * on `quests`, the CASCADE parent of `quest_comments` — so an untouched
+ * on `quests`, a parent no migration may rebuild on D1 — so an untouched
  * board has to look exactly as it did, and a column has to rank itself the
  * first time somebody reorders it.
  */

@@ -1,4 +1,4 @@
-import { HourlyChecks } from "@lore/core/api";
+import { CommentService, HourlyChecks } from "@lore/core/api";
 import { $inject } from "alepha";
 import { $logger } from "alepha/logger";
 import {
@@ -8,8 +8,8 @@ import {
   sql,
 } from "alepha/orm";
 
-import { questComments } from "../entities/questComments.ts";
 import { type Quest, quests } from "../entities/quests.ts";
+import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 
 /**
  * Dated holds lift on their own (#Q4408). A check of the hourly job, on the
@@ -41,7 +41,7 @@ export class QuestHoldLifts {
   protected readonly checks = $inject(HourlyChecks);
   protected readonly sqlx = $inject(SqlExpressionProvider);
   protected readonly quests = $repository(quests);
-  protected readonly comments = $repository(questComments);
+  protected readonly comments = $inject(CommentService);
 
   constructor() {
     this.checks.register({
@@ -137,8 +137,10 @@ export class QuestHoldLifts {
     // Another tick lifted it first, or somebody did by hand.
     if (!ids.length) return false;
     if (quest.heldBy) {
-      await this.comments.create({
-        questId: quest.id,
+      await this.comments.add({
+        type: PlanCommentSubjects.QUEST,
+        projectId: quest.projectId,
+        subjectId: quest.id,
         authorId: quest.heldBy,
         body: this.bodyOf(),
         source: { kind: "mcp", client: QuestHoldLifts.CLIENT },

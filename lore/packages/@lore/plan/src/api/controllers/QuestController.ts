@@ -1,4 +1,5 @@
 import {
+  CommentService,
   $ownsProject,
   BestEffort,
   BoundParameters,
@@ -31,7 +32,6 @@ import {
 
 import { type Epic, epics } from "../entities/epics.ts";
 import { feedback } from "../entities/feedback.ts";
-import { questComments } from "../entities/questComments.ts";
 import {
   normalizeQuestTags,
   type Quest,
@@ -74,6 +74,7 @@ import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
+import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { PlanLiveQuests } from "../services/PlanLiveQuests.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
 import { QuestEditAccess } from "../services/QuestEditAccess.ts";
@@ -203,7 +204,7 @@ export class QuestController {
    * (`logQuest("hold", …)`), and reaching through another controller to get
    * a row inserted would couple the two for the sake of eight lines.
    */
-  comments = $repository(questComments);
+  comments = $inject(CommentService);
   protected readonly ranks = $inject(RankService);
   protected readonly liveQuests = $inject(PlanLiveQuests);
   protected readonly jobStamp = $inject(QuestJobStamp);
@@ -2343,8 +2344,10 @@ export class QuestController {
       // No transaction to roll it back (D1): the undo is a second `save()`,
       // guarded by the version the first one returned.
       try {
-        await this.comments.create({
-          questId: quest.id,
+        await this.comments.add({
+          type: PlanCommentSubjects.QUEST,
+          projectId: quest.projectId,
+          subjectId: quest.id,
           authorId: user.id,
           body: body.reason,
         });

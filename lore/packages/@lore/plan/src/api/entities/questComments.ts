@@ -5,24 +5,23 @@ import { $entity, db } from "alepha/orm";
 import { quests } from "./quests.ts";
 
 /**
- * One comment on a quest.
+ * ⚠️ RETIRED (#E185): the table a quest's discussion lived in until the
+ * comments moved to core's `comments` (subject `quest`). Nothing reads or
+ * writes it any more.
  *
- * Comments interleave with the quest's own history events into a single
- * Discussion feed — never a second list. Agents read and write them over
- * MCP, which is the point of the feature: the owner leaves "do X
- * differently" on a quest, and the next session sees it.
+ * It is still declared, and only that, for one reason: the table is still
+ * on disk. Its rows were copied by
+ * `20261126215003_quest_comments_to_comments`, and the owner decided (review
+ * of #E185, item 26) that the old table stays untouched until the counts are
+ * compared on production, when one later migration drops it with
+ * `feedback_comments` and `requirements_comments`. While the entity is
+ * registered (`RetiredCommentTables`), the table stays in the migration
+ * snapshot and stays guarded by `apps/lore/test/migration-safety.spec.ts`;
+ * deleting this file is what generates that drop, which then needs its
+ * `-- alepha-allow-drop-table:` marker and its `SANCTIONED_DROPS` entry.
  *
- * **`@name` reaches a person** (epic #E42). A handle matching a project
- * member puts a message in their inbox and, unless they have turned it off,
- * mails them. Anything else in a comment notifies nobody: writing here is
- * not broadcasting.
- *
- * This reverses what stood until 2026-09-07 - "no notifications, comments
- * create an expectation that someone is told, and that is a separate feature
- * which should not be bundled while Lore is small-team". It was right while
- * Lore had one user. A second person on a project is what made it wrong: a
- * quest gets blocked, the answer is in somebody else's head, and nothing
- * told them so.
+ * Do not import it: a comment is a row of `comments`, written through
+ * `CommentService`.
  */
 export const questComments = $entity({
   name: "quest_comments",

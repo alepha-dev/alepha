@@ -1,12 +1,13 @@
 import { FileAccessRegistry } from "@lore/core/api";
+import { comments } from "@lore/core/schemas";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
 import { feedbackComments } from "../entities/feedbackComments.ts";
-import { questComments } from "../entities/questComments.ts";
 import { quests } from "../entities/quests.ts";
 import { FeedbackRateLimiter } from "./FeedbackRateLimiter.ts";
+import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 
 /**
  * Who may read Work's attachments, registered on core's `FileAccessRegistry`
@@ -27,7 +28,7 @@ export class WorkFileAccess {
   protected readonly registry = $inject(FileAccessRegistry);
   protected readonly feedback = $repository(feedback);
   protected readonly quests = $repository(quests);
-  protected readonly questComments = $repository(questComments);
+  protected readonly comments = $repository(comments);
   protected readonly feedbackComments = $repository(feedbackComments);
 
   constructor() {
@@ -61,17 +62,18 @@ export class WorkFileAccess {
           force: true,
         });
         if (row) return { projectId: row.projectId, permission: "quest:read" };
-        const [comment] = await this.questComments.findMany({
-          where: { attachments: { like: `%"${fileId}"%` } },
-          columns: ["questId"],
+        // A comment of core's table carries its project (#E185): no second
+        // read of the quest.
+        const [comment] = await this.comments.findMany({
+          where: {
+            subjectType: { eq: PlanCommentSubjects.QUEST },
+            attachments: { like: `%"${fileId}"%` },
+          },
+          columns: ["projectId"],
           limit: 1,
         });
-        if (!comment) return undefined;
-        const quest = await this.quests.findById(comment.questId, {
-          force: true,
-        });
-        return quest
-          ? { projectId: quest.projectId, permission: "quest:read" }
+        return comment
+          ? { projectId: comment.projectId, permission: "quest:read" }
           : undefined;
       },
     );
