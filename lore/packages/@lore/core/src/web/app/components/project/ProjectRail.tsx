@@ -15,6 +15,7 @@ import type { I18n } from "../../services/I18n.ts";
 import { ProjectRailItem } from "./ProjectRailItem.tsx";
 import { ProjectRailMenu } from "./ProjectRailMenu.tsx";
 import { useDock } from "./useDock.ts";
+import { useDockMarkAllRead } from "./useDockMarkAllRead.ts";
 import { useDockUnread } from "./useDockUnread.ts";
 import { useLeavingProject } from "./useLeavingProject.ts";
 
@@ -53,6 +54,7 @@ const ProjectRail = () => {
   const [overview] = useStore(userProjectsAtom);
   const [dock] = useStore(userDockAtom);
   const actions = useDock();
+  const markAllRead = useDockMarkAllRead();
   const hintId = useId();
   const pinsRef = useRef<HTMLDivElement | null>(null);
   // Set while a pointer drag runs, read by the click its pointerup fires.
@@ -205,6 +207,9 @@ const ProjectRail = () => {
                   busy={busy}
                   onPin={() => {}}
                   onUnpin={() => void actions.unpin.run(it.id)}
+                  unread={unread.get(it.id)}
+                  marking={markAllRead.loading}
+                  onMarkAllRead={() => void markAllRead.run(it.id)}
                 />
               }
             />
@@ -225,6 +230,9 @@ const ProjectRail = () => {
                   busy={busy}
                   onPin={() => void actions.pin.run(temporary.id)}
                   onUnpin={() => {}}
+                  unread={unread.get(temporary.id)}
+                  marking={markAllRead.loading}
+                  onMarkAllRead={() => void markAllRead.run(temporary.id)}
                 />
               }
             />

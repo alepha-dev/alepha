@@ -2266,6 +2266,7 @@ export default {
   "dock.menu.open-new-tab": "Ouvrir dans un nouvel onglet",
   "dock.menu.copy-link": "Copier le lien",
   "dock.menu.copied": "Lien copié",
+  "dock.menu.mark-all-read": "Tout marquer comme lu",
   "dock.reorder.hint":
     "Appuyez sur Espace pour déplacer ce projet dans le dock, puis sur les flèches, et de nouveau sur Espace pour le déposer.",
   "dock.reorder.picked": "$1 saisi.",
