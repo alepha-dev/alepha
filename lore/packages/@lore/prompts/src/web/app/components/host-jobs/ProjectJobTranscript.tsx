@@ -1,4 +1,4 @@
-import { Alert, Button } from "@alepha/ui";
+import { Alert } from "@alepha/ui";
 import { AiChatToolTrace } from "@alepha/ui/ai";
 import { MarkdownView } from "@alepha/ui/markdown";
 import type {
@@ -38,7 +38,6 @@ const TRIM = "[&>*:first-child]:mt-0 [&>*:last-child]:mb-0";
 const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
   const { tr } = useI18n<I18n, "en">();
   const { job, transcript } = props;
-  const [showHidden, setShowHidden] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);
@@ -202,23 +201,6 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
             }
             return <ProjectJobRawLine key={index} line={entry.line} />;
           })}
-          {transcript.hidden > 0 && (
-            <Button
-              variant="minimal"
-              size="sm"
-              className="self-start"
-              onClick={() => setShowHidden((it) => !it)}
-            >
-              {tr("jobs.transcript.hidden", {
-                args: [String(transcript.hidden)],
-              })}
-            </Button>
-          )}
-          {showHidden && (
-            <p className="text-muted-foreground text-xs">
-              {tr("jobs.transcript.hiddenHint")}
-            </p>
-          )}
           {/* A running job past its log's cap goes on working (#Q4455): the
               page says so, rather than reading as a job that stopped. */}
           {job.logTruncated && job.status === "running" && (

@@ -3367,9 +3367,6 @@ export default {
   "jobs.transcript.replyLater":
     "La réponse s'affiche quand la tâche se termine.",
   "jobs.transcript.noReply": "L'agent s'est arrêté sans réponse.",
-  "jobs.transcript.hidden": "$1 événements de suivi masqués",
-  "jobs.transcript.hiddenHint":
-    "Limites de débit et comptes de jetons de l'outil de l'agent : Télécharger le journal les a tous.",
   "jobs.transcript.truncated":
     "Le journal a été coupé : la transcription s'arrête là.",
   "jobs.transcript.truncatedRunning":

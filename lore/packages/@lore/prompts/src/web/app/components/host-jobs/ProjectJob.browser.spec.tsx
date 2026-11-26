@@ -217,7 +217,8 @@ describe("ProjectJob", () => {
     expect(
       screen.getByTestId("ai-chat-tool-trace-steps").textContent,
     ).toContain("yarn test");
-    expect(events.textContent).toContain("1 bookkeeping events hidden");
+    // Bookkeeping events stay out, with no toggle to show them (#Q4529).
+    expect(events.textContent).not.toContain("bookkeeping");
     expect(screen.queryAllByTestId("job-history-row")).toHaveLength(0);
   });
 
