@@ -291,6 +291,9 @@ export default defineConfig({
         "assistant.tool.",
         // The assistant's confirmation cards (#Q3210), titled by tool.
         "assistant.confirm.",
+        // A host's Stats tab (#Q4528): the range picker and the chart's title.
+        "bay.stats.range.",
+        "bay.chart.title.",
         // The Reports bar (#Q2996): its period and grain, built from the value.
         "reports.filter.range.",
         "reports.filter.grain.",

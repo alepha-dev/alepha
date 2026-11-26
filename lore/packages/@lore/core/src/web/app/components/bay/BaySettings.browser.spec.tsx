@@ -301,6 +301,7 @@ describe("BaySettings", () => {
     expect(tabs.map((it) => it.route)).toEqual([
       "bayOverview",
       "bayCommands",
+      "bayStats",
       "bayAgent",
       "baySettings",
     ]);

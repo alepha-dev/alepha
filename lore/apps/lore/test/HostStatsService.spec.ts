@@ -222,6 +222,37 @@ describe("HostStatsService", () => {
     expect(series.estimated).toBe(false);
   });
 
+  it("buckets the series by hour or minute when asked, and the route picks the grain from its range (#Q4528)", async ({
+    expect,
+  }) => {
+    const owner = await createOwner(ctx);
+    const host = await createHost(ctx, owner, "ranged", true);
+
+    await ctx.service.record(host, frame(20, 10));
+    await ctx.dateTime.travel(2, "hours");
+    await ctx.service.record(host, frame(40, 20));
+
+    const hourly = await ctx.service.series(host.id, "2000-01-01", "hour");
+    expect(hourly.points).toHaveLength(2);
+    expect(hourly.points[0].day).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}$/);
+    expect(hourly.points.map((it) => it.cpuPercent)).toEqual([20, 40]);
+
+    const answer = async (range: "hour" | "today" | "week" | "month") =>
+      await ctx.hostApi.getHostStats(
+        { params: { hostId: host.id }, query: { range } },
+        { user: owner },
+      );
+    const lastHour = await answer("hour");
+    expect(lastHour.grain).toBe("hour");
+    // Only the push made after the jump is inside the last hour.
+    expect(lastHour.points.map((it) => it.cpuPercent)).toEqual([40]);
+    expect((await answer("today")).grain).toBe("hour");
+    expect((await answer("week")).grain).toBe("day");
+    const month = await answer("month");
+    expect(month.grain).toBe("day");
+    expect(month.points.length).toBeGreaterThan(0);
+  });
+
   it("keeps disk and load as their own means, absent on a day no reading carried them", async ({
     expect,
   }) => {

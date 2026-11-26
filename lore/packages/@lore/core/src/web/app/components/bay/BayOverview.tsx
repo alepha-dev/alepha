@@ -8,7 +8,6 @@ import { HostCost } from "../../../../api/schemas/HostCost.ts";
 import { currentProjectAtom } from "../../atoms/currentProjectAtom.ts";
 import { HostConsoleRegistry } from "../../registries/HostConsoleRegistry.ts";
 import type { I18n } from "../../services/I18n.ts";
-import BayStatsChart from "./BayStatsChart.client.tsx";
 import BayUnitsCard from "./BayUnitsCard.tsx";
 import BayUsageBar from "./BayUsageBar.tsx";
 import BayVersion from "./BayVersion.tsx";
@@ -252,8 +251,6 @@ const BayOverview = () => {
           )}
         </CardContent>
       </Card>
-
-      <BayStatsChart />
     </AccountPage>
   );
 };
