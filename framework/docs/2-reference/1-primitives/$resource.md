@@ -33,6 +33,7 @@ such as files, database records, API responses, or computed data.
 | `size`        | `number`                  | No       | The raw content's size in bytes, before any encoding, when known                                                                                                 |
 | `annotations` | `McpAnnotations`          | No       | Audience / priority / `lastModified` hints (spec 2025-03-26+)                                                                                                    |
 | `_meta`       | `Record<string, unknown>` | No       | Arbitrary metadata passed through to clients on the descriptor (spec 2025-06-18+)                                                                                |
+| `ui`          | `McpUiResourceMeta`       | No       | What an MCP Apps view (a `ui://` resource) tells the host: the origins its iframe may reach, a dedicated domain, a border                                        |
 | `cache`       | `Partial<McpCacheHints>`  | No       | Caching hints for this resource's `resources/read` result, sent to modern clients only (spec 2026-07-28 `ttlMs` / `cacheScope`; a legacy client never sees them) |
 | `handler`     | `ResourceHandler`         | Yes      | Handler function that returns the resource content                                                                                                               |
 

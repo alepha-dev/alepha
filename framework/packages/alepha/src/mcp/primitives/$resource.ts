@@ -2,12 +2,14 @@ import type { PrimitiveSide } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { KIND } from "alepha/internal";
 
+import { MCP_APP_MIME_TYPE } from "../helpers/mcpApps.ts";
 import type {
   McpAnnotations,
   McpCacheHints,
   McpContext,
   McpIcon,
   McpResourceDescriptor,
+  McpUiResourceMeta,
   ResourceContent,
   ResourceHandler,
 } from "../interfaces/McpTypes.ts";
@@ -109,7 +111,7 @@ export interface ResourcePrimitiveOptions {
    *
    * Helps clients understand how to interpret the content.
    *
-   * @default "text/plain"
+   * @default "text/plain", or "text/html;profile=mcp-app" for a `ui://` URI"
    * @example "text/markdown"
    * @example "application/json"
    */
@@ -135,6 +137,17 @@ export interface ResourcePrimitiveOptions {
    * (spec 2025-06-18+). For anything the protocol has no field for.
    */
   _meta?: Record<string, unknown>;
+
+  /**
+   * What an MCP Apps view (a `ui://` resource) tells the host: the origins
+   * its iframe may reach, a dedicated domain, a border. Written to
+   * `_meta.ui` on the descriptor and on the read content, over any `ui`
+   * given in {@link _meta}: a key set here wins, a key only `_meta.ui` sets
+   * survives.
+   *
+   * @example { csp: { connectDomains: ["https://api.example.app"] }, prefersBorder: true }
+   */
+  ui?: McpUiResourceMeta;
 
   /**
    * Caching hints for this resource's `resources/read` result, sent to modern
@@ -196,7 +209,51 @@ export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
    * Returns the MIME type of the resource.
    */
   public get mimeType(): string {
-    return this.options.mimeType ?? "text/plain";
+    return (
+      this.options.mimeType ??
+      (this.uri.startsWith("ui://") ? MCP_APP_MIME_TYPE : "text/plain")
+    );
+  }
+
+  /**
+   * Whether this resource is an MCP Apps view: a `ui://` URI served as
+   * `text/html;profile=mcp-app`.
+   */
+  public get isUi(): boolean {
+    return this.uri.startsWith("ui://") && this.mimeType === MCP_APP_MIME_TYPE;
+  }
+
+  /**
+   * The `_meta.ui` of an MCP Apps view: a hand-written `_meta.ui` under the
+   * typed {@link ResourcePrimitiveOptions.ui}, whose keys win. `undefined`
+   * when neither is given.
+   */
+  public get uiMeta(): Record<string, unknown> | undefined {
+    const written = this.options._meta?.ui;
+    const base =
+      written && typeof written === "object" && !Array.isArray(written)
+        ? (written as Record<string, unknown>)
+        : undefined;
+    const typed = this.options.ui;
+    if (!typed) {
+      return base;
+    }
+    const merged: Record<string, unknown> = { ...base };
+    for (const [key, value] of Object.entries(typed)) {
+      if (value !== undefined) {
+        merged[key] = value;
+      }
+    }
+    return merged;
+  }
+
+  /**
+   * The `_meta` of this resource's `resources/read` content: its `ui`, for an
+   * MCP Apps view. `undefined` otherwise.
+   */
+  public get contentMeta(): Record<string, unknown> | undefined {
+    const ui = this.isUi ? this.uiMeta : undefined;
+    return ui ? { ui } : undefined;
   }
 
   /**
@@ -243,6 +300,9 @@ export class ResourcePrimitive extends Primitive<ResourcePrimitiveOptions> {
       descriptor.annotations = this.options.annotations;
     }
     if (this.options._meta) descriptor._meta = this.options._meta;
+    if (this.options.ui) {
+      descriptor._meta = { ...this.options._meta, ui: this.uiMeta };
+    }
     return descriptor;
   }
 }

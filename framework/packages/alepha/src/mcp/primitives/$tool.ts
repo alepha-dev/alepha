@@ -24,6 +24,7 @@ import { securePermissionNames } from "../helpers/securePermissionNames.ts";
 import type {
   McpContext,
   McpIcon,
+  McpUiToolVisibility,
   McpJsonSchema,
   McpToolAnnotations,
   McpToolDescriptor,
@@ -32,6 +33,7 @@ import type {
   ToolPrimitiveSchema,
 } from "../interfaces/McpTypes.ts";
 import { McpServerProvider } from "../providers/McpServerProvider.ts";
+import type { ResourcePrimitive } from "./$resource.ts";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -159,6 +161,20 @@ export interface ToolPrimitiveOptions<
   _meta?: Record<string, unknown>;
 
   /**
+   * The MCP Apps view this tool's result is shown in: a host that supports
+   * the extension renders the `ui://` resource in an iframe, hands it the
+   * call's input and result, and lets it call tools back. Written to
+   * `_meta.ui` on the descriptor, over any `ui` given in {@link _meta}.
+   *
+   * Every client sees it; one that does not know the extension ignores it,
+   * so the tool's text result must stand on its own.
+   *
+   * @example { resource: "ui://charts/sales" }
+   * @example { resource: this.chart, visibility: ["app"] }
+   */
+  ui?: ToolUiOptions;
+
+  /**
    * Zod schema defining the tool's parameters and result type.
    *
    * - **params**: ZObject schema for input parameters (optional)
@@ -206,6 +222,23 @@ export interface ToolPrimitiveOptions<
   handler: (
     args: ToolHandlerArgs<T> & MiddlewareProvides<TUse>,
   ) => Async<ToolHandlerResult<T>>;
+}
+
+/**
+ * The `ui` option of a `$tool`: its MCP Apps view.
+ */
+export interface ToolUiOptions {
+  /**
+   * The view's `ui://` resource: its URI, or the `$resource` itself.
+   */
+  resource: string | ResourcePrimitive;
+
+  /**
+   * Who may call the tool: `["model", "app"]` when omitted (the spec's
+   * default). `["app"]` hides it from the agent and leaves it to the view,
+   * still a normal `tools/call`, authorized like any other.
+   */
+  visibility?: McpUiToolVisibility[];
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -398,6 +431,29 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
   }
 
   /**
+   * The `_meta.ui` the descriptor carries: a hand-written `_meta.ui` under
+   * the typed {@link ToolPrimitiveOptions.ui}, whose keys win. `undefined`
+   * without a typed `ui`.
+   */
+  protected uiMeta(): Record<string, unknown> | undefined {
+    const typed = this.options.ui;
+    if (!typed) {
+      return undefined;
+    }
+    const written = this.options._meta?.ui;
+    const ui: Record<string, unknown> =
+      written && typeof written === "object" && !Array.isArray(written)
+        ? { ...(written as Record<string, unknown>) }
+        : {};
+    ui.resourceUri =
+      typeof typed.resource === "string" ? typed.resource : typed.resource.uri;
+    if (typed.visibility) {
+      ui.visibility = [...typed.visibility];
+    }
+    return ui;
+  }
+
+  /**
    * Convert the tool to an MCP tool descriptor for protocol messages.
    *
    * Emits the spec 2025-11-25 surface: `title`, `annotations`, `icons`,
@@ -420,6 +476,10 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       descriptor.icons = this.options.icons;
     }
     if (this.options._meta) descriptor._meta = this.options._meta;
+    const ui = this.uiMeta();
+    if (ui) {
+      descriptor._meta = { ...this.options._meta, ui };
+    }
 
     // Output schema is emitted when the tool declares `schema.result`,
     // unlocking structured content on tools/call responses.
