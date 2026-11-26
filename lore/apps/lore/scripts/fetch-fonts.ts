@@ -48,7 +48,7 @@ const THEMES: Theme[] = [
   },
   {
     id: "forest",
-    url: "https://fonts.googleapis.com/css2?family=Spectral:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap",
+    url: "https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap",
   },
   {
     id: "lavandula",

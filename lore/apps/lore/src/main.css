@@ -312,7 +312,24 @@ body::before {
 }
 
 /* ────────────────────────────────────────────────────────────────────────
- * Forest — druid grove, moss & old oak.
+ * No theme sets `--accent` or `--sidebar-accent` in light.
+ *
+ * `@alepha/ui` redirects both to its state-layer wash under
+ * `:root:not(.dark)`, which scores (0,2,0) against a bare `.theme-*` at
+ * (0,1,0): a light value written in a theme block is never read. Every
+ * light block carried a hand-tuned pair until #Q4498, all of it dead. Dark
+ * is not redirected, so each dark block still sets its own.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+/* ────────────────────────────────────────────────────────────────────────
+ * Forest: druid grove, moss & old oak.
+ *
+ * The light surfaces sit at hue 135 with little chroma (#Q4498). They were
+ * at hue 150 with the strongest tint of any theme, 0.025 on the page and
+ * 0.018 on a card: a mint, on which a card (#f2fef4) never read as white,
+ * and neither the dark mode (hues 130 to 148) nor the picker swatch agreed
+ * with it. Primary and text kept their values: the green was right, the
+ * paper under it was not.
  * ──────────────────────────────────────────────────────────────────────── */
 
 .theme-forest {
@@ -321,35 +338,37 @@ body::before {
   /* No `--font-heading`: it defaults to the text face, and a grove that
    * reads in Spectral wants its headings in Spectral too. */
   --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* `forest.css` carries Spectral's 400 italic too (#Q4498). A text face
+   * with no italic file gets a slanted roman from the browser, which a sans
+   * survives and a serif does not: folio emphasis and blockquotes are set
+   * in it. */
   --radius: 1rem;
   --heading-tracking: 0;
   --heading-weight: 600;
   --shadow-color: 35 80 40;
   --shadow-alpha: 0.14;
-  --background: oklch(0.955 0.025 150);
+  --background: oklch(0.955 0.018 135);
   --foreground: oklch(0.26 0.05 145);
-  --card: oklch(0.985 0.018 150);
+  --card: oklch(0.99 0.008 135);
   --card-foreground: oklch(0.26 0.05 145);
-  --popover: oklch(0.985 0.018 150);
+  --popover: oklch(0.99 0.008 135);
   --popover-foreground: oklch(0.26 0.05 145);
   --primary: oklch(0.45 0.13 145);
-  --primary-foreground: oklch(0.97 0.02 150);
-  --secondary: oklch(0.9 0.04 145);
+  --primary-foreground: oklch(0.98 0.012 135);
+  --secondary: oklch(0.9 0.035 135);
   --secondary-foreground: oklch(0.26 0.05 145);
-  --muted: oklch(0.91 0.035 145);
+  --muted: oklch(0.915 0.028 135);
   --muted-foreground: oklch(0.5 0.06 140);
-  --accent: oklch(0.84 0.09 130);
   --accent-foreground: oklch(0.26 0.05 145);
   --destructive: oklch(0.5 0.2 25);
-  --destructive-foreground: oklch(0.97 0.02 150);
-  --border: oklch(0.8 0.06 140);
-  --input: oklch(0.8 0.06 140);
+  --destructive-foreground: oklch(0.98 0.012 135);
+  --border: oklch(0.81 0.05 135);
+  --input: oklch(0.81 0.05 135);
   --ring: oklch(0.45 0.13 145);
-  --sidebar: oklch(0.92 0.04 145);
+  --sidebar: oklch(0.925 0.028 135);
   --sidebar-foreground: oklch(0.26 0.05 145);
   --sidebar-primary: oklch(0.45 0.13 145);
-  --sidebar-primary-foreground: oklch(0.97 0.02 150);
-  --sidebar-accent: oklch(0.82 0.09 130);
+  --sidebar-primary-foreground: oklch(0.98 0.012 135);
   --sidebar-accent-foreground: oklch(0.26 0.05 145);
   --sidebar-ring: oklch(0.45 0.13 145);
   --folio-tree-directory: oklch(0.62 0.13 88);
@@ -372,8 +391,11 @@ body::before {
   --muted-foreground: oklch(0.7 0.06 130);
   --accent: oklch(0.32 0.06 145);
   --accent-foreground: oklch(0.9 0.04 130);
-  --destructive: oklch(0.6 0.22 25);
-  --destructive-foreground: oklch(0.97 0.02 150);
+  /* The framework's stock dark destructive, the one Tangor uses, in Forest,
+   * Lavandula and Winter alike (#Q4498). The oklch(0.6 0.22 25) they shared
+   * was 3.8:1 to 4.1:1 as error text on a card. */
+  --destructive: oklch(0.704 0.191 22.2);
+  --destructive-foreground: oklch(0.16 0.03 150);
   --border: oklch(0.32 0.06 145);
   --input: oklch(0.27 0.05 148);
   --ring: oklch(0.65 0.16 140);
@@ -420,7 +442,6 @@ body::before {
   --secondary-foreground: oklch(0.23 0.05 290);
   --muted: oklch(0.91 0.035 295);
   --muted-foreground: oklch(0.5 0.07 290);
-  --accent: oklch(0.85 0.08 290);
   --accent-foreground: oklch(0.23 0.05 290);
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.97 0.02 295);
@@ -431,7 +452,6 @@ body::before {
   --sidebar-foreground: oklch(0.23 0.05 290);
   --sidebar-primary: oklch(0.5 0.21 290);
   --sidebar-primary-foreground: oklch(0.97 0.02 295);
-  --sidebar-accent: oklch(0.835 0.08 290);
   --sidebar-accent-foreground: oklch(0.23 0.05 290);
   --sidebar-ring: oklch(0.5 0.21 290);
   --folio-tree-directory: oklch(0.66 0.15 62);
@@ -454,8 +474,8 @@ body::before {
   --muted-foreground: oklch(0.7 0.05 290);
   --accent: oklch(0.31 0.08 290);
   --accent-foreground: oklch(0.92 0.03 290);
-  --destructive: oklch(0.6 0.22 25);
-  --destructive-foreground: oklch(0.92 0.03 290);
+  --destructive: oklch(0.704 0.191 22.2);
+  --destructive-foreground: oklch(0.14 0.035 290);
   --border: oklch(0.31 0.08 290);
   --input: oklch(0.25 0.06 288);
   --ring: oklch(0.68 0.22 290);
@@ -498,26 +518,26 @@ body::before {
   --card-foreground: oklch(0.23 0.04 250);
   --popover: oklch(0.99 0.008 235);
   --popover-foreground: oklch(0.23 0.04 250);
-  --primary: oklch(0.52 0.15 235);
+  /* 0.49 and not the earlier 0.52, which as link text was 4.2:1 on the
+   * sidebar and 4.1:1 on a muted panel (#Q4498). */
+  --primary: oklch(0.49 0.15 235);
   --primary-foreground: oklch(0.97 0.012 235);
   --secondary: oklch(0.91 0.025 235);
   --secondary-foreground: oklch(0.23 0.04 250);
   --muted: oklch(0.92 0.02 235);
   --muted-foreground: oklch(0.5 0.04 245);
-  --accent: oklch(0.85 0.05 230);
   --accent-foreground: oklch(0.23 0.04 250);
   --destructive: oklch(0.55 0.2 25);
   --destructive-foreground: oklch(0.97 0.012 235);
   --border: oklch(0.82 0.035 235);
   --input: oklch(0.82 0.035 235);
-  --ring: oklch(0.52 0.15 235);
+  --ring: oklch(0.49 0.15 235);
   --sidebar: oklch(0.93 0.025 235);
   --sidebar-foreground: oklch(0.23 0.04 250);
-  --sidebar-primary: oklch(0.52 0.15 235);
+  --sidebar-primary: oklch(0.49 0.15 235);
   --sidebar-primary-foreground: oklch(0.97 0.012 235);
-  --sidebar-accent: oklch(0.83 0.05 230);
   --sidebar-accent-foreground: oklch(0.23 0.04 250);
-  --sidebar-ring: oklch(0.52 0.15 235);
+  --sidebar-ring: oklch(0.49 0.15 235);
   --folio-tree-directory: oklch(0.65 0.13 70);
   --folio-tree-folio: oklch(0.55 0.12 235);
 }
@@ -538,8 +558,8 @@ body::before {
   --muted-foreground: oklch(0.72 0.04 235);
   --accent: oklch(0.32 0.05 240);
   --accent-foreground: oklch(0.92 0.025 235);
-  --destructive: oklch(0.6 0.22 25);
-  --destructive-foreground: oklch(0.92 0.025 235);
+  --destructive: oklch(0.704 0.191 22.2);
+  --destructive-foreground: oklch(0.16 0.03 245);
   --border: oklch(0.32 0.05 240);
   --input: oklch(0.27 0.045 245);
   --ring: oklch(0.7 0.15 230);
@@ -632,7 +652,6 @@ body::before {
   --secondary-foreground: oklch(0.19 0.002 107);
   --muted: oklch(0.939 0.012 95);
   --muted-foreground: oklch(0.51 0.012 95);
-  --accent: oklch(0.915 0.015 95);
   --accent-foreground: oklch(0.19 0.002 107);
   --destructive: oklch(0.505 0.19 27);
   --destructive-foreground: oklch(0.99 0.004 95);
@@ -643,7 +662,6 @@ body::before {
   --sidebar-foreground: oklch(0.19 0.002 107);
   --sidebar-primary: oklch(0.566 0.138 38.2);
   --sidebar-primary-foreground: oklch(0.99 0.004 95);
-  --sidebar-accent: oklch(0.905 0.016 95);
   --sidebar-accent-foreground: oklch(0.19 0.002 107);
   --sidebar-ring: oklch(0.566 0.138 38.2);
   --folio-tree-directory: oklch(0.6 0.115 95);
@@ -748,8 +766,6 @@ body::before {
   --muted: oklch(0.96 0.005 248);
   /* fgColor-muted #59636e */
   --muted-foreground: oklch(0.495 0.022 251);
-  /* control-bgColor-active #e6eaef */
-  --accent: oklch(0.935 0.008 254);
   --accent-foreground: oklch(0.254 0.011 254);
   /* bgColor-danger-emphasis #cf222e */
   --destructive: oklch(0.552 0.205 25);
@@ -762,7 +778,6 @@ body::before {
   --sidebar-foreground: oklch(0.254 0.011 254);
   --sidebar-primary: oklch(0.54 0.191 257);
   --sidebar-primary-foreground: oklch(1 0 0);
-  --sidebar-accent: oklch(0.935 0.008 254);
   --sidebar-accent-foreground: oklch(0.254 0.011 254);
   --sidebar-ring: oklch(0.54 0.191 257);
   /* treeViewItem-leadingVisual-iconColor #54aeff, then fgColor-muted */
