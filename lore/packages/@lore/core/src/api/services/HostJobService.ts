@@ -3,8 +3,9 @@ import { FileService } from "alepha/api/files";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository, DbConflictError } from "alepha/orm";
-import { ForbiddenError, NotFoundError } from "alepha/server";
+import { BadRequestError, ForbiddenError, NotFoundError } from "alepha/server";
 
+import { hostCommands } from "../entities/hostCommands.ts";
 import { hostJobLogs } from "../entities/hostJobLogs.ts";
 import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
@@ -62,6 +63,7 @@ export class HostJobService {
   protected readonly jobs = $repository(hostJobs);
   protected readonly logs = $repository(hostJobLogs);
   protected readonly hosts = $repository(hosts);
+  protected readonly commandRows = $repository(hostCommands);
   protected readonly loans = $repository(hostProjects);
   protected readonly projects = $repository(projects);
   protected readonly commands = $inject(HostCommandService);
@@ -412,6 +414,99 @@ export class HostJobService {
       by,
     );
     return job;
+  }
+
+  /**
+   * Whether a member can poke the job now (#Q4456): an agent job running
+   * a stream run (never a chat agent's JSON run) on a host whose Bay says
+   * its agent reads messages while it runs.
+   */
+  public pokeable(job: HostJob, host?: Pick<Host, "jobsTools">): boolean {
+    if (job.kind !== "agent" || job.status !== "running" || !job.commandId) {
+      return false;
+    }
+    if (job.input.output === "json") return false;
+    const agent = job.input.agent ?? HostJobService.DEFAULT_AGENT;
+    return (
+      host?.jobsTools?.some(
+        (tool) => tool.kind === "agent" && tool.name === agent && tool.messages,
+      ) ?? false
+    );
+  }
+
+  /**
+   * Sends a member's message to a running agent job (#Q4456), as a
+   * `job-message` Bay writes to the agent's stdin. Refused for a job that is
+   * not running, or whose agent or Bay reads no message while it runs.
+   */
+  public async poke(
+    jobId: string,
+    message: string,
+    by?: string,
+  ): Promise<HostJob> {
+    const job = await this.getRow(jobId);
+    const host = await this.hosts.findOne({
+      where: { id: { eq: job.hostId } },
+    });
+    if (!host) {
+      throw new NotFoundError("No such host");
+    }
+    if (job.status !== "running" || !job.commandId) {
+      throw new BadRequestError("Only a running job can be poked");
+    }
+    if (!this.pokeable(job, host)) {
+      throw new BadRequestError(
+        `This job's agent takes no message while it runs on host "${host.slug}": Poke needs Claude Code on an up to date Bay`,
+      );
+    }
+    await this.commands.enqueue(
+      host,
+      {
+        kind: "job-message",
+        payload: {
+          app: "",
+          environment: "",
+          jobCommandId: job.commandId,
+          message: message.trim(),
+        },
+      },
+      by,
+    );
+    return job;
+  }
+
+  /**
+   * The pokes a job was sent (#Q4456), oldest first: who sent what, and
+   * what became of it on the host.
+   */
+  public async pokesOf(job: HostJob): Promise<
+    Array<{
+      at: string;
+      by?: string;
+      message: string;
+      status: string;
+      reason?: string;
+    }>
+  > {
+    if (!job.commandId || !job.startedAt) return [];
+    const rows = await this.commandRows.findMany({
+      where: {
+        hostId: { eq: job.hostId },
+        kind: { eq: "job-message" },
+        createdAt: { gte: job.startedAt },
+      },
+      orderBy: { column: "createdAt", direction: "asc" },
+      limit: 200,
+    });
+    return rows
+      .filter((row) => row.payload.jobCommandId === job.commandId)
+      .map((row) => ({
+        at: row.createdAt,
+        ...(row.requestedBy ? { by: row.requestedBy } : {}),
+        message: row.payload.message ?? "",
+        status: row.status,
+        ...(row.reason ? { reason: row.reason } : {}),
+      }));
   }
 
   /**

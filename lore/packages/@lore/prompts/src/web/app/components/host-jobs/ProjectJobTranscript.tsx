@@ -3,11 +3,12 @@ import { AiChatToolTrace } from "@alepha/ui/ai";
 import { MarkdownView } from "@alepha/ui/markdown";
 import type {
   AgentTranscriptResult,
+  HostJobPoke,
   HostJobResource,
 } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import ProjectJobRawLine from "./ProjectJobRawLine.tsx";
 
@@ -42,6 +43,21 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
   const box = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState(true);
   const failed = job.status === "failed" || job.status === "timed_out";
+  // Each replayed message, by its index, matched in order to the poke that
+  // sent it, which names its sender (#Q4456). A poke the host refused never
+  // reached the agent, so it names nobody's line.
+  const senders = useMemo(() => {
+    const out = new Map<number, HostJobPoke>();
+    const left = (job.pokes ?? []).filter((poke) => poke.status !== "failed");
+    transcript.entries.forEach((entry, index) => {
+      if (entry.kind !== "message") return;
+      const at = left.findIndex((poke) => poke.message === entry.text);
+      if (at < 0) return;
+      out.set(index, left[at] as HostJobPoke);
+      left.splice(at, 1);
+    });
+    return out;
+  }, [job.pokes, transcript.entries]);
   const lastError = transcript.entries
     .flatMap((it) => (it.kind === "tools" ? it.tools : []))
     .findLast((it) => it.state === "failed");
@@ -124,6 +140,26 @@ const ProjectJobTranscript = (props: ProjectJobTranscriptProps) => {
                 >
                   {[entry.model, entry.cwd].filter(Boolean).join(" · ")}
                 </p>
+              );
+            }
+            if (entry.kind === "message") {
+              // A member's poke (#Q4456), read by the agent at this point.
+              // A user line no poke sent is not a member's: left out.
+              const poke = senders.get(index);
+              if (!poke) return null;
+              return (
+                <div
+                  key={index}
+                  className="bg-muted flex max-w-[85%] flex-col gap-1 self-end rounded-xl px-3 py-2 text-sm [overflow-wrap:anywhere]"
+                  data-testid="job-poke-message"
+                >
+                  <span className="text-muted-foreground text-xs">
+                    {tr("jobs.poke.from", {
+                      args: [poke.byName ?? tr("jobs.poke.someone")],
+                    })}
+                  </span>
+                  <span className="whitespace-pre-wrap">{entry.text}</span>
+                </div>
               );
             }
             if (entry.kind === "text") {

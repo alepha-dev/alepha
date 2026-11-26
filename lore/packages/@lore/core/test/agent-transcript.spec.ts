@@ -228,6 +228,38 @@ describe("AgentTranscript", () => {
     expect(out.unknown).toBeUndefined();
   });
 
+  it("reads the messages a member sent a running job as message entries, after the prompt it replays first (#Q4456)", ({
+    expect,
+  }) => {
+    const user = (content: unknown) =>
+      JSON.stringify({ type: "user", message: { role: "user", content } });
+    const log = [
+      user("Triage the inbox."),
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          content: [{ type: "text", text: "Waiting on the watcher." }],
+        },
+      }),
+      user("Wake up."),
+      user([{ type: "text", text: "Read the state yourself." }]),
+      // Claude Code's own user lines are no member's message.
+      JSON.stringify({
+        type: "user",
+        isMeta: true,
+        message: { role: "user", content: "Skill text." },
+      }),
+      "",
+    ].join("\n");
+    const out = AgentTranscript.parse(log, "claude");
+    expect(out.entries).toEqual([
+      { kind: "text", text: "Waiting on the watcher." },
+      { kind: "message", text: "Wake up." },
+      { kind: "message", text: "Read the state yourself." },
+    ]);
+    expect(out.unknown).toBeUndefined();
+  });
+
   it("drops tool_progress heartbeats silently, and counts a repeated unknown kind once, with its first line as the sample (#Q4296)", ({
     expect,
   }) => {

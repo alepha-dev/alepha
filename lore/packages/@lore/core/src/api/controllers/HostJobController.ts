@@ -10,19 +10,23 @@ import {
   type HostJobLogResource,
   hostJobLogSchema,
 } from "../schemas/hostJobLogSchema.ts";
+import type { HostJobPoke } from "../schemas/hostJobPokeSchema.ts";
 import {
   type HostJobResource,
   hostJobResourceSchema,
 } from "../schemas/hostJobResourceSchema.ts";
-import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
+import {
+  HOST_JOB_TERMINAL,
+  HOST_JOB_WAKE_UP,
+} from "../schemas/hostJobValues.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { HostJobService } from "../services/HostJobService.ts";
 
 export type { HostJobLogResource, HostJobResource };
 
 /**
- * A project's host jobs (#Q3984): the list, one job with its live log, and
- * Cancel.
+ * A project's host jobs (#Q3984): the list, one job with its live log,
+ * Cancel and Poke (#Q4456).
  *
  * Gated by the job's project, at `host:read`: the members who can see the
  * project's hosts see what ran on them. Cancel is a write under the same
@@ -73,7 +77,20 @@ export class HostJobController {
       const row = this.owned.get<HostJob>();
       const [job] = await this.present([row]);
       const model = await this.service.modelOf(row);
-      return model ? { ...job, model } : job;
+      const pokes = await this.pokesOf(row);
+      const [host] = await this.hostRows.findMany({
+        where: { id: { eq: row.hostId } },
+        columns: ["id", "jobsTools"],
+        limit: 1,
+      });
+      return {
+        ...job,
+        ...(model ? { model } : {}),
+        ...(this.service.pokeable(row, host ?? undefined)
+          ? { pokeable: true }
+          : {}),
+        ...(pokes.length ? { pokes } : {}),
+      };
     },
   });
 
@@ -113,6 +130,51 @@ export class HostJobController {
       return resource;
     },
   });
+
+  /**
+   * Sends a member's message to a running agent job (#Q4456): Poke, under
+   * Cancel's rank, since it too only steers a job somebody already started.
+   * A job's own key never reaches this route (a job key is MCP only), and
+   * `job_poke` refuses one: a job never drives a job.
+   */
+  pokeJob = $action({
+    use: [this.ownsJob("host:read")],
+    method: "POST",
+    path: "/jobs/:jobId/poke",
+    schema: {
+      params: z.object({ jobId: z.uuid() }),
+      // Absent or blank, the Wake up preset.
+      body: z.object({ message: z.string().max(8000).optional() }),
+      response: hostJobResourceSchema,
+    },
+    handler: async ({ params, body, user }) => {
+      const job = await this.service.poke(
+        params.jobId,
+        body.message?.trim() || HOST_JOB_WAKE_UP,
+        user?.id,
+      );
+      const [resource] = await this.present([job]);
+      return { ...resource, pokes: await this.pokesOf(job) };
+    },
+  });
+
+  /**
+   * A job's pokes with their senders' names.
+   */
+  protected async pokesOf(row: HostJob): Promise<HostJobPoke[]> {
+    const pokes = await this.service.pokesOf(row);
+    const ids = [...new Set(pokes.flatMap((it) => (it.by ? [it.by] : [])))];
+    const people = ids.length
+      ? await this.users.findMany({
+          where: { id: { inArray: ids } },
+          columns: ["id", "username"],
+        })
+      : [];
+    return pokes.map((poke) => {
+      const name = people.find((it) => it.id === poke.by)?.username;
+      return name ? { ...poke, byName: name } : poke;
+    });
+  }
 
   /**
    * Rows as resources, the host slugs and starter names in one query each.

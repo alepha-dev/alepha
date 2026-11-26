@@ -22,6 +22,11 @@ export interface AgentTranscriptTool {
 export type AgentTranscriptEntry =
   | { kind: "session"; model?: string; cwd?: string }
   | { kind: "text"; text: string }
+  /**
+   * A message a member sent the running job (#Q4456), as the agent CLI
+   * replayed it when it read it. The job's page names who sent it.
+   */
+  | { kind: "message"; text: string }
   | { kind: "tools"; tools: AgentTranscriptTool[] }
   | { kind: "limit"; text: string }
   | { kind: "raw"; line: string };
@@ -162,6 +167,9 @@ export class AgentTranscript {
       return fresh.tools;
     };
 
+    // A run that takes messages replays every user message it reads
+    // (#Q4456): its prompt first, which the Prompt tab already shows.
+    let prompted = false;
     const lines = AgentTranscript.lines(log);
     const arriving = !log.endsWith("\n");
     for (const [index, line] of lines.entries()) {
@@ -231,6 +239,21 @@ export class AgentTranscript {
         continue;
       }
       if (type === "user") {
+        // Claude Code's own user lines (a skill's text, a compaction
+        // summary) are no member's message.
+        const own =
+          event.isMeta === true ||
+          event.isSynthetic === true ||
+          event.isCompactSummary === true;
+        const said = own
+          ? undefined
+          : AgentTranscript.userText(event.message?.content);
+        if (own && !Array.isArray(event.message?.content)) continue;
+        if (said !== undefined) {
+          if (prompted) entries.push({ kind: "message", text: said });
+          prompted = true;
+          continue;
+        }
         const content = Array.isArray(event.message?.content)
           ? event.message.content
           : [];
@@ -277,6 +300,17 @@ export class AgentTranscript {
       parsed: true,
       ...(unknown.size ? { unknown: [...unknown.values()] } : {}),
     };
+  }
+
+  /**
+   * A user line's words, when it is a message rather than tool results:
+   * a string, or text blocks only.
+   */
+  protected static userText(content: unknown): string | undefined {
+    if (typeof content === "string") return content;
+    if (!Array.isArray(content) || content.length === 0) return undefined;
+    if (!content.every((it) => it?.type === "text")) return undefined;
+    return content.map((it) => String(it.text ?? "")).join("\n");
   }
 
   /**

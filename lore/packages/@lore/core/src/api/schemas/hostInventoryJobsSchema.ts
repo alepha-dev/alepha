@@ -22,6 +22,11 @@ export const hostJobToolSchema = z.object({
    */
   signedIn: z.boolean().optional(),
   account: z.string().max(200).optional(),
+  /**
+   * An agent this machine can send a message while it runs (#Q4456): its
+   * jobs offer Poke. Absent on any other, and on an older Bay.
+   */
+  messages: z.boolean().optional(),
 });
 
 export type HostJobTool = Infer<typeof hostJobToolSchema>;

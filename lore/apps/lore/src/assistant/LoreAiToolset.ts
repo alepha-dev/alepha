@@ -160,6 +160,7 @@ export class LoreAiToolset {
     inbox_read: LoreAiToolset.LATER,
     insights_read: LoreAiToolset.LATER,
     job_cancel: LoreAiToolset.HOST,
+    job_poke: LoreAiToolset.HOST,
     monitor_create: LoreAiToolset.LATER,
     monitor_delete: LoreAiToolset.LATER,
     monitor_pause: LoreAiToolset.LATER,

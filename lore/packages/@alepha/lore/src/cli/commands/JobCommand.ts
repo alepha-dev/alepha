@@ -14,8 +14,8 @@ import {
 
 /**
  * `lore job`: a project's host jobs from a shell (#Q3984), the twins of
- * `job_list`, `job_get` and `job_cancel`, plus `logs`, which follows a
- * running job's output until it ends.
+ * `job_list`, `job_get`, `job_cancel` and `job_poke` (#Q4456), plus `logs`,
+ * which follows a running job's output until it ends.
  */
 export class JobCommand {
   protected readonly client = $inject(LoreClientService);
@@ -193,6 +193,41 @@ export class JobCommand {
     },
   });
 
+  public readonly poke = $command({
+    name: "poke",
+    description:
+      "Send a message to a running Claude Code job, read after the tool call it is running; without one, the Wake up preset",
+    args: z.tuple([
+      z.text({ title: "id", description: "The job's id." }),
+      // A message, not a label: a bare `z.text()` caps at 255.
+      z
+        .text({
+          title: "message",
+          description:
+            "What to tell the agent. Omitted: check your background watchers are alive, read the state directly, then carry on or finish.",
+          size: "rich",
+        })
+        .optional(),
+    ]),
+    flags: z.object({ ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const [jobId, message] = args;
+        const job = await this.api.pokeJob({
+          params: { jobId },
+          body: message ? { message } : {},
+        });
+        this.render.written(
+          print,
+          flags.output,
+          job,
+          `Sent a message to job ${job.id} on ${job.hostSlug ?? "its host"}`,
+        );
+      });
+    },
+  });
+
   public readonly logs = $command({
     name: "logs",
     description:
@@ -228,8 +263,8 @@ export class JobCommand {
   public readonly job = $command({
     name: "job",
     description:
-      "A project's host jobs (agent jobs on an Agent host): list, read, follow and cancel",
-    children: [this.list, this.get, this.cancel, this.logs],
+      "A project's host jobs (agent jobs on an Agent host): list, read, follow, poke and cancel",
+    children: [this.list, this.get, this.cancel, this.poke, this.logs],
     handler: async ({ help }) => {
       help();
     },

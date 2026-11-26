@@ -76,9 +76,9 @@ network in clear.
 
 ## What Lore can make the machine do
 
-A **closed vocabulary of seventeen verbs**, each naming one app instance or stack
-environment, or, for `upgrade`, the machine's own Bay, or, for `job-run` and
-`job-cancel`, a one-shot job (see [Jobs](#jobs)). `deploy` and `stack-deploy` create what they name, `remove` and
+A **closed vocabulary of nineteen verbs**, each naming one app instance or stack
+environment, or, for `upgrade`, the machine's own Bay, or, for `job-run`,
+`job-cancel`, `job-message` and `job-workspace-remove`, a one-shot job or its workspace (see [Jobs](#jobs)). `deploy` and `stack-deploy` create what they name, `remove` and
 `stack-remove` answer done for one that is already gone, and the others refuse
 an instance this Bay does not run:
 
@@ -100,6 +100,8 @@ an instance this Bay does not run:
 | `stack-remove`  | takes a stack environment down and forgets it, as `bay stack destroy` without `--purge`: its volumes, variables and registry credentials stay                                           |
 | `job-run`       | runs one one-shot job to its end, its output streamed back to Lore as it happens. See [Jobs](#jobs)                                                                                    |
 | `job-cancel`    | stops the running job it names                                                                                                                                                          |
+| `job-message`   | writes a member's message to the running job it names, on an agent that reads messages while it runs (Claude Code). Refused for any other                                                |
+| `job-workspace-remove` | deletes a project's job workspace, or all of them; refused while a job runs in it |
 | `upgrade`       | replaces Bay's own binary with a newer release, named by its version, and hands over to it without closing a port. See [Upgrading Bay](/bay/docs/guides-installation#upgrading-bay)     |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
@@ -186,6 +188,13 @@ machine's inventory says it returns replies, so Lore can tell a host running an
 older Bay. If the link
 drops mid-job, the job keeps running and its output waits on disk until Lore is
 back. A timeout kills the job's whole process group; so does `job-cancel`.
+
+A Claude Code job takes its prompt on its standard input rather than its
+command line, and that input stays open while the job runs: `job-message`
+writes a member's message to it, which the agent reads after the tool call it
+is running, or at once when it sits waiting on a background task. Bay closes
+the input once a turn ended with no background task left, so a job nobody
+writes to ends as it would have.
 
 **Jobs are refused until somebody who manages the host allows them**, with a
 switch of their own, separate from deploys. One job runs at a time unless

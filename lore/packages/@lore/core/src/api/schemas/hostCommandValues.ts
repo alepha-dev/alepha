@@ -71,6 +71,11 @@ export const HOST_COMMAND_KINDS = [
   // half.
   "job-run",
   "job-cancel",
+  // A member's message to a running agent job (#Q4456): `jobCommandId` and
+  // `message`, nothing else. Bay writes it to the job's stdin, on an agent
+  // that reads messages while it runs, and refuses it for any other. Bay's
+  // `actionJobMessage` is its other half.
+  "job-message",
   // Deletes a project's job workspace on the machine, or all of them
   // (#Q4218): `project` and an optional `workspace`, nothing else. Asked when
   // a project is deleted or a quest's build is done with. Held to no switch:

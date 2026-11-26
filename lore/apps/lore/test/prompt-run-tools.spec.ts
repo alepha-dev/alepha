@@ -323,4 +323,17 @@ describe("lore prompt run, and prompt_run", () => {
       await w.repos.jobs.findMany({ where: { kind: { eq: "agent" } } }),
     ).toHaveLength(1);
   });
+  it("refuses job_poke called with a job's own key: a job never drives a job (#Q4456)", async ({
+    expect,
+  }) => {
+    const first = await run(w, "security-check");
+    const row = await w.repos.jobs.getOne({
+      where: { id: { eq: first.jobId } },
+    });
+    const spec = await w.alepha.inject(HostJobService).spec(row, w.baseUrl);
+    const answer = await mcp(w, String(spec.key), "job_poke", {
+      id: first.jobId,
+    });
+    expect(JSON.stringify(answer)).toContain("An agent job cannot poke a job");
+  });
 });

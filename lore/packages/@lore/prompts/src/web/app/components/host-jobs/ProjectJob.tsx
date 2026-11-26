@@ -20,6 +20,7 @@ import { useRouter } from "alepha/react/router";
 import {
   Copy,
   Download,
+  MessageSquare,
   MoreVertical,
   Play,
   RotateCcw,
@@ -31,6 +32,7 @@ import type { PromptController } from "../../../../api/controllers/PromptControl
 import { usePromptActions } from "../run/usePromptActions.ts";
 import { jobInFlight } from "./jobStatusIcon.ts";
 import ProjectJobAside from "./ProjectJobAside.tsx";
+import ProjectJobPokeDialog from "./ProjectJobPokeDialog.tsx";
 import ProjectJobTranscript from "./ProjectJobTranscript.tsx";
 
 export interface ProjectJobProps {
@@ -146,6 +148,20 @@ const ProjectJob = (props: ProjectJobProps) => {
     [jobId],
   );
 
+  // Poke (#Q4456): offered only while the server says the job's agent and
+  // its host's Bay read messages.
+  const [poking, setPoking] = useState(false);
+  const poke = useAction<[string], void>(
+    {
+      handler: async (_ctx, message) => {
+        await api.pokeJob({ params: { jobId }, body: { message } });
+        toaster.success(tr("jobs.poke.sent"));
+        await job.refetch();
+      },
+    },
+    [jobId],
+  );
+
   const inFlight = row ? jobInFlight(row.status) : true;
   const tabs: DetailTab[] = [
     {
@@ -254,6 +270,15 @@ const ProjectJob = (props: ProjectJobProps) => {
               {tr("jobs.copyPrompt")}
             </DropdownMenuItem>
           )}
+          {row.pokeable && (
+            <DropdownMenuItem
+              onClick={() => setPoking(true)}
+              data-testid="job-poke"
+            >
+              <MessageSquare className="size-4" />
+              {tr("jobs.poke")}
+            </DropdownMenuItem>
+          )}
           {inFlight && (
             <DropdownMenuItem
               variant="destructive"
@@ -267,6 +292,12 @@ const ProjectJob = (props: ProjectJobProps) => {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <ProjectJobPokeDialog
+        open={poking}
+        onOpenChange={setPoking}
+        sending={poke.loading}
+        onSend={async (message) => (await poke.run(message)).ok}
+      />
     </>
   );
 

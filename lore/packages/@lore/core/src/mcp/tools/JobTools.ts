@@ -1,24 +1,29 @@
 import { $inject } from "alepha";
 import { $tool } from "alepha/mcp";
+import { ForbiddenError } from "alepha/server";
 
 import { HostJobController } from "../../api/controllers/HostJobController.ts";
+import { JobKeyService } from "../../api/services/JobKeyService.ts";
 import {
   jobGetParamsSchema,
   jobGetResultSchema,
   jobIdParamsSchema,
   jobListParamsSchema,
   jobListResultSchema,
+  jobPokeParamsSchema,
 } from "../schemas/jobSchemas.ts";
 import { ProjectTools } from "./ProjectTools.ts";
 
 /**
  * A project's host jobs, for agents (#Q3984): the twins of `lore job list`,
- * `lore job get` and `lore job cancel`. Each goes through the job page's own
- * action, gated on `host:read` in the job's project.
+ * `lore job get`, `lore job cancel` and `lore job poke` (#Q4456). Each goes
+ * through the job page's own action, gated on `host:read` in the job's
+ * project.
  */
 export class JobTools {
   protected readonly jobs = $inject(HostJobController);
   protected readonly projects = $inject(ProjectTools);
+  protected readonly keys = $inject(JobKeyService);
 
   job_list = $tool({
     title: "List host jobs",
@@ -70,6 +75,24 @@ export class JobTools {
     schema: { params: jobIdParamsSchema, result: jobGetResultSchema },
     handler: async ({ params }) => {
       return this.jobs.cancelJob({ params: { jobId: params.id } });
+    },
+  });
+
+  job_poke = $tool({
+    title: "Poke a running host job",
+    description:
+      "Sends a message to a running agent job, which its agent reads after the tool call it is running, or at once when it sits waiting on a background task. It does not unblock a command that hangs: job_cancel does. Claude Code jobs only, on a host whose Bay reads messages. Without `message`, the Wake up preset. Refused under a job's own key: a job never drives a job.",
+    schema: { params: jobPokeParamsSchema, result: jobGetResultSchema },
+    handler: async ({ params }) => {
+      if (await this.keys.current()) {
+        throw new ForbiddenError(
+          "An agent job cannot poke a job: a job never drives a job",
+        );
+      }
+      return this.jobs.pokeJob({
+        params: { jobId: params.id },
+        body: params.message ? { message: params.message } : {},
+      });
     },
   });
 }

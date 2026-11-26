@@ -160,6 +160,14 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if cancel.Kind != "job-cancel" || cancel.JobCommand != run.ID {
 		t.Fatalf("job-cancel decoded wrong: %+v", cancel)
 	}
+	// A job-message names the run it writes to and the message (#Q4456).
+	msg, err := decodeFrame(fixture(t, "command-job-message.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if msg.Kind != "job-message" || msg.JobCommand != run.ID || msg.Message != "Check that your background watchers are alive." {
+		t.Fatalf("job-message decoded wrong: %+v", msg)
+	}
 	// A workspace removal names a project and one of its workspaces, and no
 	// app (#Q4218).
 	rm, err := decodeFrame(fixture(t, "command-job-workspace-remove.json"))

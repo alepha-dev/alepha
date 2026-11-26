@@ -198,8 +198,10 @@ func agentRunOf(spec jobSpec) agentRun {
 		return agentRun{Prompt: checkPrompt, Model: spec.Model}
 	}
 	run := agentRun{Prompt: spec.Prompt, Model: spec.Model, MCPURL: spec.MCPURL, JSON: spec.Output == "json"}
-	if a, err := adapterFor(spec.Agent); err == nil && a.Sessions && spec.Session != nil {
+	a, err := adapterFor(spec.Agent)
+	if err == nil && a.Sessions && spec.Session != nil {
 		run.SessionID, run.Resume = spec.Session.ID, spec.Session.Resume
 	}
+	run.Input = err == nil && a.Messages && !run.JSON
 	return run
 }

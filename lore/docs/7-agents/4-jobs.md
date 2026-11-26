@@ -257,6 +257,24 @@ and the turns, tokens and cost the agent CLI reports at its end. Two tabs:
 stderr included, **Copy prompt** copies the words the agent received, and
 **Cancel** stops a running job. The page follows a running job as it goes.
 
+### Poke a running job
+
+**Poke**, in the same menu, sends a running job a message. Use it when a job
+sits idle without having ended, waiting on something it started itself: a
+watcher loop with no timeout, a background command that will never finish.
+Two choices: **Wake up** tells the agent to check that its background
+watchers are still alive, to read the state it waits on directly instead of
+waiting for it, then to carry on or finish; **Message** sends your own words.
+
+The agent reads a poke after the tool call it is running, or at once when it
+is waiting on a background task. A poke does not unblock a command that
+hangs: **Cancel** stops it. The transcript shows each poke where the agent
+read it, with who sent it.
+
+Poke is for Claude Code jobs only, on an Agent host whose Bay is recent
+enough to pass the message on: the menu offers it on no other job. It takes
+the same rank as Cancel.
+
 On a job that failed, timed out or was cancelled, **Run again** continues
 it: the new job runs on the same host, in the same workspace and on the same
 branch, so it finds the uncommitted changes and unpushed commits the first
@@ -312,15 +330,17 @@ lore job logs <id> --follow
 
 `lore job get <id>` shows what a job ran (prompt, args, agent, model,
 workspace, source, branch and commit), how it ended and its reply; `lore job
-cancel <id>` stops it. A job succeeds or fails by the agent's exit code: what
+cancel <id>` stops it. `lore job poke <id> "<message>"` pokes a running job,
+and with no message sends Wake up. A job succeeds or fails by the agent's exit code: what
 it did is what it wrote to Lore.
 
 ## From an agent
 
 `prompt_run` starts a job and `agent_hosts` lists the Agent hosts, the twins
 of `lore prompt run` and `lore agent hosts`; `job_list`, `job_get` and
-`job_cancel` read and stop jobs. Called with an agent job's own key,
-`prompt_run` is refused. `prompt_run` and `agent_hosts` need Prompts on in the
+`job_cancel` read and stop jobs, and `job_poke` pokes a running one. Called
+with an agent job's own key, `prompt_run` and `job_poke` are refused: a job
+never drives a job. `prompt_run` and `agent_hosts` need Prompts on in the
 project; the `job_*` tools do not, so a job's history stays readable.
 
 ## Text from outside the team

@@ -1,6 +1,7 @@
 import { type Infer, z } from "alepha";
 
 import { hostJobInputSchema } from "./hostJobInputSchema.ts";
+import { hostJobPokeSchema } from "./hostJobPokeSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "./hostJobValues.ts";
 import { promptJobArgSchema } from "./promptJobArgSchema.ts";
 import { promptJobCauseSchema } from "./promptJobCauseSchema.ts";
@@ -62,6 +63,13 @@ export const hostJobResourceSchema = z.object({
   inputTokens: z.integer().optional(),
   outputTokens: z.integer().optional(),
   costUsd: z.number().optional(),
+  /**
+   * Whether a member can poke the job now (#Q4456): a running agent job
+   * whose agent and Bay read messages while it runs. With `pokes`, what was
+   * sent so far. Answered by one job's read, never by a list.
+   */
+  pokeable: z.boolean().optional(),
+  pokes: z.array(hostJobPokeSchema).optional(),
 });
 
 export type HostJobResource = Infer<typeof hostJobResourceSchema>;

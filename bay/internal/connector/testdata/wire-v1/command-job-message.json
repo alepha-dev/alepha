@@ -1,0 +1,9 @@
+{
+  "type": "command",
+  "id": "7c9e1b3d-2f4a-4b6c-8e1d-0a2b3c4d5e6f",
+  "kind": "job-message",
+  "app": "",
+  "environment": "",
+  "jobCommandId": "5a7c9e1b-3d2f-4a6b-8c1e-9f0a2b3c4d5e",
+  "message": "Check that your background watchers are alive."
+}

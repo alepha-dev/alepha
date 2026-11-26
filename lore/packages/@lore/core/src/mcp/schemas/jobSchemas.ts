@@ -44,3 +44,17 @@ export const jobGetResultSchema = hostJobResourceSchema.extend({
   stdout: z.string().optional(),
   stderr: z.string().optional(),
 });
+
+// -----------------------------------------------------------------------------
+// job_poke
+// -----------------------------------------------------------------------------
+
+export const jobPokeParamsSchema = jobIdParamsSchema.extend({
+  message: z
+    .string()
+    .max(8000)
+    .optional()
+    .describe(
+      "What to tell the agent. Omitted, the Wake up preset: check that your background watchers are alive, read the state directly instead of waiting, then carry on or finish.",
+    ),
+});

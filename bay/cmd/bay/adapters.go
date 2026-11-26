@@ -56,6 +56,10 @@ type agentAdapter struct {
 	// Sessions says the CLI starts and resumes a named conversation
 	// (#Q4250); without it a run's session is ignored, and every turn is new.
 	Sessions bool
+	// Messages says the CLI reads user messages on its stdin while it runs
+	// (#Q4456): a stream run of it takes its prompt as the first one, and a
+	// `job-message` writes the next. Without it a job takes none.
+	Messages bool
 	// Result reads a run's final reply from its stdout (#Q4288): a fresh
 	// reader per run. Nil for a CLI whose reply Bay cannot read.
 	Result func() resultReader
@@ -74,6 +78,10 @@ type agentRun struct {
 	// Resume is set (#Q4250), on a CLI whose adapter has Sessions.
 	SessionID string
 	Resume    bool
+	// Input says the prompt goes on stdin as the first stream-json user
+	// message rather than on the command line (#Q4456), on a CLI whose
+	// adapter has Messages: never a JSON run, never a check.
+	Input bool
 }
 
 // jobKeyEnv is the variable the job key travels in, which the adapters'
@@ -96,10 +104,17 @@ var agentAdapters = map[string]agentAdapter{
 		// Telemetry and update checks: nothing a job needs.
 		Env:      []string{"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1", "DISABLE_AUTOUPDATER=1"},
 		Sessions: true,
+		Messages: true,
 		Result:   func() resultReader { return &claudeResult{} },
 		Args: func(run agentRun) []string {
 			args := []string{"-p", run.Prompt, "--output-format", "stream-json", "--verbose",
 				"--permission-mode", "bypassPermissions"}
+			if run.Input {
+				// The prompt is the first line of stdin, and every message a
+				// member sends is replayed on stdout as it is read.
+				args = []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json",
+					"--verbose", "--replay-user-messages", "--permission-mode", "bypassPermissions"}
+			}
 			if run.JSON {
 				// One JSON object at the end, its `result` the answer.
 				args = []string{"-p", run.Prompt, "--output-format", "json",

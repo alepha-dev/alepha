@@ -133,6 +133,11 @@ export const hostCommandPayloadSchema = z.object({
    */
   jobCommandId: z.uuid().optional(),
   /**
+   * What a `job-message` writes to the running job `jobCommandId` names
+   * (#Q4456): a member's words, as one user message.
+   */
+  message: z.string().min(1).max(8000).optional(),
+  /**
    * The job workspace a `job-workspace-remove` deletes, under `project`
    * (#Q4218). Absent deletes every workspace of the project.
    */

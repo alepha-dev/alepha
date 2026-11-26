@@ -92,6 +92,9 @@ type Command struct {
 	// whole of what a cancel is told: the job itself is pulled by the run's
 	// own id, never carried in a frame.
 	JobCommandID string `json:"jobCommandId,omitempty"`
+	// Message is what a `job-message` writes to the running job
+	// JobCommandID names (#Q4456): a member's words, one user message.
+	Message string `json:"message,omitempty"`
 	// Workspace names the job workspace a `job-workspace-remove` deletes,
 	// under Project (#Q4218). Empty deletes every workspace of the project.
 	Workspace string `json:"workspace,omitempty"`
@@ -294,6 +297,7 @@ type serverFrame struct {
 	Policy      json.RawMessage `json:"policy,omitempty"`
 	Restore     *RestoreAsk     `json:"restore,omitempty"`
 	JobCommand  string          `json:"jobCommandId,omitempty"`
+	Message     string          `json:"message,omitempty"`
 	Workspace   string          `json:"workspace,omitempty"`
 }
 
@@ -741,7 +745,7 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
 			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service,
 			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore, Version: frame.Version,
-			JobCommandID: frame.JobCommand, Workspace: frame.Workspace}
+			JobCommandID: frame.JobCommand, Message: frame.Message, Workspace: frame.Workspace}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one

@@ -124,6 +124,10 @@ const (
 	// killing its process group. Its own ack is `done`; the job's says
 	// `cancelled`.
 	actionJobCancel actionKind = "job-cancel"
+	// actionJobMessage writes a member's message to the running job a
+	// `jobCommandId` names (#Q4456), on an agent that reads messages while
+	// it runs. Its ack says whether the job took it.
+	actionJobMessage actionKind = "job-message"
 	// actionJobWorkspaceRemove deletes a project's job workspace, or all of
 	// them (#Q4218, workspaces.go): asked by Lore when a project is deleted
 	// or a quest's build is done with. Refused while a job runs in it.
@@ -234,14 +238,14 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	switch actionKind(cmd.Kind) {
 	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobWorkspaceRemove:
+		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobMessage, actionJobWorkspaceRemove:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
 			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobWorkspaceRemove)
+			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobMessage, actionJobWorkspaceRemove)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -283,6 +287,8 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 		}
 	case actionJobCancel:
 		status, step, reason = a.jobCancel(cmd)
+	case actionJobMessage:
+		status, step, reason = a.jobMessage(cmd)
 	case actionJobWorkspaceRemove:
 		// Outside the machine mutex like the jobs it cleans up after.
 		status, step, reason = a.jobWorkspaceRemove(ctx, cmd)
