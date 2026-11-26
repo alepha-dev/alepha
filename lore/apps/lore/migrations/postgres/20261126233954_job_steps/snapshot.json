@@ -1,0 +1,115 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "db9bdd6d-3337-4140-95b2-ac2aa018d453",
+  "prevIds": ["01e9c885-2905-4aaa-811d-bed13ac50334"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "host_jobs", "steps"],
+      "writes": [
+        "s|col|public.host_jobs.steps",
+        "n|col|public.host_jobs.steps",
+        "e|col|public.host_jobs.steps"
+      ],
+      "reads": ["n|tbl|public.host_jobs", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "worked_by_job_id"],
+      "writes": [
+        "s|col|public.quests.worked_by_job_id",
+        "n|col|public.quests.worked_by_job_id",
+        "e|col|public.quests.worked_by_job_id"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "quests",
+        "quests_project_id_worked_by_job_id_idx"
+      ],
+      "writes": [
+        "s|idx|public.quests_project_id_worked_by_job_id_idx",
+        "n|idx|public.quests_project_id_worked_by_job_id_idx",
+        "e|idx|public.quests_project_id_worked_by_job_id_idx",
+        "n|rel|public.quests_project_id_worked_by_job_id_idx"
+      ],
+      "reads": [
+        "n|tbl|public.quests",
+        "n|sch|public",
+        "n|col|public.quests.project_id",
+        "n|col|public.quests.worked_by_job_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "host_jobs",
+        "name": "steps",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "worked_by_job_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "quests_project_id_worked_by_job_id_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "worked_by_job_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

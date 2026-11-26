@@ -11,12 +11,15 @@ import { type HostJob, hostJobs } from "../entities/hostJobs.ts";
 import { hostProjects } from "../entities/hostProjects.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
 import { projects } from "../entities/projects.ts";
+import type { AgentJobStepsValue } from "../schemas/agentJobStepsSchema.ts";
 import { AgentTranscript } from "../schemas/AgentTranscript.ts";
 import type { HostJobTotals } from "../schemas/hostJobTotalsSchema.ts";
 import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
 import { jobRepositoryOf } from "../schemas/jobRepository.ts";
+import { type AgentJobStepsJob, AgentJobSteps } from "./AgentJobSteps.ts";
+import { BestEffort } from "./BestEffort.ts";
 import { BoundParameters } from "./BoundParameters.ts";
 import { CoreBuckets } from "./CoreBuckets.ts";
 import { HostCommandService } from "./HostCommandService.ts";
@@ -79,6 +82,8 @@ export class HostJobService {
   protected readonly bound = $inject(BoundParameters);
   protected readonly files = $inject(FileService);
   protected readonly port = $inject(HostJobs);
+  protected readonly stepsPort = $inject(AgentJobSteps);
+  protected readonly bestEffort = $inject(BestEffort);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
 
@@ -951,10 +956,13 @@ export class HostJobService {
     const startedAt = job.startedAt
       ? undefined
       : await this.startOf(job, outcome.status);
+    const endedAt = this.now();
+    const steps = await this.finalSteps(job, startedAt, endedAt);
     await this.jobs.updateById(job.id, {
       status: outcome.status,
-      endedAt: this.now(),
+      endedAt,
       ...(startedAt ? { startedAt } : {}),
+      ...(steps ? { steps } : {}),
       ...(outcome.reason ? { reason: outcome.reason.slice(0, 2000) } : {}),
       ...(outcome.exitCode === undefined ? {} : { exitCode: outcome.exitCode }),
       ...(outcome.commit ? { commit: outcome.commit } : {}),
@@ -998,6 +1006,73 @@ export class HostJobService {
     );
     await this.pump(job.hostId);
     return ended;
+  }
+
+  /**
+   * The steps an agent job ends with (#Q4433), read once here and kept on
+   * the row, so its count stays what it was when it ended (the review of
+   * epic #E181). Best effort: a failed read leaves the job to the live
+   * count rather than failing its end.
+   */
+  protected async finalSteps(
+    job: HostJob,
+    startedAt: string | undefined,
+    endedAt: string,
+  ) {
+    if (job.kind !== "agent" || !this.stepsPort.available) return undefined;
+    const read = await this.bestEffort.run("read an ended job's steps", () =>
+      this.stepsPort.read([
+        {
+          ...this.stepsJobOf(job),
+          ...(startedAt ? { startedAt } : {}),
+          endedAt,
+        },
+      ]),
+    );
+    return read?.get(job.id);
+  }
+
+  /**
+   * What the steps port is told of a job.
+   */
+  public stepsJobOf(job: HostJob): AgentJobStepsJob {
+    return {
+      id: job.id,
+      projectId: job.projectId,
+      queuedAt: job.queuedAt,
+      ...(job.prompt ? { prompt: job.prompt } : {}),
+      ...(job.args ? { args: job.args } : {}),
+      ...(job.startedAt ? { startedAt: job.startedAt } : {}),
+      ...(job.endedAt ? { endedAt: job.endedAt } : {}),
+    };
+  }
+
+  /**
+   * The steps of a list of jobs, by id (#Q4433): an ended job's from its
+   * row, a running one's read live through the port, in batches under D1's
+   * bound-parameter ceiling.
+   */
+  public async stepsOf(
+    rows: HostJob[],
+  ): Promise<Map<string, AgentJobStepsValue>> {
+    const out = new Map<string, AgentJobStepsValue>();
+    const live: HostJob[] = [];
+    for (const row of rows) {
+      if (row.kind !== "agent") continue;
+      if (row.steps) out.set(row.id, row.steps);
+      // Only a running job is read live: an ended one has its count on its
+      // row, or had none to keep (a triage, a review, a job from before the
+      // snapshot), and reading those again would grow with the project.
+      else if (row.status === "running") live.push(row);
+    }
+    // Every id is a bound parameter, and D1 takes 100 at most.
+    for (const batch of this.bound.chunk(live)) {
+      const read = await this.stepsPort.read(
+        batch.map((row) => this.stepsJobOf(row)),
+      );
+      for (const [id, steps] of read) out.set(id, steps);
+    }
+    return out;
   }
 
   /**

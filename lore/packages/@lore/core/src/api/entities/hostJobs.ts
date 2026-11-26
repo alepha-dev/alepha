@@ -2,6 +2,7 @@ import { type Infer, z } from "alepha";
 import { users } from "alepha/api/users";
 import { $entity, db } from "alepha/orm";
 
+import { agentJobStepsSchema } from "../schemas/agentJobStepsSchema.ts";
 import { hostJobInputSchema } from "../schemas/hostJobInputSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "../schemas/hostJobValues.ts";
 import { promptJobArgSchema } from "../schemas/promptJobArgSchema.ts";
@@ -115,6 +116,14 @@ export const hostJobs = $entity({
     inputTokens: z.integer().optional(),
     outputTokens: z.integer().optional(),
     costUsd: z.number().optional(),
+    /**
+     * The steps the job ended with (#Q4433, epic #E181), written once by
+     * `HostJobService.end` and read in place of the live count from then
+     * on: another job taking over a quest this one handed back no longer
+     * moves it. Absent for a job with no steps, and for one that ended
+     * before the snapshot existed, whose steps are read live.
+     */
+    steps: agentJobStepsSchema.optional(),
   }),
   indexes: [
     // The dispatcher: the oldest queued job of a host, and its running one.

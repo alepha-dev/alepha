@@ -344,7 +344,11 @@ export class HostJobController {
           columns: ["id", "username"],
         })
       : [];
+    // The steps of every row in one batch (#Q4433): an ended job's from its
+    // row, a running one's read from its quests through the port.
+    const steps = await this.service.stepsOf(rows);
     return rows.map((row) => ({
+      ...(steps.has(row.id) ? { steps: steps.get(row.id) } : {}),
       id: row.id,
       projectId: row.projectId,
       hostId: row.hostId,

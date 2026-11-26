@@ -157,15 +157,45 @@ export class JobCommand {
             ["Exit code", job.exitCode],
             ["Reason", job.reason],
             ["Warning", job.warning],
+            // Its steps (#Q4433): the quests its key accepted, done of total,
+            // or for a single quest its objectives.
+            [
+              "Steps",
+              job.steps
+                ? `${job.steps.done} of ${job.steps.total} ${job.steps.unit === "objective" ? "objectives" : "quests"}`
+                : undefined,
+            ],
+            [
+              "Current",
+              job.steps?.current ? `#Q${job.steps.current}` : undefined,
+            ],
+            ["Last step", job.steps?.lastStepAt],
           ],
-          ...(log
-            ? {
-                sections: [
+          sections: [
+            ...(job.steps && job.steps.quests.length + job.steps.pending.length
+              ? [
+                  {
+                    title: "Steps",
+                    lines: [
+                      ...job.steps.quests.map(
+                        (quest) =>
+                          `${quest.completedAt ? "[x]" : "[ ]"} #Q${quest.shortId} ${quest.title} (${quest.objectives.done}/${quest.objectives.total} objectives)`,
+                      ),
+                      ...job.steps.pending.map(
+                        (quest) =>
+                          `[ ] #Q${quest.shortId} ${quest.title} (not accepted yet)`,
+                      ),
+                    ],
+                  },
+                ]
+              : []),
+            ...(log
+              ? [
                   { title: "stdout", lines: log.stdout.split("\n") },
                   { title: "stderr", lines: log.stderr.split("\n") },
-                ],
-              }
-            : {}),
+                ]
+              : []),
+          ],
         });
       });
     },

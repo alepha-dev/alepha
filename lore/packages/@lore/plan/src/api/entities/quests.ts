@@ -256,6 +256,15 @@ export const quests = $entity({
      * the job named none and its host chose its only agent.
      */
     agentName: z.string().max(32).optional(),
+    /**
+     * The last agent job that accepted the quest (#Q4433, epic #E181): set
+     * with `agentJobId`, only when a job's key accepts or assigns it, and
+     * never cleared, not by a member's accept or assign, a complete, an
+     * unassign, a shelve or the hand back. A job's steps are read from the
+     * quests that name it, so once a job completes a quest this still says
+     * which job did. No foreign key, as for `agentJobId`.
+     */
+    workedByJobId: z.uuid().optional(),
     completedBy: db.ref(z.uuid().optional(), () => users.cols.id, {
       onDelete: "set null",
     }),
@@ -510,6 +519,10 @@ export const quests = $entity({
     },
     {
       columns: ["acceptedBy"],
+    },
+    {
+      // A job's steps (#Q4433): one read for one job, or for a list of them.
+      columns: ["projectId", "workedByJobId"],
     },
     {
       columns: ["completedBy"],

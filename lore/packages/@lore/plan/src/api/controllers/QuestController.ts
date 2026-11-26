@@ -2491,6 +2491,9 @@ export class QuestController {
       const stamp = await this.jobStamp.callerAgent();
       quest.agentJobId = stamp.jobId;
       quest.agentName = stamp.agent;
+      // The job that worked it (#Q4433): set by a job's key only, never
+      // cleared, so a member's accept keeps the job that last held it.
+      if (stamp.jobId) quest.workedByJobId = stamp.jobId;
       // Accepting is a stronger signal than shelving: pick up a shelved
       // quest and it simply comes back off the shelf, rather than erroring
       // out and demanding an explicit unshelve first.
@@ -2628,6 +2631,8 @@ export class QuestController {
       const stamp = await this.jobStamp.callerAgent();
       quest.agentJobId = stamp.jobId;
       quest.agentName = stamp.agent;
+      // As on accept (#Q4433): only a job's key sets it.
+      if (stamp.jobId) quest.workedByJobId = stamp.jobId;
       // Coming off the shelf, for the same reason accepting does it.
       if (quest.shelvedAt) {
         quest.shelvedAt = undefined;
