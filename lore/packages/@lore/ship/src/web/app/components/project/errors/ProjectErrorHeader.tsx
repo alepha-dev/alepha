@@ -22,6 +22,7 @@ import type { ProjectErrorDetail } from "../../../../../api/schemas/projectError
 import { QUEST_STATUS_PREFIX } from "../../../../../api/schemas/projectErrorQuestStatus.ts";
 import ErrorTrustIcon from "./ErrorTrustIcon.tsx";
 import ProjectErrorOriginBadge from "./ProjectErrorOriginBadge.tsx";
+import ProjectErrorSeenAgainBadge from "./ProjectErrorSeenAgainBadge.tsx";
 import ProjectErrorStatusBadge from "./ProjectErrorStatusBadge.tsx";
 import type { ProjectErrorVerbs } from "./useProjectErrorVerbs.ts";
 
@@ -74,6 +75,9 @@ const ProjectErrorHeader = (props: ProjectErrorHeaderProps) => {
           {tr("errors.dialog.number", { args: [String(error.id)] })}
         </span>
         <ProjectErrorStatusBadge status={error.status} showOpen />
+        {error.seenAgain && (
+          <ProjectErrorSeenAgainBadge resolvedAt={error.resolvedAt} />
+        )}
         <ProjectErrorOriginBadge origin={error.origin} kind={kind} />
         {(error.trustedAt || open) && (
           <ErrorTrustIcon

@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c9e3a961-1854-40d7-8f8f-ee0d287ea8de",
+  "prevIds": ["3a7cb90c-a025-404c-ba74-f8982fa35297"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "project_errors", "resolved_at"],
+      "writes": [
+        "s|col|public.project_errors.resolved_at",
+        "n|col|public.project_errors.resolved_at",
+        "e|col|public.project_errors.resolved_at"
+      ],
+      "reads": ["n|tbl|public.project_errors", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "project_errors",
+        "name": "resolved_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

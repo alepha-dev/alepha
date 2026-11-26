@@ -213,6 +213,27 @@ describe("an error's thread and its quest", () => {
     ]);
   });
 
+  it("a resolved error loses its resolve date when it is forwarded, and has none once its quest hands it back", async ({
+    expect,
+  }) => {
+    await w.errors.resolveProjectError.run(at(), { user: w.owner });
+    expect((await read(w)).error.resolvedAt).toBeTruthy();
+
+    const forwarded = await w.errors.forwardProjectErrorToQuest.run(
+      { ...at(), body: {} },
+      { user: w.owner },
+    );
+    expect((await read(w)).error.resolvedAt).toBeUndefined();
+
+    await w.quests.deleteQuest.run(
+      { params: { id: forwarded.questId } },
+      { user: w.owner },
+    );
+    const handedBack = (await read(w)).error;
+    expect(handedBack.status).toBe("open");
+    expect(handedBack.resolvedAt).toBeUndefined();
+  });
+
   it("records a link to a quest already filed, and hides the quest once Plan is off", async ({
     expect,
   }) => {

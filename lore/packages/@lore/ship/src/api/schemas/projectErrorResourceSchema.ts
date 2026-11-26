@@ -23,6 +23,13 @@ export const projectErrorResourceSchema = projectErrors.schema
     /** The name of the member who trusted the group (#Q4233). */
     trustedByName: z.string().max(200).optional(),
     /**
+     * Resolved, and reported again since (#Q4466): `lastSeenAt` is past
+     * `resolvedAt`. Lore does not reopen an error an app reports, so this
+     * is how a fix that did not hold shows. Absent on a run or an uptime
+     * error, which reopen by themselves.
+     */
+    seenAgain: z.boolean().optional(),
+    /**
      * The group on the other side of the same request (#Q4404): for a
      * browser error, the server error that caused it; for a server error, the
      * browser error it caused. Matched on `requestId`, so present only when

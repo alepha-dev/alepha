@@ -108,7 +108,9 @@ export class ErrorCommand {
             title: `${projectError.name}: ${projectError.message}`,
             fields: [
               `${projectError.count} ${projectError.count === 1 ? "occurrence" : "occurrences"}`,
-              projectError.status,
+              projectError.seenAgain
+                ? `${projectError.status}, seen again`
+                : projectError.status,
             ],
           })),
           undefined,
@@ -151,7 +153,12 @@ export class ErrorCommand {
           fields: [
             ["Error", `B${error.id}  ${error.name}`],
             ["Message", error.message],
-            ["Status", error.status],
+            [
+              "Status",
+              error.seenAgain && error.resolvedAt
+                ? `${error.status}, seen again since ${error.resolvedAt}`
+                : error.status,
+            ],
             ["Kind", detail.kind],
             ["Origin", error.origin],
             [

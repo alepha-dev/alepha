@@ -398,6 +398,35 @@ describe("ProjectErrorPage", () => {
     expect(screen.queryByTestId("error-previous")).toBeNull();
   });
 
+  it("says a resolved error was seen again, with the date of the resolve, and nothing on one silent since", async ({
+    expect,
+  }) => {
+    await show(
+      detail({
+        error: {
+          status: "resolved",
+          resolvedAt: "2026-11-10T09:00:00.000Z",
+          seenAgain: true,
+        },
+      }),
+    );
+
+    expect(header().getByTestId("error-status").textContent).toBe("Resolved");
+    const mark = header().getByTestId("error-seen-again").textContent ?? "";
+    expect(mark).toContain("Seen again since resolved on");
+    expect(mark).toContain("2026");
+
+    cleanup();
+    await alepha?.stop();
+    await show(
+      detail({
+        error: { status: "resolved", resolvedAt: "2026-11-21T09:00:00.000Z" },
+      }),
+    );
+    expect(header().getByTestId("error-status").textContent).toBe("Resolved");
+    expect(screen.queryByTestId("error-seen-again")).toBeNull();
+  });
+
   it("offers a viewer no verb, and still shows them the whole error", async ({
     expect,
   }) => {
