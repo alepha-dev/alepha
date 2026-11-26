@@ -3,11 +3,13 @@ import {
   type DashboardCardValue,
   DashboardMetricCatalog,
   type Project,
+  hostEvents,
   hostInventories,
   hostProjects,
   hosts,
 } from "@lore/core/schemas";
-import { monitors } from "@lore/ship/schemas";
+import { DeployAnalytics } from "@lore/ship/api";
+import { monitorIncidents, monitors } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { RankService } from "alepha/api/organizations";
 import { AlephaApiUsers } from "alepha/api/users";
@@ -30,6 +32,8 @@ class ShipRepositories {
   hosts = $repository(hosts);
   loans = $repository(hostProjects);
   inventories = $repository(hostInventories);
+  incidents = $repository(monitorIncidents);
+  hostEvents = $repository(hostEvents);
   monitors = $repository(monitors);
 }
 
@@ -336,6 +340,135 @@ describe("dashboard hosts and uptime cards", () => {
       ).toEqual([
         ["api.service", "activating", "warn"],
         ["caddy.service", "active", "ok"],
+      ]);
+    });
+  });
+  describe("certificates and incidents (#Q4426)", () => {
+    const uptimeProject = () =>
+      createTestProject(alepha, {
+        capabilities: [
+          { key: "plan" },
+          { key: "ship", options: { track: true, uptime: true } },
+        ],
+      });
+
+    it("certExpiry lists days left, amber inside the warning window", async ({
+      expect,
+    }) => {
+      const project = await uptimeProject();
+      const inDays = (days: number) =>
+        new Date(
+          dateTime.nowMillis() + days * 24 * 3600_000 + 60_000,
+        ).toISOString();
+      for (const [name, days] of [
+        ["Api cert", 60],
+        ["Old cert", 5],
+      ] as const)
+        await repos.monitors.create({
+          projectId: project.id,
+          name,
+          kind: "cert",
+          target: "example.test:443",
+          statusSince: dateTime.nowISOString(),
+          nextCheckAt: dateTime.nowISOString(),
+          certExpiresAt: inDays(days),
+        });
+      const value = await resolve(project, "certExpiry");
+      expect(value.value).toBe(5);
+      expect(
+        (value.rows ?? []).map((row) => [row.title, row.value, row.state]),
+      ).toEqual([
+        ["Old cert", 5, "warn"],
+        ["Api cert", 60, "ok"],
+      ]);
+    });
+
+    it("uptimeLatency charts the mean of passing checks per day, the last check as its value", async ({
+      expect,
+    }) => {
+      const project = await uptimeProject();
+      const api = await repos.monitors.create({
+        projectId: project.id,
+        name: "Api",
+        kind: "http",
+        target: "https://example.test",
+        statusSince: dateTime.nowISOString(),
+        nextCheckAt: dateTime.nowISOString(),
+        lastLatencyMs: 31,
+      });
+      await alepha.inject(DeployAnalytics).probes.recordMany([
+        {
+          monitorId: api.id,
+          result: "up",
+          prober: "local",
+          count: 1,
+          up: 1,
+          latencyMs: 20,
+        },
+        {
+          monitorId: api.id,
+          result: "up",
+          prober: "local",
+          count: 1,
+          up: 1,
+          latencyMs: 40,
+        },
+        // A failed check adds no latency and no `up`: it cannot drag the mean.
+        {
+          monitorId: api.id,
+          result: "timeout",
+          prober: "local",
+          count: 1,
+          up: 0,
+          latencyMs: 0,
+        },
+      ]);
+      const value = await resolve(project, "uptimeLatency");
+      expect(value.value).toBe(31);
+      expect(value.series?.map((point) => point.value)).toEqual([30]);
+    });
+
+    it("incidents merges outages and unit changes, newest first", async ({
+      expect,
+    }) => {
+      const project = await uptimeProject();
+      const ago = (minutes: number) =>
+        new Date(dateTime.nowMillis() - minutes * 60_000).toISOString();
+      const api = await repos.monitors.create({
+        projectId: project.id,
+        name: "Api",
+        kind: "http",
+        target: "https://example.test",
+        statusSince: ago(0),
+        nextCheckAt: ago(0),
+      });
+      await repos.incidents.create({
+        monitorId: api.id,
+        startedAt: ago(120),
+        endedAt: ago(106),
+        cause: "timeout",
+      });
+      const host = await repos.hosts.create({
+        projectId: project.id,
+        ownerUserId: project.createdBy!,
+        type: "bay",
+        slug: "api-box",
+      });
+      await repos.hostEvents.create({
+        hostId: host.id,
+        eventId: "evt-1",
+        kind: "unit.changed",
+        at: ago(30),
+        data: { unit: "api.service", from: "active", to: "activating" },
+      });
+
+      const value = await resolve(project, "incidents");
+      expect(value.value).toBe(1);
+      expect(
+        (value.rows ?? []).map((row) => [row.title, row.meta, row.state]),
+      ).toEqual([
+        ["api.service: active to activating", "api-box", "neutral"],
+        ["Api down", "14 min", "warn"],
       ]);
     });
   });

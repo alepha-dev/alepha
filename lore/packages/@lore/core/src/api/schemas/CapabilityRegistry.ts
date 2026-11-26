@@ -585,6 +585,10 @@ export class CapabilityRegistry {
         "errorTrend",
         // The monitors (#Q3781); the hosts card is Core since #E166.
         "uptime",
+        // Latency, certificates and incidents (#Q4426).
+        "uptimeLatency",
+        "certExpiry",
+        "incidents",
       ],
       permissionGroups: [
         "app",

@@ -4366,6 +4366,15 @@ export default {
   "dashboard.metric.hostUnits": "Unités surveillées",
   "dashboard.metric.hostUnits.hint":
     "les unités systemd qu'un hôte surveille et leur état",
+  "dashboard.metric.uptimeLatency": "Temps de réponse",
+  "dashboard.metric.uptimeLatency.hint":
+    "la dernière vérification d'un moniteur http et son temps de réponse moyen par jour",
+  "dashboard.metric.certExpiry": "Certificats",
+  "dashboard.metric.certExpiry.hint":
+    "les certificats TLS lus par les moniteurs, et les jours qui leur restent",
+  "dashboard.metric.incidents": "Incidents",
+  "dashboard.metric.incidents.hint":
+    "pannes et changements des unités surveillées, pour voir redémarrages et déploiements à côté",
   "dashboard.metric.hosts": "Hôtes",
   "dashboard.metric.hosts.hint":
     "les hôtes du projet, les siens et ceux prêtés, en ligne ou non",

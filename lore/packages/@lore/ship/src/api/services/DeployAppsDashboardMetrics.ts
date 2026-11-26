@@ -4,6 +4,7 @@ import { $inject } from "alepha";
 import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
 import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
+import { uptimeLatencyCardFiltersSchema } from "../schemas/uptimeLatencyCardFiltersSchema.ts";
 
 /**
  * Deploy's apps tiles of #E77 (#Q2657): per-copy health and the error trend
@@ -80,6 +81,54 @@ export class DeployAppsDashboardMetrics {
               params: { projectSlug: target.projectSlug },
             }
           : undefined,
+    });
+    // Latency, certificates and the outages-and-restarts feed (#Q4426),
+    // gated like the Uptime page.
+    const uptimePage = (target: { projectSlug?: string }) =>
+      target.projectSlug
+        ? {
+            route: "projectUptime",
+            params: { projectSlug: target.projectSlug },
+          }
+        : undefined;
+    this.catalog.register({
+      ...common,
+      key: "uptimeLatency",
+      requires: "app:read",
+      order: 86,
+      labelKey: "dashboard.metric.uptimeLatency",
+      hintKey: "dashboard.metric.uptimeLatency.hint",
+      icon: "gauge",
+      presentation: "chart",
+      filters: uptimeLatencyCardFiltersSchema,
+      needs: { capability: "ship", option: "uptime" },
+      link: (_scope, target) => uptimePage(target),
+    });
+    this.catalog.register({
+      ...common,
+      key: "certExpiry",
+      requires: "app:read",
+      order: 87,
+      labelKey: "dashboard.metric.certExpiry",
+      hintKey: "dashboard.metric.certExpiry.hint",
+      icon: "flag",
+      presentation: "list",
+      filters: uptimeCardFiltersSchema,
+      needs: { capability: "ship", option: "uptime" },
+      link: (_scope, target) => uptimePage(target),
+    });
+    this.catalog.register({
+      ...common,
+      key: "incidents",
+      requires: "app:read",
+      order: 88,
+      labelKey: "dashboard.metric.incidents",
+      hintKey: "dashboard.metric.incidents.hint",
+      icon: "triangle-alert",
+      presentation: "feed",
+      filters: uptimeCardFiltersSchema,
+      needs: { capability: "ship", option: "uptime" },
+      link: (_scope, target) => uptimePage(target),
     });
   }
 }
