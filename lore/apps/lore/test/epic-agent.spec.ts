@@ -147,8 +147,8 @@ describe("an epic reviewed by an agent job", () => {
     expect(job.input.key).toEqual({ epicId: 3 });
     expect(job.input.prompt).toContain("Nobody reads this run's chat");
     expect(job.input.prompt).toContain('Review the plan of epic #E3 "Search"');
-    // A quarter of an hour, plus 90 s for each of the epic's 2 quests.
-    expect(job.input.timeoutSeconds).toBe(15 * 60 + 2 * 90);
+    // Every agent job's 4 h, whatever the epic's size (#Q4439).
+    expect(job.input.timeoutSeconds).toBe(14_400);
     const row = await w.repos.epics.getOne({
       where: { id: { eq: w.epic.id } },
     });

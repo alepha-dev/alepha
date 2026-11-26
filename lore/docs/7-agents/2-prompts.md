@@ -229,11 +229,11 @@ editor sets too.
 
 ### How long a run may take
 
-A run is stopped at its time: the built-in's own (an hour for **Work on
-quest**, twelve for **Work on epic** and **Work on loose quests**), or 30
-minutes for a prompt of your own. A run that bumps dependencies and runs every
-check needs more. Set a prompt's time from the command line or an agent, any
-prompt included, within the ceiling every agent job has, twelve hours:
+A run is stopped at its time: four hours for every prompt, a built-in or one
+of your own, and twelve for **Work on epic** and **Work on loose quests**,
+which work a whole set. Set another time on a prompt from the command line or
+an agent, any prompt included, within the ceiling every agent job has, twelve
+hours:
 
 ```bash
 lore prompt update npm-update --timeout-seconds 7200

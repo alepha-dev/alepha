@@ -264,7 +264,7 @@ describe("prompts", () => {
       builtin: true,
       source: "write",
       permission: "quest:update",
-      timeoutSeconds: 3600,
+      timeoutSeconds: 14_400,
     });
     expect(byName["work-quest"]!.text).toContain("{{quest.reference}}");
     expect(byName["work-quest"]!.text).not.toContain("{{reference}}");
@@ -479,7 +479,7 @@ describe("prompts", () => {
       builtin: false,
       source: "read",
       permission: "host:update",
-      timeoutSeconds: 1800,
+      timeoutSeconds: 14_400,
       createdBy: owner.id,
     });
     await expect(create({ name: "crash", text: "Again" })).rejects.toThrow(

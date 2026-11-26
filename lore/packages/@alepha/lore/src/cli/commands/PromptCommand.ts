@@ -126,7 +126,7 @@ export class PromptCommand {
       .integer()
       .min(0)
       .describe(
-        "A run's time in seconds, at least 60 and at most every agent job's ceiling; 0 returns to the default (the built-in's, or 30 minutes).",
+        "A run's time in seconds, at least 60 and at most every agent job's ceiling; 0 returns to the default (4 hours, or 12 for work-epic and work-loose-quests).",
       )
       .optional(),
   };

@@ -6,7 +6,10 @@ import {
   type PromptRunContext,
   type PromptRunPlan,
 } from "@lore/core/api";
-import { PROMPT_NEEDS_HUMAN_TAG } from "@lore/core/schemas";
+import {
+  AGENT_JOB_LONG_TIMEOUT_SECONDS,
+  PROMPT_NEEDS_HUMAN_TAG,
+} from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
 import { $inject } from "alepha";
 import { $repository } from "alepha/orm";
@@ -25,9 +28,7 @@ import { workEpicPromptText } from "../prompts/workEpicPrompt.ts";
 import { workFeedbackPromptText } from "../prompts/workFeedbackPrompt.ts";
 import { workLooseQuestsPromptText } from "../prompts/workLooseQuestsPrompt.ts";
 import { workQuestPromptText } from "../prompts/workQuestPrompt.ts";
-import { EpicAgentService } from "./EpicAgentService.ts";
 import { FeedbackAgentService } from "./FeedbackAgentService.ts";
-import { PullRequestAgentService } from "./PullRequestAgentService.ts";
 import { QuestResourceMapper } from "./QuestResourceMapper.ts";
 
 /**
@@ -60,7 +61,6 @@ export class PlanPrompts {
       args: [{ name: "epic", type: "epic", accepts: ["draft", "ready"] }],
       source: "read",
       permission: "epic:write",
-      timeoutSeconds: 30 * 60,
       pins: ["epic"],
       needs: epicsOption,
       text: reviewEpicPromptText,
@@ -77,7 +77,7 @@ export class PlanPrompts {
       permission: "quest:update",
       // 12 h, the most a job gets (#Q4328): an epic worked end to end can
       // take ten.
-      timeoutSeconds: 12 * 60 * 60,
+      timeoutSeconds: AGENT_JOB_LONG_TIMEOUT_SECONDS,
       pins: ["epic"],
       needs: epicsOption,
       text: workEpicPromptText,
@@ -93,7 +93,6 @@ export class PlanPrompts {
       ],
       source: "write",
       permission: "quest:update",
-      timeoutSeconds: 60 * 60,
       pins: ["quest"],
       text: workQuestPromptText,
       prepare: (context) => this.prepareWorkQuest(context),
@@ -113,7 +112,6 @@ export class PlanPrompts {
       ],
       source: "write",
       permission: "quest:update",
-      timeoutSeconds: 60 * 60,
       pins: ["feedback-item"],
       needs: feedbackOption,
       text: workFeedbackPromptText,
@@ -128,7 +126,6 @@ export class PlanPrompts {
       args: [],
       source: "read",
       permission: "feedback:triage",
-      timeoutSeconds: 60 * 60,
       // Each run reads the whole inbox: one asked for meanwhile waits.
       concurrency: "queue",
       pins: ["feedback"],
@@ -146,7 +143,7 @@ export class PlanPrompts {
       source: "write",
       permission: "quest:update",
       // 12 h, the most a job gets (#Q4328): a long backlog is worked in one run.
-      timeoutSeconds: 12 * 60 * 60,
+      timeoutSeconds: AGENT_JOB_LONG_TIMEOUT_SECONDS,
       // Each run reads every loose quest: one asked for meanwhile waits.
       concurrency: "queue",
       pins: ["quests"],
@@ -163,7 +160,6 @@ export class PlanPrompts {
       args: [{ name: "member", type: "member" }],
       source: "none",
       permission: "host:read",
-      timeoutSeconds: 30 * 60,
       text: weeklyStatusPromptText,
       prepare: async () => ({ workspace: "status" }),
       oneShot: true,
@@ -176,7 +172,6 @@ export class PlanPrompts {
       args: [{ name: "pullRequest", type: "pullRequest" }],
       source: "read",
       permission: "quest:update",
-      timeoutSeconds: 30 * 60,
       text: reviewPrPromptText,
       prepare: async (context) => this.prepareReviewPr(context),
       oneShot: true,
@@ -189,7 +184,6 @@ export class PlanPrompts {
       args: [],
       source: "read",
       permission: "quest:create",
-      timeoutSeconds: 30 * 60,
       text: securityCheckPromptText,
       prepare: async () => ({ workspace: "security" }),
       oneShot: true,
@@ -202,7 +196,6 @@ export class PlanPrompts {
       args: [],
       source: "write",
       permission: "quest:update",
-      timeoutSeconds: 2 * 60 * 60,
       text: dependencyUpdatePromptText,
       oneShot: true,
     });
@@ -514,7 +507,6 @@ export class PlanPrompts {
   ): Promise<PromptRunPlan> {
     const number = this.numberIn(context, "epic");
     const epic = await this.assertEpicTrusted(context.projectId, number);
-    const t = EpicAgentService.TIME;
     const reference = formatReference("epic", number);
     return {
       prompt: [
@@ -530,7 +522,6 @@ export class PlanPrompts {
       ].join("\n"),
       epicNumber: number,
       workspace: "review",
-      timeoutSeconds: t.baseSeconds + t.secondsPerQuest * epic.quests,
       after: async (jobId) => {
         if (epic.id) {
           await this.epics.updateById(epic.id, { agentReviewJobId: jobId });
@@ -619,7 +610,6 @@ export class PlanPrompts {
     return {
       prompt: plan.run.prompt,
       feedbackNumbers: plan.run.feedbackNumbers,
-      timeoutSeconds: plan.run.timeoutSeconds,
       workspace: "triage",
       after: plan.run.mark,
       skipped: plan.skipped,
@@ -643,9 +633,6 @@ export class PlanPrompts {
           : { trust: "pr-author-writes" as const }),
       },
       workspace: `pr-${number}`,
-      timeoutSeconds: fix
-        ? PullRequestAgentService.FIX_SECONDS
-        : PullRequestAgentService.REVIEW_SECONDS,
     };
   }
 

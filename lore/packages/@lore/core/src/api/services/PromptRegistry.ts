@@ -173,10 +173,11 @@ export interface BuiltinPrompt {
    */
   permission: string;
   /**
-   * A run's time; the run path may compute its own (an epic review's grows
-   * with its quests).
+   * A run's time (#Q4439): absent, every agent job's 4 h
+   * (`AGENT_JOB_TIMEOUT_SECONDS`). Only a prompt that works a whole set
+   * names one, `AGENT_JOB_LONG_TIMEOUT_SECONDS`.
    */
-  timeoutSeconds: number;
+  timeoutSeconds?: number;
   /**
    * What a second run of the same args does while one runs (#Q4354):
    * absent, `unique`. A built-in that reads a whole set each run (triage,

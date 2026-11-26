@@ -11,7 +11,7 @@ import {
   PROMPT_ARG_FIELDS,
   PROMPT_ARG_STATUSES,
   PROMPT_CHOICE_OPTION,
-  PROMPT_CUSTOM_TIMEOUT_SECONDS,
+  AGENT_JOB_TIMEOUT_SECONDS,
   type Project,
   type PromptArg,
   type PromptResource,
@@ -636,7 +636,7 @@ export class PromptService {
       timeoutSeconds:
         row?.timeoutSeconds ??
         builtin?.timeoutSeconds ??
-        PROMPT_CUSTOM_TIMEOUT_SECONDS,
+        AGENT_JOB_TIMEOUT_SECONDS,
       ...(row?.createdBy ? { createdBy: row.createdBy } : {}),
       ...(row?.updatedAt ? { updatedAt: row.updatedAt } : {}),
       on: row ? this.alepha.inject(PromptTriggers).onOf(row) : "manual",
