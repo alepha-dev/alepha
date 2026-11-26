@@ -695,6 +695,7 @@ switch.
 | `lore job get <id>`    | One job: its prompt, args and cause, what it ran (agent, model, workspace, source, ref, branch, commit), how it ended and its reply. |
 | `lore job logs <id>`   | A job's output.                                                                                                                      |
 | `lore job cancel <id>` | Stop a job.                                                                                                                          |
+| `lore job poke <id>`   | Send a running Claude Code job a message, the second argument; without one, Wake up.                                                 |
 
 See [Agent jobs](/lore/docs/agents-jobs).
 

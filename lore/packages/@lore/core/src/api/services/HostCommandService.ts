@@ -162,6 +162,8 @@ export class HostCommandService {
       "job-run": 12 * 3600 + 600,
       // A kill of a process group.
       "job-cancel": 60,
+      // One line written to a job's stdin.
+      "job-message": 60,
       // An `rm -rf` of a clone or two.
       "job-workspace-remove": 300,
     };
@@ -228,6 +230,20 @@ export class HostCommandService {
     }
     // A job runs on its own switch, never on the deploy one (#Q3984): it
     // names no instance, a `job-run` carries the job, a `job-cancel` the run.
+    if (kind === "job-message") {
+      if (
+        payload &&
+        (payload.app ||
+          payload.environment ||
+          !payload.jobCommandId ||
+          !payload.message)
+      ) {
+        throw new BadRequestError(
+          "A job-message names the job-run it writes to and its message, and no app or environment",
+        );
+      }
+      return;
+    }
     if (kind === "job-run" || kind === "job-cancel") {
       if (kind === "job-run" && !host.jobsAllowed) {
         throw new ForbiddenError(
@@ -587,8 +603,13 @@ export class HostCommandService {
         : {}),
       // The whole of what a cancel is told; a job-run is told nothing but
       // its id, and pulls its spec by it (`jobId` stays Lore's).
-      ...(command.kind === "job-cancel" && command.payload.jobCommandId
+      ...((command.kind === "job-cancel" || command.kind === "job-message") &&
+      command.payload.jobCommandId
         ? { jobCommandId: command.payload.jobCommandId }
+        : {}),
+      // The member's words, on a job-message only (#Q4456).
+      ...(command.kind === "job-message" && command.payload.message
+        ? { message: command.payload.message }
         : {}),
     };
   }

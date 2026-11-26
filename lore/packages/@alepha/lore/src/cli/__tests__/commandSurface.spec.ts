@@ -203,7 +203,7 @@ describe("the Lore CLI command surface", () => {
         "attachment",
       ],
       insights: ["read"],
-      job: ["list", "get", "cancel", "logs"],
+      job: ["list", "get", "cancel", "poke", "logs"],
       agent: ["hosts"],
       prompt: [
         "list",

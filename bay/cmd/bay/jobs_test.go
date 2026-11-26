@@ -178,6 +178,7 @@ func TestJobRun(t *testing.T) {
 printf '%s\n' "$@" > "`+w.bin+`/claude.args"
 pwd > "`+w.bin+`/claude.cwd"
 printf '%s' "$LORE_JOB_KEY" > "`+w.bin+`/claude.key"
+head -n 1 > "`+w.bin+`/claude.stdin"
 echo '{"type":"system","subtype":"init"}'
 echo '{"type":"result","total_cost_usd":0.01}'
 echo 'a warning' >&2
@@ -205,10 +206,15 @@ touch cloned-here
 		args, _ := os.ReadFile(filepath.Join(w.bin, "claude.args"))
 		// The key is in the environment, the MCP config names its variable.
 		mcp := `{"mcpServers":{"lore":{"headers":{"Authorization":"Bearer ${LORE_JOB_KEY}"},"type":"http","url":"` + w.sink.URL + `/mcp"}}}`
-		want := []string{"-p", "Triage the inbox.", "--output-format", "stream-json", "--verbose",
-			"--permission-mode", "bypassPermissions", "--mcp-config", mcp, "--strict-mcp-config"}
+		// The prompt is never on the command line: it is the first user
+		// message on stdin (#Q4456).
+		want := []string{"-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+			"--replay-user-messages", "--permission-mode", "bypassPermissions", "--mcp-config", mcp, "--strict-mcp-config"}
 		if got := strings.Split(strings.TrimSuffix(string(args), "\n"), "\n"); !equalStrings(got, want) {
 			t.Fatalf("claude ran as %q\nwant        %q", got, want)
+		}
+		if stdin, _ := os.ReadFile(filepath.Join(w.bin, "claude.stdin")); string(stdin) != `{"message":{"content":"Triage the inbox.","role":"user"},"type":"user"}`+"\n" {
+			t.Fatalf("claude read %q on stdin", stdin)
 		}
 		if key, _ := os.ReadFile(filepath.Join(w.bin, "claude.key")); string(key) != "lore_job_0123456789abcdef" {
 			t.Fatalf("the job key reached claude's environment as %q", key)
@@ -407,6 +413,130 @@ pwd > "`+w.bin+`/gemini.cwd"
 		case <-time.After(10 * time.Second):
 			t.Fatal("the cancelled job did not end")
 		}
+	})
+}
+
+// A member's message to a running job (#Q4456).
+func TestJobMessage(t *testing.T) {
+	t.Run("a job-message reaches a running claude, and its input closes once a turn ends with no task left", func(t *testing.T) {
+		w := newJobWorld(t)
+		// The first turn leaves a background task running, so the input
+		// stays open; the poke's turn ends with none, so Bay closes it and
+		// the loop reads its end.
+		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
+n=0
+while IFS= read -r line; do
+  n=$((n+1))
+  printf '%s\n' "$line" >> "`+w.bin+`/claude.stdin"
+  if [ $n = 1 ]; then
+    echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"t1"}]}'
+  else
+    echo '{"type":"system","subtype":"background_tasks_changed","tasks":[]}'
+  fi
+  echo '{"type":"result","is_error":false,"result":"turn '$n'"}'
+done
+echo '{"type":"system","subtype":"input-closed"}'
+`)
+		done := make(chan *ackRecorder)
+		go func() { done <- w.run("job-poke", w.agentSpec(map[string]any{"timeoutSeconds": 3600})) }()
+		waitFor(t, func() bool {
+			raw, _ := os.ReadFile(filepath.Join(w.bin, "claude.stdin"))
+			return strings.Contains(string(raw), "Triage the inbox.")
+		})
+
+		poke := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "poke-1", Kind: "job-message", JobCommandID: "job-poke", Message: "Wake up."}, poke.send)
+		if last := poke.last(); last.Status != "done" {
+			t.Fatalf("poke ack = %+v", last)
+		}
+		select {
+		case rec := <-done:
+			if last := rec.last(); last.Status != "done" || last.Result != "turn 2" {
+				t.Fatalf("run ack = %+v", last)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("the poked job did not end once its input closed")
+		}
+		stdin, _ := os.ReadFile(filepath.Join(w.bin, "claude.stdin"))
+		if !strings.Contains(string(stdin), `"content":"Wake up."`) {
+			t.Fatalf("claude read %q", stdin)
+		}
+		if !strings.Contains(w.frames.text("stdout"), "input-closed") {
+			t.Fatal("the agent never read the end of its input")
+		}
+
+		late := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "poke-2", Kind: "job-message", JobCommandID: "job-poke", Message: "Still there?"}, late.send)
+		if last := late.last(); last.Status != "failed" || !strings.Contains(last.Reason, "no such job runs") {
+			t.Fatalf("a message to an ended job = %+v", last)
+		}
+	})
+
+	t.Run("a job nobody pokes ends after its first result, as with -p", func(t *testing.T) {
+		w := newJobWorld(t)
+		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
+while IFS= read -r line; do echo '{"type":"result","is_error":false,"result":"OK"}'; done
+`)
+		done := make(chan *ackRecorder)
+		go func() { done <- w.run("job-alone", w.agentSpec(nil)) }()
+		select {
+		case rec := <-done:
+			if last := rec.last(); last.Status != "done" || last.Result != "OK" {
+				t.Fatalf("run ack = %+v", last)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("an unpoked job kept waiting on its input")
+		}
+	})
+
+	t.Run("a job whose last result came while a task ran ends once the task list empties, with no turn after", func(t *testing.T) {
+		w := newJobWorld(t)
+		// The task ends with no notification turn: no result follows the
+		// empty list, and the input must close on the list alone.
+		w.stub(t, "claude", `#!/bin/sh
+[ "$1" = auth ] && exit 0
+IFS= read -r line
+echo '{"type":"system","subtype":"background_tasks_changed","tasks":[{"task_id":"t1"}]}'
+echo '{"type":"result","is_error":false,"result":"started"}'
+sleep 0.2
+echo '{"type":"system","subtype":"background_tasks_changed","tasks":[]}'
+while IFS= read -r line; do :; done
+`)
+		done := make(chan *ackRecorder)
+		go func() { done <- w.run("job-task", w.agentSpec(map[string]any{"timeoutSeconds": 3600})) }()
+		select {
+		case rec := <-done:
+			if last := rec.last(); last.Status != "done" {
+				t.Fatalf("run ack = %+v", last)
+			}
+		case <-time.After(10 * time.Second):
+			t.Fatal("the job kept waiting on its input after its tasks ended")
+		}
+	})
+
+	t.Run("refused for an agent that reads no message, and for a job this bay does not run", func(t *testing.T) {
+		w := newJobWorld(t)
+		w.stub(t, "gemini", "#!/bin/sh\nsleep 30 &\nwait\n")
+		done := make(chan *ackRecorder)
+		go func() {
+			done <- w.run("job-gemini", w.agentSpec(map[string]any{"agent": "gemini", "timeoutSeconds": 3600}))
+		}()
+		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-gemini" })
+
+		poke := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "poke-g", Kind: "job-message", JobCommandID: "job-gemini", Message: "Wake up."}, poke.send)
+		if last := poke.last(); last.Status != "failed" || !strings.Contains(last.Reason, "takes no messages") {
+			t.Fatalf("a message to a gemini job = %+v", last)
+		}
+		unknown := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "poke-x", Kind: "job-message", JobCommandID: "job-nope", Message: "Wake up."}, unknown.send)
+		if last := unknown.last(); last.Status != "failed" || !strings.Contains(last.Reason, "no such job runs") {
+			t.Fatalf("a message to an unknown job = %+v", last)
+		}
+		w.acts.Command(context.Background(), connector.Command{ID: "cancel-g", Kind: "job-cancel", JobCommandID: "job-gemini"}, (&ackRecorder{}).send)
+		<-done
 	})
 }
 

@@ -476,6 +476,63 @@ describe("HostJobService", () => {
     expect(ended.status).toBe("cancelled");
   });
 
+  it("pokes a running Claude Code job through its host, refused where its agent or Bay reads no message, and lists the pokes (#Q4456)", async ({
+    expect,
+  }) => {
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    await w.commands.ack(w.host.id, { id: command.id, status: "running" });
+    const row = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+    expect(row.status).toBe("running");
+
+    // A Bay that does not report it reads no message.
+    const tools = [{ name: "claude", kind: "agent", found: true }];
+    await w.repos.hosts.updateById(w.host.id, { jobsTools: tools });
+    expect(w.service.pokeable(row, { jobsTools: tools })).toBe(false);
+    await expect(w.service.poke(job.id, "Wake up.")).rejects.toThrow(
+      "takes no message",
+    );
+
+    const reading = [{ ...tools[0], messages: true }];
+    await w.repos.hosts.updateById(w.host.id, { jobsTools: reading });
+    expect(w.service.pokeable(row, { jobsTools: reading })).toBe(true);
+    // A chat agent's JSON run is read whole at its end: no poke.
+    expect(
+      w.service.pokeable(
+        { ...row, input: { ...row.input, output: "json" } },
+        { jobsTools: reading },
+      ),
+    ).toBe(false);
+
+    await w.service.poke(job.id, "  Read the state yourself.  ", w.ownerId);
+    const [sent] = await w.repos.commands.findMany({
+      where: { kind: { eq: "job-message" } },
+    });
+    expect(sent?.payload).toMatchObject({
+      jobCommandId: command.id,
+      message: "Read the state yourself.",
+    });
+    expect(sent?.requestedBy).toBe(w.ownerId);
+    const frame = (
+      w.alepha.inject(HostCommandTransport) as ConnectedTransport
+    ).pushed.at(-1);
+    expect(frame).toMatchObject({
+      kind: "job-message",
+      jobCommandId: command.id,
+      message: "Read the state yourself.",
+    });
+
+    const pokes = await w.service.pokesOf(row);
+    expect(pokes.map((it) => [it.message, it.by])).toEqual([
+      ["Read the state yourself.", w.ownerId],
+    ]);
+
+    await w.commands.ack(w.host.id, { id: command.id, status: "done" });
+    await expect(w.service.poke(job.id, "Still there?")).rejects.toThrow(
+      "Only a running job",
+    );
+  });
+
   it("mints the job key at the spec pull, then on the end emits host:job:ended and revokes it", async ({
     expect,
   }) => {

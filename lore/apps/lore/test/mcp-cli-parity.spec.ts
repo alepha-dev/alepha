@@ -85,6 +85,8 @@ const POSITIONAL = new Set([
   "ids",
   // A chat agent, by what a message mentions (#E170).
   "handle",
+  // `lore job poke <id> [message]` (#Q4456).
+  "message",
 ]);
 
 /**

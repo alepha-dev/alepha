@@ -330,9 +330,9 @@ See [Prompts](/lore/docs/agents-prompts) and
 [Agent jobs](/lore/docs/agents-jobs). Every member reads, copies and renders
 prompts; changing one, its trigger and its pins needs `prompt:manage`; running
 one needs `host:read` and the prompt's own permission. Called with an agent
-job's own key, every prompt write and `prompt_run` are refused. The `prompt_*`
+job's own key, every prompt write, `prompt_run` and `job_poke` are refused. The `prompt_*`
 tools and `agent_hosts` need the `prompts` capability, and are refused while
-the project has it off; `job_list`, `job_get` and `job_cancel` do not.
+the project has it off; the `job_*` tools do not.
 
 | Tool                                    | What it does                                                                                                                                                                                                                  |
 | --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -345,6 +345,7 @@ the project has it off; `job_list`, `job_get` and `job_cancel` do not.
 | `prompt_pause_all`, `prompt_resume_all` | Stop every prompt trigger of the project, and start them again.                                                                                                                                                               |
 | `agent_hosts`                           | The project's Agent hosts, their last check, agent CLIs and tools.                                                                                                                                                            |
 | `job_list`, `job_get`, `job_cancel`     | The project's jobs, one job with its prompt, args, cause, reply and log, and stopping one.                                                                                                                                    |
+| `job_poke`                              | A message to a running Claude Code job, read after the tool call it runs; without `message`, the Wake up preset.                                                                                                              |
 
 ## What has no tool
 

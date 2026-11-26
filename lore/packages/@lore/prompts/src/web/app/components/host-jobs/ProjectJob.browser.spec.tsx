@@ -46,13 +46,19 @@ const world: {
   logs: Record<string, { stdout: string; stderr: string; live: boolean }>;
   /** Every action the page called, by name. */
   calls: string[];
-} = { jobs: [], logs: {}, calls: [] };
+  /** What each pokeJob call sent. */
+  pokes: Array<string | undefined>;
+} = { jobs: [], logs: {}, calls: [], pokes: [] };
 
 class FakeLinks extends LinkProvider {
   override client(): any {
     const answers: Record<string, (input: any) => unknown> = {
       listProjectJobs: () => ({ items: world.jobs }),
       getJob: (input) => world.jobs.find((it) => it.id === input.params.jobId),
+      pokeJob: (input) => {
+        world.pokes.push(input.body.message);
+        return world.jobs[0];
+      },
       getJobLog: (input) => {
         const log = world.logs[input.params.jobId];
         // The whole log on the first read, nothing past it after.
@@ -454,6 +460,105 @@ describe("ProjectJob", () => {
     await show(DONE);
     await screen.findByText(/The log was cut/);
     expect(screen.queryByTestId("job-log-full")).toBeNull();
+  });
+
+  it("offers Poke on a running job whose agent reads messages, sends Wake up or a message, and names who sent each (#Q4456)", async ({
+    expect,
+  }) => {
+    const user = (content: string) =>
+      JSON.stringify({ type: "user", message: { role: "user", content } });
+    world.pokes = [];
+    world.jobs = [
+      job({
+        pokeable: true,
+        pokes: [
+          {
+            at: "2026-11-23T10:05:00.000Z",
+            by: "00000000-0000-4000-8000-0000000000bb",
+            byName: "alice",
+            message: "Read the state yourself.",
+            status: "done",
+          },
+        ],
+      }),
+    ];
+    world.logs = {
+      [RUNNING]: {
+        stdout: `${user("Triage the inbox.")}\n${user("Read the state yourself.")}\n`,
+        stderr: "",
+        live: true,
+      },
+    };
+    await show(RUNNING);
+
+    const said = await screen.findByTestId("job-poke-message");
+    expect(said.textContent).toContain("Poke from alice");
+    expect(said.textContent).toContain("Read the state yourself.");
+
+    fireEvent.click(screen.getByTestId("job-more"));
+    fireEvent.click(await screen.findByTestId("job-poke"));
+    await screen.findByTestId("job-poke-dialog");
+    expect(screen.getByTestId("job-poke-preset").textContent).toContain(
+      "background watchers",
+    );
+    fireEvent.click(screen.getByTestId("job-poke-send"));
+    await waitFor(() => expect(world.pokes).toHaveLength(1));
+    expect(world.pokes[0]).toContain("background watchers");
+  });
+
+  it("names a poke by the one that reached the agent, never a refused one, and shows no user line no poke sent (#Q4456)", async ({
+    expect,
+  }) => {
+    const user = (content: string) =>
+      JSON.stringify({ type: "user", message: { role: "user", content } });
+    world.jobs = [
+      job({
+        pokeable: true,
+        pokes: [
+          {
+            at: "2026-11-23T10:04:00.000Z",
+            byName: "alice",
+            message: "Wake up.",
+            status: "failed",
+            reason: "the job is finishing",
+          },
+          {
+            at: "2026-11-23T10:05:00.000Z",
+            byName: "bob",
+            message: "Wake up.",
+            status: "done",
+          },
+        ],
+      }),
+    ];
+    world.logs = {
+      [RUNNING]: {
+        stdout: [
+          user("Triage the inbox."),
+          user("Wake up."),
+          user("A line Claude Code wrote itself."),
+          "",
+        ].join("\n"),
+        stderr: "",
+        live: true,
+      },
+    };
+    await show(RUNNING);
+    const said = await screen.findAllByTestId("job-poke-message");
+    expect(said).toHaveLength(1);
+    expect(said[0]?.textContent).toContain("Poke from bob");
+    expect(screen.queryByText("A line Claude Code wrote itself.")).toBeNull();
+  });
+
+  it("offers no Poke on a job whose agent or host reads no message (#Q4456)", async ({
+    expect,
+  }) => {
+    world.jobs = [job({})];
+    world.logs = { [RUNNING]: { stdout: "", stderr: "", live: true } };
+    await show(RUNNING);
+    fireEvent.click(screen.getByTestId("job-more"));
+    await screen.findAllByRole("menuitem");
+    expect(screen.queryByTestId("job-poke")).toBeNull();
   });
 
   it("offers Copy prompt for a job with a prompt, and no Cancel once it has ended (#Q4448)", async ({

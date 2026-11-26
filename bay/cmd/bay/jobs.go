@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -410,7 +411,7 @@ timeout and a cancel apart by the context.
 An agent job runs in its workspace, held for the run by the workspace lock,
 and leaves it as the agent left it. A check runs in the jobs user's home.
 */
-func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (exitCode *int, out jobOutcome, err error) {
+func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *jobLog, input *jobInput) (exitCode *int, out jobOutcome, err error) {
 	u, err := r.jobsUser()
 	if err != nil {
 		return nil, out, err
@@ -485,6 +486,16 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		scanner = newResultScanner(adapter.Result())
 		cmd.Stdout = teeWriter{stripper, scanner}
 	}
+	// A run that takes messages (#Q4456) has its prompt on stdin, which
+	// stays open until a turn ends with no background task left.
+	var stdin io.WriteCloser
+	if run.Input && input != nil {
+		if stdin, err = cmd.StdinPipe(); err != nil {
+			return nil, out, err
+		}
+		defer input.close()
+		cmd.Stdout = teeWriter{cmd.Stdout, &inputCloser{in: input}}
+	}
 	if spec.Kind == jobKindCheck {
 		// The check is the version first, then the one-line prompt.
 		version, err := r.agentVersion(ctx, u, adapter)
@@ -494,7 +505,11 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		log.Step(adapter.Name + " " + version)
 	}
 	log.Step("agent " + adapter.Name + " started")
-	code, err := r.wait(ctx, cmd)
+	code, err := r.wait(ctx, cmd, func() {
+		if stdin != nil {
+			input.open(stdin, run.Prompt)
+		}
+	})
 	if stripper != nil {
 		stripper.Flush()
 	}
@@ -533,9 +548,12 @@ type jobOutcome struct {
 
 // wait starts cmd and waits for its exit, killing its process group when
 // ctx ends: SIGTERM, then SIGKILL after the grace.
-func (r *processRunner) wait(ctx context.Context, cmd *exec.Cmd) (*int, error) {
+func (r *processRunner) wait(ctx context.Context, cmd *exec.Cmd, started ...func()) (*int, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("could not start %s: %w", filepath.Base(cmd.Path), err)
+	}
+	for _, fn := range started {
+		fn()
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait() }()
@@ -637,8 +655,8 @@ its version command, and whether it is signed in (#Q4256, signins.go).
 */
 func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.InventoryTool {
 	var out []connector.InventoryTool
-	read := func(name, kind, binary string, args, env []string) {
-		tool := connector.InventoryTool{Name: name, Kind: kind}
+	read := func(name, kind, binary string, args, env []string, messages bool) {
+		tool := connector.InventoryTool{Name: name, Kind: kind, Messages: messages}
 		if _, err := r.lookPath(u.HomeDir, binary); err != nil {
 			tool.Error = cut(binary+" is not on the jobs user's PATH", 500)
 			out = append(out, tool)
@@ -657,10 +675,10 @@ func (r *processRunner) tools(ctx context.Context, u *user.User) []connector.Inv
 	}
 	for _, name := range adapterNames() {
 		a := agentAdapters[name]
-		read(a.Name, "agent", a.Binary, a.VersionArgs, a.Env)
+		read(a.Name, "agent", a.Binary, a.VersionArgs, a.Env, a.Messages)
 	}
 	for _, name := range jobTools {
-		read(name, "tool", name, []string{"--version"}, nil)
+		read(name, "tool", name, []string{"--version"}, nil, false)
 	}
 	return out
 }
@@ -676,6 +694,8 @@ type jobs struct {
 
 	mu      sync.Mutex
 	running map[string]context.CancelCauseFunc
+	// inputs is the stdin of each running job that takes messages (#Q4456).
+	inputs map[string]*jobInput
 
 	toolsMu sync.Mutex
 	tools   []connector.InventoryTool
@@ -691,12 +711,35 @@ var errJobCancelled = errors.New("cancelled by a job-cancel")
 
 func newJobs(root string) *jobs {
 	return &jobs{runner: newProcessRunner(root),
-		running: map[string]context.CancelCauseFunc{}}
+		running: map[string]context.CancelCauseFunc{}, inputs: map[string]*jobInput{}}
 }
 
 // run executes a job as the jobs user.
 func (j *jobs) run(ctx context.Context, id string, spec jobSpec, log *jobLog) (*int, jobOutcome, error) {
-	return j.runner.run(ctx, id, spec, log)
+	input := &jobInput{}
+	j.mu.Lock()
+	j.inputs[id] = input
+	j.mu.Unlock()
+	defer func() {
+		j.mu.Lock()
+		delete(j.inputs, id)
+		j.mu.Unlock()
+	}()
+	return j.runner.run(ctx, id, spec, log, input)
+}
+
+// message writes a member's message to a running job's stdin (#Q4456).
+func (j *jobs) message(id, text string) (bool, error) {
+	if j == nil {
+		return false, nil
+	}
+	j.mu.Lock()
+	input, ok := j.inputs[id]
+	j.mu.Unlock()
+	if !ok {
+		return false, nil
+	}
+	return true, input.send(text)
 }
 
 // claim takes one of the machine's job slots, of which there are `limit`.
@@ -945,6 +988,32 @@ func (a *actions) jobCancel(cmd connector.Command) (status, step, reason string)
 		return "done", "", "the job had already ended (" + prior.Status + ")"
 	}
 	return "done", "", "no such job runs on this bay"
+}
+
+// maxJobMessage is the longest message a `job-message` writes.
+const maxJobMessage = 32 << 10
+
+// jobMessage writes a `job-message` to the running job it names (#Q4456).
+// Refused for a job this bay does not run and for one whose agent reads no
+// message while it runs.
+func (a *actions) jobMessage(cmd connector.Command) (status, step, reason string) {
+	if cmd.JobCommandID == "" {
+		return "failed", "", "a job-message names the job-run it writes to"
+	}
+	if strings.TrimSpace(cmd.Message) == "" {
+		return "failed", "", "a job-message carries a message"
+	}
+	if len(cmd.Message) > maxJobMessage {
+		return "failed", "", fmt.Sprintf("a job-message is at most %d bytes", maxJobMessage)
+	}
+	found, err := a.jobs.message(cmd.JobCommandID, cmd.Message)
+	if !found {
+		return "failed", "", "no such job runs on this bay"
+	}
+	if err != nil {
+		return "failed", "", err.Error()
+	}
+	return "done", "", "the message was written to the job's input"
 }
 
 // cut truncates to n runes.

@@ -34,3 +34,11 @@ export const HOST_JOB_TERMINAL: readonly HostJobStatus[] = [
   "cancelled",
   "timed_out",
 ];
+
+/**
+ * Poke's preset, Wake up (#Q4456): what a member most often has to tell a
+ * job that sits waiting on a watcher of its own. Sent in English whatever
+ * the page's language: it is read by the agent, not by a person.
+ */
+export const HOST_JOB_WAKE_UP =
+  "Check that your background watchers are still alive. Read the state you are waiting on directly instead of waiting for it, then carry on or finish.";

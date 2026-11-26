@@ -26,6 +26,7 @@ export {
   HOST_JOB_KINDS,
   HOST_JOB_STATUSES,
   HOST_JOB_TERMINAL,
+  HOST_JOB_WAKE_UP,
 } from "../api/schemas/hostJobValues.ts";
 export type {
   HostJobKind,
@@ -292,6 +293,10 @@ export { hostJobLogSchema } from "../api/schemas/hostJobLogSchema.ts";
 export type { HostJobLogResource } from "../api/schemas/hostJobLogSchema.ts";
 export { hostJobResourceSchema } from "../api/schemas/hostJobResourceSchema.ts";
 export type { HostJobResource } from "../api/schemas/hostJobResourceSchema.ts";
+export {
+  type HostJobPoke,
+  hostJobPokeSchema,
+} from "../api/schemas/hostJobPokeSchema.ts";
 export {
   type PromptJobArg,
   promptJobArgSchema,

@@ -70,6 +70,9 @@ type InventoryTool struct {
 	// Account is the account it names, when it names one.
 	SignedIn *bool  `json:"signedIn,omitempty"`
 	Account  string `json:"account,omitempty"`
+	// Messages is true on an agent this bay can send a message while it
+	// runs (#Q4456): Lore offers Poke on its jobs only.
+	Messages bool `json:"messages,omitempty"`
 }
 
 // InventoryStack is one stack environment as the machine sees it.
