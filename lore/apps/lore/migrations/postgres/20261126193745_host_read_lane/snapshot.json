@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "a6a00eaa-bc24-4246-b1cf-500b3a76e9cc",
+  "prevIds": ["94f08d65-11ba-4014-b3c3-8d8439c8315b"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_max_read_jobs"],
+      "writes": [
+        "s|col|public.hosts.jobs_max_read_jobs",
+        "n|col|public.hosts.jobs_max_read_jobs",
+        "e|col|public.hosts.jobs_max_read_jobs"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "jobs_max_read_jobs",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

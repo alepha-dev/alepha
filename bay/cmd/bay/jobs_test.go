@@ -573,8 +573,14 @@ func TestJobRunRefusals(t *testing.T) {
 		}
 	})
 
-	t.Run("a second job while one runs, at the default limit of one", func(t *testing.T) {
+	t.Run("a second job while one runs, in a lane of one", func(t *testing.T) {
 		w := newJobWorld(t)
+		// Jobs with no source run in the read lane (#Q4525), 8 wide by default.
+		cfg, _ := loadJobsConfig(w.f.root)
+		cfg.MaxReadJobs = 1
+		if err := saveJobsConfig(w.f.root, cfg); err != nil {
+			t.Fatal(err)
+		}
 		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
@@ -586,13 +592,8 @@ func TestJobRunRefusals(t *testing.T) {
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "" })
 	})
 
-	t.Run("a raised limit runs two jobs, never two in one workspace", func(t *testing.T) {
+	t.Run("a lane wider than one runs two jobs, never two in one workspace", func(t *testing.T) {
 		w := newJobWorld(t)
-		cfg, _ := loadJobsConfig(w.f.root)
-		cfg.MaxJobs = 2
-		if err := saveJobsConfig(w.f.root, cfg); err != nil {
-			t.Fatal(err)
-		}
 		w.stub(t, "claude", "#!/bin/sh\n[ \"$1\" = auth ] && exit 0\nsleep 30 &\nwait\n")
 		go w.run("job-a", w.agentSpec(map[string]any{"timeoutSeconds": 3600}))
 		waitFor(t, func() bool { return w.acts.jobs.runningIDs() == "job-a" })
@@ -849,7 +850,7 @@ func TestJobsInventory(t *testing.T) {
 	// playwright-cli, optional, with no sign-in (#Q4346).
 	w.stub(t, "playwright-cli", "#!/bin/sh\necho '0.1.1'\n")
 	inv, _ := w.acts.Inventory(context.Background())
-	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources || !inv.Jobs.Result || inv.Jobs.MaxJobs != 1 {
+	if inv.Jobs == nil || inv.Jobs.User == "" || !inv.Jobs.Sources || !inv.Jobs.Result || inv.Jobs.MaxJobs != 1 || inv.Jobs.MaxReadJobs != 8 {
 		t.Fatalf("jobs block = %+v", inv.Jobs)
 	}
 	// Every adapter's CLI, then git, gh, cf, lore and playwright-cli, in that

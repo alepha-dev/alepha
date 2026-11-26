@@ -44,9 +44,11 @@ trusted it.
 
 What bounds it:
   - the host's switch, `jobsAllowed`, off by default, from the welcome frame;
-  - a host-wide limit on running jobs (`bay config jobs --max-jobs`, 1 by
-    default), and one job at a time per workspace, held by a lock file under
-    Bay's root that a dead Bay releases;
+  - two host-wide limits on running jobs, one per lane (#Q4525): the jobs
+    that change code (`bay config jobs --max-jobs`, 1 by default), and the
+    others, which read it or take none (`--max-read-jobs`, 8 by default);
+    and one job at a time per workspace, held by a lock file under Bay's
+    root that a dead Bay releases;
   - a job never takes the machine mutex deploys serialise on, so a long
     agent run never holds a deploy back;
   - the spec is validated before anything runs (jobspec.go), and the command
@@ -63,6 +65,9 @@ type jobsConfig struct {
 	// MaxJobs is how many jobs this machine runs at once (#Q4218); zero is
 	// one, today's behaviour.
 	MaxJobs int `json:"maxJobs,omitempty"`
+	// MaxReadJobs is how many jobs that change no code this machine runs at
+	// once, beside the MaxJobs that do (#Q4525); zero is defaultMaxReadJobs.
+	MaxReadJobs int `json:"maxReadJobs,omitempty"`
 	// FetchTTLSeconds is how long a fetch of a project's mirror is good for
 	// (#Q4245); absent is 30 s, zero fetches before every job.
 	FetchTTLSeconds *int `json:"fetchTTLSeconds,omitempty"`
@@ -72,12 +77,26 @@ type jobsConfig struct {
 // memory, and a host is one machine.
 const maxJobsCeiling = 16
 
-// jobsLimit is the number of jobs this machine may run at once.
+// defaultMaxReadJobs is the read lane's width on a host that set none: such
+// a job is an agent CLI waiting on its model, and costs the machine little.
+const defaultMaxReadJobs = 8
+
+// jobsLimit is the number of jobs changing code this machine may run at once:
+// the write lane's width.
 func (c jobsConfig) jobsLimit() int {
 	if c.MaxJobs < 1 {
 		return 1
 	}
 	return c.MaxJobs
+}
+
+// readJobsLimit is the number of other jobs it may run beside them: the read
+// lane's width.
+func (c jobsConfig) readJobsLimit() int {
+	if c.MaxReadJobs < 1 {
+		return defaultMaxReadJobs
+	}
+	return c.MaxReadJobs
 }
 
 func loadJobsConfig(root string) (jobsConfig, error) {
@@ -107,7 +126,7 @@ func saveJobsConfig(root string, cfg jobsConfig) error {
 	return os.Rename(tmp, filepath.Join(root, jobsConfigFile))
 }
 
-const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--max-jobs N] [--fetch-ttl DURATION] [--root DIR]"
+const jobsUsage = "usage: bay config jobs (--user NAME | --clear) [--max-jobs N] [--max-read-jobs N] [--fetch-ttl DURATION] [--root DIR]"
 
 // cmdConfigJobs is `bay config jobs --user NAME | --clear`: names the Unix
 // user process jobs run as. Read by `bay serve` on every job, so it needs no
@@ -145,6 +164,16 @@ func cmdConfigJobs(args []string) error {
 				return fmt.Errorf("--max-jobs is a number from 1 to %d", maxJobsCeiling)
 			}
 			cfg.MaxJobs, changed = n, true
+		case "--max-read-jobs":
+			raw, err := value()
+			if err != nil {
+				return err
+			}
+			n, err := strconv.Atoi(raw)
+			if err != nil || n < 1 || n > maxJobsCeiling {
+				return fmt.Errorf("--max-read-jobs is a number from 1 to %d", maxJobsCeiling)
+			}
+			cfg.MaxReadJobs, changed = n, true
 		case "--fetch-ttl":
 			raw, err := value()
 			if err != nil {
@@ -193,7 +222,7 @@ func cmdConfigJobs(args []string) error {
 	if err := saveJobsConfig(root, cfg); err != nil {
 		return err
 	}
-	fmt.Printf("jobs run as %s, %d at a time, in workspaces under ~%s/bay-jobs; a mirror fetch is good for %s\n", cfg.User, cfg.jobsLimit(), cfg.User, cfg.fetchTTL())
+	fmt.Printf("jobs run as %s, %d changing code and %d others at a time, in workspaces under ~%s/bay-jobs; a mirror fetch is good for %s\n", cfg.User, cfg.jobsLimit(), cfg.readJobsLimit(), cfg.User, cfg.fetchTTL())
 	fmt.Printf("  an agent CLI (%s) must be on that user's PATH, signed in by hand as that user (sudo -iu %s)\n", strings.Join(adapterNames(), ", "), cfg.User)
 	fmt.Println("  ⚠ a host that runs process jobs should do nothing else: no production app, no other project's secrets")
 	return nil
@@ -694,6 +723,8 @@ type jobs struct {
 
 	mu      sync.Mutex
 	running map[string]context.CancelCauseFunc
+	// lanes is the lane each running job holds a slot of (#Q4525).
+	lanes map[string]string
 	// inputs is the stdin of each running job that takes messages (#Q4456).
 	inputs map[string]*jobInput
 
@@ -711,7 +742,7 @@ var errJobCancelled = errors.New("cancelled by a job-cancel")
 
 func newJobs(root string) *jobs {
 	return &jobs{runner: newProcessRunner(root),
-		running: map[string]context.CancelCauseFunc{}, inputs: map[string]*jobInput{}}
+		running: map[string]context.CancelCauseFunc{}, lanes: map[string]string{}, inputs: map[string]*jobInput{}}
 }
 
 // run executes a job as the jobs user.
@@ -742,14 +773,50 @@ func (j *jobs) message(id, text string) (bool, error) {
 	return true, input.send(text)
 }
 
-// claim takes one of the machine's job slots, of which there are `limit`.
-func (j *jobs) claim(id string, cancel context.CancelCauseFunc, limit int) bool {
+/*
+The two lanes a job runs in (#Q4525), each with its own limit. A job that
+changes code runs the project's checks, and the machine's cores bound how
+many of those it takes. Any other job, one that reads the code or takes
+none, or a capability check, is an agent CLI waiting on its model: it never
+waits behind a job that changes code.
+*/
+const (
+	jobLaneWrite = "write"
+	jobLaneRead  = "read"
+)
+
+// lane is the lane a spec's job runs in.
+func (s jobSpec) lane() string {
+	if s.Kind == "agent" && s.Source != nil && s.Source.Mode == "write" {
+		return jobLaneWrite
+	}
+	return jobLaneRead
+}
+
+// laneLimit is how many jobs of a lane this machine runs at once, and the
+// flag that says so.
+func (c jobsConfig) laneLimit(lane string) (int, string) {
+	if lane == jobLaneWrite {
+		return c.jobsLimit(), "--max-jobs"
+	}
+	return c.readJobsLimit(), "--max-read-jobs"
+}
+
+// claim takes one of a lane's job slots, of which there are `limit`.
+func (j *jobs) claim(id string, cancel context.CancelCauseFunc, lane string, limit int) bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	if len(j.running) >= limit {
+	held := 0
+	for _, l := range j.lanes {
+		if l == lane {
+			held++
+		}
+	}
+	if held >= limit {
 		return false
 	}
 	j.running[id] = cancel
+	j.lanes[id] = lane
 	return true
 }
 
@@ -757,6 +824,21 @@ func (j *jobs) release(id string) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	delete(j.running, id)
+	delete(j.lanes, id)
+}
+
+// laneIDs is the jobs running in a lane, sorted, joined by commas.
+func (j *jobs) laneIDs(lane string) string {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	var ids []string
+	for id, l := range j.lanes {
+		if l == lane {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	return strings.Join(ids, ",")
 }
 
 // runningIDs is the jobs running now, sorted, joined by commas: what the
@@ -803,7 +885,7 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	// Sources says this bay prepares a job's source (#Q4245): Lore sends a
 	// read or write job to no bay that does not say so.
 	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true, Result: true,
-		MaxJobs: cfg.jobsLimit()}
+		MaxJobs: cfg.jobsLimit(), MaxReadJobs: cfg.readJobsLimit()}
 	// What the jobs user has, read again when older than ten minutes: a
 	// version command per tool is cheap, but not on every inventory.
 	j.toolsMu.Lock()
@@ -839,19 +921,7 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	if err != nil {
 		return "failed", "", "the jobs config is unreadable: " + err.Error(), extra
 	}
-	jobCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
-	defer cancel(nil)
-	if limit := jobsCfg.jobsLimit(); !a.jobs.claim(cmd.ID, cancel, limit) {
-		// Busy, not refused (#Q4249): Lore queues it again when a job of
-		// this host ends.
-		return "failed", stepBusy, fmt.Sprintf("this bay already runs %d job(s) (%s), its limit: bay config jobs --max-jobs raises it", limit, a.jobs.runningIDs()), extra
-	}
-	defer a.jobs.release(cmd.ID)
-	if a.kick != nil {
-		// The inventory says which job runs.
-		a.kick()
-	}
-
+	// The spec first (#Q4525): it says which lane the job runs in.
 	client := &http.Client{Timeout: connector.FetchTimeout}
 	raw, err := connector.PullJobSpec(ctx, client, cfg, cmd.ID)
 	if err != nil {
@@ -861,6 +931,24 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 	if err != nil {
 		return "failed", "validating", err.Error(), extra
 	}
+	jobCtx, cancel := context.WithCancelCause(context.WithoutCancel(ctx))
+	defer cancel(nil)
+	lane := spec.lane()
+	if limit, flag := jobsCfg.laneLimit(lane); !a.jobs.claim(cmd.ID, cancel, lane, limit) {
+		// Busy, not refused (#Q4249): Lore queues it again when a job of
+		// this host ends.
+		what := "that change no code"
+		if lane == jobLaneWrite {
+			what = "changing code"
+		}
+		return "failed", stepBusy, fmt.Sprintf("this bay already runs %d job(s) %s (%s), its limit: bay config jobs %s raises it", limit, what, a.jobs.laneIDs(lane), flag), extra
+	}
+	defer a.jobs.release(cmd.ID)
+	if a.kick != nil {
+		// The inventory says which job runs.
+		a.kick()
+	}
+
 	// A spool left by an earlier run of this id (a Bay that died mid-job)
 	// is not this run's log.
 	_ = os.RemoveAll(jobLogDir(a.s.root, cmd.ID))

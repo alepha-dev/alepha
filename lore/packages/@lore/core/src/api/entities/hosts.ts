@@ -246,6 +246,12 @@ export const hosts = $entity({
     jobsMaxJobs: z.integer().optional(),
     jobsRunning: z.integer().optional(),
     /**
+     * How many jobs that change no code the machine runs beside those
+     * (`--max-read-jobs`, #Q4525): the read lane's width. Absent on a host
+     * whose Bay has one limit for every job, which then keeps one lane.
+     */
+    jobsMaxReadJobs: z.integer().optional(),
+    /**
      * The last capability check: `checking` while one runs, then `available`
      * or `unavailable` with the CLI's message in `agentError` (an expired
      * token, a reached usage limit). A usage limit clears itself at the next

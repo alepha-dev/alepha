@@ -34,9 +34,13 @@ import {
  * kind starts jobs without importing Ship.
  *
  * Rules:
- * - **Up to the host's `--max-jobs` at a time** (#Q4249, one when it reports
- *   none), the others waiting `queued`, oldest first. A queued job whose
- *   workspace a running write job holds waits for it. A job the host acks
+ * - **Two lanes per host** (#Q4525), each oldest first, the others waiting
+ *   `queued`: the write jobs, up to the host's `--max-jobs` at a time
+ *   (#Q4249, one when it reports none), and every other job, up to its
+ *   `--max-read-jobs`. A job that changes no code never waits behind one
+ *   that does. A host that reports no `--max-read-jobs` has one lane, of
+ *   `--max-jobs`. A queued job whose workspace a running write job holds
+ *   waits for it. A job the host acks
  *   `busy` (its slots full, its workspace held) goes back to the queue and is
  *   dispatched again only once a job of that host ends.
  * - A host takes jobs only with `jobsAllowed`, and only for its home
@@ -156,10 +160,26 @@ export class HostJobService {
   }
 
   /**
-   * Dispatches the host's oldest queued jobs, up to its free slots: its
-   * `--max-jobs` (#Q4249) less what runs. A job the host acked busy waits
-   * for a job of that host to end ({@link end} clears it), and a job whose
-   * workspace a running write job holds waits for that job.
+   * The lane a job runs in (#Q4525): `write` for an agent job that changes
+   * code, which runs the project's checks, `read` for every other one (an
+   * agent job that reads the code or takes none, a capability check), which
+   * is an agent CLI waiting on its model. Bay sorts a job the same way, from
+   * the spec it pulls.
+   */
+  public lane(job: Pick<HostJob, "kind" | "input">): "read" | "write" {
+    return job.kind === "agent" && job.input.source?.mode === "write"
+      ? "write"
+      : "read";
+  }
+
+  /**
+   * Dispatches the host's oldest queued jobs, up to its free slots, lane
+   * by lane (#Q4525): its `--max-jobs` (#Q4249) less the write jobs that
+   * run, and its `--max-read-jobs` less the others. A host that reports no
+   * `--max-read-jobs` has one lane, of `--max-jobs`: its Bay acks any job
+   * past that busy. A job the host acked busy waits for a job of that host
+   * to end ({@link end} clears it), and a job whose workspace a running
+   * write job holds waits for that job.
    */
   public async pump(hostId: string): Promise<void> {
     const host = await this.hosts.findOne({ where: { id: { eq: hostId } } });
@@ -169,8 +189,21 @@ export class HostJobService {
     const running = await this.jobs.findMany({
       where: { hostId: { eq: hostId }, status: { eq: "running" } },
     });
-    let free = Math.max(1, host.jobsMaxJobs ?? 1) - running.length;
-    if (free <= 0) {
+    const maxJobs = Math.max(1, host.jobsMaxJobs ?? 1);
+    const lanes = host.jobsMaxReadJobs != null;
+    const runningWrites = running.filter(
+      (job) => this.lane(job) === "write",
+    ).length;
+    // One lane: both names count the same slots.
+    const free = {
+      write: maxJobs - (lanes ? runningWrites : running.length),
+      read: lanes
+        ? Math.max(1, host.jobsMaxReadJobs ?? 1) -
+          (running.length - runningWrites)
+        : 0,
+    };
+    const laneOf = (job: HostJob) => (lanes ? this.lane(job) : "write");
+    if (free.write <= 0 && free.read <= 0) {
       return;
     }
     const queued = await this.jobs.findMany({
@@ -184,8 +217,11 @@ export class HostJobService {
         .map((job) => `${job.projectId}/${job.input.workspace ?? ""}`),
     );
     for (const next of queued) {
-      if (free <= 0) break;
+      if (free.write <= 0 && free.read <= 0) break;
       if (next.busyAt) continue;
+      // A full lane holds its own jobs back, never the other lane's.
+      const lane = laneOf(next);
+      if (free[lane] <= 0) continue;
       const workspace = `${next.projectId}/${next.input.workspace ?? ""}`;
       if (next.kind === "agent" && held.has(workspace)) continue;
       // Claimed first, by one conditional write: a second pump racing this
@@ -197,7 +233,7 @@ export class HostJobService {
       if (Array.isArray(claimed) ? claimed.length === 0 : !claimed) {
         continue;
       }
-      free -= 1;
+      free[lane] -= 1;
       if (next.input.source?.mode === "write") held.add(workspace);
       try {
         const command = await this.commands.enqueue(

@@ -14,7 +14,8 @@ export interface BayAgentHostProps {
 /**
  * The host as an **Agent host** (#Q3985): the switch that makes it run agent
  * CLI jobs (it needs jobs allowed), the last capability check (available or
- * not, with the agent's message), how many jobs it runs (#Q4249), and a link
+ * not, with the agent's message), how many jobs it runs (#Q4249) and of how
+ * many per lane (#Q4525), and a link
  * to the Tools section (#Q4254), which lists what the jobs user has. Lore
  * never sees a credential; the operator installs and signs in the tools by
  * hand for Bay's jobs user.
@@ -124,17 +125,26 @@ const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
                 {host.agentError}
               </span>
             )}
-            {/* How many jobs it runs, of how many it may (#Q4249). */}
+            {/* How many jobs it runs, of how many it may (#Q4249): one
+                limit, or one per lane on a host that has two (#Q4525). */}
             <span
               className="text-muted-foreground text-xs"
               data-testid="bay-agent-running"
             >
-              {tr("hosts.agent.running", {
-                args: [
-                  String(host.jobsRunning ?? 0),
-                  String(host.jobsMaxJobs ?? 1),
-                ],
-              })}
+              {host.jobsMaxReadJobs == null
+                ? tr("hosts.agent.running", {
+                    args: [
+                      String(host.jobsRunning ?? 0),
+                      String(host.jobsMaxJobs ?? 1),
+                    ],
+                  })
+                : tr("hosts.agent.running.lanes", {
+                    args: [
+                      String(host.jobsRunning ?? 0),
+                      String(host.jobsMaxJobs ?? 1),
+                      String(host.jobsMaxReadJobs),
+                    ],
+                  })}
             </span>
             {/* The tools themselves are the Tools section's (#Q4254). */}
             {host.jobsTools &&

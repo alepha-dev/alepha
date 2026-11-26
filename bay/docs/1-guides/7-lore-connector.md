@@ -197,9 +197,12 @@ the input once a turn ended with no background task left, so a job nobody
 writes to ends as it would have.
 
 **Jobs are refused until somebody who manages the host allows them**, with a
-switch of their own, separate from deploys. One job runs at a time unless
-`--max-jobs` says more, and Lore sends up to that many. Jobs that read share a
-workspace; a job that changes code has its own to itself. A job the host cannot
+switch of their own, separate from deploys. A host runs its jobs in two lanes,
+each with its own limit: the jobs that change code, one at a time unless
+`--max-jobs` says more, and the others, which read the code or take none, 8 at a
+time unless `--max-read-jobs` says otherwise. Lore sends up to that many of each,
+so a job that only reads never waits behind one that changes code. Jobs that read
+share a workspace; a job that changes code has its own to itself. A job the host cannot
 start yet (its slots are full, its workspace is held) is acknowledged **busy**,
 and Lore sends it again once one of the host's jobs ends. A job never makes a
 deploy wait. A host that only runs jobs needs no Docker.
@@ -235,7 +238,9 @@ with code. `lore` is the exception: it must **not** be signed in as the jobs
 user, since a job reaches Lore with a key held to its project, and `bay doctor`
 warns when it is (`sudo -iu bay-agent lore logout`).
 
-`bay config jobs --max-jobs 2` lets two jobs run at once (one by default).
+`bay config jobs --max-jobs 2` lets two jobs that change code run at once (one
+by default). `bay config jobs --max-read-jobs 4` sets how many of the others run
+beside them (8 by default, 16 at most).
 `bay config jobs --fetch-ttl 30s` is how long a fetch of a project's repository
 is good for (30 seconds by default, `0` fetches before every job).
 `bay config jobs --clear` makes the host refuse every job again.

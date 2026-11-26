@@ -81,6 +81,8 @@ export class HostInventoryService {
     const result = frame.jobs?.result === true;
     // How many jobs it runs at once, and runs now (#Q4249).
     const maxJobs = frame.jobs?.maxJobs ?? null;
+    // How many of the jobs that change no code it runs beside them (#Q4525).
+    const maxReadJobs = frame.jobs?.maxReadJobs ?? null;
     const running = frame.jobs
       ? (frame.jobs.running ?? "").split(",").filter(Boolean).length
       : null;
@@ -91,6 +93,7 @@ export class HostInventoryService {
       (host.jobsSources ?? false) !== sources ||
       (host.jobsResult ?? false) !== result ||
       (host.jobsMaxJobs ?? null) !== maxJobs ||
+      (host.jobsMaxReadJobs ?? null) !== maxReadJobs ||
       (host.jobsRunning ?? null) !== running ||
       host.jobsUser !== user
     ) {
@@ -98,6 +101,7 @@ export class HostInventoryService {
         jobsSources: sources,
         jobsResult: result,
         jobsMaxJobs: maxJobs,
+        jobsMaxReadJobs: maxReadJobs,
         jobsRunning: running,
         jobsUser: user,
       });

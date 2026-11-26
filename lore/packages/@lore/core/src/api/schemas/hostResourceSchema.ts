@@ -56,6 +56,7 @@ export const hostResourceSchema = hosts.schema
     jobsResult: true,
     jobsUser: true,
     jobsMaxJobs: true,
+    jobsMaxReadJobs: true,
     jobsRunning: true,
     statsIntervalSeconds: true,
     watchUnits: true,
