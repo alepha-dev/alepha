@@ -116,7 +116,9 @@ test.describe("Pinned prompts", () => {
       await page.goto(`/${project.slug}/quests/${open.shortId}`);
       await robot().click();
       await page.getByRole("menuitem", { name: "Work on quest" }).hover();
-      await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
+      await page
+        .getByRole("menuitem", { name: "Copy prompt", exact: true })
+        .click();
       await expect
         .poll(clipboard, { timeout: 15_000 })
         .toContain(`#Q${open.shortId}`);
@@ -133,7 +135,9 @@ test.describe("Pinned prompts", () => {
       // One submenu per prompt, holding its Copy and Run (#Q4321).
       await page.getByRole("menuitem", { name: "Agent prompts" }).hover();
       await page.getByRole("menuitem", { name: "Work on quest" }).hover();
-      await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
+      await page
+        .getByRole("menuitem", { name: "Copy prompt", exact: true })
+        .click();
       await expect
         .poll(clipboard, { timeout: 15_000 })
         .toContain(`#Q${open.shortId}`);
@@ -158,7 +162,9 @@ test.describe("Pinned prompts", () => {
       await page.goto(`/${project.slug}/quests/${open.shortId}`);
       await robot().click();
       await page.getByRole("menuitem", { name: "Review Epic" }).hover();
-      await page.getByRole("menuitem", { name: "Copy", exact: true }).click();
+      await page
+        .getByRole("menuitem", { name: "Copy prompt", exact: true })
+        .click();
       const dialog = page.getByTestId("prompt-run-dialog");
       await expect(dialog).toBeVisible();
       await dialog.getByRole("combobox").first().click();
