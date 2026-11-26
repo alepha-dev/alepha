@@ -1,8 +1,10 @@
 import { Button, Textarea, UserAvatar } from "@alepha/ui";
-import { type ElementRef, LoreEditor } from "@lore/core/web";
 import { useAuth } from "alepha/react/auth";
 import { Send } from "lucide-react";
 import type { ClipboardEvent, ReactNode } from "react";
+
+import type { ElementRef } from "../element/elementRef.ts";
+import LoreEditor from "../element/LoreEditor.tsx";
 
 export interface DiscussionComposerProps {
   value: string;
@@ -56,8 +58,8 @@ export interface DiscussionComposerProps {
 }
 
 /**
- * The composer at the foot of a discussion, shared by a quest's and a
- * feedback item's: the viewer's avatar in the feed's gutter, the box, then a
+ * The composer at the foot of a discussion, shared by a quest's, a feedback
+ * item's and an error's (in core since #E185): the viewer's avatar in the feed's gutter, the box, then a
  * row with the caller's hint and actions and the submit button.
  *
  * It holds no state of its own: the draft, the post and any attachments are

@@ -2896,6 +2896,29 @@ export default {
   "errors.rail.openMonitor": "Open the monitor",
   "errors.trust.awaiting": "Awaiting trust",
   "errors.trust.onArrival": "Trusted on arrival",
+  "errors.thread.title": "Activity",
+  "errors.thread.formerMember": "A former member",
+  "errors.thread.event.first_reported": "First reported",
+  "errors.thread.event.trusted_on_arrival": "Trusted on arrival",
+  "errors.thread.event.trusted": "trusted this error",
+  "errors.thread.event.untrusted": "withdrew the trust",
+  "errors.thread.event.resolved": "resolved this error",
+  "errors.thread.event.forwarded": "forwarded this error to a new quest",
+  "errors.thread.event.linked": "linked this error to a quest",
+  "errors.thread.event.handed_back":
+    "Lore reopened this error: its quest was deleted",
+  "errors.thread.event.run_resolved": "Lore resolved this error: a run passed",
+  "errors.thread.event.run_reopened": "Lore reopened this error: a run failed",
+  "errors.thread.event.monitor_resolved":
+    "Lore resolved this error: the monitor recovered",
+  "errors.thread.event.monitor_reopened":
+    "Lore reopened this error: a new outage started",
+  "errors.thread.untrusted": "No agent reads this error yet",
+  "errors.thread.placeholder": "Write a comment",
+  "errors.thread.submit": "Comment",
+  "errors.thread.delete": "Delete comment",
+  "errors.thread.deleteConfirm": "Delete this comment?",
+  "errors.thread.toast.deleted": "Comment deleted",
 
   "sigils.token.title":
     "Copy this token now: it is stored hashed and will never be shown again. Set it as SIGIL_KEY in the app, which is the only variable an app needs. Add SIGIL_SINK pointing at this instance if it is not the app's default sink.",

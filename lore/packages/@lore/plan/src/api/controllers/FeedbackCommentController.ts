@@ -2,6 +2,7 @@ import {
   BoundParameters,
   CommentService,
   LoreAudits,
+  MentionNotifier,
   ProjectSecurityService,
 } from "@lore/core/api";
 import {
@@ -33,7 +34,6 @@ import { feedback } from "../entities/feedback.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
-import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { WorkEventSources } from "../services/WorkEventSources.ts";
 

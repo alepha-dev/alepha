@@ -1,8 +1,9 @@
 import {
-  $ownsProject,
   BoundParameters,
   CommentService,
   LoreAudits,
+  MentionNotifier,
+  $ownsProject,
 } from "@lore/core/api";
 import {
   type Comment,
@@ -28,7 +29,6 @@ import {
 import { type Quest, quests } from "../entities/quests.ts";
 import { questCommentResourceSchema } from "../schemas/questCommentResourceSchema.ts";
 import { QUEST_NEEDS_ANSWER_TAG } from "../schemas/questPresets.ts";
-import { MentionNotifier } from "../services/MentionNotifier.ts";
 import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { WorkFileAccess } from "../services/WorkFileAccess.ts";
 

@@ -84,6 +84,7 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 - **One machine mark**: `source` (`commentSourceSchema`, `{ kind: "mcp" | "cli", client? }`). Absent means a person typed it.
 - **A subject's events are not comments**: a triage or history vocabulary stays in its package, and its page merges the two reads.
 - **Project merge**: `CoreProjectMerge` moves the rows by `projectId`; Plan's `WorkProjectMerge` rewrites the `[[#Q12]]` references of every body, whatever the subject.
+- **What every thread shares is core's too**: `MentionNotifier` (`@name` to a member's inbox, with its rules in its class comment), `components/shared/element/commentReferences.ts` (`#Q12` and `@member` in a body, and the stretches neither is expanded in, read by the web and by the notifier), and the `DiscussionComment` card and `DiscussionComposer` every feed draws. ⚠️ A `MentionSubject`'s `title` is never text the subject did not write itself: an error's is its kind ("Browser error"), since its `name` and `message` come from an application's runtime and would ride into an inbox and an e-mail.
 
 ## Hosts (#E166, folio #F1537)
 

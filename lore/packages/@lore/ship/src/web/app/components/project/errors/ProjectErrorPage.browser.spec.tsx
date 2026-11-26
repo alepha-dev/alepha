@@ -1,6 +1,11 @@
 import { DialogProvider, Toaster } from "@alepha/ui";
 import { projectFixture } from "@lore/core/testing";
-import { currentProjectAtom, I18n, StackTraceParser } from "@lore/core/web";
+import {
+  currentProjectAtom,
+  ElementReferenceRegistry,
+  I18n,
+  StackTraceParser,
+} from "@lore/core/web";
 import {
   cleanup,
   fireEvent,
@@ -191,6 +196,9 @@ describe("ProjectErrorPage", () => {
     // The stack viewer's parser: injected by a hook at render, so it has to
     // exist before the container locks.
     alepha.inject(StackTraceParser);
+    // The thread's editor and viewer resolve `[[...]]` references through
+    // it, from a hook at render too.
+    alepha.inject(ElementReferenceRegistry);
     await alepha.start();
     await alepha.inject(I18nProvider).setLang("en");
     alepha.store.set(
@@ -210,6 +218,10 @@ describe("ProjectErrorPage", () => {
         total: 0,
       },
       countOpenProjectErrors: { count: 3 },
+      // The thread under the stack: its own spec is
+      // `ProjectErrorThread.browser.spec.tsx`.
+      listProjectErrorThread: { entries: [] },
+      getProjectUsers: [],
       forwardProjectErrorToQuest: { questId: 900, questShortId: 12 },
       ...options.responses,
     };

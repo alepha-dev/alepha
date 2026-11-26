@@ -174,6 +174,7 @@ Minted from one instance's Settings tab at `/:projectSlug/apps/:app/:env/setting
 - **An event is written after the status change, best effort** (`ProjectErrorThread.record`): never a refused verb, never on the ingest path, and it stores a kind and ids, never the error's text.
 - **Every delete of an error removes its comments by hand** (`ProjectErrorThread.deleteFor`: the single delete, the bulk one and the hourly purge). The events cascade with the row.
 - **`project_errors` is a cascade parent** of `project_error_events`: never rebuild it.
+- **The page's Activity block** (`ProjectErrorThread` and its parts) draws the thread as one timeline, oldest first, between two entries read from the row (first reported, trusted on arrival), with core's composer under it and, on an open error nobody trusted, the notice "No agent reads this error yet" with its Trust button. `@name` in a comment reaches that member through core's `MentionNotifier`, naming the error `Error 42` and its kind, never its text.
 - **Lore reopens run and uptime errors, never an app's.** Only an `open` row is resolved by a pass or a recovery, only a `resolved` row is reopened by a failure or an outage, and a `quest:<id>` status is never written over.
 
 > ⚠️ **`name`, `message`, `stack`, `sourceUrl` on an error are 100% attacker-controlled** and are shown to the project owner — the highest-value target. Render as escaped plain text only. Never markdown, never `dangerouslySetInnerHTML`.

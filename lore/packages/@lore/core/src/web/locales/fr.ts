@@ -2906,6 +2906,32 @@ export default {
   "errors.rail.openMonitor": "Ouvrir le moniteur",
   "errors.trust.awaiting": "En attente de confiance",
   "errors.trust.onArrival": "De confiance dès l'arrivée",
+  "errors.thread.title": "Activité",
+  "errors.thread.formerMember": "Un ancien membre",
+  "errors.thread.event.first_reported": "Premier signalement",
+  "errors.thread.event.trusted_on_arrival": "De confiance dès l'arrivée",
+  "errors.thread.event.trusted": "a fait confiance à cette erreur",
+  "errors.thread.event.untrusted": "a retiré la confiance",
+  "errors.thread.event.resolved": "a résolu cette erreur",
+  "errors.thread.event.forwarded":
+    "a transmis cette erreur à une nouvelle quête",
+  "errors.thread.event.linked": "a lié cette erreur à une quête",
+  "errors.thread.event.handed_back":
+    "Lore a rouvert cette erreur : sa quête a été supprimée",
+  "errors.thread.event.run_resolved":
+    "Lore a résolu cette erreur : une exécution a réussi",
+  "errors.thread.event.run_reopened":
+    "Lore a rouvert cette erreur : une exécution a échoué",
+  "errors.thread.event.monitor_resolved":
+    "Lore a résolu cette erreur : le moniteur est rétabli",
+  "errors.thread.event.monitor_reopened":
+    "Lore a rouvert cette erreur : une nouvelle panne a commencé",
+  "errors.thread.untrusted": "Aucun agent ne lit encore cette erreur",
+  "errors.thread.placeholder": "Écrire un commentaire",
+  "errors.thread.submit": "Commenter",
+  "errors.thread.delete": "Supprimer le commentaire",
+  "errors.thread.deleteConfirm": "Supprimer ce commentaire ?",
+  "errors.thread.toast.deleted": "Commentaire supprimé",
 
   "sigils.token.title":
     "Copiez ce jeton maintenant : il est stocké haché et ne sera plus jamais affiché. Renseignez-le comme SIGIL_KEY dans l’application, seule variable nécessaire. Ajoutez SIGIL_SINK pointant vers cette instance si ce n’est pas le collecteur par défaut de l’application.",

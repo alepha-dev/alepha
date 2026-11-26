@@ -1,6 +1,6 @@
 import { describe, it } from "vitest";
 
-import { expandCommentReferences } from "../src/web/index.ts";
+import { expandCommentReferences } from "../src/web/app/components/shared/element/commentReferences.ts";
 
 /**
  * The two reference shapes that belong to comments alone, on their way into

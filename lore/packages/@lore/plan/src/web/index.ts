@@ -75,10 +75,6 @@ export const LorePlanWeb = $module({
 export { WorkRouter } from "./app/WorkRouter.ts";
 export { currentReleasesAtom } from "./app/atoms/currentReleasesAtom.ts";
 export { WorkAccountSections } from "./app/components/account/feedback/WorkAccountSections.ts";
-export {
-  expandCommentReferences,
-  outsideProtected,
-} from "./app/components/project/quest/commentReferences.ts";
 export { buildQuestDiscussionEntries } from "./app/components/project/quest/questDiscussionEntries.ts";
 export {
   ESTIMATE_PRESETS,
