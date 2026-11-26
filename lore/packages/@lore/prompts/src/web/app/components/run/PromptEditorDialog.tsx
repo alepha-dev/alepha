@@ -6,6 +6,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "@alepha/ui";
 import { Control } from "@alepha/ui/form";
 import {
@@ -18,9 +22,10 @@ import {
 } from "@lore/core/schemas";
 import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
-import { useAction, useClient } from "alepha/react";
+import { useAction, useAlepha, useClient } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { useEffect, useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 
@@ -51,6 +56,12 @@ const SLOTS = Array.from({ length: PROMPT_MAX_ARGS }, (_, index) => index);
  * the placeholders its args give, its source, and what a second run does
  * while one runs (#Q4354). A built-in is never edited here: its text and
  * args are Lore's.
+ *
+ * Three tabs inside one form and one Save (#Q4534): General (name, title,
+ * description, source, a second run), Args (the four slots) and Words (the
+ * text, with the legend of what the args give under it), so no tab scrolls at a laptop's height. Every panel
+ * stays mounted, and a field refused in a hidden tab brings that tab
+ * forward.
  */
 const PromptEditorDialog = (props: PromptEditorDialogProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -145,6 +156,31 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
     [props.open, props.prompt?.name, props.mode],
   );
   const values = useFormValues(form) as Record<string, unknown>;
+  const alepha = useAlepha();
+  const [tab, setTab] = useState<EditorTab>("general");
+  // Every opening starts on General: compared during render, the way React
+  // resets state on a prop change, rather than in an effect.
+  const [wasOpen, setWasOpen] = useState(props.open);
+  if (props.open !== wasOpen) {
+    setWasOpen(props.open);
+    if (props.open) setTab("general");
+  }
+  // A submit refused on a field in a hidden tab brings its tab forward:
+  // the first one in the tabs' order, so the reader meets the errors as the
+  // form reads. Only on a failed submit: fixing a field never moves the tab.
+  useEffect(
+    () =>
+      alepha.events.on("form:submit:error", (event) => {
+        if (event.id !== form.id) return;
+        const tabs = Object.keys(form.errors).map(TAB_OF);
+        if (tabs.length === 0 || tabs.includes(tab)) return;
+        const first = (["general", "args", "words"] as const).find((it) =>
+          tabs.includes(it),
+        );
+        if (first) setTab(first);
+      }),
+    [alepha, form, tab],
+  );
   const input = form.input as Record<string, never>;
   const busy = save.loading;
   const legend = [
@@ -174,91 +210,122 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
           </DialogDescription>
         </DialogHeader>
         <form {...form.props} className="flex flex-col gap-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Control
-              input={input.name}
-              label={tr("prompts.editor.name")}
-              description={tr("prompts.editor.name.description")}
-              disabled={busy || edit}
-            />
-            <Control
-              input={input.title}
-              label={tr("prompts.editor.title")}
-              disabled={busy}
-            />
-          </div>
-          <Control
-            input={input.description}
-            label={tr("prompts.editor.descriptionField")}
-            disabled={busy}
-          />
-          <Control
-            input={input.source}
-            label={tr("prompts.source")}
-            description={tr("prompts.source.description")}
-            select
-            items={[
-              { value: "none", label: tr("prompts.source.none") },
-              { value: "read", label: tr("prompts.source.read") },
-              { value: "write", label: tr("prompts.source.write") },
-            ]}
-            disabled={busy}
-          />
-          <Control
-            input={input.concurrency}
-            label={tr("prompts.concurrency")}
-            description={tr("prompts.concurrency.description")}
-            select
-            items={[
-              {
-                value: "queue",
-                label: tr("prompts.concurrency.queue"),
-              },
-              {
-                value: "unique",
-                label: tr("prompts.concurrency.unique"),
-              },
-            ]}
-            disabled={busy}
-          />
-          {SLOTS.map((slot) => (
-            <div key={slot} className="grid gap-3 sm:grid-cols-3">
+          <Tabs value={tab} onValueChange={(next) => setTab(next as EditorTab)}>
+            <TabsList data-testid="prompt-editor-tabs">
+              <TabsTrigger value="general" data-testid="prompt-tab-general">
+                {tr("prompts.editor.tab.general")}
+              </TabsTrigger>
+              <TabsTrigger value="args" data-testid="prompt-tab-args">
+                {tr("prompts.editor.tab.args")}
+              </TabsTrigger>
+              <TabsTrigger value="words" data-testid="prompt-tab-words">
+                {tr("prompts.editor.tab.words")}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent
+              value="general"
+              keepMounted
+              className="flex flex-col gap-3"
+            >
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Control
+                  input={input.name}
+                  label={tr("prompts.editor.name")}
+                  description={tr("prompts.editor.name.description")}
+                  disabled={busy || edit}
+                />
+                <Control
+                  input={input.title}
+                  label={tr("prompts.editor.title")}
+                  disabled={busy}
+                />
+              </div>
               <Control
-                input={input[`arg${slot}_name`]}
-                label={tr("prompts.editor.argName", {
-                  args: [String(slot + 1)],
-                })}
+                input={input.description}
+                label={tr("prompts.editor.descriptionField")}
                 disabled={busy}
               />
               <Control
-                input={input[`arg${slot}_type`]}
-                label={tr("prompts.editor.argType")}
+                input={input.source}
+                label={tr("prompts.source")}
+                description={tr("prompts.source.description")}
                 select
-                items={PROMPT_ARG_TYPES.map((type) => ({
-                  value: type,
-                  label: tr(`prompts.arg.${type}`),
-                }))}
+                items={[
+                  { value: "none", label: tr("prompts.source.none") },
+                  { value: "read", label: tr("prompts.source.read") },
+                  { value: "write", label: tr("prompts.source.write") },
+                ]}
                 disabled={busy}
               />
               <Control
-                input={input[`arg${slot}_accepts`]}
-                label={tr("prompts.editor.argAccepts")}
+                input={input.concurrency}
+                label={tr("prompts.concurrency")}
+                description={tr("prompts.concurrency.description")}
+                select
+                items={[
+                  {
+                    value: "queue",
+                    label: tr("prompts.concurrency.queue"),
+                  },
+                  {
+                    value: "unique",
+                    label: tr("prompts.concurrency.unique"),
+                  },
+                ]}
                 disabled={busy}
               />
-            </div>
-          ))}
-          <Control
-            input={input.text}
-            label={tr("prompts.editor.text")}
-            area
-            disabled={busy}
-          />
-          <p
-            className="text-muted-foreground text-xs"
-            data-testid="prompt-legend"
-          >
-            {tr("prompts.editor.legend", { args: [legend.join(" ")] })}
-          </p>
+            </TabsContent>
+            <TabsContent
+              value="args"
+              keepMounted
+              className="flex flex-col gap-3"
+            >
+              {SLOTS.map((slot) => (
+                <div key={slot} className="grid gap-3 sm:grid-cols-3">
+                  <Control
+                    input={input[`arg${slot}_name`]}
+                    label={tr("prompts.editor.argName", {
+                      args: [String(slot + 1)],
+                    })}
+                    disabled={busy}
+                  />
+                  <Control
+                    input={input[`arg${slot}_type`]}
+                    label={tr("prompts.editor.argType")}
+                    select
+                    items={PROMPT_ARG_TYPES.map((type) => ({
+                      value: type,
+                      label: tr(`prompts.arg.${type}`),
+                    }))}
+                    disabled={busy}
+                  />
+                  <Control
+                    input={input[`arg${slot}_accepts`]}
+                    label={tr("prompts.editor.argAccepts")}
+                    disabled={busy}
+                  />
+                </div>
+              ))}
+            </TabsContent>
+            <TabsContent
+              value="words"
+              keepMounted
+              className="flex flex-col gap-3"
+            >
+              <Control
+                input={input.text}
+                label={tr("prompts.editor.text")}
+                area
+                disabled={busy}
+              />
+              <p
+                className="text-muted-foreground text-xs"
+                data-testid="prompt-legend"
+              >
+                {tr("prompts.editor.legend", { args: [legend.join(" ")] })}
+              </p>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button
               type="button"
@@ -277,5 +344,18 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
     </Dialog>
   );
 };
+
+type EditorTab = "general" | "args" | "words";
+
+/**
+ * Which tab holds a field, by its JSON pointer (`/arg2_name`), so a refused
+ * field in a hidden tab brings its tab forward (#Q4534).
+ */
+const TAB_OF = (pointer: string): EditorTab =>
+  pointer.startsWith("/arg")
+    ? "args"
+    : pointer === "/text"
+      ? "words"
+      : "general";
 
 export default PromptEditorDialog;
