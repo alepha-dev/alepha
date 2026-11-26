@@ -60,7 +60,6 @@ export class ProjectShellRegistry {
   protected readonly crumbs: ProjectCrumbContribution[] = [];
   protected readonly asides: ProjectAsideContribution[] = [];
   protected readonly palette: ProjectPaletteContribution[] = [];
-  protected readonly panels: ProjectSettingsPanel[] = [];
 
   public registerNav(
     capability: CapabilityKey,
@@ -153,19 +152,6 @@ export class ProjectShellRegistry {
       );
     }
     section.tabs.push(tab);
-  }
-
-  /**
-   * A card a module adds to a section's page it does not own: Work's quest
-   * export on General.
-   */
-  public registerSettingsPanel(panel: ProjectSettingsPanel): void {
-    this.panels.push(panel);
-    this.panels.sort((a, b) => a.order - b.order);
-  }
-
-  public settingsPanels(section: string): ProjectSettingsPanel[] {
-    return this.panels.filter((it) => it.section === section);
   }
 
   /**
@@ -381,19 +367,6 @@ export interface ProjectCrumbContribution {
 export interface ProjectPaletteContribution {
   reads?: Atom<any>[];
   entries: (context: ProjectLinkContext) => ProjectNavEntry[];
-}
-
-/**
- * One card on a settings page, contributed by a module.
- */
-export interface ProjectSettingsPanel {
-  key: string;
-  /**
-   * The settings section whose page draws it (`general`).
-   */
-  section: string;
-  order: number;
-  component: ComponentType;
 }
 
 /**

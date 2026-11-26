@@ -94,7 +94,7 @@ Reaching the same end state from a session reused per worker took 2665ms against
 - `login-hydration.spec.ts` - `/auth/login` hydrates with no React #418, anonymous (light, dark, French, with `redirect` and `error`) and signed in (#Q2642)
 - `invitation.spec.ts` — owner invites → user accepts → joins project as a member (drives the email-link round-trip)
 - `protected-folio.spec.ts` — end-to-end encrypted folios (passphrase round-trip, wrong-passphrase rejection, no plaintext on the wire)
-- `quest-export.spec.ts` — Data settings page CSV export. Renamed from `quest-import-export.spec.ts` when quest import was deleted in epic #E48; it only ever held the export test
+- `quest-export.spec.ts` — the quest CSV export, on Settings ▸ Plan ▸ Quests (#Q4443). Renamed from `quest-import-export.spec.ts` when quest import was deleted in epic #E48; it only ever held the export test
 - `folio-workspace.spec.ts` — the whole folio surface (summary round-trip, inspector tabs, tree drag-move, find, focus mode, pane persistence, creating from the tree); `folios.spec.ts` was deleted with the directory table it drove
 - `project-wizard.spec.ts` — 3-step create wizard (renamed from `campaign-wizard.spec.ts`)
 - `members.spec.ts` — settings members list, identity hover-card, dead `/character` + `/roster` URLs 404

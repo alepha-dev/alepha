@@ -105,7 +105,6 @@ given that right in the **Ranks** tab ("Turn capabilities on and off").
   in.
 - **Repository**: where the project's commits live. Once it is set, the commits
   recorded on a quest become links.
-- **Export quests** downloads every quest as a CSV file.
 - **Archive project** hides it from the switcher, search and the home page
   without deleting anything, and makes it read-only: everything in it can be
   read, nothing can be changed, from the browser, the command line or an

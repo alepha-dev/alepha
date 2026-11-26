@@ -63,7 +63,8 @@ With **Timer**, it records how long it actually took, from a timer you start
 and pause on the quest. With **Reminders**, whoever holds the quest can ask for
 a daily, weekly or monthly nudge, which Lore sends at the top of the hour it
 falls due (see [Quest reminders](/lore/docs/project-notifications#quest-reminders)).
-All three are switched in **Settings ▸ Plan ▸ Quests**.
+All three are switched in **Settings ▸ Plan ▸ Quests**, which also holds
+**Export quests**: it downloads every quest as a CSV file.
 
 ### Areas
 
