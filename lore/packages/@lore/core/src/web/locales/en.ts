@@ -3245,6 +3245,8 @@ export default {
     "Rate limits and token counts the agent CLI reports: Download log has them all.",
   "jobs.transcript.truncated":
     "The log was cut: the transcript stops where it does.",
+  "jobs.transcript.truncatedRunning":
+    "The log is full: the job is still running, and what it does from here is not shown.",
   "jobs.field.reply": "Final reply",
   "jobs.field.replyCut": "The reply was cut at 32 KB: the log has the rest.",
   "jobs.field.agent": "Agent",

@@ -3258,6 +3258,8 @@ export default {
     "Limites de débit et comptes de jetons de l'outil de l'agent : Télécharger le journal les a tous.",
   "jobs.transcript.truncated":
     "Le journal a été coupé : la transcription s'arrête là.",
+  "jobs.transcript.truncatedRunning":
+    "Le journal est plein : la tâche tourne toujours, et ce qu'elle fait désormais n'est pas affiché.",
   "jobs.field.reply": "Réponse finale",
   "jobs.field.replyCut":
     "La réponse a été coupée à 32 Ko : le journal a la suite.",

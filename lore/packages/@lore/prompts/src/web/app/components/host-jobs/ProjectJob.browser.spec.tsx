@@ -436,6 +436,26 @@ describe("ProjectJob", () => {
     await waitFor(() => expect(world.calls).toContain("cancelJob"));
   });
 
+  it("says a running job's log is full and the job still runs, and only that its log was cut once it ended (#Q4455)", async ({
+    expect,
+  }) => {
+    world.jobs = [job({ logTruncated: true })];
+    world.logs = {
+      [RUNNING]: { stdout: "cloning\n", stderr: "", live: true },
+    };
+    await show(RUNNING);
+    const full = await screen.findByTestId("job-log-full");
+    expect(full.textContent).toContain("the job is still running");
+
+    cleanup();
+    await alepha?.stop();
+    world.jobs = [job({ id: DONE, status: "succeeded", logTruncated: true })];
+    world.logs = { [DONE]: { stdout: "cloning\n", stderr: "", live: false } };
+    await show(DONE);
+    await screen.findByText(/The log was cut/);
+    expect(screen.queryByTestId("job-log-full")).toBeNull();
+  });
+
   it("offers Copy prompt for a job with a prompt, and no Cancel once it has ended (#Q4448)", async ({
     expect,
   }) => {
