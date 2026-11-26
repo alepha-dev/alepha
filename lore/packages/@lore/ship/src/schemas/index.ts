@@ -14,6 +14,7 @@ export { appSecrets } from "../api/entities/appSecrets.ts";
 export { artifacts } from "../api/entities/artifacts.ts";
 export { commitQuestSets } from "../api/entities/commitQuestSets.ts";
 export { projectErrors } from "../api/entities/projectErrors.ts";
+export { projectErrorEvents } from "../api/entities/projectErrorEvents.ts";
 export { deployments } from "../api/entities/deployments.ts";
 
 export { registryCredentials } from "../api/entities/registryCredentials.ts";

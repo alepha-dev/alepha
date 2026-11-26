@@ -12,6 +12,7 @@ import { InsightsController } from "./controllers/InsightsController.ts";
 import { LiveQuestController } from "./controllers/LiveQuestController.ts";
 import { MonitorController } from "./controllers/MonitorController.ts";
 import { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
+import { ProjectErrorThreadController } from "./controllers/ProjectErrorThreadController.ts";
 import { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
 import { SigilAnalyticsController } from "./controllers/SigilAnalyticsController.ts";
 import { SigilController } from "./controllers/SigilController.ts";
@@ -65,6 +66,7 @@ import { OpenErrorsMetric } from "./services/OpenErrorsMetric.ts";
 import { ProjectDeliveryReportService } from "./services/ProjectDeliveryReportService.ts";
 import { ProjectErrorQuestHandBack } from "./services/ProjectErrorQuestHandBack.ts";
 import { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
+import { ProjectErrorThread } from "./services/ProjectErrorThread.ts";
 import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
@@ -121,6 +123,9 @@ export const LoreShipApi = $module({
     DeployReportsSummary,
     DeployDashboardMetrics,
     ProjectErrorQuestHandBack,
+    // Registers the `error` subject on core's comments, and holds the event
+    // table (#E185): listed so both exist whatever is first asked.
+    ProjectErrorThread,
     DeployDashboard,
     // Registers its project merge step (#Q2782); nothing injects it.
     DeployProjectMerge,
@@ -241,6 +246,7 @@ export const LoreShipApi = $module({
     InsightsController,
     MonitorController,
     ProjectErrorController,
+    ProjectErrorThreadController,
   ],
 });
 
@@ -251,6 +257,8 @@ export { AppSecretController } from "./controllers/AppSecretController.ts";
 export { ArtifactController } from "./controllers/ArtifactController.ts";
 export { BackupController } from "./controllers/BackupController.ts";
 export { ProjectErrorController } from "./controllers/ProjectErrorController.ts";
+export { ProjectErrorThreadController } from "./controllers/ProjectErrorThreadController.ts";
+export { ProjectErrorThread } from "./services/ProjectErrorThread.ts";
 export { DeployController } from "./controllers/DeployController.ts";
 
 export { InsightsController } from "./controllers/InsightsController.ts";

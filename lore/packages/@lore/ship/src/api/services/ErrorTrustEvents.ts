@@ -6,6 +6,7 @@ import { $repository } from "alepha/orm";
 import { ConflictError } from "alepha/server";
 
 import { type ProjectError, projectErrors } from "../entities/projectErrors.ts";
+import { ProjectErrorThread } from "./ProjectErrorThread.ts";
 import { ShipProjectEvents } from "./ShipProjectEvents.ts";
 
 /**
@@ -31,6 +32,7 @@ export class ErrorTrustEvents {
   protected readonly errors = $inject(SourceRepository.of(projectErrors));
   protected readonly events = $inject(ProjectEvents);
   protected readonly database = $inject(LoreDatabase);
+  protected readonly thread = $inject(ProjectErrorThread);
 
   /**
    * A member trusts a group, and `error.trusted` is recorded with it. The
@@ -43,7 +45,7 @@ export class ErrorTrustEvents {
   ): Promise<ProjectError> {
     const project = await this.projects.getById(error.projectId);
     try {
-      return await this.errors.sourceUpdate(
+      const trusted = await this.errors.sourceUpdate(
         { id: error.id, trustedAt: { isNull: true } },
         { trustedAt, trustedBy },
         {
@@ -55,6 +57,10 @@ export class ErrorTrustEvents {
           fields: this.fields(project, error, trustedBy),
         },
       );
+      // The line of the error's own thread (#E185), after the trust: the
+      // member who lost the race below trusted nothing, and leaves none.
+      await this.thread.record(error.id, "trusted", { actorId: trustedBy });
+      return trusted;
     } catch (failure) {
       // Two members trusting at once: the other one won, and the group is
       // trusted, which is what this one asked for. Anything else stays a

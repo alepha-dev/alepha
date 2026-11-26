@@ -1,13 +1,10 @@
 import {
   ResourceRegistry,
   $ownsProject,
-  JobKeyService,
-  McpProjectScope,
   ProjectSecurityService,
 } from "@lore/core/api";
 import type { Project } from "@lore/core/schemas";
 import { $inject, z } from "alepha";
-import { RankService } from "alepha/api/organizations";
 import { users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbEntityNotFoundError } from "alepha/orm";
@@ -15,7 +12,6 @@ import { OwnedResourceProvider, type UserAccountToken } from "alepha/security";
 import {
   $action,
   BadRequestError,
-  ForbiddenError,
   NotFoundError,
   okSchema,
 } from "alepha/server";
@@ -45,8 +41,10 @@ import {
 } from "../schemas/projectErrorTrendSchema.ts";
 import { ErrorSeriesWindow } from "../services/ErrorSeriesWindow.ts";
 import { ErrorTrustEvents } from "../services/ErrorTrustEvents.ts";
+import { ProjectErrorAccess } from "../services/ProjectErrorAccess.ts";
 import { ProjectErrorKinds } from "../services/ProjectErrorKinds.ts";
 import { ProjectErrorRuleService } from "../services/ProjectErrorRuleService.ts";
+import { ProjectErrorThread } from "../services/ProjectErrorThread.ts";
 
 /**
  * Owner-facing triage surface for errors — the deduplicated uncaught
@@ -79,8 +77,8 @@ export class ProjectErrorController {
   protected resources = $inject(ResourceRegistry);
   protected ruleService = $inject(ProjectErrorRuleService);
   protected trustEvents = $inject(ErrorTrustEvents);
-  protected jobKeys = $inject(JobKeyService);
-  protected scope = $inject(McpProjectScope);
+  protected access = $inject(ProjectErrorAccess);
+  protected thread = $inject(ProjectErrorThread);
   protected users = $repository(users);
   protected dateTime = $inject(DateTimeProvider);
   protected errorGroups = $repository(sigilErrorGroups);
@@ -94,7 +92,6 @@ export class ProjectErrorController {
    */
   protected readonly TREND_DAYS = 30;
   protected owned = $inject(OwnedResourceProvider);
-  protected ranks = $inject(RankService);
 
   /**
    * List errors for a project, newest-spread first (`count` desc).
@@ -367,6 +364,14 @@ export class ProjectErrorController {
       await this.currentProjectErrors.updateById(projectError.id, {
         status: "resolved",
       });
+      // After the change, never before it (#E185): see
+      // `ProjectErrorThread.record`. Resolving a resolved error changed
+      // nothing, and leaves no line.
+      if (projectError.status !== "resolved") {
+        await this.thread.record(projectError.id, "resolved", {
+          actorId: user.id,
+        });
+      }
       return { ok: true };
     },
   });
@@ -461,7 +466,7 @@ export class ProjectErrorController {
       }),
       response: z.object({ ok: z.boolean() }),
     },
-    handler: async ({ params }) => {
+    handler: async ({ params, user }) => {
       const projectError = await this.loadProjectError(
         params.projectId,
         params.errorId,
@@ -470,6 +475,9 @@ export class ProjectErrorController {
         await this.currentProjectErrors.updateById(projectError.id, {
           trustedAt: null,
           trustedBy: null,
+        });
+        await this.thread.record(projectError.id, "untrusted", {
+          actorId: user.id,
         });
       }
       return { ok: true };
@@ -537,6 +545,7 @@ export class ProjectErrorController {
           params.projectId,
           projectError,
           body.questShortId,
+          user.id,
         );
       }
 
@@ -612,6 +621,10 @@ export class ProjectErrorController {
         await questKind.discard!(quest.id);
         throw new BadRequestError("Error already forwarded to a quest");
       }
+      await this.thread.record(projectError.id, "forwarded", {
+        actorId: user.id,
+        questId: quest.id,
+      });
 
       return { questId: quest.id, questShortId: quest.shortId };
     },
@@ -627,6 +640,7 @@ export class ProjectErrorController {
     projectId: number,
     projectError: ProjectError,
     questShortId: number,
+    actorId: string,
   ): Promise<{ questId: number; questShortId: number }> {
     const questKind = this.resources.require(
       "quest",
@@ -650,6 +664,10 @@ export class ProjectErrorController {
       await questKind.disown!(quest.id);
       throw new BadRequestError("Error already forwarded to a quest");
     }
+    await this.thread.record(projectError.id, "linked", {
+      actorId,
+      questId: quest.id,
+    });
     return { questId: quest.id, questShortId: quest.shortId };
   }
 
@@ -679,6 +697,8 @@ export class ProjectErrorController {
         params.errorId,
       );
       await this.currentProjectErrors.deleteById(projectError.id);
+      // Its events cascade; its comments are core's rows, removed by hand.
+      await this.thread.deleteFor([projectError.id]);
       return { ok: true };
     },
   });
@@ -719,6 +739,7 @@ export class ProjectErrorController {
       for (const row of rows) {
         await this.currentProjectErrors.deleteById(row.id);
       }
+      await this.thread.deleteFor(rows.map((row) => row.id));
       return { deleted: rows.length };
     },
   });
@@ -812,22 +833,10 @@ export class ProjectErrorController {
   });
 
   /**
-   * Load an error by id, asserting it belongs to the expected project.
-   * Returns 404 otherwise — never leaks cross-project rows.
-   *
-   * The project scope is a column rather than a join: an error carries its own
-   * `projectId`, so cross-project leakage is one WHERE clause instead of a
-   * two-step lookup that could be got wrong — and it still answers for an error
-   * whose sigil has since been deleted.
+   * The error of this project, or a 404: `ProjectErrorAccess.load`.
    */
-  protected async loadProjectError(projectId: number, errorId: number) {
-    const projectError = await this.currentProjectErrors.findOne({
-      where: { id: { eq: errorId }, projectId: { eq: projectId } },
-    });
-    if (!projectError) {
-      throw new NotFoundError("Error not found");
-    }
-    return projectError;
+  protected loadProjectError(projectId: number, errorId: number) {
+    return this.access.load(projectId, errorId);
   }
 
   /**
@@ -904,13 +913,8 @@ export class ProjectErrorController {
     user: UserAccountToken,
   ): Promise<ProjectErrorDetail["quest"]> {
     if (!row.status.startsWith(QUEST_STATUS_PREFIX)) return undefined;
-    const kind = this.resources.get("quest");
-    if (!kind?.describe) return undefined;
-    const capabilities = await this.security.capabilitiesOf(row.projectId);
-    if (!capabilities.plan) return undefined;
-    const project = this.owned.authority<Project>();
     if (
-      !(await this.ranks.can(project.organizationId!, kind.permission, user))
+      !(await this.access.questsReadable(this.owned.authority<Project>(), user))
     ) {
       return undefined;
     }
@@ -980,32 +984,21 @@ export class ProjectErrorController {
   }
 
   /**
-   * Whether a model is reading (#Q4233, #Q4235): an agent job's key, or a
-   * run pinned to one project, which is what a chat agent answering in a
-   * room runs under (`McpProjectScope.pinned`). A member's own MCP client
-   * is neither, and reads the inbox as the page does.
+   * Whether a model is reading: `ProjectErrorAccess.isAgent`.
    */
-  protected async isAgent(
-    user: UserAccountToken | undefined,
-  ): Promise<boolean> {
-    if (this.scope.pinnedProject() !== undefined) return true;
-    return Boolean(await this.jobKeys.scopeOf(user));
+  protected isAgent(user: UserAccountToken | undefined): Promise<boolean> {
+    return this.access.isAgent(user);
   }
 
   /**
-   * An agent acts on a trusted group only (#Q4233): forwarding copies the
-   * group's text into a quest, and resolving needs it read.
+   * An agent acts on a trusted group only:
+   * `ProjectErrorAccess.assertAgentMayRead`.
    */
-  protected async assertAgentMayRead(
+  protected assertAgentMayRead(
     row: ProjectError,
     user: UserAccountToken | undefined,
   ): Promise<void> {
-    if (row.trustedAt) return;
-    if (await this.isAgent(user)) {
-      throw new ForbiddenError(
-        `Error ${row.id} is not trusted yet: a member reads and trusts it before an agent acts on it`,
-      );
-    }
+    return this.access.assertAgentMayRead(row, user);
   }
 
   /**
