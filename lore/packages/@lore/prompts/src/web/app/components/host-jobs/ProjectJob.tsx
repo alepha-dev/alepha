@@ -1,4 +1,11 @@
-import { Button, useToast } from "@alepha/ui";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  useToast,
+} from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import type { HostJobController } from "@lore/core/api";
 import {
@@ -10,7 +17,14 @@ import { type I18n, currentProjectAtom } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
-import { Copy, Download, Play, RotateCcw, Square } from "lucide-react";
+import {
+  Copy,
+  Download,
+  MoreVertical,
+  Play,
+  RotateCcw,
+  Square,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
@@ -30,8 +44,9 @@ type TabKey = "transcript" | "prompt";
  * titled by its prompt and args in the aside, and two tabs, kept in the
  * URL: Transcript (the reply, then what the agent said and did) and the
  * Prompt it received; the raw log is the toolbar's download since #Q4403,
- * and the transcript is parsed from it. The toolbar downloads the log, copies the
- * prompt, and runs it again or cancels it. No rail of other jobs: the list
+ * and the transcript is parsed from it. The toolbar runs the job again, and
+ * its "…" menu downloads the log, copies the prompt or cancels a job in
+ * flight (#Q4448). No rail of other jobs: the list
  * is the Jobs tab of Settings > Prompts, which the crumb leads back to.
  *
  * The log is read by byte offsets: each poll asks for what lies past what
@@ -179,60 +194,79 @@ const ProjectJob = (props: ProjectJobProps) => {
       ...(continued ? { continue: row.id } : {}),
     });
 
+  // Download log, Copy prompt and Cancel live in one "…" menu after the
+  // buttons (#Q4448), Cancel last and in the danger intent: it looked like the
+  // two harmless actions beside it when all three were buttons. Run again and
+  // Start fresh stay buttons, Run again being the page's primary action.
   const actions = row && (
     <>
-      <Button variant="outlined" size="lg" onClick={download}>
-        <Download className="size-4" />
-        {tr("jobs.downloadLog")}
-      </Button>
-      {row.input.prompt && (
-        <Button
-          variant="outlined"
-          size="lg"
-          onClick={() => void copyPrompt.run()}
-        >
-          <Copy className="size-4" />
-          {tr("jobs.copyPrompt")}
-        </Button>
-      )}
-      {inFlight ? (
-        <Button
-          variant="outlined"
-          size="lg"
-          disabled={cancel.loading}
-          onClick={() => void cancel.run()}
-          data-testid="job-cancel"
-        >
-          <Square className="size-4" />
-          {tr("jobs.cancel")}
-        </Button>
-      ) : (
-        prompt && (
-          <>
-            {unfinished && (
-              <Button
-                variant="outlined"
-                size="lg"
-                disabled={run.loading}
-                onClick={() => void runAgain(false)}
-                data-testid="job-start-fresh"
-              >
-                <RotateCcw className="size-4" />
-                {tr("jobs.startFresh")}
-              </Button>
-            )}
+      {!inFlight && prompt && (
+        <>
+          {unfinished && (
             <Button
+              variant="outlined"
               size="lg"
               disabled={run.loading}
-              onClick={() => void runAgain(unfinished)}
-              data-testid="job-run-again"
+              onClick={() => void runAgain(false)}
+              data-testid="job-start-fresh"
             >
-              <Play className="size-4" />
-              {tr("jobs.runAgain")}
+              <RotateCcw className="size-4" />
+              {tr("jobs.startFresh")}
             </Button>
-          </>
-        )
+          )}
+          <Button
+            size="lg"
+            disabled={run.loading}
+            onClick={() => void runAgain(unfinished)}
+            data-testid="job-run-again"
+          >
+            <Play className="size-4" />
+            {tr("jobs.runAgain")}
+          </Button>
+        </>
       )}
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="outlined"
+              size="icon-lg"
+              aria-label={tr("jobs.more")}
+              title={tr("jobs.more")}
+              data-testid="job-more"
+            />
+          }
+        >
+          <MoreVertical className="size-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={download} data-testid="job-download-log">
+            <Download className="size-4" />
+            {tr("jobs.downloadLog")}
+          </DropdownMenuItem>
+          {row.input.prompt && (
+            <DropdownMenuItem
+              onClick={() => void copyPrompt.run()}
+              data-testid="job-copy-prompt"
+            >
+              <Copy className="size-4" />
+              {tr("jobs.copyPrompt")}
+            </DropdownMenuItem>
+          )}
+          {inFlight && (
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={cancel.loading}
+              onClick={() => void cancel.run()}
+              data-testid="job-cancel"
+            >
+              <Square className="size-4" />
+              {tr("jobs.cancel")}
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
     </>
   );
 

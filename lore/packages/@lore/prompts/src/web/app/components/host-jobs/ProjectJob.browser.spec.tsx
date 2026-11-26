@@ -44,7 +44,9 @@ const job = (over: Partial<HostJobResource>): HostJobResource =>
 const world: {
   jobs: HostJobResource[];
   logs: Record<string, { stdout: string; stderr: string; live: boolean }>;
-} = { jobs: [], logs: {} };
+  /** Every action the page called, by name. */
+  calls: string[];
+} = { jobs: [], logs: {}, calls: [] };
 
 class FakeLinks extends LinkProvider {
   override client(): any {
@@ -67,9 +69,15 @@ class FakeLinks extends LinkProvider {
       {},
       {
         get: (_target, name: string) =>
-          Object.assign(async (input: unknown) => answers[name]?.(input), {
-            can: () => true,
-          }),
+          Object.assign(
+            async (input: unknown) => {
+              world.calls.push(name);
+              return answers[name]?.(input);
+            },
+            {
+              can: () => true,
+            },
+          ),
       },
     );
   }
@@ -387,7 +395,7 @@ describe("ProjectJob", () => {
     expect(failure.textContent).toContain("The agent exited with status 1");
   });
 
-  it("animates a running job, offers Cancel, and keeps the whole log one click away in Download log (#Q4403)", async ({
+  it("animates a running job, and offers Download log and Cancel, last and destructive, in its … menu (#Q4403, #Q4448)", async ({
     expect,
   }) => {
     world.jobs = [job({})];
@@ -405,9 +413,49 @@ describe("ProjectJob", () => {
     expect(badge.querySelector("svg")?.getAttribute("class")).toContain(
       "animate-spin",
     );
-    expect(screen.getByTestId("job-cancel")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Download log/ })).toBeTruthy();
+    // The three actions are not buttons of the toolbar any more.
+    expect(screen.queryByRole("button", { name: /Download log/ })).toBeNull();
+    expect(screen.queryByTestId("job-cancel")).toBeNull();
+    const more = screen.getByTestId("job-more");
+    expect(more.getAttribute("aria-label")).toBe("More actions");
+    fireEvent.click(more);
+    await screen.findAllByRole("menuitem");
+    const items = screen.getAllByRole("menuitem");
+    // No Copy prompt: this job carries no prompt.
+    expect(items.map((it) => it.textContent)).toEqual([
+      "Download log",
+      "Cancel",
+    ]);
+    const cancel = screen.getByTestId("job-cancel");
+    expect(cancel.getAttribute("data-variant")).toBe("destructive");
     expect(screen.queryByTestId("job-log")).toBeNull();
+
+    // The menu item still cancels the job.
+    world.calls = [];
+    fireEvent.click(cancel);
+    await waitFor(() => expect(world.calls).toContain("cancelJob"));
+  });
+
+  it("offers Copy prompt for a job with a prompt, and no Cancel once it has ended (#Q4448)", async ({
+    expect,
+  }) => {
+    world.jobs = [
+      job({
+        id: DONE,
+        status: "succeeded",
+        exitCode: 0,
+        input: { agent: "claude", prompt: "Triage" } as never,
+      }),
+    ];
+    world.logs = { [DONE]: { stdout: "", stderr: "", live: false } };
+    await show(DONE);
+
+    fireEvent.click(await screen.findByTestId("job-more"));
+    await screen.findAllByRole("menuitem");
+    expect(screen.getAllByRole("menuitem").map((it) => it.textContent)).toEqual(
+      ["Download log", "Copy prompt"],
+    );
+    expect(screen.queryByTestId("job-cancel")).toBeNull();
   });
 
   it("opens the transcript for a stale ?tab=log, from when the page had a Raw log tab (#Q4403)", async ({

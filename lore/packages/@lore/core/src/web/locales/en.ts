@@ -3214,6 +3214,7 @@ export default {
   "jobs.tab.prompt": "Prompt",
   "jobs.downloadLog": "Download log",
   "jobs.copyPrompt": "Copy prompt",
+  "jobs.more": "More actions",
   "jobs.runAgain": "Run again",
   "jobs.startFresh": "Start fresh",
   "jobs.notFound": "This job does not exist, or you cannot see it.",

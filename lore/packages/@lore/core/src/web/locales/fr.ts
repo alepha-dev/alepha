@@ -3226,6 +3226,7 @@ export default {
   "jobs.tab.prompt": "Invite",
   "jobs.downloadLog": "Télécharger le journal",
   "jobs.copyPrompt": "Copier l'invite",
+  "jobs.more": "Autres actions",
   "jobs.runAgain": "Relancer",
   "jobs.startFresh": "Repartir de zéro",
   "jobs.notFound": "Cette tâche n'existe pas, ou vous ne pouvez pas la voir.",
