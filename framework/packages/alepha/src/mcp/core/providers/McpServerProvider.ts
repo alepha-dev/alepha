@@ -46,6 +46,7 @@ import {
 import { McpActionTool } from "../helpers/McpActionTool.ts";
 import { MCP_APP_MIME_TYPE, MCP_APPS_EXTENSION } from "../helpers/mcpApps.ts";
 import { McpElicitationSession } from "../helpers/McpElicitationSession.ts";
+import { McpToolView } from "../helpers/McpToolView.ts";
 import type {
   JsonRpcError,
   JsonRpcRequest,
@@ -119,6 +120,12 @@ export class McpServerProvider {
     ResourceTemplatePrimitive<any>
   >();
   protected readonly prompts = new Map<string, PromptPrimitive<any>>();
+
+  /**
+   * The views of `$tool({ ui: { view } })`, by their `ui://` URI: listed and
+   * read with the resources.
+   */
+  protected readonly views = new Map<string, McpToolView>();
 
   /**
    * Requests currently being handled, so `notifications/cancelled` can reach
@@ -388,9 +395,38 @@ export class McpServerProvider {
   public registerResource(resource: ResourcePrimitive): void {
     this.log.trace(`Registering MCP resource: ${resource.uri}`);
     this.assertUnregistered(this.resources, resource.uri, "resource");
+    this.assertUnregistered(this.views, resource.uri, "resource");
     this.resources.set(resource.uri, resource);
-    // The MCP Apps extension is declared by the first view a server has.
-    if (resource.isUi && !this.hasExtension(MCP_APPS_EXTENSION)) {
+    if (resource.isUi) {
+      this.declareApps();
+    }
+  }
+
+  /**
+   * Register the view of a `$tool({ ui: { view } })`, served under its
+   * `ui://` URI like a resource.
+   */
+  public registerView(view: McpToolView): void {
+    this.log.trace(`Registering MCP view: ${view.uri}`);
+    this.assertUnregistered(this.resources, view.uri, "resource");
+    this.assertUnregistered(this.views, view.uri, "resource");
+    this.views.set(view.uri, view);
+    this.declareApps();
+  }
+
+  /**
+   * The views of the tools that have one.
+   */
+  public getViews(): McpToolView[] {
+    this.materialize();
+    return Array.from(this.views.values());
+  }
+
+  /**
+   * The MCP Apps extension is declared by the first view a server has.
+   */
+  protected declareApps(): void {
+    if (!this.hasExtension(MCP_APPS_EXTENSION)) {
       this.registerExtension(MCP_APPS_EXTENSION, {
         mimeTypes: [MCP_APP_MIME_TYPE],
       });
@@ -454,7 +490,9 @@ export class McpServerProvider {
       // `resources/templates/list` is part of the resources surface, so a
       // server offering only templates still declares `resources`.
       resources:
-        this.resources.size > 0 || this.resourceTemplates.size > 0
+        this.resources.size > 0 ||
+        this.resourceTemplates.size > 0 ||
+        this.views.size > 0
           ? {}
           : undefined,
       prompts: this.prompts.size > 0 ? {} : undefined,
@@ -1091,8 +1129,12 @@ export class McpServerProvider {
    */
   protected findReadable(
     uri: string,
-  ): ResourcePrimitive | ResourceTemplatePrimitive<any> | undefined {
-    const resource = this.resources.get(uri);
+  ):
+    | ResourcePrimitive
+    | McpToolView
+    | ResourceTemplatePrimitive<any>
+    | undefined {
+    const resource = this.resources.get(uri) ?? this.views.get(uri);
     if (resource) {
       return resource;
     }
@@ -1946,9 +1988,11 @@ export class McpServerProvider {
     resources: McpResourceDescriptor[];
     nextCursor?: string;
   } {
-    const { page, nextCursor } = this.paginateList(
+    const { page, nextCursor } = this.paginateList<
+      ResourcePrimitive | McpToolView
+    >(
       "resources",
-      Array.from(this.resources.values()),
+      [...this.resources.values(), ...this.views.values()],
       params,
     );
     return { resources: page.map((r) => r.toDescriptor()), nextCursor };
@@ -1978,7 +2022,7 @@ export class McpServerProvider {
     // A concrete resource always wins over a template that happens to match
     // its URI. Registering `db://users/me` alongside `db://users/{id}` is a
     // deliberate special case, and the special case is the more specific one.
-    const resource = this.resources.get(uri);
+    const resource = this.resources.get(uri) ?? this.views.get(uri);
     if (resource) {
       return this.toReadResult(
         uri,

@@ -13,6 +13,7 @@ import { serverApiOptions } from "../atoms/serverApiOptions.ts";
 import { HttpError } from "../errors/HttpError.ts";
 import type { ServerRequestData } from "../interfaces/ServerRequest.ts";
 import type { ActionPrimitive } from "../primitives/$action.ts";
+import { ServerProvider } from "./ServerProvider.ts";
 import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 
 /**
@@ -32,6 +33,16 @@ import { ServerRouterProvider } from "./ServerRouterProvider.ts";
 export class ServerSurfaceProvider {
   protected readonly alepha = $inject(Alepha);
   protected readonly router = $inject(ServerRouterProvider);
+
+  /**
+   * The server, created here when the list declares a route: a deferred
+   * class's `$route` is reached through it, and nothing else creates it (an
+   * `$action` injects it, a `$route` does not). A build whose only routes
+   * are deferred (an MCP server and nothing else) booted without listening.
+   */
+  protected readonly server = this.alepha.surface?.routes.length
+    ? $inject(ServerProvider)
+    : undefined;
   protected readonly api = $store(serverApiOptions);
 
   /**
@@ -82,9 +93,8 @@ export class ServerSurfaceProvider {
       for (const { action, service } of this.declaredActions()) {
         this.placeholder(action.method, `${prefix}${action.path}`, service);
       }
-      for (const { action: route, service } of this.declaredRows(
-        this.alepha.surface?.routes ?? [],
-      )) {
+      const routes = this.declaredRows(this.alepha.surface?.routes ?? []);
+      for (const { action: route, service } of routes) {
         this.placeholder(route.method, route.path, service);
       }
     },

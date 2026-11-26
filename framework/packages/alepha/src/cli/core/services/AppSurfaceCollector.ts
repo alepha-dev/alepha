@@ -89,7 +89,14 @@ export class AppSurfaceCollector {
           class: keyOf(job),
         }),
       ),
-      tools: this.named(alepha, "$tool", keyOf),
+      tools: (alepha.primitives("$tool") as any[]).map((tool) =>
+        this.compact({
+          name: tool.name,
+          class: keyOf(tool),
+          // Built by `alepha build` into the HTML the server embeds.
+          view: tool.options?.ui?.view ? true : undefined,
+        }),
+      ),
       resources: [
         ...this.named(alepha, "$resource", keyOf),
         ...this.named(alepha, "$resourceTemplate", keyOf),

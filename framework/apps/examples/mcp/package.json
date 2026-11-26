@@ -1,0 +1,23 @@
+{
+  "name": "mcp-example",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "alepha dev",
+    "build": "alepha build --runtime node,workerd",
+    "start": "yarn build && node dist",
+    "test": "alepha test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@alepha/ui": "workspace:*",
+    "alepha": "workspace:^",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.5",
+    "tailwindcss": "^4.3.5",
+    "vite": "^8.3.8"
+  }
+}

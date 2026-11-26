@@ -26,6 +26,7 @@ export {
   McpToolOutputError,
   McpUnauthorizedError,
   McpUnsupportedProtocolVersionError,
+  McpViewNotBuiltError,
 } from "./errors/McpError.ts";
 export {
   createErrorResponse,

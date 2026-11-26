@@ -17,6 +17,7 @@ import { FileSystemProvider } from "alepha/system";
 import type { Logger, Plugin, ViteDevServer } from "vite";
 
 import { metaOptions } from "../atoms/metaOptions.ts";
+import { McpViewPlugin } from "../services/McpViewPlugin.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import { ViteUtils } from "../services/ViteUtils.ts";
 import type { AppEntry } from "./AppEntryProvider.ts";
@@ -102,6 +103,7 @@ export class ViteDevServerProvider {
   protected readonly envUtils = $inject(EnvUtils);
   protected readonly colors = $inject(ConsoleColorProvider);
   protected readonly viteUtils = $inject(ViteUtils);
+  protected readonly mcpViewPlugin = $inject(McpViewPlugin);
   protected readonly metaResolver = $inject(MetaResolver);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly metaOverride = $store(metaOptions);
@@ -329,6 +331,9 @@ export class ViteDevServerProvider {
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.viteUtils.createClientModulesPlugin());
+    // MCP Apps views: each one's source on its tool, and the virtual entry
+    // the dev shell loads from this server.
+    plugins.push(this.mcpViewPlugin.annotate());
     plugins.push(...this.extraVitePlugins);
     plugins.push(this.createAlephaPlugin());
 

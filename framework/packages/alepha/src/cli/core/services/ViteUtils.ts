@@ -11,6 +11,7 @@ import MagicString from "magic-string";
 import type { InlineConfig, Logger, Plugin, ViteDevServer } from "vite";
 
 import type { AppEntry } from "../providers/AppEntryProvider.ts";
+import { McpViewPlugin } from "./McpViewPlugin.ts";
 
 // -----------------------------------------------------------------------------------------------------------------
 // Types
@@ -84,6 +85,7 @@ export class ViteUtils {
 
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly log = $logger();
+  protected readonly mcpViewPlugin = $inject(McpViewPlugin);
   protected viteDevServer?: ViteDevServer;
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -680,6 +682,9 @@ ${style ? `<link rel="stylesheet" href="/${style}" />` : ""}
       plugins: [
         this.createTsconfigPathsPlugin(),
         this.createClientModulesPlugin(),
+        // Writes each MCP Apps view's source file on its tool, which is how
+        // `alepha build` finds the views to build.
+        this.mcpViewPlugin.annotate(),
       ],
       // No client dependency optimizer. This server only ever serves
       // `ssrLoadModule`, yet Vite still created one for the client
