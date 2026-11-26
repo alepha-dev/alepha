@@ -2975,7 +2975,18 @@ export default {
   "bay.nav.agent": "Agent",
   "bay.nav.jobs": "Jobs",
   "bay.nav.settings": "Settings",
-  "bay.chart.title": "Last 30 days",
+  "bay.nav.stats": "Stats",
+  "bay.stats.range": "Range",
+  "bay.stats.range.hour": "Last hour",
+  "bay.stats.range.today": "Today",
+  "bay.stats.range.week": "Last 7 days",
+  "bay.stats.range.month": "Last 30 days",
+  "bay.chart.title.hour": "Last hour, by hour",
+  "bay.chart.title.today": "Today, by hour",
+  "bay.chart.title.week": "Last 7 days, by day",
+  "bay.chart.title.month": "Last 30 days, by day",
+  "bay.chart.empty.range":
+    "Recording, but nothing was measured in this window yet. Points appear as the machine's samples come in.",
   "bay.chart.cpu": "CPU %",
   "bay.chart.memory": "Memory %",
   "bay.chart.disk": "Disk %",
@@ -2993,8 +3004,6 @@ export default {
   "bay.chart.off":
     "This machine is not recording a history. Its live gauges above are always kept; the series is a separate switch, and it starts from the day it is turned on.",
   "bay.chart.off.link": "Turn it on in Settings",
-  "bay.chart.empty":
-    "Recording, but no day has completed yet. The first point appears once a day of samples is in.",
   "bay.chart.estimated": "sampled, then scaled back up",
   "bay.chart.estimated.interval": "sampled 1 in $1, then scaled back up",
   "bay.overview.monitorOnly": "Monitor only",

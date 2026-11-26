@@ -59,6 +59,7 @@ export const ROUTES_HOST = [
   "bayApps",
   "bayApp",
   "bayCommands",
+  "bayStats",
   "bayAgent",
   "bayJobs",
   "baySettings",

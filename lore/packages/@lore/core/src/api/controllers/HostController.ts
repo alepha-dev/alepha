@@ -26,6 +26,8 @@ import {
   type MintedHost,
   mintedHostSchema,
 } from "../schemas/hostResourceSchema.ts";
+import { hostStatsGrainSchema } from "../schemas/hostStatsGrainSchema.ts";
+import { hostStatsRangeSchema } from "../schemas/hostStatsRangeSchema.ts";
 import {
   type OwnedHostResource,
   ownedHostResourceSchema,
@@ -270,7 +272,10 @@ export class HostController {
   });
 
   /**
-   * The CPU and memory series, one point per day.
+   * The CPU and memory series, over a `range` at a grain that fits it
+   * (#Q4528): the last hour and today by hour, the finest the dataset
+   * stores, the last 7 and 30 days by day. Without one, the last 30 days by day, as before; `since`
+   * still moves the start of a range.
    *
    * `HostStatsService.series` was written for #Q1627 and had no caller in
    * the tree until this route: it divides the dataset's sums by the sample
@@ -293,9 +298,17 @@ export class HostController {
     path: "/hosts/:hostId/stats",
     schema: {
       params: z.object({ hostId: z.uuid() }),
-      query: z.object({ since: z.string().max(40).optional() }),
+      query: z.object({
+        since: z.string().max(40).optional(),
+        range: hostStatsRangeSchema.optional(),
+      }),
       response: z.object({
         collecting: z.boolean(),
+        /**
+         * What one point covers: `day` (its key `2026-11-26`), `hour`
+         * (`2026-11-26T14`) or `minute`.
+         */
+        grain: hostStatsGrainSchema,
         estimated: z.boolean(),
         sampleInterval: z.number().optional(),
         points: z.array(
@@ -312,16 +325,29 @@ export class HostController {
     },
     handler: async ({ query }) => {
       const host = this.host();
-      // Thirty days by default: the dataset rolls up by day, so a shorter
-      // window is a handful of points and a longer one outlives the hot
-      // retention.
-      const since =
-        query.since ??
-        new Date(this.dateTime.nowMillis() - 30 * 24 * 3600_000).toISOString();
-      const series = await this.stats.series(host.id, since);
+      const now = this.dateTime.nowMillis();
+      const hour = 3600_000;
+      // Thirty days by default. `host_stats` stores hourly buckets for its
+      // hot 30 days and daily ones past them, so an hour or a day is read by
+      // hour (an hour is one or two points: a finer grain needs the dataset
+      // to store minutes), a week or a month by day. "Today" is the last 24
+      // hours unless the page names the reader's midnight in `since`.
+      const range = query.range ?? "month";
+      const window = {
+        hour: { span: hour, grain: "hour" as const },
+        today: { span: 24 * hour, grain: "hour" as const },
+        week: { span: 7 * 24 * hour, grain: "day" as const },
+        month: { span: 30 * 24 * hour, grain: "day" as const },
+      }[range];
+      const since = query.since ?? new Date(now - window.span).toISOString();
+      const series = await this.stats.series(host.id, since, window.grain);
       // The switch travels with the answer so the page can tell "collecting,
       // nothing yet" from "not collecting at all" without a second read.
-      return { collecting: host.collectSeries, ...series };
+      return {
+        collecting: host.collectSeries,
+        grain: window.grain,
+        ...series,
+      };
     },
   });
 

@@ -2988,7 +2988,18 @@ export default {
   "bay.nav.agent": "Agent",
   "bay.nav.jobs": "Tâches",
   "bay.nav.settings": "Paramètres",
-  "bay.chart.title": "30 derniers jours",
+  "bay.nav.stats": "Statistiques",
+  "bay.stats.range": "Période",
+  "bay.stats.range.hour": "Dernière heure",
+  "bay.stats.range.today": "Aujourd'hui",
+  "bay.stats.range.week": "7 derniers jours",
+  "bay.stats.range.month": "30 derniers jours",
+  "bay.chart.title.hour": "Dernière heure, par heure",
+  "bay.chart.title.today": "Aujourd'hui, par heure",
+  "bay.chart.title.week": "7 derniers jours, par jour",
+  "bay.chart.title.month": "30 derniers jours, par jour",
+  "bay.chart.empty.range":
+    "Enregistrement en cours, mais rien n'a encore été mesuré sur cette période. Les points apparaissent à mesure que les mesures arrivent.",
   "bay.chart.cpu": "Processeur %",
   "bay.chart.memory": "Mémoire %",
   "bay.chart.disk": "Disque %",
@@ -3006,8 +3017,6 @@ export default {
   "bay.chart.off":
     "Cette machine n'enregistre pas d'historique. Les jauges ci-dessus sont toujours conservées ; la série est un réglage à part, et elle démarre le jour où il est activé.",
   "bay.chart.off.link": "L'activer dans les paramètres",
-  "bay.chart.empty":
-    "Enregistrement en cours, mais aucun jour n'est encore complet. Le premier point apparaît une fois une journée d'échantillons collectée.",
   "bay.chart.estimated": "échantillonné, puis extrapolé",
   "bay.chart.estimated.interval": "échantillonné 1 sur $1, puis extrapolé",
   "bay.overview.monitorOnly": "Supervision seule",

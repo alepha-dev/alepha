@@ -99,6 +99,21 @@ export class HostRouter {
     lazy: () => import("./components/bay/BayCommands.tsx"),
   });
 
+  /**
+   * CPU, memory and disk over a range (#Q4528), kept in `?range=`: the last
+   * hour, today, the last 7 days or the last 30 days (the default).
+   */
+  bayStats = $page({
+    parent: this.bay,
+    name: "bayStats",
+    nav: { hidden: true, label: "Stats" },
+    path: "/stats",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Stats`,
+    }),
+    lazy: () => import("./components/bay/BayStats.tsx"),
+  });
+
   bayAgent = $page({
     parent: this.bay,
     name: "bayAgent",

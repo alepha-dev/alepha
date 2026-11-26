@@ -173,6 +173,7 @@ export {
 // ---- hosts (#E166) ----
 export { hostsCardFiltersSchema } from "../api/schemas/hostsCardFiltersSchema.ts";
 export { hostStatsCardFiltersSchema } from "../api/schemas/hostStatsCardFiltersSchema.ts";
+export { hostStatsRangeSchema } from "../api/schemas/hostStatsRangeSchema.ts";
 export { hostUnitsCardFiltersSchema } from "../api/schemas/hostUnitsCardFiltersSchema.ts";
 export { hostCommands } from "../api/entities/hostCommands.ts";
 export type { HostCommand } from "../api/entities/hostCommands.ts";

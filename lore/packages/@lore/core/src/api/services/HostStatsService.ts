@@ -1,16 +1,21 @@
-import { $inject } from "alepha";
+import { $inject, type z } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Host, hosts } from "../entities/hosts.ts";
 import { ProjectAnalytics } from "../entities/projectAnalytics.ts";
 import type { HostStatsFrame } from "../schemas/hostStatsFrameSchema.ts";
+import type { hostStatsGrainSchema } from "../schemas/hostStatsGrainSchema.ts";
 import { HostResourceAlerts } from "./HostResourceAlerts.ts";
 
 /**
- * One day of a host's series, averaged from what the dataset holds.
+ * One bucket of a host's series, averaged from what the dataset holds.
  */
 export interface HostStatsPoint {
+  /**
+   * The bucket: a day (`2026-11-26`), an hour (`2026-11-26T14`) or a minute,
+   * as the series' grain says. Named `day` since the series was daily only.
+   */
   day: string;
   cpuPercent: number;
   memoryPercent: number;
@@ -20,6 +25,11 @@ export interface HostStatsPoint {
   load1?: number;
   samples: number;
 }
+
+/**
+ * How fine a series is bucketed.
+ */
+export type HostStatsGrain = z.Infer<typeof hostStatsGrainSchema>;
 
 /**
  * The series with its epistemics attached: on Analytics Engine a window is
@@ -110,17 +120,24 @@ export class HostStatsService {
   }
 
   /**
-   * The series, one point per day, averaged from the dataset's sums.
+   * The series, one point per bucket of `grain` (a day unless asked),
+   * averaged from the dataset's sums. Hours and minutes exist only inside
+   * the dataset's hot window (30 days): past it the rows are rolled up by
+   * day.
    *
    * The only read path there is, and the reason there is one: the division
    * by `samples` and the `estimated` / `sampleInterval` disclosure belong in
    * one place, not in every page that draws the line.
    */
-  async series(hostId: string, since: string): Promise<HostStatsSeries> {
+  async series(
+    hostId: string,
+    since: string,
+    grain: HostStatsGrain = "day",
+  ): Promise<HostStatsSeries> {
     const result = await this.analytics.hostStats.query({
       since,
       where: { hostId: { inArray: [hostId] } },
-      groupBy: ["day"],
+      groupBy: [grain],
       select: {
         cpu: "sum",
         memory: "sum",
@@ -138,7 +155,7 @@ export class HostStatsService {
         const diskSamples = Number(row.diskSamples ?? 0);
         const loadSamples = Number(row.loadSamples ?? 0);
         const point: HostStatsPoint = {
-          day: String(row.day),
+          day: String(row[grain]),
           cpuPercent: samples ? Number(row.cpu) / samples : 0,
           memoryPercent: samples ? Number(row.memory) / samples : 0,
           samples,

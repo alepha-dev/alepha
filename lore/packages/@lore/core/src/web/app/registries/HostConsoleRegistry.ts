@@ -1,5 +1,12 @@
 import { AlephaError } from "alepha";
-import { Bot, Gauge, type LucideIcon, Settings, Terminal } from "lucide-react";
+import {
+  Bot,
+  ChartLine,
+  Gauge,
+  type LucideIcon,
+  Settings,
+  Terminal,
+} from "lucide-react";
 import type { ComponentType } from "react";
 
 import type { HostInventoryResource } from "../../../api/schemas/hostInventoryResourceSchema.ts";
@@ -29,6 +36,13 @@ export class HostConsoleRegistry {
       labelKey: "bay.nav.commands",
       icon: Terminal,
       order: 30,
+    },
+    // CPU, memory and disk over a range (#Q4528), out of the Overview.
+    {
+      route: "bayStats",
+      labelKey: "bay.nav.stats",
+      icon: ChartLine,
+      order: 32,
     },
     // The jobs user's tools and the Agent host switch (#Q4414), out of
     // Settings.
