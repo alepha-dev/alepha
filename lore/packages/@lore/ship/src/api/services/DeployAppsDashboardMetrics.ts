@@ -5,6 +5,7 @@ import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
 import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
 import { uptimeLatencyCardFiltersSchema } from "../schemas/uptimeLatencyCardFiltersSchema.ts";
+import { webVitalsFiltersSchema } from "../schemas/webVitalsFiltersSchema.ts";
 
 /**
  * Deploy's apps tiles of #E77 (#Q2657): per-copy health and the error trend
@@ -58,6 +59,34 @@ export class DeployAppsDashboardMetrics {
           ? {
               route: "projectErrors",
               params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
+    });
+    // How fast the pages feel (#Q4521): p75 LCP, INP and CLS, one pill
+    // each, narrowed to a copy by its sigil like the visitors tile.
+    this.catalog.register({
+      ...common,
+      key: "webVitals",
+      requires: "app:read",
+      order: 83,
+      labelKey: "dashboard.metric.webVitals",
+      hintKey: "dashboard.metric.webVitals.hint",
+      icon: "gauge",
+      presentation: "status",
+      scopeKinds: ["apps", "projects"],
+      filters: webVitalsFiltersSchema,
+      needs: { capability: "ship", option: "track" },
+      needsBeacon: true,
+      defaultSize: { size: 2, height: 1 },
+      link: (_scope, target) =>
+        target.projectSlug && target.app && target.env
+          ? {
+              route: "appVitals",
+              params: {
+                projectSlug: target.projectSlug,
+                app: target.app,
+                env: target.env,
+              },
             }
           : undefined,
     });

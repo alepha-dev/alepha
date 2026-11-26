@@ -87,6 +87,7 @@ import { UptimeHttpProber } from "./services/UptimeHttpProber.ts";
 import { UptimeLatencyMetric } from "./services/UptimeLatencyMetric.ts";
 import { UptimeMetric } from "./services/UptimeMetric.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
+import { WebVitalsMetric } from "./services/WebVitalsMetric.ts";
 
 /**
  * The server half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts. Quality is core's since #Q4217.
@@ -195,6 +196,7 @@ export const LoreShipApi = $module({
     DailyVisitorsService,
     OpenErrorsMetric,
     UniqueVisitorsMetric,
+    WebVitalsMetric,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and

@@ -583,6 +583,8 @@ export class CapabilityRegistry {
         // The apps tiles of #E77 (#Q2657).
         "appHealth",
         "errorTrend",
+        // How fast the pages feel (#Q4521).
+        "webVitals",
         // The monitors (#Q3781); the hosts card is Core since #E166.
         "uptime",
         // Latency, certificates and incidents (#Q4426).
