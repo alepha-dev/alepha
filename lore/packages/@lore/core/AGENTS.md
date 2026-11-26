@@ -74,6 +74,17 @@ The browser side follows the same rule: core's web code (`ProjectView`, the edit
 
 ⚠️ An entry that carries a HOOK (`useReferences`, `useCollection`, `useOptions`, `useLine`...) is called once per entry, in a loop. That is legal only because these registries freeze the first time they are read: register from a shell's constructor, at boot, never later. A badge, a predicate or a breadcrumb reads module state through `ProjectShellContext.get`, never a hook, and declares the atoms it reads in `reads`. A module's account page is its own `$pageAccount` class (`WorkAccountRouter`, `DeployAccountRouter`), and filing across modules goes through core's `ResourceFilingController`. Browser-loadable runtime values (`CapabilityRegistry`, `DashboardMetricCatalog`, `KanbanColumnConfig`, `ProjectSlugService`, constants) live in `api/schemas/`, never in `api/entities` or `api/services`.
 
+## Comments: one table for every thread (#E185, folio #F1561)
+
+`comments` (`api/entities/comments.ts`) holds every thread: a row names its project (`projectId`, cascade), its subject (`subjectType` and `subjectId`, the subject row's **global** id, no foreign key) and its author. `CommentService` is the only writer.
+
+- **A package registers its subject at start**: `CommentService.registerSubject({ type, load })`. `load(projectId, subjectId)` answers the subject of that project or throws the 404: it is the cross-project guard, and `add` calls it before writing.
+- **Core has no comment route.** Each package keeps its endpoints, permissions, mention rules and resource schemas.
+- **Nothing cascades from a subject.** Every delete path of a subject calls `deleteForSubjects(type, ids)`, chunked under D1's bound parameters. A project's hard delete cascades through `projectId`.
+- **One machine mark**: `source` (`commentSourceSchema`, `{ kind: "mcp" | "cli", client? }`). Absent means a person typed it.
+- **A subject's events are not comments**: a triage or history vocabulary stays in its package, and its page merges the two reads.
+- **Project merge**: `CoreProjectMerge` moves the rows by `projectId`; Plan's `WorkProjectMerge` rewrites the `[[#Q12]]` references of every body, whatever the subject.
+
 ## Hosts (#E166, folio #F1537)
 
 A host is core's: identity, enrolment and token, the socket, lending and the home project, events, the command and job queues, inventory, upgrades, stats and the offline alerts (the **monitor** role), Agent hosts (the **agent** role), the Hosts and Jobs pages and the console (`HostRouter`, `HostShell`). No capability gates any of it. A module adds a role through the registries: `HostUsageRegistry` (what deploys to a host, the copies its inventory expects), `HostTypeRegistry` (a type's credential behaviour), `HostCommandHandlerRegistry` (command kinds core does not answer), and on the web `HostRoleRegistry` (pills), `HostConsoleRegistry` (console tabs, Overview sections) and `HostTypeUiRegistry` (create fields, drawer section). Ship fills them for the **deploy** role; Build will add **ci**. `createTestHost` is `@lore/core/testing/hosts`, its own subpath, because browser specs load `./testing`.

@@ -3,7 +3,7 @@ import {
   LoreAudits,
   ProjectSecurityService,
 } from "@lore/core/api";
-import { projects } from "@lore/core/schemas";
+import { commentSourceSchema, projects } from "@lore/core/schemas";
 // The helper the UI labels a user with, so a name reads identically in a
 // thread and on the rest of the page. Same precedent as `ProjectController`.
 import { formatReference, displayName } from "@lore/core/web";
@@ -26,7 +26,6 @@ import {
 import { feedback } from "../entities/feedback.ts";
 import { feedbackComments } from "../entities/feedbackComments.ts";
 import { feedbackCommentResourceSchema } from "../schemas/feedbackCommentResourceSchema.ts";
-import { questCommentSourceSchema } from "../schemas/questCommentSourceSchema.ts";
 import { FeedbackNotifier } from "../services/FeedbackNotifier.ts";
 import { FeedbackRateLimiter } from "../services/FeedbackRateLimiter.ts";
 import { MentionNotifier } from "../services/MentionNotifier.ts";
@@ -224,7 +223,7 @@ export class FeedbackCommentController {
          * web client never sends it, so an absent `source` means a human
          * typed it.
          */
-        source: questCommentSourceSchema.optional(),
+        source: commentSourceSchema.optional(),
       }),
       response: feedbackCommentResourceSchema,
     },

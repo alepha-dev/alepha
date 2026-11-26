@@ -5,6 +5,7 @@ import {
 } from "alepha/api/organizations";
 import { $repository, type SQLLike } from "alepha/orm";
 
+import { comments } from "../entities/comments.ts";
 import { eventSubscriptions } from "../entities/eventSubscriptions.ts";
 import { notificationChannels } from "../entities/notificationChannels.ts";
 import { projectCapabilities } from "../entities/projectCapabilities.ts";
@@ -32,6 +33,11 @@ import {
  * - **Events, subscriptions and channels** move (#Q3889, #Q3890): a
  *   subscription the target already has joins it, a channel name it already
  *   uses gets a free one.
+ * - **Comments** move, whatever their subject (#E185): a comment names its
+ *   subject by its global id, which a merge keeps, so the thread follows the
+ *   quest, the error or the use case it is on. Plan rewrites the `[[#Q12]]`
+ *   references their bodies hold (`WorkProjectMerge`): it owns the number
+ *   map.
  * - **Members**: a source member who is not a target member joins the
  *   target's organization. Their rank comes too when the target defines
  *   it; `owner` never does, since ownership is transferred and never
@@ -73,6 +79,8 @@ export class CoreProjectMerge {
       keys: ["name"],
       onCollision: "rename",
     },
+    // Every thread of the project, in one statement (#E185).
+    { kind: "comment", entity: comments },
   ];
 
   constructor() {
