@@ -3247,6 +3247,11 @@ export default {
   "jobs.poke.sent": "Message envoyé à la tâche",
   "jobs.poke.from": "Message de $1",
   "jobs.poke.someone": "un membre",
+  "jobs.cancel.title": "Annuler cette tâche ?",
+  "jobs.cancel.confirm":
+    "Son agent est arrêté là où il en est : ce qu'il n'a pas commité ni poussé reste dans l'espace de travail, et Relancer reprend à partir de là.",
+  "jobs.cancel.yes": "Annuler la tâche",
+  "jobs.cancel.no": "La laisser tourner",
   "jobs.more": "Autres actions",
   "jobs.runAgain": "Relancer",
   "jobs.startFresh": "Repartir de zéro",
