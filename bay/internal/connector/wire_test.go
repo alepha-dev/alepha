@@ -53,7 +53,8 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if config.Type != "config" || !config.DeployAllowed || !config.JobsAllowed || config.StatsIntervalSeconds != 300 {
+	if config.Type != "config" || !config.DeployAllowed || !config.JobsAllowed || config.StatsIntervalSeconds != 300 ||
+		!reflect.DeepEqual(config.WatchUnits, []string{"acme-api.service", "caddy.service"}) {
 		t.Fatalf("config decoded wrong: %+v", config)
 	}
 
@@ -242,8 +243,12 @@ func sampleInventoryFrame() Inventory {
 			DiskUsedBytes:  ptr(uint64(42877714432)),
 			Load1:          ptr(0.52),
 			UptimeSeconds:  ptr(uint64(1234567)),
-			BayVersion:     "0.31.0",
-			UpgradeMode:    "handoff",
+			Units: []UnitState{
+				{Name: "acme-api.service", ActiveState: "activating", SubState: "start", Since: "2026-09-06T11:50:00Z"},
+				{Name: "caddy.service", ActiveState: "active", SubState: "running"},
+			},
+			BayVersion:  "0.31.0",
+			UpgradeMode: "handoff",
 		},
 		Apps: []InventoryApp{
 			{

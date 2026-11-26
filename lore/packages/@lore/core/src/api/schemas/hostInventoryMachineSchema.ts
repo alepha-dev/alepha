@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { hostInventoryUnitSchema } from "./hostInventoryUnitSchema.ts";
+
 /**
  * The machine itself, in absolute units, wire format v1.
  *
@@ -24,6 +26,11 @@ export const hostInventoryMachineSchema = z.object({
   /** The one-minute load average, unbounded above: it is a queue length, not a share. */
   load1: z.number().min(0).optional(),
   uptimeSeconds: z.integer().min(0).optional(),
+  /**
+   * The systemd units the host watches (`watchUnits`), as last read (#Q4421).
+   * Bounded like the list Lore sends.
+   */
+  units: z.array(hostInventoryUnitSchema).max(20).optional(),
   bayVersion: z.string().max(100).optional(),
   /**
    * Whether this Bay can take an `upgrade`: `handoff`, `restart` or `manual`

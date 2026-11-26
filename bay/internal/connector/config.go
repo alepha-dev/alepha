@@ -85,7 +85,10 @@ type Welcome struct {
 	StatsIntervalSeconds int  `json:"statsIntervalSeconds"`
 	// Features are what this Lore understands beyond protocol 1
 	// (EventsFeature). Absent from an older Lore, which means none.
-	Features   []string  `json:"features,omitempty"`
+	Features []string `json:"features,omitempty"`
+	// WatchUnits are the systemd units Lore asks this machine to report
+	// (units.go). Absent from an older Lore, which watches none.
+	WatchUnits []string  `json:"watchUnits,omitempty"`
 	ReceivedAt time.Time `json:"receivedAt"`
 }
 

@@ -242,6 +242,7 @@ func (s *server) connectorLoop(ctx context.Context) {
 		Reload:  s.connectorReload,
 		Handler: acts,
 		Gauge:   connector.HostGauge(s.root),
+		Units:   connector.SystemctlUnits,
 		Version: version,
 		// What the handoff worked out at boot (handoff.go).
 		UpgradeMode: s.upgradeMode,
