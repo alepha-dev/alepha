@@ -23,6 +23,7 @@ export * from "./providers/MemoryAiProvider.ts";
 export * from "./services/AiContextBlock.ts";
 export * from "./services/AiHttpErrors.ts";
 export * from "./services/AiToolSchema.ts";
+export * from "./services/AiUsageWeight.ts";
 export * from "./services/ChatCompletionFormat.ts";
 export * from "./services/SseReader.ts";
 export * from "./tools/aiClientTools.ts";

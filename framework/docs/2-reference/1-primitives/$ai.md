@@ -46,7 +46,7 @@ tool loop that runs them as the signed-in user.
 | `tools`           | `AiToolList \| (() => AiToolList)`                         | No       | The tools: `$action`s, `$tool`s (`alepha/mcp`), and client tools from `clientTool`   |
 | `allow`           | `Object`                                                   | No       | The tools this user is offered on a turn, by name: what the model sees               |
 | `confirm`         | `Object`                                                   | No       | Whether a call to this tool waits for the user's approval                            |
-| `maxSteps`        | `number`                                                   | No       | Model calls per turn before the loop stops with `end: length`.                       |
+| `maxSteps`        | `number`                                                   | No       | Model calls per turn                                                                 |
 | `turnTokens`      | `number`                                                   | No       | Tokens (input plus output, summed over the model calls) one turn may spend           |
 | `maxCallsPerTool` | `number`                                                   | No       | Calls of one tool a turn may make                                                    |
 | `maxResultLength` | `number`                                                   | No       | Characters of one tool result the model reads; the rest is cut with `...[truncated]` |

@@ -31,6 +31,7 @@ import {
   type AiPageContext,
 } from "../services/AiContextBlock.ts";
 import { AiToolSchema } from "../services/AiToolSchema.ts";
+import { AiUsageWeight } from "../services/AiUsageWeight.ts";
 
 /**
  * What a call the user denied returns to the model, as a tool error. The
@@ -41,16 +42,16 @@ export const AI_CALL_DENIED = "Denied by the user.";
 
 /**
  * Appended to the last tool result before a turn's final model call, when
- * the turn's token bound is near.
+ * the turn's token bound is near or `maxSteps` leaves it one call.
  */
 export const AI_TURN_WRAP_UP =
-  "[This turn is out of tokens: answer the user now from what you already read. A further tool call will not run.]";
+  "[This turn is at its limit of tokens or model calls: answer the user now from what you already read. A further tool call will not run.]";
 
 /**
  * The answer to a call the model asked for on a turn's final model call.
  */
 export const AI_TURN_SPENT =
-  "Not run: this turn is out of tokens. Answer from what you already read.";
+  "Not run: this turn is at its limit of tokens or model calls. Answer from what you already read.";
 
 // ---------------------------------------------------------------------------------------------------------------------
 
@@ -190,7 +191,10 @@ export interface AiPrimitiveOptions {
   confirm?: (tool: { name: string; method: string }) => boolean;
 
   /**
-   * Model calls per turn before the loop stops with `end: length`.
+   * Model calls per turn. The tool results read by the last one tell the
+   * model to answer, as when `turnTokens` is near, so a turn that uses
+   * every call ends with an answer; a call the last one still asks for is
+   * answered with an error, never run, and the turn ends with `end: length`.
    *
    * @default 10
    */
@@ -200,7 +204,11 @@ export interface AiPrimitiveOptions {
    * Tokens (input plus output, summed over the model calls) one turn may
    * spend. Every model call resends the system prompt, the tool definitions
    * and the whole conversation, so a turn of eight tool calls costs about
-   * eight times its context. When the next call would cross this bound, the
+   * eight times its context. A token the vendor reads from its prompt cache
+   * counts a tenth (`AiUsageWeight`), as it does against a budget of
+   * `alepha/api/ai`: on Anthropic the tool definitions and the system prompt
+   * are cached, so what a turn pays in full is its first call and what the
+   * conversation grows by. When the next call would cross this bound, the
    * last tool results tell the model to answer, and that call is the turn's
    * last: a call it still asks for is answered with an error, never run,
    * and the turn ends with `end: length`. A turn's own `tokenBudget` lowers
@@ -290,7 +298,7 @@ export interface AiTurnInput {
   /**
    * Tokens this turn may still spend, such as what is left of the user's
    * budget: the turn wraps up before crossing it, as with the `turnTokens`
-   * option, and the lower of the two wins.
+   * option, counted the same way, and the lower of the two wins.
    */
   tokenBudget?: number;
 
@@ -532,6 +540,9 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
             ...(event.cachedInputTokens
               ? { cachedInputTokens: event.cachedInputTokens }
               : {}),
+            ...(event.cacheWriteInputTokens
+              ? { cacheWriteInputTokens: event.cacheWriteInputTokens }
+              : {}),
           };
         } else if (event.type === "vendor") {
           vendor = { provider: event.provider, data: event.data };
@@ -571,13 +582,22 @@ export class AiPrimitive extends Primitive<AiPrimitiveOptions> {
         return;
       }
 
-      // The next call resends at least what this one read: when that would
-      // cross the bound, it is the last one, and the results say so.
-      // A last call that crosses the bound overshoots it by one call at
-      // most, which buys the answer.
-      const cost = (usage?.inputTokens ?? 0) + (usage?.outputTokens ?? 0);
-      spent += cost;
-      final = limit !== undefined && spent + cost * 2 > limit;
+      // The next call resends at least what this one read: when it and the
+      // one after it would cross the bound, it is the last one, and the
+      // results say so. A last call that crosses the bound overshoots it by
+      // one call at most, which buys the answer.
+      // Weighed as a budget weighs them (`AiUsageWeight`): a cache read
+      // counts a tenth, and so does, on the next call, what this one wrote
+      // to the cache. At full price a cached tool list ended a turn after
+      // two or three calls, whatever they read.
+      // `maxSteps` leaving one call makes it the last one the same way:
+      // without the notice a turn that used every call ended on tool
+      // results, with no answer.
+      spent += AiUsageWeight.of(usage ?? {});
+      final =
+        step === maxSteps - 2 ||
+        (limit !== undefined &&
+          spent + AiUsageWeight.next(usage ?? {}) * 2 > limit);
 
       const outcome = yield* this.runCalls(
         messages,

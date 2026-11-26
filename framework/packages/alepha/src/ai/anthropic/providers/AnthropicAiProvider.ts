@@ -155,6 +155,7 @@ export class AnthropicAiProvider extends AiProvider {
     let inputTokens = 0;
     let outputTokens = 0;
     let cachedInputTokens = 0;
+    let cacheWriteInputTokens = 0;
     let reason: AiEndReason = "stop";
 
     for await (const sse of this.sse.read(stream, signal)) {
@@ -169,6 +170,7 @@ export class AnthropicAiProvider extends AiProvider {
           (usage.cache_creation_input_tokens ?? 0);
         outputTokens = usage.output_tokens ?? 0;
         cachedInputTokens = usage.cache_read_input_tokens ?? 0;
+        cacheWriteInputTokens = usage.cache_creation_input_tokens ?? 0;
       } else if (type === "content_block_start") {
         const block = data.content_block ?? {};
         blocks.set(data.index, {
@@ -237,6 +239,7 @@ export class AnthropicAiProvider extends AiProvider {
       inputTokens,
       outputTokens,
       ...(cachedInputTokens ? { cachedInputTokens } : {}),
+      ...(cacheWriteInputTokens ? { cacheWriteInputTokens } : {}),
     };
     yield { type: "end", reason };
   }

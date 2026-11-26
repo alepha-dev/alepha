@@ -53,6 +53,11 @@ When someone says "time to check":
 Be brief. Never file a quest without saying why first.
 ```
 
+An agent reads in rounds: it runs one or several tools, looks at what came
+back, and decides what to run next. One message gets it up to nine rounds,
+then it answers from what it has read. Keep a playbook's steps under that:
+a check that needs more is two messages, or two agents.
+
 ⚠️ Every member who reads chat can read an agent's playbook. Keep secrets
 out of it.
 
