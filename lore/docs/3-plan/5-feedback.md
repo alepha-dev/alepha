@@ -21,7 +21,8 @@ https://lore.alepha.app/<project-slug>/request
 ```
 
 Share that link with the people you want to hear from. Inside the project, the
-**Create** menu has **New Feedback**, which opens the same form.
+**Create** menu has **New Feedback**, and the **+** beside the inbox's status
+filter opens the same form.
 
 ![The feedback request form](/screenshots/lore/feedback-form-light.png)
 
@@ -179,7 +180,7 @@ stored, because every member of the project can read it.
 
 ## Getting help with triage
 
-The bell above the inbox's status filter notifies you of new reports. It opens
+The bell beside the inbox's status filter notifies you of new reports. It opens
 a dialog with two selects. **How** picks the channels: **Inbox** and **By
 email**, and, for a member who manages the project's notifications, every
 channel of the project, such as a Discord or a webhook. **From whom** is **All

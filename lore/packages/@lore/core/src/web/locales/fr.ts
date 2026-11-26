@@ -3357,6 +3357,7 @@ export default {
   "account.hosts.toast.deleted": "Hôte supprimé",
 
   "feedback.list.loadingMore": "Chargement…",
+  "feedback.list.openForm": "Ouvrir le formulaire de retour",
   "feedback.empty.pending": "Aucun retour en attente.",
   "feedback.empty.status": "Aucun retour $1.",
   "feedback.empty.selectOne": "Sélectionnez un élément dans la liste",
@@ -3369,7 +3370,6 @@ export default {
   "feedback.empty.detail.rejected.title": "Aucun retour rejeté",
   "feedback.empty.detail.rejected.body":
     "Les retours refusés sont conservés ici comme trace.",
-  "feedback.empty.detail.openForm": "Ouvrir le formulaire de retour",
   "feedback.back": "Retour",
   "release.subscription.label": "M'avertir à chaque version publiée",
   "release.subscription.description":

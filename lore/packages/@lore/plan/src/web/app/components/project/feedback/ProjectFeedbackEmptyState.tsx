@@ -1,15 +1,11 @@
-import { Button } from "@alepha/ui";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
-import { useStore } from "alepha/react";
+import type { I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
 import {
   Circle,
   CircleCheck,
   CircleX,
   type LucideIcon,
   MousePointerClick,
-  SquareArrowOutUpRight,
 } from "lucide-react";
 import type { ReactElement } from "react";
 
@@ -51,16 +47,14 @@ export interface ProjectFeedbackEmptyStateProps {
  * identical on all three tabs, and it is the same vocabulary as the segmented
  * control above and the rows in the list.
  *
- * The form link is on the Pending tab only. "Nobody has sent anything" is the
- * one empty state with an action behind it; an empty Accepted tab means the
- * feedback exists and has not been triaged, which this pane cannot help with.
+ * It carries no action. The feedback form used to be a button here, on the
+ * empty Pending tab only; it is the list header's "+" since #Q4449, where it
+ * is reachable whatever the tab and however full the list.
  */
 const ProjectFeedbackEmptyState = (
   props: ProjectFeedbackEmptyStateProps,
 ): ReactElement => {
   const { tr } = useI18n<I18n, "en">();
-  const router = useRouter();
-  const [project] = useStore(currentProjectAtom);
 
   if (props.hasItems) {
     return (
@@ -91,23 +85,6 @@ const ProjectFeedbackEmptyState = (
           {tr(`feedback.empty.detail.${props.status}.body` as const)}
         </p>
       </div>
-      {props.status === "pending" && project && (
-        /*
-          A real anchor, not a button with `router.push`: this is a
-          destination, so it keeps middle-click and open-in-new-tab. The
-          owner most often wants the URL itself, to hand to somebody else.
-        */
-        <Button
-          href={router.path("projectFeedbackRequest", {
-            params: { projectSlug: project.slug },
-          })}
-          variant="outlined"
-          size="sm"
-        >
-          <SquareArrowOutUpRight className="size-3.5" />
-          {tr("feedback.empty.detail.openForm")}
-        </Button>
-      )}
     </div>
   );
 };
