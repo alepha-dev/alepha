@@ -30,7 +30,24 @@ access the jobs need.
 Docker is needed only if the host also deploys apps; a host that runs agent
 jobs alone does without it.
 
-**2. Create the jobs user, and tell Bay about it.**
+**2. Run the setup.** One command makes the host ready for jobs:
+
+```bash
+sudo bay jobs setup
+```
+
+It creates the jobs user, `bay-agent` (or the one `--user NAME` names), when
+the host has none, and saves it. It lists each tool the user lacks (`git`,
+`gh`, an agent CLI) with the line that installs it, and installs nothing
+itself. It then signs each installed tool that is signed out in as that
+user, on your terminal: the agent CLI, then `gh`. It ends on the list
+`bay doctor` prints, and fails while a tool is missing or signed out: install
+what it named and run it again, it picks up where it stopped. Then go to step 3.
+
+The steps below are the same work by hand, and what to read to change any of
+it.
+
+**Create the jobs user, and tell Bay about it.**
 
 ```bash
 sudo useradd --create-home bay-agent
@@ -54,7 +71,7 @@ So a triage or a review never waits behind a job that works a quest. Jobs that
 only read the code share a workspace; a job that changes code has its
 workspace to itself.
 
-**3. Install an agent CLI, and sign it in as the jobs user.** Claude Code or
+**Install an agent CLI, and sign it in as the jobs user.** Claude Code or
 Gemini CLI, or both. Sign in as that user, the way you do on your own machine:
 
 ```bash
@@ -65,7 +82,7 @@ sudo -iu bay-agent claude
 sudo -iu bay-agent gemini
 ```
 
-**4. Install `git` and `gh`, and sign `gh` in as the jobs user.** A job that
+**Install `git` and `gh`, and sign `gh` in as the jobs user.** A job that
 reads or changes the project's code needs the project's repository on GitHub
 and `gh` signed in: Bay fetches the code through it, and a job pushes and opens
 pull requests with it. Install `cf` too if your prompts deploy with
@@ -108,7 +125,7 @@ A check the host cannot run fails the job's work, not the host.
 There is no sandbox: the app a job starts and the browser it opens reach
 whatever the jobs user reaches, on this machine and on the network.
 
-**5. Check what the host has.** `bay doctor` lists the jobs user's tools: each
+**Check what the host has.** `bay doctor` lists the jobs user's tools: each
 agent CLI, `git`, `gh`, `cf`, `lore` and `playwright-cli`, with its version
 and whether it is signed in, and says plainly when no agent CLI answers or when `lore` is signed
 in. A job fails at once, before its agent starts, when a tool it needs says it
@@ -119,7 +136,7 @@ The reason names the tool and the command that signs it in.
 sudo bay doctor
 ```
 
-**6. Allow jobs, and make it an Agent host.** On the host's page in Lore,
+**3. Allow jobs, and make it an Agent host.** On the host's page in Lore,
 turn on **Allow jobs** in its **Settings** tab, then **Agent host** in its
 **Agent** tab. Lore checks the host at once: the
 agent prints its version, then answers a one-line prompt. The host shows

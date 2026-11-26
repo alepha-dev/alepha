@@ -220,9 +220,10 @@ func (r *processRunner) removeWorkspace(ctx context.Context, project, workspace 
 	return len(names), nil
 }
 
-const jobsWorkspacesUsage = "usage: bay jobs workspaces [--root DIR] | bay jobs workspace rm <project>[/<name>] [--root DIR]"
+const jobsWorkspacesUsage = "usage: bay jobs setup [--user NAME] | bay jobs workspaces [--root DIR] | bay jobs workspace rm <project>[/<name>] [--root DIR]"
 
-// cmdJobs is `bay jobs workspaces` and `bay jobs workspace rm`.
+// cmdJobs is `bay jobs setup` (jobssetup.go), `bay jobs workspaces` and
+// `bay jobs workspace rm`.
 func cmdJobs(args []string) error {
 	root, _ := resolveRoot(args, defaultRoot)
 	var rest []string
@@ -232,6 +233,19 @@ func cmdJobs(args []string) error {
 			continue
 		}
 		rest = append(rest, args[i])
+	}
+	if len(rest) > 0 && rest[0] == "setup" {
+		// Everything but the word itself: its own flags and --root.
+		var setupArgs []string
+		dropped := false
+		for _, arg := range args {
+			if arg == "setup" && !dropped {
+				dropped = true
+				continue
+			}
+			setupArgs = append(setupArgs, arg)
+		}
+		return cmdJobsSetup(setupArgs)
 	}
 	r := newProcessRunner(root)
 	switch {

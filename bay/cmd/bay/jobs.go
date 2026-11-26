@@ -223,7 +223,7 @@ func cmdConfigJobs(args []string) error {
 		return err
 	}
 	fmt.Printf("jobs run as %s, %d changing code and %d others at a time, in workspaces under ~%s/bay-jobs; a mirror fetch is good for %s\n", cfg.User, cfg.jobsLimit(), cfg.readJobsLimit(), cfg.User, cfg.fetchTTL())
-	fmt.Printf("  an agent CLI (%s) must be on that user's PATH, signed in by hand as that user (sudo -iu %s)\n", strings.Join(adapterNames(), ", "), cfg.User)
+	fmt.Printf("  an agent CLI (%s), git and gh must be on that user's PATH and signed in: sudo bay jobs setup walks through it\n", strings.Join(adapterNames(), ", "))
 	fmt.Println("  ⚠ a host that runs process jobs should do nothing else: no production app, no other project's secrets")
 	return nil
 }

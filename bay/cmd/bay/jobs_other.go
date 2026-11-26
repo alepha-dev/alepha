@@ -29,3 +29,5 @@ func lockFile(string) (func(), bool, error) {
 func lockFileForRead(string, func() error) (func(), bool, bool, error) {
 	return nil, false, false, errors.New("jobs run on unix hosts only")
 }
+
+func foreground(*syscall.SysProcAttr) {}

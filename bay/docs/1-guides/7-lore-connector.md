@@ -210,8 +210,23 @@ deploy wait. A host that only runs jobs needs no Docker.
 ### The jobs user
 
 Bay runs a job as a **dedicated Unix user**, never root and never the user Bay
-runs as. Create the user, install an agent CLI for it and sign it in as that
-user by hand: Lore never configures the agent and never sees its sign-in.
+runs as. One command makes a host ready:
+
+```bash
+sudo bay jobs setup                    # or: --user NAME
+```
+
+It creates `bay-agent` when no jobs user is configured (or takes the account
+`--user` names) and saves it, lists each tool that user lacks (`git`, `gh`, an
+agent CLI) with the line that installs it, installs nothing, then runs the
+sign-in of each installed tool that is signed out, as that user on your
+terminal: the agent CLI, then `gh`. It ends on the `bay doctor` tool list and
+exits non-zero while a required tool is missing or signed out, so running it
+again picks up where it stopped. A host already configured keeps its user.
+
+By hand, the same work: create the user, install an agent CLI for it and sign
+it in as that user. Lore never configures the agent and never sees its
+sign-in.
 
 ```bash
 sudo useradd --create-home bay-agent
