@@ -42,7 +42,7 @@ completes after it, or when the scenario changes: run it again. A banner on
 the use case says so.
 
 A failed criterion opens an error in the project's
-[errors inbox](/lore/docs/ship-telemetry) once every quest covering the use case
+[errors inbox](/lore/docs/ship-errors) once every quest covering the use case
 is done, and only when the project has Ship's **Track** option on. While the
 quests are open, the failure is **In development** and opens nothing. A
 later pass resolves the error.

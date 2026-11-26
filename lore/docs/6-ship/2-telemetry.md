@@ -140,70 +140,15 @@ instance deletes its sigil with it.
 
 ## Errors
 
-A **error** is one distinct failure, counted across every report and every
-instance of the project: the same crash a thousand times is one row. The
-project's **Errors** page is the inbox where you triage them. It shows the
-open ones, the highest count first, each with its app, the page it happened on
-and when it was last seen. The entry appears in the sidebar once an instance
-collects errors, or while an error is open.
+An **error** is one distinct failure, counted across every report and every
+instance of the project: the same crash a thousand times is one row. They land
+in the project's **Errors** inbox, where your team triages them, and each has
+a page of its own with its counts, its stack and a discussion.
 
 ![The Errors inbox, one row per distinct failure](/screenshots/lore/errors-light.png)
 
-When a call from the browser to the app's server fails, the browser error
-names the action that failed (`listPrompts: Internal Server Error`), and each
-action is its own row. When the server reported the same request too, the
-browser row says **Caused by server error #N** and the server row **Caused
-browser error #N**: click it to open the other one. The link follows the
-newest report of each, so it shows while the two last failed on the same
-request, and not when, say, the server's newest occurrence came from
-somewhere the browser does not report from.
-
-A row's menu holds what you can do with it:
-
-- **View stack trace** opens the error's message, page and stack.
-- **Resolve** closes it once the failure is fixed. ⚠️ This is permanent: a
-  later report of the same failure raises its count but does not reopen it, so
-  resolve only what is really gone.
-- **Forward to quest** creates a quest carrying the error's name, message and
-  stack, linked back to the error, in the **Errors** area, and opens it. The
-  error leaves the inbox and cannot be forwarded twice. Forwarding needs the
-  Plan capability too.
-- **Delete** removes the row for good, in any status, after a confirmation.
-  Select rows and use **Delete selected** for up to 200 at once. Unlike
-  resolving, it decides nothing about the future: the same failure reported
-  again arrives as a new open error.
-
-To stop seeing a failure you will never fix, **ignore** it by rule: open
-**Settings ▸ Plan ▸ Errors** and choose **Manage rules** under **Ignore rules**. A rule
-is a piece of the error's message, matched whatever the case. Matching reports
-are dropped as they arrive. What the inbox already holds stays, for you to
-delete.
-
-Reading the inbox needs `error:read`, which the default Member rank holds.
-Triage and ignore rules need `error:triage`, which the owner holds and a rank
-can be given.
-
-Open errors are purged after the project's retention window, 30 days by
-default, counted from when they were last seen. Resolved and forwarded ones are
-kept as a record. An error survives the deletion of the sigil that reported it.
-
-To know whether a failure is still happening, read the instance's **Errors**
-tab, not the error: an error is one decision for the whole project, while
-errors are counted per app.
-
-### When the quest is deleted
-
-A forwarded error counts as handled. If its quest is then deleted, Lore hands
-the error back: it is open again, and can be forwarded again. Otherwise a
-failure nobody is working on would stay hidden behind a quest that no longer
-exists. Shelving or completing the quest changes nothing.
-
-### Outages
-
-A [healthcheck](/lore/docs/ship-healthchecks) reports a confirmed outage here
-too, as an error named `UptimeOutage`, one per monitor. It is the exception to
-the rules above: recovery resolves it by itself and the next outage reopens it,
-even if it was forwarded, so it can then be forwarded again.
+[Errors](/lore/docs/ship-errors) is the guide to working them: resolving,
+forwarding to a quest, trusting, ignoring by rule, and asking an agent.
 
 ## From the command line
 
@@ -214,8 +159,8 @@ lore insights read --segment errors                  # is it still failing?
 lore error list
 ```
 
-`lore error resolve` and `lore error forward` triage from a shell. The full
-list is in [The lore CLI](/lore/docs/reference-cli).
+`lore error get`, `lore error resolve` and `lore error forward` work an error
+from a shell. The full list is in [The lore CLI](/lore/docs/reference-cli).
 
 ## From an agent
 
@@ -223,6 +168,7 @@ list is in [The lore CLI](/lore/docs/reference-cli).
 | ---------------------------------------------- | ----------------------------------------------------------------- |
 | `insights_read`                                | Analytics, Web Vitals and the error budget, over 1, 7 or 30 days. |
 | `error_list`                                   | The open errors; `include_resolved` for the rest.                 |
+| `error_get`, `error_comment_add`               | One error whole, and a comment on its thread.                     |
 | `error_resolve`, `error_forward`               | Close an error, or turn it into a quest, new or already filed.    |
 | `sigil_list`                                   | Every sigil, its instance and when it last reported.              |
 | `sigil_create`, `sigil_rotate`, `sigil_delete` | Manage keys. Needs `sigil:manage`.                                |
@@ -236,6 +182,7 @@ shape it.
 
 ## Next
 
+- [Errors](/lore/docs/ship-errors)
 - [Apps and instances](/lore/docs/ship-instances)
 - [Healthchecks](/lore/docs/ship-healthchecks)
 - [Deploying an app](/lore/docs/ship-deploying)
