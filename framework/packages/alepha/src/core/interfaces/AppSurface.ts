@@ -15,7 +15,7 @@ export interface AppSurface {
   routes: AppSurfaceRoute[];
   pages: AppSurfacePage[];
   jobs: AppSurfaceJob[];
-  tools: AppSurfaceNamed[];
+  tools: AppSurfaceTool[];
   resources: AppSurfaceNamed[];
   prompts: AppSurfaceNamed[];
 }
@@ -98,4 +98,12 @@ export interface AppSurfaceJob {
 export interface AppSurfaceNamed {
   name: string;
   class: string;
+}
+
+/**
+ * A `$tool`, with whether it has an MCP Apps view (`ui.view`) that
+ * `alepha build` builds.
+ */
+export interface AppSurfaceTool extends AppSurfaceNamed {
+  view?: boolean;
 }

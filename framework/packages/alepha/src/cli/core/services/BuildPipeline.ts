@@ -16,6 +16,7 @@ import { BuildCloudflareTask } from "../tasks/BuildCloudflareTask.ts";
 import { BuildCompressTask } from "../tasks/BuildCompressTask.ts";
 import { BuildHeadersTask } from "../tasks/BuildHeadersTask.ts";
 import { BuildManifestTask } from "../tasks/BuildManifestTask.ts";
+import { BuildMcpViewsTask } from "../tasks/BuildMcpViewsTask.ts";
 import { BuildPrerenderTask } from "../tasks/BuildPrerenderTask.ts";
 import { BuildSbomTask } from "../tasks/BuildSbomTask.ts";
 import { BuildServerTask } from "../tasks/BuildServerTask.ts";
@@ -84,6 +85,9 @@ export class BuildPipeline {
    */
   protected readonly tasks: BuildTask[] = [
     $inject(BuildClientTask),
+    // Before the server: each MCP Apps view is built into the HTML the
+    // server bundle embeds in place of its import.
+    $inject(BuildMcpViewsTask),
     $inject(BuildServerTask),
     $inject(BuildPrerenderTask),
     // Before the target-specific config tasks: `dist/` exists by now, and

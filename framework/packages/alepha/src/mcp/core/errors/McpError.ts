@@ -123,6 +123,21 @@ export type McpResourceNotFoundError = InstanceType<
 >;
 
 /**
+ * An MCP Apps view read before `alepha build` turned it into HTML: under
+ * vitest, or with `node` run on the sources. `alepha dev` serves it from the
+ * Vite dev server instead.
+ */
+export const McpViewNotBuiltError = McpError.extend({
+  name: "MCP_VIEW_NOT_BUILT",
+  schema: z.object({ tool: z.text() }),
+  default: { code: JsonRpcErrorCodes.INTERNAL_ERROR },
+  message: (data) =>
+    `The view of tool "${data.tool}" is not built: run \`alepha build\`, or \`alepha dev\` to serve it from sources`,
+});
+
+export type McpViewNotBuiltError = InstanceType<typeof McpViewNotBuiltError>;
+
+/**
  * A prompt the server does not declare.
  */
 export const McpPromptNotFoundError = McpError.extend({

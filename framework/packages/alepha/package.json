@@ -297,9 +297,14 @@
       "default": "./src/logger/index.ts"
     },
     "./mcp": {
-      "types": "./src/mcp/index.ts",
-      "import": "./src/mcp/index.ts",
-      "default": "./src/mcp/index.ts"
+      "types": "./src/mcp/core/index.ts",
+      "import": "./src/mcp/core/index.ts",
+      "default": "./src/mcp/core/index.ts"
+    },
+    "./mcp/view": {
+      "types": "./src/mcp/view/index.ts",
+      "import": "./src/mcp/view/index.ts",
+      "default": "./src/mcp/view/index.ts"
     },
     "./orm": {
       "types": "./src/orm/core/index.ts",
@@ -817,9 +822,14 @@
         "default": "./dist/logger/index.js"
       },
       "./mcp": {
-        "types": "./dist/mcp/index.d.ts",
-        "import": "./dist/mcp/index.js",
-        "default": "./dist/mcp/index.js"
+        "types": "./dist/mcp/core/index.d.ts",
+        "import": "./dist/mcp/core/index.js",
+        "default": "./dist/mcp/core/index.js"
+      },
+      "./mcp/view": {
+        "types": "./dist/mcp/view/index.d.ts",
+        "import": "./dist/mcp/view/index.js",
+        "default": "./dist/mcp/view/index.js"
       },
       "./orm": {
         "types": "./dist/orm/core/index.d.ts",

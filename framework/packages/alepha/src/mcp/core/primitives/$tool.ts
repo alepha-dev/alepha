@@ -3,6 +3,7 @@ import {
   $atom,
   $inject,
   $store,
+  AlephaError,
   type Async,
   createPrimitive,
   type Infer,
@@ -20,10 +21,12 @@ import { KIND } from "alepha/internal";
 import { $logger } from "alepha/logger";
 
 import { McpToolOutputError } from "../errors/McpError.ts";
+import { McpToolView } from "../helpers/McpToolView.ts";
 import { securePermissionNames } from "../helpers/securePermissionNames.ts";
 import type {
   McpContext,
   McpIcon,
+  McpUiResourceMeta,
   McpUiToolVisibility,
   McpJsonSchema,
   McpToolAnnotations,
@@ -225,13 +228,34 @@ export interface ToolPrimitiveOptions<
 }
 
 /**
- * The `ui` option of a `$tool`: its MCP Apps view.
+ * The `ui` option of a `$tool`: its MCP Apps view, either a React component
+ * of the app (`view`) or a `ui://` resource declared apart (`resource`). One
+ * of the two, never both.
  */
 export interface ToolUiOptions {
   /**
-   * The view's `ui://` resource: its URI, or the `$resource` itself.
+   * The view's `ui://` resource, declared apart: its URI, or the `$resource`
+   * itself.
    */
-  resource: string | ResourcePrimitive;
+  resource?: string | ResourcePrimitive;
+
+  /**
+   * The view as a React component of the app, its default export:
+   * `() => import("./SalesChart.tsx")`. `alepha build` builds it into one
+   * self-contained HTML file embedded in the server bundle, and the tool
+   * serves it as `ui://tools/<tool name>`. React and the component stay out
+   * of the server bundle. `alepha dev` serves it from the Vite dev server.
+   *
+   * The component reads the call through `useMcpApp()` from
+   * `alepha/mcp/view`.
+   */
+  view?: () => Promise<unknown>;
+
+  /**
+   * What the view tells the host (`csp`, `domain`, `prefersBorder`), for a
+   * `view` only: a `resource` carries its own.
+   */
+  meta?: McpUiResourceMeta;
 
   /**
    * Who may call the tool: `["model", "app"]` when omitted (the spec's
@@ -311,6 +335,40 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
 
   protected onInit(): void {
     this.mcpServer.registerTool(this);
+    const ui = this.options.ui;
+    if (!ui) {
+      return;
+    }
+    if (ui.view && ui.resource) {
+      throw new AlephaError(
+        `MCP tool '${this.name}' declares both ui.view and ui.resource: a view is one or the other`,
+      );
+    }
+    if (!ui.view && !ui.resource) {
+      throw new AlephaError(
+        `MCP tool '${this.name}' declares ui without a view or a resource`,
+      );
+    }
+    if (ui.view) {
+      this.mcpServer.registerView(
+        new McpToolView({
+          alepha: this.alepha,
+          tool: this.name,
+          view: ui.view,
+          meta: ui.meta,
+          source: (ui as Record<symbol, unknown>)[McpToolView.SOURCE] as
+            | string
+            | undefined,
+        }),
+      );
+    }
+  }
+
+  /**
+   * Whether this tool's view is a React component `alepha build` builds.
+   */
+  public get hasView(): boolean {
+    return !!this.options.ui?.view;
   }
 
   /**
@@ -445,8 +503,11 @@ export class ToolPrimitive<T extends ToolPrimitiveSchema> extends Primitive<
       written && typeof written === "object" && !Array.isArray(written)
         ? { ...(written as Record<string, unknown>) }
         : {};
-    ui.resourceUri =
-      typeof typed.resource === "string" ? typed.resource : typed.resource.uri;
+    ui.resourceUri = typed.view
+      ? McpToolView.uriOf(this.name)
+      : typeof typed.resource === "string"
+        ? typed.resource
+        : typed.resource?.uri;
     if (typed.visibility) {
       ui.visibility = [...typed.visibility];
     }

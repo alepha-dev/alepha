@@ -7633,6 +7633,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mcp-example@workspace:framework/apps/examples/mcp":
+  version: 0.0.0-use.local
+  resolution: "mcp-example@workspace:framework/apps/examples/mcp"
+  dependencies:
+    "@alepha/ui": "workspace:*"
+    "@tailwindcss/vite": "npm:^4.3.5"
+    alepha: "workspace:^"
+    react: "npm:^19.3.1"
+    react-dom: "npm:^19.3.1"
+    tailwindcss: "npm:^4.3.5"
+    vite: "npm:^8.3.8"
+  languageName: unknown
+  linkType: soft
+
 "mdast-util-find-and-replace@npm:^3.0.0":
   version: 3.0.2
   resolution: "mdast-util-find-and-replace@npm:3.0.2"

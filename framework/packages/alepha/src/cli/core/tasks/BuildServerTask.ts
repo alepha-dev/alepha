@@ -13,6 +13,7 @@ import type { BuildRuntime } from "../atoms/buildOptions.ts";
 import { ActorHostCollection } from "../services/ActorHostCollection.ts";
 import { BuildSlices } from "../services/BuildSlices.ts";
 import { LazyControllerPlugin } from "../services/LazyControllerPlugin.ts";
+import { McpViewPlugin } from "../services/McpViewPlugin.ts";
 import { MetaResolver } from "../services/MetaResolver.ts";
 import {
   type PreloadTable,
@@ -64,6 +65,7 @@ export class BuildServerTask extends BuildTask {
   protected readonly sbom = $inject(SbomBuilder);
   protected readonly preloadTable = $inject(PreloadTableBuilder);
   protected readonly slices = $inject(BuildSlices);
+  protected readonly mcpViewPlugin = $inject(McpViewPlugin);
 
   /**
    * The actor hosts whose Durable Object class is re-exported through the
@@ -141,6 +143,7 @@ export class BuildServerTask extends BuildTask {
             alepha: ctx.alepha,
             meta: ctx.meta ? this.metaResolver.define(ctx.meta) : undefined,
             surface: ctx.surface,
+            mcpViews: ctx.mcpViews,
             allowUnresolvedPreloads: ctx.options.preload?.allowUnresolved,
             ssr,
             inspect: this.inspects(ctx, runtime),
@@ -262,6 +265,11 @@ export class BuildServerTask extends BuildTask {
      */
     surface?: AppSurface;
     /**
+     * The built MCP Apps views, by source file, embedded in place of each
+     * `view` import.
+     */
+    mcpViews?: Map<string, string>;
+    /**
      * Source paths whose preload key may resolve to no chunks without failing
      * the build.
      */
@@ -294,6 +302,12 @@ export class BuildServerTask extends BuildTask {
     plugins.push(this.viteUtils.createTsconfigPathsPlugin());
     plugins.push(this.viteUtils.createSsrPreloadPlugin());
     plugins.push(this.viteUtils.createClientModulesPlugin());
+    // Every MCP Apps view becomes its built HTML, so React and the view's
+    // component stay out of the server bundle. Not gated on
+    // ALEPHA_LAZY_CHUNKS: a server build with a view always embeds it.
+    if (opts.mcpViews?.size) {
+      plugins.push(this.mcpViewPlugin.embed(opts.mcpViews));
+    }
     // A pure controller's code becomes a chunk imported on its first use
     // (#Q3407), from the build list: only for a server build that has one.
     // Off unless asked for at build time (#Q3407): on Lore it moved 0.4 MB

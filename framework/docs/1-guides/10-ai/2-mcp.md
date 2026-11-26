@@ -1035,6 +1035,72 @@ class Charts {
 - The server declares `io.modelcontextprotocol/ui` as soon as one `ui://`
   resource is registered.
 
+#### A view written in React
+
+A view is usually a React component of the app rather than hand-written HTML.
+Declare it with `ui.view`, a thunk importing the module whose default export is
+the component:
+
+```typescript
+import { z } from "alepha";
+import { $tool } from "alepha/mcp";
+
+class Sales {
+  sales_report = $tool({
+    description: "Sales per region for a quarter",
+    schema: {
+      params: z.object({ quarter: z.text() }),
+      result: z.object({ total: z.number() }),
+    },
+    ui: {
+      view: () => import("./views/SalesChart.tsx"),
+      meta: { prefersBorder: true },
+    },
+    handler: async () => ({ total: 42 }),
+  });
+}
+```
+
+The tool serves it as `ui://tools/sales_report`, with `ui.meta` as its
+`_meta.ui`. `view` and `resource` are one or the other: a tool declaring both
+fails at start.
+
+The component reads the call with `useMcpApp()`, from `alepha/mcp/view`:
+
+```tsx
+import { useMcpApp } from "alepha/mcp/view";
+
+const SalesChart = () => {
+  const app = useMcpApp();
+  const total = app.result?.structuredContent?.total;
+  return (
+    <button onClick={() => app.callTool("sales_report", { quarter: "Q2" })}>
+      {String(total ?? "Loading")}
+    </button>
+  );
+};
+
+export default SalesChart;
+```
+
+It gives the tool's `input` and `result` as the host sends them, the host's
+`theme` (also applied to `<html>` as `class="dark"`), and `callTool`,
+`openLink` and `sendMessage`. It speaks the extension's `postMessage`
+protocol itself, with no dependency on the MCP SDK.
+
+- **`alepha build`** builds each view into one self-contained HTML document
+  (scripts, styles and assets inlined, the app's Vite config applied) and
+  embeds it in every server slice in place of the import. The server bundle
+  holds neither React nor the component, and a Worker serves the view with no
+  file system.
+- **`alepha dev`** serves the view from the Vite dev server, and adds the dev
+  server's origin to its `csp`, so the host's sandboxed iframe may load it. The
+  dev server answers the iframe's module loads with CORS for the null origin of
+  a `srcdoc` iframe, once the app holds a view; a host whose sandbox runs on an
+  origin of its own is listed in `MCP_VIEW_DEV_ORIGINS` (comma-separated).
+- **Anywhere else** (vitest, `node` on the sources) the view is not built:
+  `resources/read` answers an error naming the tool.
+
 `_meta.ui` is sent to **every** client, on every era and transport, whether or
 not it declared the extension: a legacy HTTP client's declaration cannot be
 known, and a client that does not know the extension ignores `_meta`. So the

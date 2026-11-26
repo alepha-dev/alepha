@@ -95,6 +95,13 @@ export interface BuildTaskContext {
   surface?: AppSurface;
 
   /**
+   * The MCP Apps views `BuildMcpViewsTask` built, each one HTML document,
+   * keyed by the view's source file. `BuildServerTask` embeds them in place
+   * of each `view` import. Absent when the app has no view.
+   */
+  mcpViews?: Map<string, string>;
+
+  /**
    * Constants the caller adds to the client bundle's Vite `define`, already
    * encoded as source text. Absent for `alepha build`, whose client bundle
    * then carries exactly what it always did.
