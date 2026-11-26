@@ -20,6 +20,7 @@ import {
   currentProjectAtom,
   type I18n,
   formatReference,
+  LoreEmptyState,
   PinnedPromptsButton,
   StackTraceViewer,
 } from "@lore/core/web";
@@ -86,6 +87,10 @@ const ProjectErrors = () => {
   // Every row the last fetch returned, before the filters: a row's linked
   // error (#Q4404) opens from it even when a filter hides it.
   const [fetched, setFetched] = useState<ProjectErrorResource[]>([]);
+  // Whether the filters hide open errors: one app's only, or resolved rows
+  // only. An empty page there is "no match", the table's own state; anywhere
+  // else it means no open error is left, which the companion says.
+  const [narrowed, setNarrowed] = useState(false);
 
   // One `useAction` per triage verb (#E59, #Q2329). A refusal is the server's
   // sentence, toasted by the root `ActionErrorToaster`; follow-ups (the
@@ -374,10 +379,30 @@ const ProjectErrors = () => {
         className="min-h-0 flex-1"
         persistenceKey={project ? `lor.errors.${project.id}` : "lor.errors"}
         defaultSort={{ field: "count", direction: "desc" }}
-        emptyMessage={tr("errors.empty")}
+        // ⚠️ `empty` replaces the no-match state too, so it is passed only
+        // while the view still holds every open error. No open error is good
+        // news: the companion is `calm`.
+        empty={
+          narrowed ? undefined : (
+            <LoreEmptyState
+              mood="calm"
+              title={tr("errors.empty.title")}
+              description={tr("errors.empty.description")}
+            />
+          )
+        }
         filters={{
           fields: filterFields,
           initialValues: { status: ["open"] },
+          onChange: (values) => {
+            const statuses = values.status ?? [];
+            // `"all"` is the sigil value an old stored filter may still
+            // carry: read as absent, as the fetcher does.
+            const oneApp = !!values.sigilId && values.sigilId !== "all";
+            setNarrowed(
+              oneApp || (statuses.length > 0 && !statuses.includes("open")),
+            );
+          },
         }}
         // ⚠️ `toolbar`, not `actions`: the robot is a dropdown trigger
         // rather than a button that acts on click. It shows the prompts

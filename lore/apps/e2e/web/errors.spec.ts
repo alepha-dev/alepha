@@ -53,7 +53,7 @@ test.describe("Errors", () => {
     await expect(page.getByText("Open").first()).toBeVisible({
       timeout: 10_000,
     });
-    await expect(page.getByText(/No errors\./i)).toBeVisible({
+    await expect(page.getByText("No open errors")).toBeVisible({
       timeout: 10_000,
     });
     // ...and it did NOT spin into "Maximum update depth" → error boundary.

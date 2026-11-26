@@ -2809,8 +2809,9 @@ export default {
   "insights.vitals.needsImprovement": "Needs work",
   "insights.vitals.poor": "Poor",
 
-  "errors.empty":
-    "No errors. Crashes captured from your sigils will appear here.",
+  "errors.empty.title": "No open errors",
+  "errors.empty.description":
+    "Crashes captured from your sigils will appear here.",
   "errors.filter.open": "Open",
   "errors.filter.resolved": "Resolved",
   "errors.filter.allStatuses": "All statuses",
