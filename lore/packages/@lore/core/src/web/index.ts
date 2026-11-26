@@ -318,6 +318,10 @@ export {
   type AgentAvatarProps,
 } from "./app/components/shared/AgentAvatar.tsx";
 export {
+  default as AgentJobStepper,
+  type AgentJobStepperProps,
+} from "./app/components/shared/AgentJobStepper.tsx";
+export {
   default as LoreEmptyState,
   type LoreEmptyStateProps,
 } from "./app/components/shared/LoreEmptyState.tsx";

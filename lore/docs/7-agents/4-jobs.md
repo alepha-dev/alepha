@@ -274,6 +274,24 @@ and the turns, tokens and cost the agent CLI reports at its end. Two tabs:
   their count, and a line Lore cannot read is shown as it is.
 - **Prompt**: the words the agent received.
 
+### How far a job has gone
+
+A job that works quests shows its steps under its status, as a bar with one
+segment per quest it accepted, filled as each one is completed. A job working
+an epic adds an empty segment for each quest of the epic it has not taken yet,
+and a job working one quest counts its objectives instead. While it runs, the
+bar says which quest it is on (**Quest 3 of 5**), how many of that quest's
+objectives are ticked, how long ago its last step was, and how long it has run
+against its time limit (**40 min of 12 h**). Once every quest is done the bar
+is full and says the job is wrapping up: review, checks and merge come after
+the last quest. Lore counts the steps itself, from the quests the job's key
+accepted and ticked, so the agent is never asked for them. An ended job keeps
+the count it ended with.
+
+The jobs list shows the same bar, short, under each job's status (**2/5**),
+and hovering a quest's agent icon shows it in the card, with the quest you
+came from marked.
+
 **Run again**, in the toolbar, runs the same prompt on the same items. The
 **⋮** menu beside it holds the rest: **Download log** saves the whole log,
 stderr included, **Copy prompt** copies the words the agent received, and

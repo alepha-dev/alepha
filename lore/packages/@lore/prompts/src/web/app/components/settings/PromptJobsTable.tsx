@@ -2,7 +2,7 @@ import { cn, textLinkUnderlineClassName } from "@alepha/ui";
 import { DataTable, type DataTableFilterFields } from "@alepha/ui/table";
 import type { HostJobController } from "@lore/core/api";
 import type { HostJobResource } from "@lore/core/schemas";
-import { type I18n, currentProjectAtom } from "@lore/core/web";
+import { AgentJobStepper, type I18n, currentProjectAtom } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -224,7 +224,20 @@ const PromptJobsTable = (props: PromptJobsTableProps) => {
         },
         status: {
           label: tr("jobs.col.status"),
-          cell: (job) => <JobStatusBadge status={job.status} />,
+          // Its steps under its status, compact (#Q4434): segments and
+          // "4/7", riding on the list's own read.
+          cell: (job) => (
+            <span className="flex flex-col items-start gap-1">
+              <JobStatusBadge status={job.status} />
+              {job.steps && (
+                <AgentJobStepper
+                  compact
+                  steps={job.steps}
+                  running={job.status === "running"}
+                />
+              )}
+            </span>
+          ),
         },
         duration: {
           label: tr("jobs.col.duration"),

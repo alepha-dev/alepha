@@ -16,7 +16,15 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+} from "vitest";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 import { currentAreasAtom } from "../../atoms/currentAreasAtom.ts";
@@ -669,10 +677,13 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
     });
 
     it("opens a hover card naming the agent, the job and its state, with a notice and a grey avatar once the job ended (#Q4410)", async () => {
+      // Ended for the whole case: the card reads the job again when it
+      // opens (#Q4434).
       FakeLinkProvider.jobStatus = "succeeded";
-      const { view } = await mount([building("claude")]).finally(() => {
+      onTestFinished(() => {
         FakeLinkProvider.jobStatus = "running";
       });
+      const { view } = await mount([building("claude")]);
       const link = await view.findByTestId("quest-agent-job");
       await waitFor(() => expect(link.getAttribute("data-ended")).toBe("true"));
       expect(

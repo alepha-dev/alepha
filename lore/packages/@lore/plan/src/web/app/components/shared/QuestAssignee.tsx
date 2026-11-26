@@ -7,17 +7,27 @@ import {
 } from "@alepha/ui";
 import type { HostJobController } from "@lore/core/api";
 import { HOST_JOB_TERMINAL } from "@lore/core/schemas";
-import { AgentAvatar, currentProjectAtom, type I18n } from "@lore/core/web";
+import {
+  AgentAvatar,
+  AgentJobStepper,
+  currentProjectAtom,
+  type I18n,
+} from "@lore/core/web";
 import { useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
 import { TriangleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
 
 export interface QuestAssigneeProps {
-  quest: Pick<QuestResource, "acceptedBy" | "agentJobId" | "agentName">;
+  quest: Pick<QuestResource, "acceptedBy" | "agentJobId" | "agentName"> & {
+    /**
+     * The quest the card is opened from, marked among the job's steps.
+     */
+    shortId?: number;
+  };
   /**
    * The member's avatar, as the surface draws it: a chip with its card in
    * the table, a bare avatar on a card. Absent, nobody holds the quest.
@@ -55,15 +65,28 @@ const QuestAssignee = (props: QuestAssigneeProps) => {
   const [project] = useStore(currentProjectAtom);
   const jobsApi = useClient<HostJobController>();
   const jobId = props.quest.agentJobId;
+  const [open, setOpen] = useState(false);
+  const [live, setLive] = useState(false);
   // Keyed on the job, so every surface that shows it shares one read. Quiet
-  // on failure: the card then says nothing of the job's state.
+  // on failure: the card then says nothing of the job's state. Read when the
+  // row mounts, again when the card opens, and every 3 s while it stays open
+  // on a running job (#Q4434), so its steps are not the page load's.
   const jobQuery = useQuery(
     {
       key: ["agent-job", jobId],
       enabled: !!jobId && jobsApi.getJob.can(),
-      handler: () => jobsApi.getJob({ params: { jobId: jobId as string } }),
+      handler: async () => {
+        const job = await jobsApi.getJob({
+          params: { jobId: jobId as string },
+        });
+        setLive(!HOST_JOB_TERMINAL.includes(job.status));
+        return job;
+      },
+      runEvery: open && live ? 3000 : undefined,
       onError: () => {},
     },
+    // `runEvery` is read on each render, so `open` and `live` stay out of
+    // the deps: a change of either would start one more read.
     [jobsApi, jobId],
   );
   if (!jobId || !project) return <>{props.member ?? null}</>;
@@ -91,7 +114,12 @@ const QuestAssignee = (props: QuestAssigneeProps) => {
   const triggerClass = "relative z-10 inline-flex rounded-[9px]";
   return (
     <span className="inline-flex items-center" data-testid="quest-assignee">
-      <HoverCard>
+      <HoverCard
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (next && jobId) void jobQuery.refetch();
+        }}
+      >
         <HoverCardTrigger
           delay={200}
           render={
@@ -153,6 +181,21 @@ const QuestAssignee = (props: QuestAssigneeProps) => {
               </span>
             </div>
           </div>
+          {/* The job's steps (#Q4434), the quest this card is opened from
+              marked among them. */}
+          {jobQuery.data?.steps && (
+            <AgentJobStepper
+              steps={jobQuery.data.steps}
+              running={status === "running"}
+              {...(props.quest.shortId === undefined
+                ? {}
+                : { mark: props.quest.shortId })}
+              {...(jobQuery.data.startedAt
+                ? { startedAt: jobQuery.data.startedAt }
+                : {})}
+              timeoutSeconds={jobQuery.data.input.timeoutSeconds}
+            />
+          )}
           {ended && (
             <p
               className="text-foreground flex items-start gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs"
