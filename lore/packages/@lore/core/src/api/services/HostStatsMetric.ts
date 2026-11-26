@@ -109,6 +109,9 @@ export class HostStatsMetric implements DashboardMetricResolver {
       detail: {
         host: host.slug,
         measure,
+        // Names the measure in the card's header: four cards of one host
+        // otherwise read as one title four times.
+        subtitle: measure,
         collecting: host.collectSeries,
       },
       ...(slug && host.type === "bay"

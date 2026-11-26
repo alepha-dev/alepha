@@ -4330,6 +4330,10 @@ export default {
   "dashboard.metric.hostStats": "Host usage",
   "dashboard.metric.hostStats.hint":
     "one host's CPU, memory, disk or load now, and its daily means",
+  "dashboard.subtitle.cpu": "CPU %",
+  "dashboard.subtitle.memory": "Memory %",
+  "dashboard.subtitle.disk": "Disk %",
+  "dashboard.subtitle.load": "Load",
   "dashboard.metric.hostUnits": "Watched units",
   "dashboard.metric.hostUnits.hint":
     "the systemd units a host watches and their state now",

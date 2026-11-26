@@ -316,7 +316,11 @@ describe("dashboard hosts and uptime cards", () => {
       const project = await seed();
       const cpu = await resolve(project, "hostStats");
       expect(cpu).toMatchObject({ ok: true, value: 12.5, unit: "percent" });
-      expect(cpu.detail).toMatchObject({ host: "api-box", measure: "cpu" });
+      expect(cpu.detail).toMatchObject({
+        host: "api-box",
+        measure: "cpu",
+        subtitle: "cpu",
+      });
       const disk = await resolve(project, "hostStats", undefined, {
         measure: "disk",
       });
@@ -336,7 +340,7 @@ describe("dashboard hosts and uptime cards", () => {
       expect(value.ok).toBe(true);
       expect(value.value).toBe(1);
       expect(
-        (value.rows ?? []).map((row) => [row.title, row.badge, row.state]),
+        (value.rows ?? []).map((row) => [row.title, row.meta, row.state]),
       ).toEqual([
         ["api.service", "activating", "warn"],
         ["caddy.service", "active", "ok"],
@@ -465,11 +469,15 @@ describe("dashboard hosts and uptime cards", () => {
       const value = await resolve(project, "incidents");
       expect(value.value).toBe(1);
       expect(
-        (value.rows ?? []).map((row) => [row.title, row.meta, row.state]),
+        (value.rows ?? []).map((row) => [row.title, row.excerpt, row.state]),
       ).toEqual([
         ["api.service: active to activating", "api-box", "neutral"],
-        ["Api down", "14 min", "warn"],
+        ["Api down", "14 min, timeout", "warn"],
       ]);
+      // No id chip: a row id is a reference (#Q12), never a uuid.
+      expect((value.rows ?? []).every((row) => row.id === undefined)).toBe(
+        true,
+      );
     });
   });
 });
