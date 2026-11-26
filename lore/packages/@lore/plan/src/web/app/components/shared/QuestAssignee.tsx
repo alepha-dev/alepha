@@ -112,8 +112,14 @@ const QuestAssignee = (props: QuestAssigneeProps) => {
     />
   );
   const triggerClass = "relative z-10 inline-flex rounded-[9px]";
+  // `isolate` keeps that `z-10` inside this pair (#Q4535): it orders the
+  // agent above the member's avatar, never above a sticky table header the
+  // row scrolls under.
   return (
-    <span className="inline-flex items-center" data-testid="quest-assignee">
+    <span
+      className="isolate inline-flex items-center"
+      data-testid="quest-assignee"
+    >
       <HoverCard
         onOpenChange={(next) => {
           setOpen(next);
