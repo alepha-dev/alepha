@@ -190,18 +190,6 @@ export class WorkShell {
       ],
     });
 
-    // The quest export, on General since it is the project's data rather
-    // than a Quests setting.
-    this.shell.registerSettingsPanel({
-      key: "quest-export",
-      section: "general",
-      order: 10,
-      component: lazyPart(
-        () =>
-          import("../components/project/settings/ProjectSettingsDataSection.tsx"),
-      ),
-    });
-
     // ⚠️ New quest was once the one item gated on the PERMISSION alone. It
     // left a Remember-only project offering the one create that answers
     // 400 - the first thing a reader would try.

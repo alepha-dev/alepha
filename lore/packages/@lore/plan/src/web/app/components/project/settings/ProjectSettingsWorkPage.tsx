@@ -4,12 +4,16 @@ import {
 } from "@lore/core/web";
 import { useInject } from "alepha/react";
 
+import ProjectSettingsDataSection from "./ProjectSettingsDataSection.tsx";
+
 /**
  * Plan > Quests ("Features" until #Q4258): how quests behave.
  *
  * The master switch and the options that add a sidebar entry (board, epics,
  * releases) are in General > Capabilities since #Q2565. The board's columns,
- * the tag colours (#Q4061) and the prompts have tabs of their own.
+ * the tag colours (#Q4061) and the prompts have tabs of their own. The
+ * quest export closes the page (#Q4443): it is Plan's data, so a project
+ * with Plan off, whose Plan section is hidden, does not offer it.
  */
 const ProjectSettingsWorkPage = () => {
   const shell = useInject(ProjectShellRegistry);
@@ -25,6 +29,7 @@ const ProjectSettingsWorkPage = () => {
           .settingsOptions("plan")
           .filter((option) => option !== "blockFailingMust")}
       />
+      <ProjectSettingsDataSection />
     </div>
   );
 };

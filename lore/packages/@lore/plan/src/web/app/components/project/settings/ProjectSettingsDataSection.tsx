@@ -1,6 +1,6 @@
 import { Button, Card, CardContent, cn } from "@alepha/ui";
 import { settingsCardEdge } from "@alepha/ui/settings";
-import { currentProjectAtom, type I18n } from "@lore/core/web";
+import { currentProjectAtom, hasCapability, type I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Download } from "lucide-react";
@@ -8,9 +8,9 @@ import { Download } from "lucide-react";
 import type { ProjectQuestPortabilityController } from "../../../../../api/controllers/ProjectQuestPortabilityController.ts";
 
 /**
- * Data section: export the project's quests as CSV. Rendered inside the
- * General settings page next to the project edit form and the danger zone,
- * sharing their visual pattern.
+ * Data section: export the project's quests as CSV. Rendered at the bottom
+ * of Settings > Plan > Quests (#Q4443; on General until then, where it showed
+ * even with Plan off).
  *
  * ⚠️ **Export only.** The Import card, its preview dialog and
  * `ProjectSettingsImportDetailsModal` were deleted with quest import in epic
@@ -42,7 +42,9 @@ const ProjectSettingsDataSection = () => {
     [api, project],
   );
 
-  if (!project) return null;
+  // Plan's data: not offered with Plan off, even where its settings page is
+  // reached by its address rather than the hidden Plan section (#Q4443).
+  if (!project || !hasCapability(project, "plan")) return null;
 
   return (
     <div className="flex flex-col gap-2">
