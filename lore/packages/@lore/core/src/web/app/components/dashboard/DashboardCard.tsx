@@ -1,4 +1,4 @@
-import { cn, textLinkUnderlineClassName } from "@alepha/ui";
+import { cn, textLinkClassName } from "@alepha/ui";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import type { CSSProperties, DragEvent } from "react";
@@ -297,9 +297,13 @@ const DashboardCard = (props: DashboardCardProps) => {
               type="button"
               onClick={open}
               data-testid="dashboard-card-open"
+              // The standard text link (#Q4444): muted at rest, so hovering
+              // to the foreground is a visible change. `pb-1` keeps its
+              // underline, drawn 4px under the baseline, inside the tile's
+              // `overflow-hidden` body, which cut it off at the bottom edge.
               className={cn(
-                textLinkUnderlineClassName,
-                "hover:text-foreground mt-auto text-xs",
+                textLinkClassName,
+                "mt-auto cursor-pointer pb-1 text-xs",
               )}
             >
               {tr("dashboard.card.seeAll")}
