@@ -69,6 +69,7 @@ import { ProjectErrorQuestHandBack } from "./services/ProjectErrorQuestHandBack.
 import { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
 import { ProjectErrorThread } from "./services/ProjectErrorThread.ts";
 import { ProjectReliabilityReportService } from "./services/ProjectReliabilityReportService.ts";
+import { RecentDeploymentsMetric } from "./services/RecentDeploymentsMetric.ts";
 import { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
 import { RollbackService } from "./services/RollbackService.ts";
 import { RunErrorService } from "./services/RunErrorService.ts";
@@ -207,6 +208,7 @@ export const LoreShipApi = $module({
     OpenErrorsMetric,
     UniqueVisitorsMetric,
     WebVitalsMetric,
+    RecentDeploymentsMetric,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and

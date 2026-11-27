@@ -5,6 +5,7 @@ import {
 import {
   type DashboardCardValue,
   type Project,
+  projectCapabilities,
   qualityRuns,
 } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
@@ -16,7 +17,7 @@ import {
   sigilUniquesDaily,
 } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
-import { AlephaApiUsers } from "alepha/api/users";
+import { AlephaApiUsers, users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -38,6 +39,8 @@ class AppsRepositories {
   deployments = $repository(deployments);
   quality = $repository(qualityRuns);
   uniques = $repository(sigilUniquesDaily);
+  capabilities = $repository(projectCapabilities);
+  users = $repository(users);
 }
 
 /**
@@ -77,16 +80,21 @@ describe("dashboard apps tiles", () => {
     await alepha.stop();
   });
 
-  const resolve = async (metric: string): Promise<DashboardCardValue> =>
+  const resolve = async (
+    metric: string,
+    scope?: { kind: "apps"; sigilIds: string[] },
+    height = 1,
+  ): Promise<DashboardCardValue> =>
     (
       await alepha.inject(DashboardMetricRegistry).resolveForProject(
         [
           {
             id: 1,
             metric,
-            scope: { kind: "projects", projectIds: [project.id] },
+            scope: scope ?? { kind: "projects", projectIds: [project.id] },
             filters: {},
             size: 1,
+            height,
             position: 0,
           },
         ],
@@ -324,6 +332,182 @@ describe("dashboard apps tiles", () => {
       expect((await resolve("webVitals")).empty).toBe("noBeacon");
       await copy("web", "production", ["beacon"], 1);
       expect((await resolve("webVitals")).empty).toBe("noData");
+    });
+  });
+
+  describe("recentDeployments", () => {
+    // The tile needs Ship's deploy option, which the fixture leaves off.
+    beforeEach(async () => {
+      await repos.capabilities.updateMany(
+        { projectId: { eq: project.id }, key: { eq: "ship" } },
+        { options: { track: true, deploy: true } },
+      );
+      await repos.users.updateById(user.id, { firstName: "ada" });
+    });
+
+    const deploy = async (
+      instanceId: string,
+      tag: string,
+      status: "queued" | "running" | "succeeded" | "failed" | "cancelled",
+      minutesAgo: number,
+      extra: { versionId?: string; createdBy?: string } = {},
+    ) => {
+      const at = dateTime.now().subtract(minutesAgo, "minute").toISOString();
+      return repos.deployments.create({
+        projectId: project.id,
+        instanceId,
+        app: "web",
+        tag,
+        sha256: "d".repeat(64),
+        status,
+        createdAt: at,
+        startedAt: at,
+        ...(status === "queued" || status === "running"
+          ? {}
+          : { finishedAt: at }),
+        ...extra,
+      });
+    };
+
+    it("lists every copy's deployments newest first, with status, tone and author (#Q4522)", async ({
+      expect,
+    }) => {
+      const prod = await copy("web", "production", ["errors"], 1);
+      const staging = await copy("web", "staging", ["errors"], 1);
+      await deploy(prod.instance.id, "1.0.0", "succeeded", 60, {
+        versionId: "v-1",
+        createdBy: user.id,
+      });
+      await deploy(prod.instance.id, "1.1.0", "succeeded", 40, {
+        versionId: "v-2",
+      });
+      // A fast rollback re-points the copy at an earlier run's version.
+      await deploy(prod.instance.id, "1.0.0", "succeeded", 30, {
+        versionId: "v-1",
+      });
+      await deploy(staging.instance.id, "1.2.0", "failed", 20);
+      await deploy(staging.instance.id, "1.2.1", "running", 5);
+
+      const value = await resolve("recentDeployments", undefined, 2);
+
+      expect(
+        value.rows?.map((row) => ({
+          id: row.id,
+          title: row.title,
+          badge: row.badge,
+          state: row.state,
+        })),
+      ).toEqual([
+        {
+          id: "web/staging",
+          title: "1.2.1",
+          badge: "running",
+          state: "accent",
+        },
+        { id: "web/staging", title: "1.2.0", badge: "failed", state: "bad" },
+        {
+          id: "web/production",
+          title: "1.0.0",
+          badge: "rolledBack",
+          state: "warn",
+        },
+        {
+          id: "web/production",
+          title: "1.1.0",
+          badge: "succeeded",
+          state: "ok",
+        },
+        {
+          id: "web/production",
+          title: "1.0.0",
+          badge: "succeeded",
+          state: "ok",
+        },
+      ]);
+      expect(value.rows?.[4]?.excerpt).toBe("Ada");
+      expect(value.rows?.[3]?.excerpt).toBeUndefined();
+      expect(value.rows?.[0]?.link).toEqual({
+        route: "appDeploy",
+        params: { projectSlug: project.slug, app: "web", env: "staging" },
+      });
+      expect(value.link).toEqual({
+        route: "projectApps",
+        params: { projectSlug: project.slug },
+      });
+      expect(value.detail).toEqual({ failed: 1 });
+      // A tile one row high shows what fits above its "See all".
+      expect(
+        (await resolve("recentDeployments")).rows?.map((row) => row.title),
+      ).toEqual(["1.2.1", "1.2.0"]);
+    });
+
+    it("keeps a failed or running rollback's own status, and finds the run it went back to however far back", async ({
+      expect,
+    }) => {
+      const prod = await copy("web", "production", ["errors"], 1);
+      await deploy(prod.instance.id, "1.0.0", "succeeded", 600, {
+        versionId: "v-1",
+      });
+      for (let i = 0; i < 12; i++) {
+        await deploy(prod.instance.id, `1.1.${i}`, "succeeded", 500 - i, {
+          versionId: `v-2-${i}`,
+        });
+      }
+      await deploy(prod.instance.id, "1.0.0", "failed", 30, {
+        versionId: "v-1",
+      });
+      await deploy(prod.instance.id, "1.0.0", "running", 20, {
+        versionId: "v-1",
+      });
+      await deploy(prod.instance.id, "1.0.0", "succeeded", 10, {
+        versionId: "v-1",
+      });
+
+      const value = await resolve("recentDeployments", undefined, 2);
+
+      expect(value.rows?.slice(0, 3).map((row) => row.badge)).toEqual([
+        "rolledBack",
+        "running",
+        "failed",
+      ]);
+    });
+
+    it("never lets a preview copy's runs push a lasting copy's off the tile", async ({
+      expect,
+    }) => {
+      const prod = await copy("web", "production", ["errors"], 1);
+      const preview = await copy("web", "pr-1", ["errors"], 1);
+      await repos.instances.updateById(preview.instance.id, {
+        ephemeral: true,
+      });
+      await deploy(prod.instance.id, "1.0.0", "succeeded", 600);
+      for (let i = 0; i < 60; i++) {
+        await deploy(preview.instance.id, `pr-${i}`, "succeeded", 300 - i);
+      }
+
+      const value = await resolve("recentDeployments");
+
+      expect(value.rows?.map((row) => row.title)).toEqual(["1.0.0"]);
+    });
+
+    it("follows only the copies of a scope of apps", async ({ expect }) => {
+      const prod = await copy("web", "production", ["errors"], 1);
+      const staging = await copy("web", "staging", ["errors"], 1);
+      await deploy(prod.instance.id, "1.0.0", "succeeded", 10);
+      await deploy(staging.instance.id, "1.1.0", "succeeded", 5);
+
+      const value = await resolve("recentDeployments", {
+        kind: "apps",
+        sigilIds: [prod.sigil.id],
+      });
+
+      expect(value.rows?.map((row) => row.id)).toEqual(["web/production"]);
+    });
+
+    it("is empty while the scope has no deployment", async ({ expect }) => {
+      expect((await resolve("recentDeployments")).empty).toBe("noDeployment");
+      await copy("web", "production", ["errors"], 1);
+      expect((await resolve("recentDeployments")).empty).toBe("noDeployment");
     });
   });
 

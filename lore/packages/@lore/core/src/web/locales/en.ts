@@ -4357,6 +4357,7 @@ export default {
   "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Project",
   "dashboard.empty.noJobs": "Nothing running right now.",
+  "dashboard.empty.noDeployment": "No deployment yet.",
   "dashboard.empty.noAccess": "You cannot read this project's reports.",
   "dashboard.metric.requirementCoverage": "Requirement coverage",
   "dashboard.metric.requirementCoverage.hint":
@@ -4503,6 +4504,10 @@ export default {
     "the agent jobs queued or running now, their host and since when",
   "dashboard.badge.queued": "queued",
   "dashboard.badge.running": "running",
+  "dashboard.badge.succeeded": "succeeded",
+  "dashboard.badge.failed": "failed",
+  "dashboard.badge.cancelled": "cancelled",
+  "dashboard.badge.rolledBack": "rolled back",
   "dashboard.metric.uptime": "Uptime",
   "dashboard.metric.uptime.hint":
     "each monitor, up or down, and its last 24 hours",
@@ -4709,6 +4714,9 @@ export default {
   "dashboard.metric.webVitals": "Web vitals",
   "dashboard.metric.webVitals.hint":
     "p75 of LCP, INP and CLS over the board's period, rated like the Vitals page",
+  "dashboard.metric.recentDeployments": "Deployments",
+  "dashboard.metric.recentDeployments.hint":
+    "the last deploys of each copy: what, where, when and by whom",
   "dashboard.metric.uniqueVisitors.hint":
     "human visitors a day, averaged over the board's period",
 

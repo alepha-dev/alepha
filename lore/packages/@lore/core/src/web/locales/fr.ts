@@ -4394,6 +4394,7 @@ export default {
   "dashboard.group.knowledge": "Folios",
   "dashboard.group.core": "Projet",
   "dashboard.empty.noJobs": "Rien ne tourne en ce moment.",
+  "dashboard.empty.noDeployment": "Aucun déploiement pour l'instant.",
   "dashboard.empty.noAccess":
     "Vous ne pouvez pas lire les rapports de ce projet.",
   "dashboard.metric.requirementCoverage": "Couverture des exigences",
@@ -4543,6 +4544,10 @@ export default {
     "les jobs d'agent en attente ou en cours, leur hôte et depuis quand",
   "dashboard.badge.queued": "en attente",
   "dashboard.badge.running": "en cours",
+  "dashboard.badge.succeeded": "réussi",
+  "dashboard.badge.failed": "échoué",
+  "dashboard.badge.cancelled": "annulé",
+  "dashboard.badge.rolledBack": "rétabli",
   "dashboard.metric.uptime": "Disponibilité",
   "dashboard.metric.uptime.hint":
     "chaque moniteur, actif ou en panne, et ses dernières 24 heures",
@@ -4755,6 +4760,9 @@ export default {
   "dashboard.metric.webVitals": "Web Vitals",
   "dashboard.metric.webVitals.hint":
     "p75 du LCP, de l'INP et du CLS sur la période du tableau, notés comme sur la page Web Vitals",
+  "dashboard.metric.recentDeployments": "Déploiements",
+  "dashboard.metric.recentDeployments.hint":
+    "les derniers déploiements de chaque copie : quoi, où, quand et par qui",
   "dashboard.metric.uniqueVisitors.hint":
     "visiteurs humains par jour, en moyenne sur la période du tableau",
 
