@@ -38,12 +38,12 @@ There it reads the room's recent messages rather than the page you are on.
   still lack?", "Summarise folio #F12."
 - **Write** the things you do most: file a quest, comment on one, update,
   accept, shelve, complete or delete it, create an epic, publish a release,
-  accept or reject a feedback, write or delete a folio, add or change a card
-  on a project dashboard, and run one of the project's
-  [prompts](/lore/docs/agents-prompts) on its Agent host: "run
-  dependency-update". Removing or reordering cards stays on the board,
-  writing or pausing a prompt stays on its page, and nothing that deploys is
-  offered.
+  accept or reject a feedback, write, update or delete a folio ("refresh
+  the summary of this folio"), add or change a card on a project dashboard,
+  and run one of the project's [prompts](/lore/docs/agents-prompts) on its
+  Agent host: "run dependency-update". Removing or reordering cards stays on
+  the board, a table's rows are changed on the folio's page, writing or
+  pausing a prompt stays on its page, and nothing that deploys is offered.
 - **File a feedback**, here or into another project you belong to that accepts
   feedback, from any page or room: "report this to Acme". The card names the
   project it goes to, since its members will read what is filed.
@@ -52,8 +52,10 @@ There it reads the room's recent messages rather than the page you are on.
 
 **Every write waits for you.** The assistant shows a card with exactly what it
 is about to do: the project, the title, the fields it sets, the text it posts.
-Nothing happens until you approve. Deny it and nothing runs. In a room,
-everyone sees the card; only the member who asked can approve it.
+A folio's update shows its content line by line, what goes and what comes,
+since the update replaces the whole body. Nothing happens until you approve.
+Deny it and nothing runs. In a room, everyone sees the card; only the member
+who asked can approve it.
 
 Its answers are short on purpose: a list names each item by its reference and
 title, a handful at a time, and says when there are more. An answer has a

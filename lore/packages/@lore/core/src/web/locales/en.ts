@@ -5391,12 +5391,31 @@ export default {
   "assistant.tool.feedback_submit.done": "Filed a feedback",
   "assistant.tool.folio_create.running": "Writing a folio",
   "assistant.tool.folio_create.done": "Wrote a folio",
+  "assistant.tool.folio_update.running": "Updating a folio",
+  "assistant.tool.folio_update.done": "Updated a folio",
   "assistant.confirm.quest_create": "File this quest?",
   "assistant.confirm.quest_comment_add": "Post this comment?",
   "assistant.confirm.quest_update": "Update this quest?",
   "assistant.confirm.quest_complete": "Complete this quest?",
   "assistant.confirm.feedback_submit": "File this feedback?",
   "assistant.confirm.folio_create": "Write this folio?",
+  "assistant.confirm.folio_update": "Update this folio?",
+  "assistant.confirm.folio": "Folio",
+  "assistant.confirm.folio.changes": "What changes",
+  "assistant.confirm.folio.reading": "Reading the folio…",
+  "assistant.confirm.folio.same": "Its content stays the same.",
+  "assistant.confirm.folio.gap": "$1 unchanged lines",
+  "assistant.confirm.folio.after": "Its content once updated",
+  "assistant.confirm.folio.elsewhere":
+    "(in $1, not the project you are looking at)",
+  "assistant.confirm.folio.protected":
+    "This folio is protected: the update will be refused. Change its content on the folio's page.",
+  "assistant.confirm.folio.table":
+    "This folio is a table: it has no text content, and the update will be refused. Change its rows on the folio's page.",
+  "assistant.confirm.folio.tooLong":
+    "Too long to compare line by line: its new content is below.",
+  "assistant.confirm.folio.unread":
+    "The folio could not be read, so nothing to compare: its new content is below.",
   "assistant.confirm.project": "In",
   "assistant.confirm.elsewhere": "(not the project you are looking at)",
   "project.settings.nav.prompts": "Prompts",

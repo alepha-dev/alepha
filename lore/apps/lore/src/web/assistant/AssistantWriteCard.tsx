@@ -16,6 +16,8 @@ import {
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
+import AssistantFolioChange from "./AssistantFolioChange.tsx";
+
 export interface AssistantWriteCardProps extends AiChatConfirmCardProps {
   /**
    * The write tool the card asks about, which names its title.
@@ -32,6 +34,7 @@ export type AssistantWriteTool =
   | "quest_update"
   | "quest_complete"
   | "folio_create"
+  | "folio_update"
   | "feedback_submit";
 
 /**
@@ -42,7 +45,9 @@ export type AssistantWriteTool =
  * first, then every field the call sets, prose fields (a description, a
  * comment, a folio) rendered as Lore renders them, through `MarkdownView`.
  * Nothing is hidden, so `quest_update`, offered whole, shows each field it
- * would change.
+ * would change. A `folio_update` names the folio it targets and shows its
+ * content as a diff of what it becomes (#Q4547): the update replaces the
+ * whole body, which the new text alone would not show.
  */
 const AssistantWriteCard = (props: AssistantWriteCardProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -62,9 +67,11 @@ const AssistantWriteCard = (props: AssistantWriteCardProps) => {
     project !== undefined &&
     projectId !== project.id;
 
+  const folio = props.tool === "folio_update";
   const fields = Object.entries(input).filter(
     ([key, value]) =>
       !AssistantWriteCard.hidden.has(key) &&
+      !(folio && AssistantWriteCard.folioRef.has(key)) &&
       value !== undefined &&
       value !== null &&
       value !== "",
@@ -95,6 +102,19 @@ const AssistantWriteCard = (props: AssistantWriteCardProps) => {
             </span>
           )}
         </div>
+        {folio && (
+          <AssistantFolioChange
+            callId={props.pending.callId}
+            projectId={typeof projectId === "number" ? projectId : project?.id}
+            id={typeof input.id === "string" ? input.id : undefined}
+            shortId={
+              typeof input.shortId === "number" ? input.shortId : undefined
+            }
+            content={
+              typeof input.content === "string" ? input.content : undefined
+            }
+          />
+        )}
         {fields.map(([key, value]) => (
           <div key={key} data-testid={`assistant-confirm-field-${key}`}>
             <div className="text-muted-foreground text-xs">{key}</div>
@@ -133,6 +153,12 @@ const AssistantWriteCard = (props: AssistantWriteCardProps) => {
  * something the member decides.
  */
 AssistantWriteCard.hidden = new Set(["project", "project_name", "as"]);
+
+/**
+ * A `folio_update`'s reference and content, which its folio block shows
+ * (#Q4547) rather than the field list.
+ */
+AssistantWriteCard.folioRef = new Set(["id", "shortId", "content"]);
 
 /**
  * Fields Lore stores as markdown.
