@@ -5,7 +5,6 @@ import { useI18n } from "alepha/react/i18n";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
-import { epicBlockedBy } from "./epicStatus.ts";
 
 export interface EpicStatusControlProps {
   epic: EpicResource;
@@ -62,15 +61,14 @@ export interface EpicStatusControlProps {
  *
  * `epics.dependsOn` gates the start: no quest of a ready epic is accepted
  * while its predecessor is not completed. Marking it ready is still allowed,
- * so a chain can be specified together, and the caption beside the control
- * says what the epic is waiting for rather than leaving the refusal to
- * surprise whoever accepts the first quest.
+ * so a chain can be specified together, and the page header's lock
+ * (`EpicBlockedIcon`, #Q4509) says what the epic is waiting for rather than
+ * leaving the refusal to surprise whoever accepts the first quest.
  */
 const EpicStatusControl = (props: EpicStatusControlProps) => {
   const { tr } = useI18n<I18n, "en">();
   const dialog = useDialog();
   const epicApi = useClient<EpicController>();
-  const blockedBy = epicBlockedBy(props.epic);
 
   const changeAction = useAction<[status: "draft" | "ready"], void>(
     {
@@ -165,16 +163,8 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
     return null;
   }
 
-  const blockedLabel =
-    blockedBy !== undefined
-      ? tr("epic.start.blocked", { args: [String(blockedBy)] })
-      : undefined;
-
   return (
     <div className="flex items-center gap-2">
-      {blockedLabel !== undefined && (
-        <span className="text-muted-foreground text-xs">{blockedLabel}</span>
-      )}
       {props.epic.status === "draft" ? (
         <Button
           type="button"

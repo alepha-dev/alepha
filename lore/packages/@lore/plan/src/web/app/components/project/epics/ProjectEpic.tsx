@@ -1,4 +1,10 @@
-import { Button, useDialog } from "@alepha/ui";
+import {
+  Button,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  useDialog,
+} from "@alepha/ui";
 import { DetailLayout, type DetailTab, useDetailTab } from "@alepha/ui/shell";
 import {
   currentProjectAtom,
@@ -39,8 +45,10 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
 import { currentEpicAtom } from "../../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
+import EpicBlockedIcon from "./EpicBlockedIcon.tsx";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicMoreMenu from "./EpicMoreMenu.tsx";
+import { epicBlockedBy } from "./epicStatus.ts";
 import EpicStatusControl from "./EpicStatusControl.tsx";
 import ProjectEpicAside from "./ProjectEpicAside.tsx";
 import ProjectEpicDescription from "./ProjectEpicDescription.tsx";
@@ -413,6 +421,8 @@ const ProjectEpic = (props: ProjectEpicProps) => {
     return null;
   }
 
+  const blockedBy = epicBlockedBy(epic);
+
   // A count is shown only once its collection has actually resolved —
   // `null` renders the bare label rather than a confident "0".
   const tabs: DetailTab[] = [
@@ -483,14 +493,40 @@ const ProjectEpic = (props: ProjectEpicProps) => {
               refuses nothing. */}
           {epicApi.updateEpic.can() &&
             (epic.status === "draft" || epic.status === "ready") && (
-              <Button
-                variant="outlined"
-                size="lg"
-                onClick={() => setEditOpen(true)}
-              >
-                <Pencil className="size-4" />
-                {tr("epic.edit")}
-              </Button>
+              // Icon only and minimal, like the robot and the "…" beside
+              // it (#Q4509): the pencil says what it does, the tooltip and
+              // the label name it.
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="minimal"
+                      size="icon"
+                      aria-label={tr("epic.edit")}
+                      data-testid="epic-edit"
+                      onClick={() => setEditOpen(true)}
+                    />
+                  }
+                >
+                  <Pencil className="size-4" />
+                </TooltipTrigger>
+                <TooltipContent>{tr("epic.edit")}</TooltipContent>
+              </Tooltip>
+            )}
+          {/* Waiting on its predecessor (#Q4509): a lock whose card says
+              why and links to the epic that blocks it. Only before the
+              start, which is the one thing the gate holds back. */}
+          {blockedBy !== undefined &&
+            (epic.status === "draft" || epic.status === "ready") && (
+              <EpicBlockedIcon
+                blockedBy={blockedBy}
+                href={router.path("projectEpic", {
+                  params: {
+                    projectSlug: project.slug,
+                    epicNumber: String(blockedBy),
+                  },
+                })}
+              />
             )}
           <EpicStatusControl
             epic={epic}

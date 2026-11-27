@@ -13,7 +13,7 @@ import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
 import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n, I18nProvider } from "alepha/react/i18n";
-import { AlephaReactRouter } from "alepha/react/router";
+import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks } from "alepha/testing/react";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -187,6 +187,17 @@ describe("ProjectEpic", () => {
  * frozen. The server keeps accepting the update in every status; that half is
  * `EpicController.spec.ts`'s.
  */
+/**
+ * The page the blocked lock links to (#Q4509).
+ */
+class EpicRoutes {
+  projectEpic = $page({
+    name: "projectEpic",
+    path: "/:projectSlug/epics/:epicNumber",
+    component: () => null,
+  });
+}
+
 describe("ProjectEpic, the Edit button", () => {
   let alepha: Alepha | undefined;
 
@@ -199,14 +210,18 @@ describe("ProjectEpic, the Edit button", () => {
     alepha = undefined;
   });
 
-  const mount = async (status: EpicResource["status"]) => {
+  const mount = async (
+    status: EpicResource["status"],
+    over: Partial<EpicResource> = {},
+  ) => {
     alepha = Alepha.create()
       .with(AlephaLogger)
       .with(AlephaDateTime)
       .with({ provide: LinkProvider, use: FakeLinkProvider })
       .with(AlephaReact)
       .with(AlephaReactRouter)
-      .with(AlephaReactI18n);
+      .with(AlephaReactI18n)
+      .with(EpicRoutes);
     alepha.inject(I18n);
     // The tabs other modules add here (#E75, #Q2624); none in this spec.
     alepha.inject(ResourceTabRegistry);
@@ -221,7 +236,9 @@ describe("ProjectEpic, the Edit button", () => {
     render(
       <AlephaContext.Provider value={alepha}>
         <DialogProvider>
-          <ProjectEpic epic={{ ...epicOf(5), status } as EpicResource} />
+          <ProjectEpic
+            epic={{ ...epicOf(5), status, ...over } as EpicResource}
+          />
         </DialogProvider>
       </AlephaContext.Provider>,
     );
@@ -230,6 +247,43 @@ describe("ProjectEpic, the Edit button", () => {
   };
 
   const edit = () => screen.queryByRole("button", { name: "Edit" });
+
+  it("is an icon-only minimal button, named Edit (#Q4509)", async ({
+    expect,
+  }) => {
+    await mount("draft");
+    const button = edit()!;
+    expect(button.textContent).toBe("");
+    // `size="icon"`, and no outline: `outlined` draws `border-border`.
+    expect(button.className).toMatch(/\bsize-8\b/);
+    expect(button.className).not.toMatch(/\bborder-border\b/);
+  });
+
+  it("says a blocked epic waits on its predecessor with a lock, not a caption (#Q4509)", async ({
+    expect,
+  }) => {
+    await mount("draft", { dependsOnNumber: 4, dependsOnStatus: "ready" });
+    const lock = screen.getByTestId("epic-blocked");
+    expect(lock.getAttribute("aria-label")).toBe("Blocked by Epic 4");
+    // The header's caption is gone; the aside's dependency link stays.
+    for (const element of screen.queryAllByText("Blocked by Epic 4")) {
+      expect(element.tagName).toBe("A");
+    }
+
+    fireEvent.focus(lock);
+    fireEvent.mouseEnter(lock);
+    const link = await screen.findByTestId("epic-blocked-link");
+    expect(link.textContent).toBe("Open Epic 4");
+    expect(link.getAttribute("href")).toMatch(/\/epics\/4$/);
+    expect(screen.getByTestId("epic-blocked-card").textContent).toContain(
+      "no quest of this epic can be accepted",
+    );
+  });
+
+  it("draws no lock once the predecessor is completed", async ({ expect }) => {
+    await mount("ready", { dependsOnNumber: 4, dependsOnStatus: "completed" });
+    expect(screen.queryByTestId("epic-blocked")).toBeNull();
+  });
 
   it.each(["draft", "ready"] as const)(
     "offers Edit on a %s epic",

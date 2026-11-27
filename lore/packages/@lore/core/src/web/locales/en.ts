@@ -4187,6 +4187,9 @@ export default {
   "epic.ready.openBlockers.confirm":
     "The review found problems that stop $1's plan as written. Resolve them on the Review tab before its quests reach the backlog, or mark it ready anyway.",
   "epic.start.blocked": "Blocked by Epic $1",
+  "epic.start.blockedWhy":
+    "Its predecessor is not completed, so no quest of this epic can be accepted until it is.",
+  "epic.start.blockedOpen": "Open Epic $1",
   "epic.status.actions.markReady": "Mark as ready",
   "epic.status.actions.backToDraft": "Back to draft",
   "epic.status.actions.shelve": "Shelve",
