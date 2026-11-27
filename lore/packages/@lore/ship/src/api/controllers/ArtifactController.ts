@@ -227,6 +227,7 @@ export class ArtifactController {
         file: body.file,
         assets: body.assets,
         schema: body.schema,
+        user,
       });
 
       // ⚠️ On every path, the idempotent re-push included: the set belongs

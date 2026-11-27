@@ -43,6 +43,11 @@ export class DeployBuckets {
     name: ArtifactService.BUCKET,
     description: "Build artifacts pushed by CI",
     maxSize: ArtifactLimits.MAX_ARTIFACT_BYTES / (1024 * 1024),
+    // The pusher is recorded on the file (#Q4541), not charged for it: the
+    // account CI pushes with would fill its 1 GB `maxUserSize` with builds
+    // in a few dozen pushes, then have its own attachments refused too. The
+    // project's caps are `lore.artifact.limits`; the total still counts.
+    userQuota: false,
     mimeTypes: [
       "application/zstd",
       "application/x-zstd",

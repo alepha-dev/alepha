@@ -1,6 +1,7 @@
 import { ProjectController, ProjectSecurityService } from "@lore/core/api";
 import { createPresetRanks } from "@lore/core/testing";
 import { Alepha, type FileLike, z } from "alepha";
+import { FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
 import { MemoryFileStorageProvider } from "alepha/bucket";
@@ -240,6 +241,36 @@ describe("artifacts", () => {
       expect(result.data.artifact.sha256).toMatch(/^[0-9a-f]{64}$/);
       expect(result.data.artifact.size).toBeGreaterThan(0);
       expect(result.data.artifact.commitSha).toBe("0b35cb375");
+    });
+
+    /**
+     * The admin Storage page reads "Uploaded by" from the `files` row
+     * (#Q4541), on a new row and on a `latest` replace alike.
+     */
+    it("records the pusher as the stored file's creator", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await aProject();
+      const files = ctx.alepha.inject(FileService).fileRepository;
+
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact(),
+      });
+      const first = await ctx.rows.artifacts.findOne({
+        where: { projectId: { eq: projectId } },
+      });
+      expect((await files.findById(first!.fileId!))!.creator).toBe(owner.id);
+
+      await push(projectId, owner, {
+        tag: "latest",
+        file: await packedArtifact({ filler: "next" }),
+      });
+      const replaced = await ctx.rows.artifacts.findOne({
+        where: { projectId: { eq: projectId } },
+      });
+      expect(replaced!.fileId).not.toBe(first!.fileId);
+      expect((await files.findById(replaced!.fileId!))!.creator).toBe(owner.id);
     });
 
     /**

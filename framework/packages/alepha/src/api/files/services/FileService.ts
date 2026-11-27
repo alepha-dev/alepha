@@ -370,7 +370,7 @@ export class FileService {
       // a file fit what is left, and the row will record the size it ends up.
       this.assertWithinQuota(
         file.size,
-        await this.remainingQuota(options.user?.id),
+        await this.remainingQuota(this.quotaUserOf(storage, options.user)),
       );
 
       checksum = this.hashBuffer(await file.arrayBuffer());
@@ -384,7 +384,9 @@ export class FileService {
       // What was already read is checked here, before the backend sees a
       // byte, so a quota that is full leaves no partial object behind. The
       // rest is counted against it on the way through.
-      const remaining = await this.remainingQuota(options.user?.id);
+      const remaining = await this.remainingQuota(
+        this.quotaUserOf(storage, options.user),
+      );
       this.assertWithinQuota(
         peek.head.reduce((size, chunk) => size + chunk.length, 0),
         remaining,
@@ -667,11 +669,20 @@ export class FileService {
       });
     }
     // The per-user share of the same reading, with the same caveat: a
-    // reading, not a reservation. Whichever is tighter decides.
+    // reading, not a reservation. Whichever is tighter decides. A storage
+    // declared with `userQuota: false` is left out of the sum: its files are
+    // attributed to the user, not charged to them.
     if (maxUserSize && userId) {
+      const exempt = this.alepha
+        .primitives($storage)
+        .filter((it) => it.options.userQuota === false)
+        .map((it) => it.name);
       const [row] = await this.fileRepository.aggregate({
         select: { size: { sum: true } },
-        where: { creator: { eq: userId } },
+        where: {
+          creator: { eq: userId },
+          ...(exempt.length > 0 ? { bucket: { notInArray: exempt } } : {}),
+        },
       });
       quotas.push({
         left: maxUserSize * 1024 * 1024 - Number(row?.size.sum ?? 0),
@@ -679,6 +690,18 @@ export class FileService {
       });
     }
     return quotas.sort((a, b) => a.left - b.left)[0];
+  }
+
+  /**
+   * The user whose share of `maxUserSize` an upload into `storage` is held
+   * to: none for a storage declared with `userQuota: false`, which records
+   * its uploader without charging them.
+   */
+  protected quotaUserOf(
+    storage: StoragePrimitive,
+    user: StorageUploadOptions["user"],
+  ): string | undefined {
+    return storage.options.userQuota === false ? undefined : user?.id;
   }
 
   /**

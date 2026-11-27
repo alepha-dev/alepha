@@ -53,7 +53,8 @@ export const filesOptions = $atom({
      *
      * Counted over the rows the user created (`files.creator`). An upload
      * with no user, from a job or a server-side call, is held to
-     * `maxTotalSize` only.
+     * `maxTotalSize` only, and so is one into a storage declared with
+     * `userQuota: false`, whose files are also left out of every user's sum.
      *
      * ⚠️ **Why there is one at all.** `maxTotalSize` is shared: without a
      * per-user cap, one account that holds `file:create` (every signed-in
