@@ -1,4 +1,4 @@
-import { Badge, Button, UserAvatar } from "@alepha/ui";
+import { Button, UserAvatar } from "@alepha/ui";
 import { displayName, type I18n, type ProjectUser } from "@lore/core/web";
 import { useAction, useClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
@@ -11,6 +11,7 @@ import type {
   ChatRoomResource,
 } from "../../../schemas/index.ts";
 import ChatAgentAvatar from "./ChatAgentAvatar.tsx";
+import ChatAgentMark from "./ChatAgentMark.tsx";
 import RoomInviteDialog from "./RoomInviteDialog.tsx";
 
 export interface RoomMembersPanelProps {
@@ -148,10 +149,9 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
                   builtin={!agent.agentId}
                   className="size-6 rounded-md"
                 />
-                <span className="min-w-0 flex-1 truncate">{name}</span>
-                <Badge variant="tint" tone="violet">
-                  {tr("chat.agent.tag")}
-                </Badge>
+                <span className="min-w-0 truncate">{name}</span>
+                <ChatAgentMark />
+                <span className="flex-1" />
               </li>
             );
           })}

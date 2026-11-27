@@ -1,5 +1,4 @@
 import {
-  Badge,
   Button,
   cn,
   Popover,
@@ -28,6 +27,7 @@ import { useStreamReveal } from "../hooks/useStreamReveal.ts";
 import { chatMarkdown } from "../services/chatMarkdown.ts";
 import ChatAgentAnswer from "./ChatAgentAnswer.tsx";
 import ChatAgentAvatar from "./ChatAgentAvatar.tsx";
+import ChatAgentMark from "./ChatAgentMark.tsx";
 
 export interface ChatMessageRowProps {
   message: ChatMessageResource;
@@ -184,11 +184,7 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
         {!props.continued && (
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm font-semibold">{props.author}</span>
-            {message.agent && (
-              <Badge variant="tint" tone="violet">
-                {tr("chat.agent.tag")}
-              </Badge>
-            )}
+            {message.agent && <ChatAgentMark />}
             {props.pending ? (
               <span className="text-muted-foreground text-[11px]">
                 {tr("chat.message.sending")}
