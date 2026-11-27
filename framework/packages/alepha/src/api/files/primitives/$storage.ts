@@ -119,6 +119,27 @@ export interface StoragePrimitiveOptions {
   clientUploads?: boolean;
 
   /**
+   * Count this storage's files in their uploader's share of
+   * `filesOptions.maxUserSize`.
+   *
+   * On by default. Set `false` for a storage whose files are an
+   * application's own data rather than a person's (build artifacts, exports,
+   * backups) that an upload still attributes to whoever made it: the row
+   * keeps its `creator`, so the uploader is still shown and still owns it,
+   * but the upload is not checked against that user's quota, and the files
+   * already in this storage are left out of the sum that quota is read from.
+   * Otherwise the account a CI pipeline pushes with fills its quota with
+   * builds, and every later upload of that person, to any storage, is
+   * refused.
+   *
+   * They still count toward `filesOptions.maxTotalSize`, which is about the
+   * bill rather than about fairness between users.
+   *
+   * @default true
+   */
+  userQuota?: boolean;
+
+  /**
    * Storage backend.
    *
    * - `"memory"`: in-process, lost on restart (tests)

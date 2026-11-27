@@ -31,6 +31,12 @@ class Media {
     clientUploads: true,
   });
   photos = $storage({ name: "photos", provider: "memory", maxSize: 100 });
+  builds = $storage({
+    name: "builds",
+    provider: "memory",
+    maxSize: 100,
+    userQuota: false,
+  });
 }
 
 describe("filesOptions.maxTotalSize", () => {
@@ -143,6 +149,44 @@ describe("filesOptions.maxTotalSize", () => {
     // Somebody else's upload is unaffected, and so is a server-side one.
     await files.uploadFile(bytes(600 * 1024), { bucket: "docs", user: alice });
     await files.uploadFile(bytes(600 * 1024), { bucket: "docs" });
+  });
+
+  it("records the uploader of a userQuota: false storage without charging their share", async ({
+    expect,
+  }) => {
+    const { alepha, files, bytes } = await setup();
+    alepha.store.mut(filesOptions, (current) => ({
+      ...current,
+      maxUserSize: 1,
+    }));
+    const ci = { ...admin, id: "00000000-0000-0000-0000-00000000000c" };
+
+    // Past the user's 1 MB, and neither upload is checked against it.
+    const first = await files.uploadFile(bytes(600 * 1024), {
+      bucket: "builds",
+      user: ci,
+    });
+    await files.uploadFile(bytes(600 * 1024), { bucket: "builds", user: ci });
+    expect(first.creator).toBe(ci.id);
+    expect(first.creatorName).toBe(ci.name);
+
+    // Nor do they fill it: the same user's own uploads still have their 1 MB.
+    await files.uploadFile(bytes(600 * 1024), { bucket: "docs", user: ci });
+    await expect(
+      files.uploadFile(bytes(600 * 1024), { bucket: "docs", user: ci }),
+    ).rejects.toThrow("Upload exceeds your storage quota of 1 MB");
+  });
+
+  it("still counts a userQuota: false storage toward the total", async ({
+    expect,
+  }) => {
+    const { files, bytes } = await setup({ maxTotalSize: 1 });
+    const ci = { ...admin, id: "00000000-0000-0000-0000-00000000000c" };
+
+    await files.uploadFile(bytes(600 * 1024), { bucket: "builds", user: ci });
+    await expect(
+      files.uploadFile(bytes(600 * 1024), { bucket: "builds", user: ci }),
+    ).rejects.toThrow("Upload exceeds the total storage quota of 1 MB");
   });
 
   it("is 1 GB per user by default, and the environment wins over code", async ({

@@ -7,6 +7,7 @@ import {
 import { $inject, type FileLike } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $repository } from "alepha/orm";
+import type { UserAccountToken } from "alepha/security";
 import {
   BadRequestError,
   ConflictError,
@@ -291,6 +292,7 @@ export class ArtifactService {
         dirty: input.dirty,
         file: input.file,
         manifest,
+        user: input.user,
       });
       await this.dropAll(superseded);
       return { artifact, stored: true };
@@ -299,6 +301,9 @@ export class ArtifactService {
     const stored = await this.files.uploadFile(input.file, {
       bucket: ArtifactService.BUCKET,
       tags: [`project:${input.projectId}`, `app:${app}`, `tag:${tag}`],
+      // Who pushed it, for the Storage page (#Q4541). The bucket is declared
+      // `userQuota: false`, so this does not charge their quota.
+      user: input.user,
     });
 
     // The row goes in last. The reverse order leaves, on a failure in between,
@@ -628,11 +633,13 @@ export class ArtifactService {
       dirty?: boolean;
       file: FileLike;
       manifest: ArtifactManifest;
+      user?: UserAccountToken;
     },
   ): Promise<Artifact> {
     const stored = await this.files.uploadFile(next.file, {
       bucket: ArtifactService.BUCKET,
       tags: [`project:${next.projectId}`, `app:${next.app}`, `tag:${next.tag}`],
+      user: next.user,
     });
 
     let updated: Artifact;
@@ -1053,6 +1060,12 @@ export interface ArtifactPushInput {
    */
   force?: boolean;
   file: FileLike;
+  /**
+   * Who pushed it (#Q4541): recorded as the stored file's creator, which the
+   * admin Storage page shows under "Uploaded by". Absent for a server-side
+   * push.
+   */
+  user?: UserAccountToken;
   /**
    * The build's `manifest.json`, when the pusher sent it (#Q2681). Absent, it
    * is read out of the archive. Present, it is trusted for the row and
