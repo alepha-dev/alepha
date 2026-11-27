@@ -265,8 +265,12 @@ export const MarkdownView = (props: MarkdownViewProps) => {
             ) : (
               <img src={src} alt={alt} title={title} className="max-w-full" />
             ),
+          // In its own scroll box: a table wider than its column scrolls on
+          // its own rather than overflowing the page around it (#Q4546).
           table: ({ children }) => (
-            <table className="my-4 border-collapse text-xs">{children}</table>
+            <div className="my-4 max-w-full overflow-x-auto">
+              <table className="border-collapse text-xs">{children}</table>
+            </div>
           ),
           th: ({ children }) => (
             <th className="border-border border px-2 py-1 text-start font-medium">

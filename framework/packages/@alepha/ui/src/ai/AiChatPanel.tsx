@@ -223,10 +223,13 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
       </div>
       <div
         ref={thread}
+        data-testid="ai-chat-thread"
         // `shrink-0` on every line: in a scrolling column a card (overflow
         // hidden, so no content minimum) would shrink to its border once
-        // the thread outgrows the panel (#Q3174).
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 *:shrink-0"
+        // the thread outgrows the panel (#Q3174). `overflow-x-hidden`: a
+        // line wider than the column scrolls inside itself, never the whole
+        // thread sideways (#Q4546).
+        className="flex min-h-0 flex-1 flex-col gap-3 overflow-x-hidden overflow-y-auto px-4 py-4 *:shrink-0"
       >
         {empty ? (
           <AiChatEmpty
@@ -271,7 +274,7 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
             {chat.streaming && (
               <div
                 data-testid="ai-chat-streaming"
-                className="me-4 self-start text-sm leading-relaxed"
+                className="me-4 max-w-[calc(100%-1rem)] min-w-0 self-start text-sm leading-relaxed break-words"
               >
                 <MarkdownView
                   content={chat.streaming}
