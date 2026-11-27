@@ -4395,6 +4395,7 @@ export default {
   "dashboard.group.core": "Projet",
   "dashboard.empty.noJobs": "Rien ne tourne en ce moment.",
   "dashboard.empty.noDeployment": "Aucun déploiement pour l'instant.",
+  "dashboard.empty.noBackup": "Aucune instance n'est sauvegardée ici.",
   "dashboard.empty.noAccess":
     "Vous ne pouvez pas lire les rapports de ce projet.",
   "dashboard.metric.requirementCoverage": "Couverture des exigences",
@@ -4548,6 +4549,10 @@ export default {
   "dashboard.badge.failed": "échoué",
   "dashboard.badge.cancelled": "annulé",
   "dashboard.badge.rolledBack": "rétabli",
+  "dashboard.badge.backupStale": "ancienne",
+  "dashboard.badge.backupFailing": "en échec",
+  "dashboard.badge.backupNever": "jamais sauvegardée",
+  "dashboard.badge.backupRestorePending": "restauration en attente",
   "dashboard.metric.uptime": "Disponibilité",
   "dashboard.metric.uptime.hint":
     "chaque moniteur, actif ou en panne, et ses dernières 24 heures",
@@ -4763,6 +4768,9 @@ export default {
   "dashboard.metric.recentDeployments": "Déploiements",
   "dashboard.metric.recentDeployments.hint":
     "les derniers déploiements de chaque copie : quoi, où, quand et par qui",
+  "dashboard.metric.backupFreshness": "Sauvegardes",
+  "dashboard.metric.backupFreshness.hint":
+    "l'âge de la dernière sauvegarde Bay de chaque copie, et si la dernière a échoué",
   "dashboard.metric.uniqueVisitors.hint":
     "visiteurs humains par jour, en moyenne sur la période du tableau",
 

@@ -2,6 +2,7 @@ import { DashboardMetricCatalog } from "@lore/core/schemas";
 import { $inject } from "alepha";
 
 import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
+import { backupFreshnessFiltersSchema } from "../schemas/backupFreshnessFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
 import { recentDeploymentsFiltersSchema } from "../schemas/recentDeploymentsFiltersSchema.ts";
 import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
@@ -106,6 +107,28 @@ export class DeployAppsDashboardMetrics {
       filters: recentDeploymentsFiltersSchema,
       needs: { capability: "ship", option: "deploy" },
       defaultSize: { size: 2, height: 1 },
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectApps",
+              params: { projectSlug: target.projectSlug },
+            }
+          : undefined,
+    });
+    // How old each copy's last Bay snapshot is (#Q4523), as the machine's
+    // inventory reports it.
+    this.catalog.register({
+      ...common,
+      key: "backupFreshness",
+      requires: "app:read",
+      order: 89,
+      labelKey: "dashboard.metric.backupFreshness",
+      hintKey: "dashboard.metric.backupFreshness.hint",
+      icon: "database-backup",
+      presentation: "list",
+      scopeKinds: ["projects", "apps"],
+      filters: backupFreshnessFiltersSchema,
+      needs: { capability: "ship" },
       link: (_scope, target) =>
         target.projectSlug
           ? {

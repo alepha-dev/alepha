@@ -35,6 +35,7 @@ import { ArtifactLimits } from "./services/ArtifactLimits.ts";
 import { ArtifactPushCaps } from "./services/ArtifactPushCaps.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
+import { BackupFreshnessMetric } from "./services/BackupFreshnessMetric.ts";
 import { BayRemovalService } from "./services/BayRemovalService.ts";
 import { CertExpiryMetric } from "./services/CertExpiryMetric.ts";
 import { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
@@ -209,6 +210,7 @@ export const LoreShipApi = $module({
     UniqueVisitorsMetric,
     WebVitalsMetric,
     RecentDeploymentsMetric,
+    BackupFreshnessMetric,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
     // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and

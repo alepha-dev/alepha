@@ -5,6 +5,7 @@ import {
   BookOpen,
   CalendarCheck,
   Coffee,
+  DatabaseBackup,
   Flag,
   Layers,
   ListChecks,
@@ -215,5 +216,6 @@ const EMPTY_ICONS: Partial<Record<string, LucideIcon>> = {
   noQuests: ListChecks,
   noJobs: Coffee,
   noDeployment: Rocket,
+  noBackup: DatabaseBackup,
   noAccess: Lock,
 };
