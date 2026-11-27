@@ -78,7 +78,7 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
     return (
       <div
         data-testid="ai-chat-user"
-        className="bg-muted ms-10 self-end rounded-2xl rounded-ee-md px-3.5 py-2 text-sm leading-relaxed whitespace-pre-wrap"
+        className="bg-muted ms-10 max-w-[calc(100%-2.5rem)] min-w-0 self-end rounded-2xl rounded-ee-md px-3.5 py-2 text-sm leading-relaxed break-words whitespace-pre-wrap"
       >
         {item.content}
       </div>
@@ -88,7 +88,7 @@ export const AiChatMessage = (props: AiChatMessageProps) => {
   return (
     <div
       data-testid="ai-chat-assistant"
-      className="me-4 self-start text-sm leading-relaxed"
+      className="me-4 max-w-[calc(100%-1rem)] min-w-0 self-start text-sm leading-relaxed break-words"
     >
       {item.content ? (
         <MarkdownView content={item.content} renderLink={props.renderLink} />

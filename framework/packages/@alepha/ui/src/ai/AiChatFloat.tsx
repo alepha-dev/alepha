@@ -35,7 +35,7 @@ export const AiChatFloat = (props: AiChatFloatProps) => {
       data-testid="ai-chat-float"
       aria-label={tr("ai.chat.title", { default: "Assistant" })}
       className={cn(
-        "bg-card text-card-foreground fixed end-4 bottom-4 z-40 flex h-[min(40rem,calc(100dvh-2rem))] w-[min(26rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border text-sm shadow-2xl",
+        "bg-card text-card-foreground fixed end-4 bottom-4 z-40 flex h-[min(44rem,calc(100dvh-2rem))] w-[min(30rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl border text-sm shadow-2xl",
         props.className,
       )}
     >

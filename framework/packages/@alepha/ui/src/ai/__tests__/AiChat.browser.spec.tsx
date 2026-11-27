@@ -885,6 +885,65 @@ describe("AiChat", () => {
     expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
   });
 
+  it("keeps a long code line inside its own block: the thread never scrolls sideways, and the float is wider (#Q4546)", async () => {
+    const long = `lore host update my-vps --stats-history --stats-interval 60 ${"--flag ".repeat(40)}`;
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "text",
+            text: `Run:\n\n\`\`\`sh\n${long}\n\`\`\`\n\n| flag | value |\n| --- | --- |\n| a | b |\n`,
+          },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {},
+      FloatLayout,
+    );
+
+    await say(`and ${"https://example.app/a/very/long/path/".repeat(6)}?`);
+    const reply = await waitFor(() => {
+      const found = view.getByTestId("ai-chat-assistant");
+      expect(found.querySelector("pre")?.textContent?.trim()).toBe(long.trim());
+      return found;
+    });
+
+    const thread = view.getByTestId("ai-chat-thread");
+    expect(thread.scrollWidth).toBeLessThanOrEqual(thread.clientWidth);
+    // jsdom lays nothing out, so the classes are what hold it: the thread
+    // hides what is wider than it, each row is capped at the column (its
+    // margin taken off) and may shrink below its content, the code block
+    // scrolls on its own, and a long word or URL breaks.
+    const classes = (element: Element) => element.className.split(/\s+/);
+    expect(classes(thread)).toEqual(
+      expect.arrayContaining(["overflow-x-hidden", "overflow-y-auto"]),
+    );
+    expect(classes(reply)).toEqual(
+      expect.arrayContaining([
+        "min-w-0",
+        "max-w-[calc(100%-1rem)]",
+        "break-words",
+      ]),
+    );
+    expect(classes(view.getByTestId("ai-chat-user"))).toEqual(
+      expect.arrayContaining([
+        "min-w-0",
+        "max-w-[calc(100%-2.5rem)]",
+        "break-words",
+      ]),
+    );
+    expect(classes(reply.querySelector("pre")!)).toContain("overflow-auto");
+    // A wide table scrolls in its own box, since the thread hides overflow.
+    expect(classes(reply.querySelector("table")!.parentElement!)).toContain(
+      "overflow-x-auto",
+    );
+    // 30rem on a desktop, and never past the viewport on a phone.
+    expect(classes(view.getByTestId("ai-chat-float"))).toContain(
+      "w-[min(30rem,calc(100vw-2rem))]",
+    );
+  });
+
   it("docks beside the page without a backdrop, minimizes into a pill that shows a waiting action, and restores", async () => {
     const { view, say } = await mount(
       (l) => {
