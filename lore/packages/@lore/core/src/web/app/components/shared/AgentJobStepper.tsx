@@ -43,9 +43,10 @@ export interface AgentJobStepperProps {
  * segment per quest it accepted, in accept order, filled as quests
  * complete, then one empty segment per quest of its epic it has not
  * accepted yet; inside the current quest, its objectives as sub-steps.
- * Completions come in bursts and objective ticks are finer, so the current
- * segment fills by its ticks. A `work-quest` job has one segment, and its
- * objectives are the steps.
+ * Completions come in bursts and objective ticks are finer, so every
+ * accepted quest not yet completed fills by its ticks, below full (#Q4544):
+ * the current one in its own shade, the others lighter. A `work-quest` job
+ * has one segment, and its objectives are the steps.
  *
  * Beside it, "quest 4 of 7", the time since the last step, and the elapsed
  * time against the ceiling as two figures, never as a fraction: a work run
@@ -100,11 +101,15 @@ const AgentJobStepper = (props: AgentJobStepperProps) => {
         ...steps.quests.map((quest) => {
           const open = quest.objectives.total - quest.objectives.waived;
           const isCurrent = props.running && quest.shortId === steps.current;
+          // Every accepted quest fills by its ticks, not only the current
+          // one: a run may leave its completions to the end, and a quest it
+          // worked first would otherwise read as not started (#Q4544).
+          // Capped below full, so a completed quest still looks different.
           return {
             key: `q${quest.shortId}`,
             fill: quest.completedAt
               ? 1
-              : isCurrent && open > 0
+              : open > 0
                 ? Math.min(quest.objectives.done / open, 0.95)
                 : 0,
             shortId: quest.shortId,
@@ -154,7 +159,8 @@ const AgentJobStepper = (props: AgentJobStepperProps) => {
           <span
             className={cn(
               "bg-primary absolute inset-y-0 left-0 rounded-sm transition-[width]",
-              segment.current && segment.fill < 1 && "bg-primary/70",
+              segment.fill < 1 &&
+                (segment.current ? "bg-primary/70" : "bg-primary/40"),
             )}
             style={{ width: `${Math.round(segment.fill * 100)}%` }}
           />
