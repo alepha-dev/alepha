@@ -25,6 +25,36 @@ import JobSidePanel from "./JobSidePanel.tsx";
 
 const ID = "00000000-0000-4000-8000-000000000001";
 
+const STEPS: NonNullable<HostJobResource["steps"]> = {
+  unit: "quest",
+  total: 3,
+  done: 1,
+  quests: [
+    {
+      shortId: 11,
+      title: "First",
+      acceptedAt: "2026-11-26T10:00:10.000Z",
+      completedAt: "2026-11-26T10:20:00.000Z",
+      objectives: { total: 2, done: 2, waived: 0 },
+    },
+    {
+      shortId: 12,
+      title: "Second",
+      acceptedAt: "2026-11-26T10:00:10.000Z",
+      objectives: { total: 4, done: 1, waived: 0 },
+    },
+    {
+      shortId: 13,
+      title: "Third",
+      acceptedAt: "2026-11-26T10:00:10.000Z",
+      objectives: { total: 1, done: 0, waived: 0 },
+    },
+  ],
+  pending: [],
+  current: 12,
+  stepTimes: ["2026-11-26T10:20:00.000Z"],
+};
+
 const world = {
   job: undefined as HostJobResource | undefined,
   stdout: "",
@@ -149,6 +179,33 @@ describe("JobSidePanel", () => {
     expect(await screen.findByText("Reading the cart total.")).toBeTruthy();
     expect(screen.getByTestId("job-panel-open")).toBeTruthy();
     expect(screen.getByTestId("job-panel-cancel")).toBeTruthy();
+    // No steps, no usual time: no bar.
+    expect(screen.queryByTestId("job-steps")).toBeNull();
+    expect(screen.queryByTestId("job-usual")).toBeNull();
+  });
+
+  it("shows a running job's steps in its header, and its usual time when it has no steps (#Q4545)", async ({
+    expect,
+  }) => {
+    world.job = job({ steps: STEPS });
+    await show();
+
+    expect((await screen.findByTestId("job-steps-text")).textContent).toBe(
+      "Quest 2 of 3",
+    );
+    expect(screen.getAllByTestId("job-steps-segment")).toHaveLength(3);
+    expect(screen.getByTestId("job-steps-current").textContent).toContain(
+      "#12 Second",
+    );
+    cleanup();
+    await alepha?.stop();
+
+    world.job = job({ usual: { runs: 6, low: 60, high: 120, p90: 180 } });
+    await show();
+    expect((await screen.findByTestId("job-usual")).textContent).toContain(
+      "1 min",
+    );
+    expect(screen.queryByTestId("job-steps")).toBeNull();
   });
 
   it("shows an ended job's final reply first, and no Cancel", async ({

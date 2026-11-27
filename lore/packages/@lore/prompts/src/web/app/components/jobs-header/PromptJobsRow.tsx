@@ -1,6 +1,6 @@
 import { cn } from "@alepha/ui";
 import type { HostJobResource } from "@lore/core/schemas";
-import type { I18n } from "@lore/core/web";
+import { AgentJobStepper, type I18n } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 
 import { JOB_STATUS_ICON } from "../host-jobs/jobStatusIcon.ts";
@@ -27,8 +27,9 @@ export interface PromptJobsRowProps {
 
 /**
  * One job of the header's jobs list (#Q4514): its status glyph, the prompt
- * and its args, the host, and for a running job the elapsed time and the
- * last line of its transcript. Labels only, no sentence.
+ * and its args, the host, and for a running job the elapsed time, its steps
+ * as the compact bar when it has some (#Q4545), and the last line of its
+ * transcript. Labels only, no sentence.
  */
 const PromptJobsRow = (props: PromptJobsRowProps) => {
   const { tr } = useI18n<I18n, "en">();
@@ -78,6 +79,17 @@ const PromptJobsRow = (props: PromptJobsRowProps) => {
             {running ? jobClock((props.now - Date.parse(started)) / 1000) : ""}
           </span>
         </span>
+        {running && job.steps && (
+          <span className="block ps-6" data-testid="jobs-header-steps">
+            <AgentJobStepper
+              compact
+              steps={job.steps}
+              {...(job.pace ? { pace: job.pace } : {})}
+              running
+              className="w-40"
+            />
+          </span>
+        )}
         {running && last && (
           <span
             className="text-muted-foreground block truncate ps-6 font-mono text-[11px]"

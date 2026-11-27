@@ -1,6 +1,11 @@
 import { Button, cn, useDialog } from "@alepha/ui";
 import type { HostJobController } from "@lore/core/api";
-import { currentProjectAtom, type I18n, sidePanelAtom } from "@lore/core/web";
+import {
+  AgentJobStepper,
+  currentProjectAtom,
+  type I18n,
+  sidePanelAtom,
+} from "@lore/core/web";
 import { DateTimeProvider } from "alepha/datetime";
 import {
   useAction,
@@ -17,6 +22,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
 import { jobPanelAtom } from "../../atoms/jobPanelAtom.ts";
 import { JOB_STATUS_ICON } from "../host-jobs/jobStatusIcon.ts";
+import JobUsualBar from "../host-jobs/JobUsualBar.tsx";
 import ProjectJobTranscript from "../host-jobs/ProjectJobTranscript.tsx";
 import { useJobReader } from "../host-jobs/useJobReader.ts";
 import { JOB_HEADER_STATUS, jobArgsText, jobClock } from "./jobsHeaderText.ts";
@@ -30,8 +36,10 @@ import { JOB_HEADER_STATUS, jobArgsText, jobClock } from "./jobsHeaderText.ts";
  * - The job: its status glyph, prompt and args, host and elapsed time.
  * - Its transcript, live, the job page's own (`ProjectJobTranscript`):
  *   an ended job's final reply first, then what the agent did, following
- *   the end until the member scrolls up. No steps section until a job
- *   reports steps (#E181).
+ *   the end until the member scrolls up.
+ * - Under its header, its steps as the job page draws them (#Q4545): quest
+ *   k of N, live while it runs, the final count once it ended; for a
+ *   running job with no steps, its prompt's usual time when it has one.
  * - At its foot, Open job and, for a job in flight, Cancel, confirmed.
  *
  * It reads the job through `useJobReader`, the job page's own reader, and
@@ -173,6 +181,21 @@ const JobSidePanel = () => {
               <span className="font-mono tabular-nums"> · {elapsed}</span>
             )}
           </p>
+          {row?.steps && (
+            <AgentJobStepper
+              steps={row.steps}
+              {...(row.pace ? { pace: row.pace } : {})}
+              running={running}
+              {...(row.startedAt ? { startedAt: row.startedAt } : {})}
+              timeoutSeconds={row.input.timeoutSeconds}
+              className="mt-2"
+            />
+          )}
+          {!row?.steps && running && row?.usual && row.startedAt && (
+            <div className="mt-2">
+              <JobUsualBar usual={row.usual} startedAt={row.startedAt} />
+            </div>
+          )}
         </div>
         <Button
           variant="minimal"

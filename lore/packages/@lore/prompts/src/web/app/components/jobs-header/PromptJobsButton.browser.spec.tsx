@@ -45,6 +45,36 @@ const job = (id: number, over: Partial<HostJobResource>): HostJobResource =>
     ...over,
   }) as HostJobResource;
 
+const STEPS: NonNullable<HostJobResource["steps"]> = {
+  unit: "quest",
+  total: 3,
+  done: 1,
+  quests: [
+    {
+      shortId: 11,
+      title: "First",
+      acceptedAt: "2026-11-26T10:00:10.000Z",
+      completedAt: "2026-11-26T10:20:00.000Z",
+      objectives: { total: 2, done: 2, waived: 0 },
+    },
+    {
+      shortId: 12,
+      title: "Second",
+      acceptedAt: "2026-11-26T10:00:10.000Z",
+      objectives: { total: 4, done: 1, waived: 0 },
+    },
+    {
+      shortId: 13,
+      title: "Third",
+      acceptedAt: "2026-11-26T10:00:10.000Z",
+      objectives: { total: 1, done: 0, waived: 0 },
+    },
+  ],
+  pending: [],
+  current: 12,
+  stepTimes: ["2026-11-26T10:20:00.000Z"],
+};
+
 const world = {
   jobs: (): HostJobResource[] => [],
   tail: "",
@@ -214,6 +244,33 @@ describe("PromptJobsButton", () => {
         within(rows[1]!).getByTestId("jobs-header-last-line").textContent,
       ).toBe("Switching to the order total."),
     );
+  });
+
+  it("draws a running job's steps as the compact bar, and none for a job without steps (#Q4545)", async ({
+    expect,
+  }) => {
+    world.jobs = () => [
+      job(1, {
+        status: "running",
+        prompt: "triage",
+        startedAt: ago(30),
+      }),
+      job(2, {
+        status: "running",
+        prompt: "work-quest",
+        startedAt: ago(600),
+        steps: STEPS,
+      }),
+    ];
+    await show();
+
+    fireEvent.click(await screen.findByTestId("jobs-header-button"));
+    const popover = await screen.findByTestId("jobs-header-popover");
+    const rows = await within(popover).findAllByTestId("jobs-header-row");
+    expect(within(rows[0]!).queryByTestId("jobs-header-steps")).toBeNull();
+    const steps = within(rows[1]!).getByTestId("jobs-header-steps");
+    expect(steps.textContent).toContain("1/3");
+    expect(within(steps).getAllByTestId("job-steps-segment")).toHaveLength(3);
   });
 
   it("says the job this tab queued", async ({ expect }) => {
