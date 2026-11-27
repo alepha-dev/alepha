@@ -283,6 +283,37 @@ describe("AgentTranscript", () => {
     ]);
   });
 
+  it("hides Claude Code's command_lifecycle frames, a queued message's delivery, without counting them as unknown (#Q4548)", ({
+    expect,
+  }) => {
+    const frame = (state: string) =>
+      JSON.stringify({
+        type: "command_lifecycle",
+        command_uuid: "6f1c2d9e-0b7a-4c55-9f43-2a1d8e7b3c10",
+        state,
+        uuid: "0d3e6a1f-5b2c-4e8d-a7f9-1c4b2e6d8a30",
+        session_id: "b1e2c3d4-0000-4000-8000-000000000001",
+      });
+    const user = (content: string) =>
+      JSON.stringify({ type: "user", message: { role: "user", content } });
+    const out = AgentTranscript.parse(
+      [
+        // The prompt the run replays first, then a member's message to the
+        // running job, delivered between its lifecycle frames.
+        user("Triage the inbox."),
+        frame("queued"),
+        frame("started"),
+        user("Wake up."),
+        frame("completed"),
+        "",
+      ].join("\n"),
+      "claude",
+    );
+    expect(out.entries).toEqual([{ kind: "message", text: "Wake up." }]);
+    expect(out.hidden).toBe(3);
+    expect(out.unknown).toBeUndefined();
+  });
+
   it("shows every line as text for an agent CLI with no parser", ({
     expect,
   }) => {

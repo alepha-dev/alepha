@@ -93,6 +93,12 @@ export class AgentTranscript {
     // A long tool call's heartbeat, every 30 s: the call already shows as
     // running (#Q4296).
     "tool_progress",
+    // A queued input's delivery (#Q4548): Claude Code reports each message
+    // sent on its stdin (a member's message to a running job, #Q4456) as
+    // `command_lifecycle` frames, `{ command_uuid, state }` with a state of
+    // queued, started, completed, cancelled, discarded or refused. The
+    // message itself shows from its replay, so the frames say nothing more.
+    "command_lifecycle",
   ]);
 
   public static parse(log: string, agent?: string): AgentTranscriptResult {
