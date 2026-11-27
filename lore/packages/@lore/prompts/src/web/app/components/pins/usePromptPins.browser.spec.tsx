@@ -100,7 +100,7 @@ const EpicRows = () => {
 };
 
 /**
- * A row's Agent prompts group (#Q4321): one submenu per pinned prompt,
+ * A row's Prompts group (#Q4321): one submenu per pinned prompt,
  * labelled with its title, holding a plain Copy and Run.
  */
 describe("usePromptPins rowGroup", () => {
@@ -158,14 +158,14 @@ describe("usePromptPins rowGroup", () => {
     await screen.findByText("Ready epic");
     await waitFor(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Open row actions" }));
-      await menuItem("Agent prompts");
+      await menuItem("Prompts");
     });
-    fireEvent.click(await menuItem("Agent prompts"));
+    fireEvent.click(await menuItem("Prompts"));
     fireEvent.click(await menuItem("Work on epic"));
     await menuItem("Copy prompt");
   };
 
-  it("offers each pinned prompt as its own submenu under Agent prompts, and its Run opens the run dialog", async ({
+  it("offers each pinned prompt as its own submenu under Prompts, and its Run opens the run dialog", async ({
     expect,
   }) => {
     await mount();

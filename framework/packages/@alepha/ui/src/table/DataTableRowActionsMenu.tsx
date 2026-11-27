@@ -53,31 +53,35 @@ export const DataTableRowActionsMenu = <T,>(
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {effective.map((action, idx) => {
-          if (isRowActionGroup(action)) {
-            return (
-              <DataTableRowActionGroupItem
-                key={action.label}
-                group={action}
-                item={props.item}
-                ctx={props.ctx}
-              />
-            );
-          }
-          // A group is never destructive, so the previous entry being one
-          // reads as falsy here and the separator rule needs no case for it.
+          // A separator above an entry when the one before asked for it
+          // (`separatorAfter`), or above the first of a run of destructive
+          // entries. A group is never destructive, so the previous entry
+          // being one reads as falsy here and the rule needs no case for it.
           const previous = effective[idx - 1];
+          const previousAction =
+            previous && !isRowActionGroup(previous) ? previous : undefined;
           const sep =
             idx > 0 &&
-            action.destructive &&
-            !(previous && !isRowActionGroup(previous) && previous.destructive);
+            (!!previousAction?.separatorAfter ||
+              (!isRowActionGroup(action) &&
+                !!action.destructive &&
+                !previousAction?.destructive));
           return (
             <span key={action.label}>
               {sep && <DropdownMenuSeparator />}
-              <DataTableRowActionItem
-                action={action}
-                item={props.item}
-                ctx={props.ctx}
-              />
+              {isRowActionGroup(action) ? (
+                <DataTableRowActionGroupItem
+                  group={action}
+                  item={props.item}
+                  ctx={props.ctx}
+                />
+              ) : (
+                <DataTableRowActionItem
+                  action={action}
+                  item={props.item}
+                  ctx={props.ctx}
+                />
+              )}
             </span>
           );
         })}

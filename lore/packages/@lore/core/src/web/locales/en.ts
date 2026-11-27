@@ -4217,7 +4217,7 @@ export default {
   "epic.list.openBlockers": "$1 review blockers open",
   "epic.agent.job": "Review job",
   "epic.review.empty":
-    "No review has been filed for this epic yet. Run Review Epic from the agent prompts to file one.",
+    "No review has been filed for this epic yet. Run Review Epic from the Prompts menu to file one.",
   "epic.review.open": "Open questions ($1)",
   "epic.review.open.none": "No review question is open.",
   "epic.review.openWithBlockers": "Open blockers ($1) and questions ($2)",
@@ -5499,7 +5499,7 @@ export default {
   "prompts.page.feedback": "Feedback list",
   "prompts.page.feedback-item": "Feedback view",
   "prompts.page.errors": "Error list",
-  "prompts.pinned.menu": "Agent prompts",
+  "prompts.pinned.menu": "Prompts",
   "prompts.pinned.copy": "Copy prompt",
   "prompts.pinned.run": "Run job",
   "prompts.pinned.noHost": "No Agent host ready",

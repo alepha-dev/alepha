@@ -133,7 +133,9 @@ test.describe("Pinned prompts", () => {
       await expect(row).toBeVisible({ timeout: 15_000 });
       await row.getByRole("button", { name: /actions/i }).click();
       // One submenu per prompt, holding its Copy and Run (#Q4321).
-      await page.getByRole("menuitem", { name: "Agent prompts" }).hover();
+      await page
+        .getByRole("menuitem", { name: "Prompts", exact: true })
+        .hover();
       await page.getByRole("menuitem", { name: "Work on quest" }).hover();
       await page
         .getByRole("menuitem", { name: "Copy prompt", exact: true })

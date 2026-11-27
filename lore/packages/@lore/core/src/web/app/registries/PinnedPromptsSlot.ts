@@ -49,7 +49,7 @@ export interface PinnedPromptsFiller {
 }
 
 /**
- * What a page's table reads of the pins: a row's Agent prompts group, and
+ * What a page's table reads of the pins: a row's Prompts group, and
  * the dialog its entries open, which the page renders.
  */
 export interface PinnedPrompts {

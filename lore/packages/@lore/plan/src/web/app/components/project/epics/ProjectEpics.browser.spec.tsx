@@ -1096,6 +1096,48 @@ describe("ProjectEpics - the status filter", () => {
       expect(confirm.textContent).toContain("Its folios are kept, unfiled.");
     });
 
+    /**
+     * #Q4507: the lifecycle decision leads the menu, set apart by a
+     * separator, then the rest, then Delete under its own.
+     */
+    it("leads a draft's menu with Mark as ready and a ready one's with Back to draft, each set apart", async () => {
+      await mount([], fixture());
+      const separators = () =>
+        document.querySelectorAll('[data-slot="dropdown-menu-separator"]');
+
+      const draft = (await menuOf("#E1 - Draft epic")).map(
+        (item) => item.textContent,
+      );
+      expect(draft).toEqual(["Mark as ready", "Shelve", "Delete"]);
+      // Under Mark as ready, and above Delete.
+      expect(separators()).toHaveLength(2);
+      expect(separators()[0]?.parentElement?.textContent).toBe("Shelve");
+      fireEvent.keyDown(document.activeElement ?? document.body, {
+        key: "Escape",
+      });
+      await waitFor(() =>
+        expect(document.querySelectorAll('[role="menuitem"]')).toHaveLength(0),
+      );
+
+      const ready = (await menuOf("#E2 - Ready epic")).map(
+        (item) => item.textContent,
+      );
+      expect(ready[0]).toBe("Back to draft");
+      expect(separators()).toHaveLength(2);
+    });
+
+    it("draws no leading separator for an epic with no status action", async () => {
+      await mount([], fixture());
+
+      const started = (await menuOf("#E3 - Started epic")).map(
+        (item) => item.textContent,
+      );
+      expect(started).toEqual(["Shelve"]);
+      expect(
+        document.querySelectorAll('[data-slot="dropdown-menu-separator"]'),
+      ).toHaveLength(0);
+    });
+
     it("offers Shelve and no Delete on a started epic, and neither on a completed one", async () => {
       await mount([], fixture());
 
