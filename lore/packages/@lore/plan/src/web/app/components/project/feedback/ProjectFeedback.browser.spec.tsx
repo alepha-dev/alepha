@@ -427,7 +427,7 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     expect(band.textContent ?? "").not.toMatch(/status\s*\*/i);
   });
 
-  it("spaces the header band with one value: 32px controls, 12px padding and gaps (#Q4449)", async ({
+  it("spaces the header band: 32px controls, 12px padding, 6px between the icon buttons (#Q4449, #Q4508)", async ({
     expect,
   }) => {
     const alepha = await mount();
@@ -435,10 +435,17 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     const trigger = await rendered.findByTestId("feedback-status-filter");
     const band = trigger.closest("span")?.parentElement as HTMLElement;
     // (56 - 32) / 2 = 12: `px-3` is the inset above, below and to the left
-    // of a 32px control, and `gap-3` the space between the controls.
+    // of a 32px control. The +, robot and bell are a group of their own,
+    // half that apart: `gap-1.5`, 6px (#Q4508).
     expect(band.className).toMatch(/\bh-14\b/);
     expect(band.className).toMatch(/\bpx-3\b/);
-    expect(band.className).toMatch(/\bgap-3\b/);
+    const actions = rendered.getByTestId("feedback-header-actions");
+    expect(actions.parentElement).toBe(band);
+    expect(actions.className).toMatch(/\bgap-1\.5\b/);
+    expect(actions.className).toMatch(/\bms-auto\b/);
+    expect(actions.contains(rendered.getByTestId("feedback-open-form"))).toBe(
+      true,
+    );
     expect(trigger.className).toMatch(/\bh-8\b/);
     // The robot and the bell draw nothing in this harness (an unfilled slot,
     // no subscription rows); both are `size="icon"` buttons too, 32px.

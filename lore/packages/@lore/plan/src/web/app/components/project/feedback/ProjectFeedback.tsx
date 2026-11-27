@@ -331,8 +331,9 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
               One spacing for the whole band (#Q4449): every control in it is
               32px tall (the select at its default size, the icon buttons at
               `size="icon"`), so `px-3` leaves (56 - 32) / 2 = 12px above,
-              below and to the left of the select, and `gap-3` the same 12px
-              between the icon buttons on the right. */}
+              below and to the left of the select. The icon buttons on the
+              right sit in a group of their own, half that apart (`gap-1.5`,
+              6px, #Q4508): 12px between them read as three loose buttons. */}
           <div className="border-border chrome flex h-14 shrink-0 items-center gap-3 border-b px-3">
             <ProjectFeedbackStatusSelect
               key={status}
@@ -345,47 +346,53 @@ const ProjectFeedback = (props: ProjectFeedbackProps) => {
                 showStatus(next);
               }}
             />
-            <div className="ms-auto shrink-0" />
-            {/* The feedback form, as the band's "+" (#Q4449): it was a
+            <div
+              className="ms-auto flex shrink-0 items-center gap-1.5"
+              data-testid="feedback-header-actions"
+            >
+              {/* The feedback form, as the band's "+" (#Q4449): it was a
                 button on the empty Pending tab only. A real anchor, not a
                 `router.push`: the owner most often wants the URL itself, to
                 hand to somebody else, so it keeps middle-click. */}
-            {project && (
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      variant="minimal"
-                      size="icon"
-                      href={router.path("projectFeedbackRequest", {
-                        params: { projectSlug: project.slug },
-                      })}
-                      aria-label={tr("feedback.list.openForm")}
-                      data-testid="feedback-open-form"
-                    />
-                  }
-                >
-                  <Plus className="size-4" />
-                </TooltipTrigger>
-                <TooltipContent>{tr("feedback.list.openForm")}</TooltipContent>
-              </Tooltip>
-            )}
-            {/* The prompts pinned on the Feedback list (#Q4284). The open
+              {project && (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="minimal"
+                        size="icon"
+                        href={router.path("projectFeedbackRequest", {
+                          params: { projectSlug: project.slug },
+                        })}
+                        aria-label={tr("feedback.list.openForm")}
+                        data-testid="feedback-open-form"
+                      />
+                    }
+                  >
+                    <Plus className="size-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {tr("feedback.list.openForm")}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {/* The prompts pinned on the Feedback list (#Q4284). The open
                 item's panel has its own button, which tells the spotlight
                 the item; this one does not. */}
-            <PinnedPromptsButton page="feedback" publish={false} />
-            <SubscriptionBell
-              events={["feedback.created"]}
-              label={tr("feedback.subscription.label")}
-              description={tr("feedback.subscription.description")}
-              // Opens a dialog: channels, and whose feedback (#Q4055, #Q4290).
-              authors={{
-                allLabel: tr("feedback.subscription.all"),
-                notMineLabel: tr("feedback.subscription.notMine"),
-                notMembersLabel: tr("feedback.subscription.notMembers"),
-              }}
-              testId="feedback-subscription-bell"
-            />
+              <PinnedPromptsButton page="feedback" publish={false} />
+              <SubscriptionBell
+                events={["feedback.created"]}
+                label={tr("feedback.subscription.label")}
+                description={tr("feedback.subscription.description")}
+                // Opens a dialog: channels, and whose feedback (#Q4055, #Q4290).
+                authors={{
+                  allLabel: tr("feedback.subscription.all"),
+                  notMineLabel: tr("feedback.subscription.notMine"),
+                  notMembersLabel: tr("feedback.subscription.notMembers"),
+                }}
+                testId="feedback-subscription-bell"
+              />
+            </div>
           </div>
 
           {/* Untrusted items no member trusted yet (#Q4216): no agent
