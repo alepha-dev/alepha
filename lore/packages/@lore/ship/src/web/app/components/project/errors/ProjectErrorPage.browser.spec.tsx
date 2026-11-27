@@ -4,6 +4,7 @@ import {
   currentProjectAtom,
   ElementReferenceRegistry,
   I18n,
+  pageCrumbAtom,
   PinnedPromptsSlot,
   StackTraceParser,
 } from "@lore/core/web";
@@ -280,6 +281,37 @@ describe("ProjectErrorPage", () => {
       expect(screen.getAllByTestId("tile-chart-bar")).toHaveLength(3),
     );
     expect(screen.getAllByTestId("tile-chart-marker")).toHaveLength(1);
+  });
+
+  /**
+   * #Q4540: "Acme › Errors › TypeError", the "Errors" crumb being the way
+   * back, so the header carries no back link of its own.
+   */
+  it("ends the trail with the error's name, and draws no back link", async ({
+    expect,
+  }) => {
+    await show(detail());
+
+    await waitFor(() =>
+      expect(alepha!.store.get(pageCrumbAtom)).toEqual({
+        routeName: "projectError",
+        label: "TypeError",
+      }),
+    );
+    expect(screen.queryByTestId("error-back")).toBeNull();
+    expect(header().queryByText("Errors")).toBeNull();
+  });
+
+  it("cuts a long error name short in its crumb", async ({ expect }) => {
+    await show(detail({ error: { name: "E".repeat(200) } }));
+
+    await waitFor(() =>
+      expect(alepha!.store.get(pageCrumbAtom)?.label).toBe(
+        `${"E".repeat(59)}…`,
+      ),
+    );
+    // The page's own title keeps the whole name.
+    expect(screen.getByTestId("error-name").textContent).toBe("E".repeat(200));
   });
 
   it("renders a browser error awaiting trust, linked to the server error of its request", async ({

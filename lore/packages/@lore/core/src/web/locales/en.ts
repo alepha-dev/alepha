@@ -2866,7 +2866,6 @@ export default {
   "errors.status.open": "Open",
   "errors.origin.run": "Use case run",
   "errors.origin.monitor": "Monitor",
-  "errors.page.back": "Errors",
   "errors.page.previous": "Previous error",
   "errors.page.next": "Next error",
   "errors.action.forwardNew": "Forward to a new quest",

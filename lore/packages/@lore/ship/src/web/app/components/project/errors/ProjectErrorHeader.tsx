@@ -8,9 +8,7 @@ import {
 } from "@alepha/ui";
 import { type I18n, PinnedPromptsButton } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
-import { Link } from "alepha/react/router";
 import {
-  ArrowLeft,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -31,9 +29,9 @@ export interface ProjectErrorHeaderProps {
   detail: ProjectErrorDetail;
   verbs: ProjectErrorVerbs;
   /**
-   * Where the inbox is, and where an error's page is by its id.
+   * Where an error's page is by its id. The way back to the inbox is the
+   * breadcrumb's "Errors" crumb (#Q4540).
    */
-  inboxHref: string;
   errorHref: (id: number) => string;
   /**
    * Whether the project has Plan: forwarding files a quest, so both ways of
@@ -61,14 +59,6 @@ const ProjectErrorHeader = (props: ProjectErrorHeaderProps) => {
   return (
     <header className="flex flex-col gap-3" data-testid="error-header">
       <div className="flex flex-wrap items-center gap-2">
-        <Link
-          href={props.inboxHref}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
-          data-testid="error-back"
-        >
-          <ArrowLeft className="size-3.5" />
-          {tr("errors.page.back")}
-        </Link>
         <span
           className="text-muted-foreground font-mono text-xs"
           data-testid="error-number"

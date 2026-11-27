@@ -2,6 +2,7 @@ import {
   currentProjectAtom,
   hasCapability,
   type I18n,
+  usePageCrumb,
   useRank,
 } from "@lore/core/web";
 import { useClient, useQuery, useQueryClient, useStore } from "alepha/react";
@@ -87,11 +88,19 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
     router.path("projectError", {
       params: { projectSlug, errorId: String(id) },
     });
-  const inboxHref = router.path("projectErrors", { params: { projectSlug } });
   const questHref = (shortId: number) =>
     router.path("projectQuest", {
       params: { projectSlug, shortId: String(shortId) },
     });
+
+  // The trail ends with the error (#Q4540): "Acme › Errors › EMAIL", the
+  // "Errors" crumb climbing back to the inbox, and the document title
+  // following. Its name is an application's: plain text, and cut short.
+  const name = detail.error.name.trim();
+  usePageCrumb(
+    "projectError",
+    name.length > 60 ? `${name.slice(0, 59)}…` : name || undefined,
+  );
 
   const refresh = useCallback(() => {
     queries.invalidate(["project-error", projectId, errorId]);
@@ -122,7 +131,6 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
           <ProjectErrorHeader
             detail={detail}
             verbs={verbs}
-            inboxHref={inboxHref}
             errorHref={errorHref}
             canForward={canForward}
             onIgnore={() => setIgnoring(true)}

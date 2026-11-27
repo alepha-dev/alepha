@@ -2875,7 +2875,6 @@ export default {
   "errors.status.open": "Ouverte",
   "errors.origin.run": "Exécution de cas d'usage",
   "errors.origin.monitor": "Moniteur",
-  "errors.page.back": "Erreurs",
   "errors.page.previous": "Erreur précédente",
   "errors.page.next": "Erreur suivante",
   "errors.action.forwardNew": "Transmettre à une nouvelle quête",
