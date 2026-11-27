@@ -4220,6 +4220,9 @@ export default {
   "epic.ready.openBlockers.confirm":
     "La revue a trouvé des problèmes qui bloquent le plan de $1 tel qu’il est écrit. Résolvez-les dans l’onglet Revue avant que ses quêtes n’arrivent dans le backlog, ou marquez-la prête quand même.",
   "epic.start.blocked": "Bloquée par l'épopée $1",
+  "epic.start.blockedWhy":
+    "Son épopée précédente n’est pas terminée : aucune quête de cette épopée ne peut être acceptée avant qu’elle le soit.",
+  "epic.start.blockedOpen": "Ouvrir l’épopée $1",
   "epic.status.actions.markReady": "Marquer comme prête",
   "epic.status.actions.backToDraft": "Repasser en brouillon",
   "epic.status.actions.shelve": "Mettre de côté",
