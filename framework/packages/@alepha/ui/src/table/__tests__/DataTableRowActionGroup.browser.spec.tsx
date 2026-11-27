@@ -150,6 +150,50 @@ describe("DataTable (row action groups)", () => {
     ).toBeTruthy();
   });
 
+  it("draws a separator under an entry that asks for one, above a group too", async () => {
+    await mount(
+      <DataTable<Row>
+        data={[{ id: 1, title: "Alpha" }]}
+        columns={columns}
+        rowActions={() => [
+          { label: "Mark as ready", separatorAfter: true, onClick: () => {} },
+          {
+            label: "Prompts",
+            icon: Bot,
+            children: [{ label: "Work on it", onClick: () => {} }],
+          },
+          { label: "Shelve", onClick: () => {} },
+        ]}
+      />,
+    );
+
+    await openRowMenu();
+    const separators = document.querySelectorAll(
+      '[data-slot="dropdown-menu-separator"]',
+    );
+    expect(separators.length).toBe(1);
+    // Between the first entry and the group, nowhere else.
+    expect(separators[0]?.parentElement?.textContent).toContain("Prompts");
+  });
+
+  it("draws no separator under the last entry, whatever it asks", async () => {
+    await mount(
+      <DataTable<Row>
+        data={[{ id: 1, title: "Alpha" }]}
+        columns={columns}
+        rowActions={() => [
+          { label: "Shelve", onClick: () => {} },
+          { label: "Mark as ready", separatorAfter: true, onClick: () => {} },
+        ]}
+      />,
+    );
+
+    await openRowMenu();
+    expect(
+      document.querySelector('[data-slot="dropdown-menu-separator"]'),
+    ).toBeNull();
+  });
+
   it("opens the submenu and calls the child handler with the row", async () => {
     let clicked: Row | undefined;
     await mount(

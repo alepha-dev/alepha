@@ -1060,6 +1060,40 @@ const ProjectEpics = () => {
           },
         }}
         rowActions={(epic) => [
+          // The one lifecycle decision, gated on the row's own status: a
+          // draft epic can be marked ready, a ready one sent back to
+          // draft, and an epic that has started offers nothing, because
+          // its other two moves happen on their own (#Q2223). It leads the
+          // menu, set apart by a separator (#Q4507); a started or finished
+          // epic has none, so its menu opens on Prompts with no separator.
+          ...(epic.status === "draft" && epicApi.setEpicStatus.can()
+            ? [
+                {
+                  icon: Play,
+                  label: tr("epic.status.actions.markReady"),
+                  separatorAfter: true,
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    ctx: RowActionContext<EpicResource>,
+                  ) => setStatus(row, "ready", ctx),
+                },
+              ]
+            : []),
+          ...(epic.status === "ready" && epicApi.setEpicStatus.can()
+            ? [
+                {
+                  icon: Undo2,
+                  label: tr("epic.status.actions.backToDraft"),
+                  separatorAfter: true,
+                  disabled: () => busy,
+                  onClick: (
+                    row: EpicResource,
+                    ctx: RowActionContext<EpicResource>,
+                  ) => setStatus(row, "draft", ctx),
+                },
+              ]
+            : []),
           // What is pinned on the Epic view (#Q4284), this row's epic
           // filled in, offered when its arg accepts the epic's status.
           ...pins.rowGroup<EpicResource>("epic", {
@@ -1116,36 +1150,6 @@ const ProjectEpics = () => {
                       ) => void setReleaseAction.run(row, null, refresh),
                     },
                   ],
-                },
-              ]
-            : []),
-          // The one lifecycle decision, gated on the row's own status: a
-          // draft epic can be marked ready, a ready one sent back to
-          // draft, and an epic that has started offers nothing, because
-          // its other two moves happen on their own (#Q2223).
-          ...(epic.status === "draft" && epicApi.setEpicStatus.can()
-            ? [
-                {
-                  icon: Play,
-                  label: tr("epic.status.actions.markReady"),
-                  disabled: () => busy,
-                  onClick: (
-                    row: EpicResource,
-                    ctx: RowActionContext<EpicResource>,
-                  ) => setStatus(row, "ready", ctx),
-                },
-              ]
-            : []),
-          ...(epic.status === "ready" && epicApi.setEpicStatus.can()
-            ? [
-                {
-                  icon: Undo2,
-                  label: tr("epic.status.actions.backToDraft"),
-                  disabled: () => busy,
-                  onClick: (
-                    row: EpicResource,
-                    ctx: RowActionContext<EpicResource>,
-                  ) => setStatus(row, "draft", ctx),
                 },
               ]
             : []),

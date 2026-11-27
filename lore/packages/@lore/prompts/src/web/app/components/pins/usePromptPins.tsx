@@ -135,7 +135,7 @@ export const usePromptPins = (options: UsePromptPinsOptions = {}) => {
   };
 
   /**
-   * A row's Agent prompts group: what is pinned on its item's view, the
+   * A row's Prompts group: what is pinned on its item's view, the
    * row's item filled in. Empty when it has nothing to offer.
    */
   const rowGroup = <T,>(

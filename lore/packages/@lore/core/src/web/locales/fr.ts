@@ -4251,7 +4251,7 @@ export default {
   "epic.list.openBlockers": "$1 blocages de revue ouverts",
   "epic.agent.job": "Tâche de revue",
   "epic.review.empty":
-    "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis les prompts d’agent pour en déposer une.",
+    "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis le menu Prompts pour en déposer une.",
   "epic.review.open": "Questions ouvertes ($1)",
   "epic.review.open.none": "Aucune question de revue n’est ouverte.",
   "epic.review.openWithBlockers": "Blocages ($1) et questions ($2) ouverts",
@@ -5557,7 +5557,7 @@ export default {
   "prompts.page.feedback": "Liste des retours",
   "prompts.page.feedback-item": "Vue d'un retour",
   "prompts.page.errors": "Liste des erreurs",
-  "prompts.pinned.menu": "Invites d'agent",
+  "prompts.pinned.menu": "Prompts",
   "prompts.pinned.copy": "Copier l'invite",
   "prompts.pinned.run": "Lancer la tâche",
   "prompts.pinned.noHost": "Aucun hôte Agent prêt",

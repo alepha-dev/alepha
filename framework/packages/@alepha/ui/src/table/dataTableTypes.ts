@@ -141,6 +141,14 @@ export interface RowAction<T> {
    * out of a list is also a delete.
    */
   checked?: (item: T) => boolean;
+  /**
+   * Draw a separator under this entry, when another entry of the menu
+   * follows it: a decision that leads the menu, set apart from the verbs
+   * under it. The separator above the first destructive entry is drawn
+   * without asking. Read by the three-dots menu only, not inside a submenu
+   * nor by `rowActionsDisplay: "inline"`.
+   */
+  separatorAfter?: boolean;
 }
 
 /**

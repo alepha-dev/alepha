@@ -2,7 +2,7 @@
  * The default templates of Plan's Requirements prompt kinds (#E153),
  * rendered on the server by `RequirementsPromptService` for the Verify
  * dialog, `usecase_prompt` and `lore usecase prompt`, and editable in
- * Settings › Agent prompts. Written for any Lore project, not only an app
+ * Settings › Prompts. Written for any Lore project, not only an app
  * built with Alepha.
  */
 export class RequirementsPromptDefaults {
