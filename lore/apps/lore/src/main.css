@@ -1368,48 +1368,19 @@ body::before {
 }
 
 /*
- * EXPLORATION (2026-08-28): the selection toolbar's hover lift.
+ * The markdown toolbars' buttons (the format bar and the selection bar):
+ * the hover fill and colour ease in, and nothing moves.
  *
- * A class rather than Tailwind utilities because the two halves want
- * different curves, and `duration-*` / `ease-*` apply to every property in
- * the transition at once.
- *
- * The transform gets an overshooting curve - it passes the target and
- * settles back - which is what reads as "springy" rather than as "slid".
- * The colours deliberately do NOT: overshooting a colour means going
- * briefly past the destination to a lighter value and back, which on a
- * hover fill shows up as a flash. They get a plain ease-out, and a shorter
- * one, so the fill has arrived by the time the lift finishes.
- *
- * 2px, not 1px. With a settling curve a single pixel is below the
- * threshold where the eye reads motion at all, so the smoothing was doing
- * nothing visible.
+ * They used to lift 2px on hover, on an overshooting spring curve (an
+ * exploration of 2026-08-28). The owner asked for it gone (#Q4506): a row of
+ * buttons that hop under the pointer reads as restless. The fill is what
+ * says a button is hovered, so it is all that stays, with no motion left for
+ * `prefers-reduced-motion` to drop.
  */
 .lore-md-toolbar-button {
   transition:
-    transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
     background-color 140ms ease-out,
     color 140ms ease-out;
-}
-
-.lore-md-toolbar-button:hover {
-  transform: translateY(-2px);
-}
-
-/*
- * Motion is the decoration here; the hover fill is the part that carries
- * the meaning, so it survives and only the travel is dropped.
- */
-@media (prefers-reduced-motion: reduce) {
-  .lore-md-toolbar-button {
-    transition:
-      background-color 140ms ease-out,
-      color 140ms ease-out;
-  }
-
-  .lore-md-toolbar-button:hover {
-    transform: none;
-  }
 }
 
 /*
