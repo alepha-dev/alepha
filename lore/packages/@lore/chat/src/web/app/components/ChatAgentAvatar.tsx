@@ -33,8 +33,9 @@ export interface ChatAgentAvatarProps {
  *
  * The built-in `@lore` is the Lore companion herself, alive, in her portrait
  * framing (`LoreLogoAnimated`'s `portrait`): the agent of the product is the
- * one figure the product already has. She is decoration beside the name the
- * row prints, so the tile is hidden from assistive technology.
+ * one figure the product already has, alone on the page with her wings
+ * drawn past the slot (#Q4530). She is decoration beside the name the row
+ * prints, so she is hidden from assistive technology.
  */
 const ChatAgentAvatar = (props: ChatAgentAvatarProps) => {
   const box = cn(
@@ -42,15 +43,27 @@ const ChatAgentAvatar = (props: ChatAgentAvatarProps) => {
     props.className ?? "size-[30px]",
   );
   if (props.builtin) {
+    // No tile and no clipping (#Q4530): the slot keeps its size in the
+    // layout, and the canvas lies over it, `LoreSpritePortraitRenderer`'s
+    // OVERFLOW (1.8) times its side, so her wings are drawn whole past its
+    // edges. It catches no pointer: what is under a wing tip stays
+    // clickable. She follows the theme.
     return (
       <span
         aria-hidden
-        // Dark in both themes: the portrait is always light on dark.
-        className={cn(box, "bg-neutral-950 dark:ring-1 dark:ring-white/10")}
+        className={cn(
+          "relative inline-block shrink-0",
+          props.className ?? "size-[30px]",
+          // A shape class meant for a picture has nothing to round here.
+          "rounded-none",
+        )}
         data-testid="chat-agent-avatar"
         data-builtin
       >
-        <LoreLogoAnimated portrait className="size-full" />
+        <LoreLogoAnimated
+          portrait
+          className="pointer-events-none absolute -inset-[40%] size-[180%]"
+        />
       </span>
     );
   }
