@@ -587,6 +587,8 @@ export class CapabilityRegistry {
         "errorTrend",
         // How fast the pages feel (#Q4521).
         "webVitals",
+        // What went out, where and by whom (#Q4522).
+        "recentDeployments",
         // The monitors (#Q3781); the hosts card is Core since #E166.
         "uptime",
         // Latency, certificates and incidents (#Q4426).

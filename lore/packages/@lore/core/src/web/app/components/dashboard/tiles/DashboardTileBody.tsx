@@ -10,6 +10,7 @@ import {
   ListChecks,
   Lock,
   Radio,
+  Rocket,
   Rows3,
   Sparkles,
   type LucideIcon,
@@ -213,5 +214,6 @@ const EMPTY_ICONS: Partial<Record<string, LucideIcon>> = {
   noActivity: Activity,
   noQuests: ListChecks,
   noJobs: Coffee,
+  noDeployment: Rocket,
   noAccess: Lock,
 };

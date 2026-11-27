@@ -3,6 +3,7 @@ import { $inject } from "alepha";
 
 import { appHealthFiltersSchema } from "../schemas/appHealthFiltersSchema.ts";
 import { errorTrendFiltersSchema } from "../schemas/errorTrendFiltersSchema.ts";
+import { recentDeploymentsFiltersSchema } from "../schemas/recentDeploymentsFiltersSchema.ts";
 import { uptimeCardFiltersSchema } from "../schemas/uptimeCardFiltersSchema.ts";
 import { uptimeLatencyCardFiltersSchema } from "../schemas/uptimeLatencyCardFiltersSchema.ts";
 import { webVitalsFiltersSchema } from "../schemas/webVitalsFiltersSchema.ts";
@@ -87,6 +88,29 @@ export class DeployAppsDashboardMetrics {
                 app: target.app,
                 env: target.env,
               },
+            }
+          : undefined,
+    });
+    // What went out, where, when and by whom (#Q4522): every copy's
+    // deployments, newest first, narrowed to copies by their sigil.
+    this.catalog.register({
+      ...common,
+      key: "recentDeployments",
+      requires: "app:read",
+      order: 84,
+      labelKey: "dashboard.metric.recentDeployments",
+      hintKey: "dashboard.metric.recentDeployments.hint",
+      icon: "rocket",
+      presentation: "feed",
+      scopeKinds: ["projects", "apps"],
+      filters: recentDeploymentsFiltersSchema,
+      needs: { capability: "ship", option: "deploy" },
+      defaultSize: { size: 2, height: 1 },
+      link: (_scope, target) =>
+        target.projectSlug
+          ? {
+              route: "projectApps",
+              params: { projectSlug: target.projectSlug },
             }
           : undefined,
     });

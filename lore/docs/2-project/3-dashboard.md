@@ -206,6 +206,7 @@ The **Add card** panel lists them in these groups.
 | **Coverage**        | Line coverage over the recorded runs                                                                                  |
 | **Unique visitors** | Human visitors a day, averaged over the board's period, against the one before                                        |
 | **Web vitals**      | LCP, INP and CLS at p75 over the board's period, green, amber or red as on the Vitals page; grey with too few samples |
+| **Deployments**     | The last deploys of each app instance, newest first: the version, failed or rolled back in colour, who and when       |
 | **Hosts**           | The project's hosts, its own and lent ones: online or offline, and last heard                                         |
 | **Uptime**          | Each monitor, up or down, with its availability over the last 24 hours as a bar                                       |
 
