@@ -17,6 +17,7 @@ import {
   commitQuestSetPushSchema,
 } from "../schemas/commitQuestSetPushSchema.ts";
 import { ArtifactDetailService } from "../services/ArtifactDetailService.ts";
+import { ArtifactLimits } from "../services/ArtifactLimits.ts";
 import { ArtifactService } from "../services/ArtifactService.ts";
 import { CommitQuestSetService } from "../services/CommitQuestSetService.ts";
 import { DeployBuckets } from "../services/DeployBuckets.ts";
@@ -135,7 +136,13 @@ export class ArtifactController {
          * JSON text before `file` on the wire.
          */
         manifest: artifactManifestSchema.optional(),
-        file: z.file({ maxBytes: 20 * 1024 * 1024 }),
+        /**
+         * ⚠️ The platform's ceiling, not the project's cap (#Q4542): the
+         * multipart decode refuses a larger part before buffering it, and
+         * `ArtifactService` checks the `lore.artifact.limits` parameter,
+         * which an admin may lower, against the bytes.
+         */
+        file: z.file({ maxBytes: ArtifactLimits.MAX_ARTIFACT_BYTES }),
         /**
          * The source maps archive an older CLI still sends (#Q1515), read
          * and dropped (#Q3549): nothing symbolicated with it. Maybe one day

@@ -1,5 +1,6 @@
 import { $storage } from "alepha/api/files";
 
+import { ArtifactLimits } from "./ArtifactLimits.ts";
 import { ArtifactService } from "./ArtifactService.ts";
 
 /**
@@ -17,14 +18,16 @@ export class DeployBuckets {
    *
    * ## ⚠️ The ceiling, and what it is really bounding
    *
-   * 20 MB. A packed Alepha app is a few megabytes gzipped - Cloudflare's own
-   * Worker script limit is 10 MB compressed - so this is generous for the
-   * thing it is for and deliberately not open-ended.
+   * {@link ArtifactLimits.MAX_ARTIFACT_BYTES}, 32 MB: the platform's ceiling,
+   * which the project's own cap (`lore.artifact.limits`, 25 MB by default,
+   * #Q4542) can only lower. A packed Alepha app is a few megabytes gzipped -
+   * Cloudflare's own Worker script limit is 10 MB compressed - so this is
+   * generous for the thing it is for and deliberately not open-ended.
    *
    * It is not only a storage quota. `z.file()` materialises the part before
    * `$secure` runs, so this number is also how much an UNAUTHENTICATED request
    * can make a Worker isolate hold. That isolate has around 128 MB in total,
-   * which is the reason this is 20 and not 200.
+   * which is the reason this is 32 and not 200.
    *
    * The MIME list is the zstd and gzip families plus the catch-all every
    * `curl -F` sends. It is a usability guard rather than a security control -
@@ -39,7 +42,7 @@ export class DeployBuckets {
   public readonly artifacts = $storage({
     name: ArtifactService.BUCKET,
     description: "Build artifacts pushed by CI",
-    maxSize: 20,
+    maxSize: ArtifactLimits.MAX_ARTIFACT_BYTES / (1024 * 1024),
     mimeTypes: [
       "application/zstd",
       "application/x-zstd",

@@ -7,7 +7,12 @@ import {
 import { $inject, type FileLike } from "alepha";
 import { FileService } from "alepha/api/files";
 import { $repository } from "alepha/orm";
-import { BadRequestError, ConflictError } from "alepha/server";
+import {
+  BadRequestError,
+  ConflictError,
+  ForbiddenError,
+  HttpError,
+} from "alepha/server";
 
 import { type Artifact, artifacts } from "../entities/artifacts.ts";
 import { deployments } from "../entities/deployments.ts";
@@ -16,6 +21,7 @@ import {
   artifactAssetListSchema,
 } from "../schemas/artifactAssetListSchema.ts";
 import type { ArtifactManifest } from "../schemas/artifactManifestSchema.ts";
+import { ArtifactLimits } from "./ArtifactLimits.ts";
 import { ArtifactSchemaStore } from "./ArtifactSchemaStore.ts";
 import { ArtifactTarReader } from "./ArtifactTarReader.ts";
 import { DeployAssetCache } from "./DeployAssetCache.ts";
@@ -51,6 +57,7 @@ export class ArtifactService {
   protected readonly assetCache = $inject(DeployAssetCache);
   protected readonly schemas = $inject(ArtifactSchemaStore);
   protected readonly runs = $repository(deployments);
+  protected readonly limits = $inject(ArtifactLimits);
 
   /**
    * Store a build, or recognise that it is already stored.
@@ -258,6 +265,21 @@ export class ArtifactService {
     // resolves to two builds.
     const superseded = overlapping.filter((row) => row !== existing);
 
+    // ⚠️ After the idempotent re-push and the conflict, before any write: a
+    // push that adds nothing is never refused for a cap (a CI retry of bytes
+    // already stored included, whatever an admin lowered since), and a
+    // refused one stores nothing.
+    await this.assertArchiveSize(bytes.length);
+    await this.assertRoom(input.projectId, {
+      adds: existing ? 0 : 1,
+      drops: superseded.length,
+      bytes: bytes.length,
+      freed: [existing, ...superseded].reduce(
+        (sum, row) => sum + (row?.size ?? 0),
+        0,
+      ),
+    });
+
     if (existing) {
       const artifact = await this.replace(existing, {
         projectId: input.projectId,
@@ -304,6 +326,77 @@ export class ArtifactService {
     }
     await this.dropAll(superseded);
     return { artifact, stored: true };
+  }
+
+  /**
+   * Refuse an archive past the project's per-archive cap (#Q4542).
+   *
+   * A 413 rather than a 400: the archive is well formed, only too large, and
+   * the remedy is a smaller build or a raised limit, not a different request.
+   */
+  protected async assertArchiveSize(size: number): Promise<void> {
+    const max = await this.limits.maxArtifactBytes();
+    if (size > max) {
+      throw new HttpError(
+        { status: 413 },
+        {
+          message: `This archive is ${ArtifactLimits.megabytes(size)}, past the ${ArtifactLimits.megabytes(max)} one artifact may weigh. Push a smaller build, or ask an admin to raise maxArtifactBytes in lore.artifact.limits.`,
+        },
+      );
+    }
+  }
+
+  /**
+   * Refuse a push that would take the project past its row count or its
+   * archives' total (#Q4542).
+   *
+   * - `adds` is the rows the push creates (0 for a replace, which updates a
+   *   row in place) and `drops` the superseded rows it deletes. The count
+   *   is checked only when the push grows it, so a re-push, a `latest`
+   *   replace or a `--force` never meets it unless it leaves more rows.
+   * - `bytes` is what the push stores and `freed` what it reclaims: the
+   *   replaced row and every superseded one. The total is checked as
+   *   `current - freed + bytes`, and only when the push grows it, so a push
+   *   that shrinks the registry goes through even over a lowered cap.
+   */
+  protected async assertRoom(
+    projectId: number,
+    change: { adds: number; drops: number; bytes: number; freed: number },
+  ): Promise<void> {
+    const remedy =
+      "Delete old artifacts to free room, or ask an admin to raise it in lore.artifact.limits.";
+    // Only when the push grows the row count: a forced push that adds one
+    // row and drops one superseded archive changes nothing, and must not
+    // meet a cap an admin lowered below what the project already holds.
+    if (change.adds > change.drops) {
+      const max = await this.limits.maxArtifactsPerProject();
+      const count = await this.rows.count({ projectId: { eq: projectId } });
+      if (count - change.drops + change.adds > max) {
+        throw new ForbiddenError(
+          `This project holds ${count} artifacts, and maxArtifactsPerProject is ${max}. ${remedy}`,
+        );
+      }
+    }
+    if (change.bytes > change.freed) {
+      const max = await this.limits.maxBytesPerProject();
+      const [total] = await this.rows.aggregate({
+        select: { size: { sum: true } },
+        where: {
+          projectId: { eq: projectId },
+          format: { eq: ArtifactService.ARCHIVE },
+        },
+      });
+      const current = Number(total?.size.sum ?? 0);
+      const after = current - change.freed + change.bytes;
+      if (after > max) {
+        throw new HttpError(
+          { status: 413 },
+          {
+            message: `This project's archives hold ${ArtifactLimits.megabytes(current)}, and this push would take them to ${ArtifactLimits.megabytes(after)}, past maxBytesPerProject (${ArtifactLimits.megabytes(max)}). ${remedy}`,
+          },
+        );
+      }
+    }
   }
 
   /**
@@ -461,6 +554,14 @@ export class ArtifactService {
         stored: true,
       };
     }
+
+    // A new row: an image stores no bytes, but it is a row all the same.
+    await this.assertRoom(input.projectId, {
+      adds: 1,
+      drops: 0,
+      bytes: 0,
+      freed: 0,
+    });
 
     return {
       artifact: await this.rows.create({

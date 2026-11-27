@@ -31,6 +31,7 @@ import { AppHealthMetric } from "./services/AppHealthMetric.ts";
 import { AppSecretService } from "./services/AppSecretService.ts";
 import { AppService } from "./services/AppService.ts";
 import { ArtifactDetailService } from "./services/ArtifactDetailService.ts";
+import { ArtifactLimits } from "./services/ArtifactLimits.ts";
 import { ArtifactPushCaps } from "./services/ArtifactPushCaps.ts";
 import { ArtifactService } from "./services/ArtifactService.ts";
 import { ArtifactTarReader } from "./services/ArtifactTarReader.ts";
@@ -169,6 +170,7 @@ export const LoreShipApi = $module({
     // the seam #1201 replaces with the `deployments` table; the runner is what
     // writes through it.
     DeployGate,
+    ArtifactLimits,
     DeployLimits,
     DeployRegistry,
     DeployRunner,
@@ -299,6 +301,7 @@ export { ProjectErrorRuleService } from "./services/ProjectErrorRuleService.ts";
 export { CloudflareProbeService } from "./services/CloudflareProbeService.ts";
 export { DeployAssetCache } from "./services/DeployAssetCache.ts";
 export { DeployGate } from "./services/DeployGate.ts";
+export { ArtifactLimits } from "./services/ArtifactLimits.ts";
 export { DeployLimits } from "./services/DeployLimits.ts";
 export { DeployRegistry } from "./services/DeployRegistry.ts";
 export { type DeployRequest, DeployRunner } from "./services/DeployRunner.ts";
