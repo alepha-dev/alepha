@@ -124,6 +124,56 @@ describe("AgentJobStepper", () => {
     );
   });
 
+  it("fills a quest worked earlier but not completed yet by its ticks, below full, apart from the current one (#Q4544)", async ({
+    expect,
+  }) => {
+    await show({
+      steps: steps({
+        total: 2,
+        done: 0,
+        quests: [
+          {
+            shortId: 21,
+            title: "Worked first",
+            acceptedAt: "2026-11-26T11:00:00.000Z",
+            objectives: { total: 5, done: 5, waived: 0 },
+          },
+          {
+            shortId: 22,
+            title: "Worked now",
+            acceptedAt: "2026-11-26T11:00:00.000Z",
+            objectives: { total: 6, done: 3, waived: 0 },
+          },
+        ],
+        current: 22,
+      }),
+      running: true,
+    });
+    const segments = screen.getAllByTestId("job-steps-segment");
+    const fillOf = (segment: HTMLElement | undefined) =>
+      (segment?.firstElementChild as HTMLElement | null)?.style.width;
+    // The first quest's 5/5 ticks fill it to the cap, not to 0 and not to full.
+    expect(fillOf(segments[0])).toBe("95%");
+    expect(segments[0]?.dataset.done).toBeUndefined();
+    expect(segments[0]?.dataset.current).toBeUndefined();
+    expect(segments[0]?.firstElementChild?.className).toContain(
+      "bg-primary/40",
+    );
+    // The current one keeps its own shade.
+    expect(fillOf(segments[1])).toBe("50%");
+    expect(segments[1]?.dataset.current).toBe("true");
+    expect(segments[1]?.firstElementChild?.className).toContain(
+      "bg-primary/70",
+    );
+    // The headline and the bar's value still count completed quests.
+    expect(screen.getByTestId("job-steps-text").textContent).toBe(
+      "Quest 2 of 2",
+    );
+    expect(
+      screen.getByTestId("job-steps-bar").getAttribute("aria-valuenow"),
+    ).toBe("0");
+  });
+
   it("gives the steps left as a range, and warns when they may not fit before the timeout (#Q4436)", async ({
     expect,
   }) => {
