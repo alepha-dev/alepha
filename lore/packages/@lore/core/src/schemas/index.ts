@@ -340,7 +340,10 @@ export type {
   LentHostResource,
   MintedLentHost,
 } from "../api/schemas/lentHostResourceSchema.ts";
-export { hostInventoryAppSchema } from "../api/schemas/hostInventoryAppSchema.ts";
+export {
+  type HostInventoryApp,
+  hostInventoryAppSchema,
+} from "../api/schemas/hostInventoryAppSchema.ts";
 export type { HostCommandPayload } from "../api/schemas/hostCommandPayloadSchema.ts";
 export type { HostEventFrame } from "../api/schemas/hostEventFrameSchema.ts";
 export { hostJobLogs } from "../api/entities/hostJobLogs.ts";
@@ -351,7 +354,10 @@ export {
   HOST_PROTOCOL_VERSION,
 } from "../api/schemas/hostWelcomeFrameSchema.ts";
 export type { HostWelcomeFrame } from "../api/schemas/hostWelcomeFrameSchema.ts";
-export type { HostInventoryBackup } from "../api/schemas/hostInventoryBackupSchema.ts";
+export {
+  BACKUP_STATE_RISK,
+  type HostInventoryBackup,
+} from "../api/schemas/hostInventoryBackupSchema.ts";
 export { HostCost } from "../api/schemas/HostCost.ts";
 
 // ---- Quality (#Q3070), core's since #Q4217 ----

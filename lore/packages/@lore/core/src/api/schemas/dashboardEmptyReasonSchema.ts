@@ -17,6 +17,7 @@ import { type Infer, z } from "alepha";
  * - `noAccess`: the reader lacks the permission the metric `requires`.
  * - `noJobs`: no agent job is queued or running (#Q4342).
  * - `noDeployment`: no copy in scope was ever deployed (#Q4522).
+ * - `noBackup`: no copy in scope is backed up by its Bay (#Q4523).
  */
 export const dashboardEmptyReasonSchema = z.enum([
   "noData",
@@ -35,6 +36,7 @@ export const dashboardEmptyReasonSchema = z.enum([
   "nothingAhead",
   "noJobs",
   "noDeployment",
+  "noBackup",
 ]);
 
 export type DashboardEmptyReason = Infer<typeof dashboardEmptyReasonSchema>;

@@ -1,9 +1,13 @@
 import {
   DashboardMetricRegistry,
+  HostInventoryService,
   ProjectDashboardController,
 } from "@lore/core/api";
 import {
   type DashboardCardValue,
+  type HostInventoryApp,
+  hostProjects,
+  hosts,
   type Project,
   projectCapabilities,
   qualityRuns,
@@ -41,6 +45,8 @@ class AppsRepositories {
   uniques = $repository(sigilUniquesDaily);
   capabilities = $repository(projectCapabilities);
   users = $repository(users);
+  hosts = $repository(hosts);
+  grants = $repository(hostProjects);
 }
 
 /**
@@ -508,6 +514,196 @@ describe("dashboard apps tiles", () => {
       expect((await resolve("recentDeployments")).empty).toBe("noDeployment");
       await copy("web", "production", ["errors"], 1);
       expect((await resolve("recentDeployments")).empty).toBe("noDeployment");
+    });
+  });
+
+  describe("backupFreshness", () => {
+    /**
+     * A copy deployed to a Bay of the project, and the inventory that
+     * machine last pushed for it.
+     */
+    const onBay = async (
+      copies: Array<{
+        app: string;
+        env: string;
+        reported: Partial<HostInventoryApp>;
+      }>,
+    ) => {
+      const host = await repos.hosts.create({
+        projectId: project.id,
+        ownerUserId: project.createdBy!,
+        type: "bay",
+        slug: `bay-${seq + 1}`,
+      });
+      await repos.grants.create({ hostId: host.id, projectId: project.id });
+      const made = [];
+      for (const it of copies) {
+        const made1 = await copy(it.app, it.env, ["errors"], 1);
+        await repos.instances.updateById(made1.instance.id, {
+          hostId: host.id,
+          resourceHostId: host.id,
+          resourceName: `${it.app}-${it.env}`,
+        });
+        made.push(made1);
+      }
+      await alepha.inject(HostInventoryService).record(host, {
+        type: "inventory",
+        at: dateTime.nowISOString(),
+        host: { cores: 2, memTotalBytes: 1024 ** 3 },
+        apps: copies.map((it) => ({
+          app: it.app,
+          env: it.env,
+          running: true,
+          backups: true,
+          problems: [],
+          ...it.reported,
+        })),
+      });
+      return made;
+    };
+
+    const ago = (hours: number) =>
+      dateTime.now().subtract(hours, "hour").toISOString();
+
+    it("lists each backed up copy, worst first, with its size, age and Bay's state (#Q4523)", async ({
+      expect,
+    }) => {
+      await onBay([
+        {
+          app: "web",
+          env: "production",
+          reported: {
+            backup: {
+              state: "ok",
+              last: { at: ago(2), key: "k1", storedBytes: 48 * 1024 * 1024 },
+            },
+          },
+        },
+        {
+          app: "web",
+          env: "staging",
+          reported: {
+            backup: {
+              state: "stale",
+              last: {
+                at: "2026-01-02T03:04:05.000Z",
+                key: "k2",
+                storedBytes: 1536,
+              },
+            },
+          },
+        },
+        {
+          app: "api",
+          env: "production",
+          reported: {
+            backup: {
+              state: "failing",
+              last: { at: ago(30), key: "k3", storedBytes: 2_000_000 },
+              failure: {
+                at: ago(1),
+                message: "bucket unreachable",
+                consecutive: 2,
+              },
+            },
+          },
+        },
+        // An older Bay: the flat fields only.
+        {
+          app: "docs",
+          env: "production",
+          reported: { lastBackupAt: ago(5) },
+        },
+        // A state a later Bay adds: untoned, never fresh.
+        {
+          app: "jobs",
+          env: "production",
+          reported: { backup: { state: "paused" } },
+        },
+        // Backups off: no row.
+        {
+          app: "cron",
+          env: "production",
+          reported: { backups: false, backup: { state: "off" } },
+        },
+      ]);
+
+      const value = await resolve("backupFreshness");
+
+      expect(
+        value.rows?.map((row) => ({
+          id: row.id,
+          title: row.title,
+          badge: row.badge,
+          state: row.state,
+        })),
+      ).toEqual([
+        {
+          id: "api/production",
+          title: "1.9 MB",
+          badge: "backupFailing",
+          state: "bad",
+        },
+        {
+          id: "web/staging",
+          title: "1.5 KB",
+          badge: "backupStale",
+          state: "warn",
+        },
+        { id: "docs/production", title: "", badge: undefined, state: "ok" },
+        {
+          id: "web/production",
+          title: "48 MB",
+          badge: undefined,
+          state: "ok",
+        },
+        {
+          id: "jobs/production",
+          title: "",
+          badge: undefined,
+          state: "neutral",
+        },
+      ]);
+      expect(value.rows?.[1]?.at).toBe("2026-01-02T03:04:05.000Z");
+      expect(value.rows?.[0]?.link).toEqual({
+        route: "appBackups",
+        params: { projectSlug: project.slug, app: "api", env: "production" },
+      });
+      expect(value.value).toBe(2);
+    });
+
+    it("follows only the copies of a scope of apps", async ({ expect }) => {
+      const [prod] = await onBay([
+        {
+          app: "web",
+          env: "production",
+          reported: { lastBackupAt: ago(1) },
+        },
+        { app: "web", env: "staging", reported: { lastBackupAt: ago(1) } },
+      ]);
+
+      const value = await resolve("backupFreshness", {
+        kind: "apps",
+        sigilIds: [prod!.sigil.id],
+      });
+
+      expect(value.rows?.map((row) => row.id)).toEqual(["web/production"]);
+    });
+
+    it("is empty while no copy in scope is backed up", async ({ expect }) => {
+      expect((await resolve("backupFreshness")).empty).toBe("noBackup");
+      // Deployed nowhere.
+      await copy("api", "production", ["errors"], 1);
+      expect((await resolve("backupFreshness")).empty).toBe("noBackup");
+      // On a Bay that does not back it up.
+      await onBay([
+        {
+          app: "web",
+          env: "production",
+          reported: { backups: false },
+        },
+      ]);
+      expect((await resolve("backupFreshness")).empty).toBe("noBackup");
     });
   });
 

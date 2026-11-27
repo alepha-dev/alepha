@@ -4358,6 +4358,7 @@ export default {
   "dashboard.group.core": "Project",
   "dashboard.empty.noJobs": "Nothing running right now.",
   "dashboard.empty.noDeployment": "No deployment yet.",
+  "dashboard.empty.noBackup": "No app instance here is backed up.",
   "dashboard.empty.noAccess": "You cannot read this project's reports.",
   "dashboard.metric.requirementCoverage": "Requirement coverage",
   "dashboard.metric.requirementCoverage.hint":
@@ -4508,6 +4509,10 @@ export default {
   "dashboard.badge.failed": "failed",
   "dashboard.badge.cancelled": "cancelled",
   "dashboard.badge.rolledBack": "rolled back",
+  "dashboard.badge.backupStale": "stale",
+  "dashboard.badge.backupFailing": "failing",
+  "dashboard.badge.backupNever": "never backed up",
+  "dashboard.badge.backupRestorePending": "restore pending",
   "dashboard.metric.uptime": "Uptime",
   "dashboard.metric.uptime.hint":
     "each monitor, up or down, and its last 24 hours",
@@ -4717,6 +4722,9 @@ export default {
   "dashboard.metric.recentDeployments": "Deployments",
   "dashboard.metric.recentDeployments.hint":
     "the last deploys of each copy: what, where, when and by whom",
+  "dashboard.metric.backupFreshness": "Backups",
+  "dashboard.metric.backupFreshness.hint":
+    "how old each copy's last Bay snapshot is, and whether the last one failed",
   "dashboard.metric.uniqueVisitors.hint":
     "human visitors a day, averaged over the board's period",
 
