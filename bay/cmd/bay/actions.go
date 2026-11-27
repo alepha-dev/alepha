@@ -132,6 +132,12 @@ const (
 	// them (#Q4218, workspaces.go): asked by Lore when a project is deleted
 	// or a quest's build is done with. Refused while a job runs in it.
 	actionJobWorkspaceRemove actionKind = "job-workspace-remove"
+	// actionJobsLimits sets this host's two lane widths in jobs.json, the
+	// way `bay config jobs --max-jobs N --max-read-jobs N` does (#Q4543,
+	// jobs.go): `maxJobs` and/or `maxReadJobs`, each from 1 to
+	// maxJobsCeiling, and nothing else. Held to no switch: it runs nothing,
+	// and the next job reads the file again.
+	actionJobsLimits actionKind = "jobs-limits"
 	// actionUpgrade replaces Bay's own binary with a released version and
 	// hands over to it. The most powerful verb here; what bounds it is in
 	// upgrade.go, and it is refused while deployAllowed is off.
@@ -238,14 +244,16 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	switch actionKind(cmd.Kind) {
 	case actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 		actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobMessage, actionJobWorkspaceRemove:
+		actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobMessage, actionJobWorkspaceRemove,
+		actionJobsLimits:
 	default:
 		// Refused and reported, never executed or passed through. The reason
 		// names the vocabulary so the other side learns what this Bay speaks.
-		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
+		reason := fmt.Sprintf("unknown action %q: this bay runs %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s and %s, nothing else",
 			cmd.Kind, actionRestart, actionDeploy, actionStop, actionStart, actionBackup, actionLogs, actionStackDeploy,
 			actionBackupsList, actionBackupVerify, actionTargetProbe, actionBackupPolicy, actionRestore,
-			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobMessage, actionJobWorkspaceRemove)
+			actionRemove, actionStackRemove, actionUpgrade, actionJobRun, actionJobCancel, actionJobMessage, actionJobWorkspaceRemove,
+			actionJobsLimits)
 		log.Warn("lore command refused", "reason", reason)
 		a.finish(cmd.ID, "failed", "", reason, send)
 		return
@@ -292,6 +300,10 @@ func (a *actions) Command(ctx context.Context, cmd connector.Command, send func(
 	case actionJobWorkspaceRemove:
 		// Outside the machine mutex like the jobs it cleans up after.
 		status, step, reason = a.jobWorkspaceRemove(ctx, cmd)
+	case actionJobsLimits:
+		// A write of one small file: no deploy waits on it. `finish` then
+		// pushes the inventory that carries the new widths.
+		status, step, reason = a.jobsLimits(cmd)
 	case actionBackup:
 		// Outside the machine-wide mutex, deliberately. A snapshot, a verify
 		// and an upload is minutes on a real database, and holding that lock

@@ -76,9 +76,9 @@ network in clear.
 
 ## What Lore can make the machine do
 
-A **closed vocabulary of nineteen verbs**, each naming one app instance or stack
+A **closed vocabulary of twenty verbs**, each naming one app instance or stack
 environment, or, for `upgrade`, the machine's own Bay, or, for `job-run`,
-`job-cancel`, `job-message` and `job-workspace-remove`, a one-shot job or its workspace (see [Jobs](#jobs)). `deploy` and `stack-deploy` create what they name, `remove` and
+`job-cancel`, `job-message` and `job-workspace-remove`, a one-shot job or its workspace, or, for `jobs-limits`, how many jobs the machine runs at once (see [Jobs](#jobs)). `deploy` and `stack-deploy` create what they name, `remove` and
 `stack-remove` answer done for one that is already gone, and the others refuse
 an instance this Bay does not run:
 
@@ -102,6 +102,7 @@ an instance this Bay does not run:
 | `job-cancel`    | stops the running job it names                                                                                                                                                          |
 | `job-message`   | writes a member's message to the running job it names, on an agent that reads messages while it runs (Claude Code). Refused for any other                                                |
 | `job-workspace-remove` | deletes a project's job workspace, or all of them; refused while a job runs in it |
+| `jobs-limits`   | sets how many jobs run at once, those that change code and the others, each from 1 to 16, in the same file as `bay config jobs --max-jobs` and `--max-read-jobs`. Refused on a host with no jobs user |
 | `upgrade`       | replaces Bay's own binary with a newer release, named by its version, and hands over to it without closing a port. See [Upgrading Bay](/bay/docs/guides-installation#upgrading-bay)     |
 
 ⚠️ **This list is a security boundary, not a menu.** It is all that Lore, or
@@ -255,7 +256,9 @@ warns when it is (`sudo -iu bay-agent lore logout`).
 
 `bay config jobs --max-jobs 2` lets two jobs that change code run at once (one
 by default). `bay config jobs --max-read-jobs 4` sets how many of the others run
-beside them (8 by default, 16 at most).
+beside them (8 by default, 16 at most). Both can also be set from the host's
+Agent section in Lore, which writes them into the same file, so neither copy
+can disagree with the other.
 `bay config jobs --fetch-ttl 30s` is how long a fetch of a project's repository
 is good for (30 seconds by default, `0` fetches before every job).
 `bay config jobs --clear` makes the host refuse every job again.

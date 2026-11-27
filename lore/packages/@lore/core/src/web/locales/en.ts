@@ -3418,6 +3418,22 @@ export default {
   "hosts.agent.running": "$1 of $2 jobs running",
   "hosts.agent.running.lanes":
     "$1 jobs running, of $2 that change code and $3 others at once",
+  "hosts.agent.limits.maxJobs": "Jobs that change code at once",
+  "hosts.agent.limits.maxReadJobs": "Other jobs at once",
+  "hosts.agent.limits.edit": "Edit limits",
+  "hosts.agent.limits.save": "Save",
+  "hosts.agent.limits.cancel": "Cancel",
+  "hosts.agent.limits.hint":
+    "From 1 to $1 each. Written to the host's own jobs config, as bay config jobs does on the machine.",
+  "hosts.agent.limits.pending": "Waiting for the host to write them…",
+  "hosts.agent.limits.queued":
+    "The host has not answered yet: its limits change once it does.",
+  "hosts.agent.limits.done": "Saved on the host.",
+  "hosts.agent.limits.reported":
+    "The host saved them, but has not reported them yet: they show at its next report.",
+  "hosts.agent.limits.failed": "Not saved: $1",
+  "hosts.agent.limits.oldBay":
+    "this host's Bay is too old to take its limits from Lore. Upgrade Bay, or run bay config jobs on the machine.",
   "feedback.untrusted": "Untrusted",
   "feedback.untrusted.description":
     "Written by someone outside the project's team. No agent reads it until a member has read it and trusted it.",

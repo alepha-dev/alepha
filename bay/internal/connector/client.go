@@ -98,6 +98,11 @@ type Command struct {
 	// Workspace names the job workspace a `job-workspace-remove` deletes,
 	// under Project (#Q4218). Empty deletes every workspace of the project.
 	Workspace string `json:"workspace,omitempty"`
+	// MaxJobs and MaxReadJobs are the lane widths a `jobs-limits` writes
+	// into jobs.json (#Q4543), as `bay config jobs --max-jobs` and
+	// `--max-read-jobs` do. Zero leaves that one as it is.
+	MaxJobs     int `json:"maxJobs,omitempty"`
+	MaxReadJobs int `json:"maxReadJobs,omitempty"`
 }
 
 /*
@@ -299,6 +304,8 @@ type serverFrame struct {
 	JobCommand  string          `json:"jobCommandId,omitempty"`
 	Message     string          `json:"message,omitempty"`
 	Workspace   string          `json:"workspace,omitempty"`
+	MaxJobs     int             `json:"maxJobs,omitempty"`
+	MaxReadJobs int             `json:"maxReadJobs,omitempty"`
 }
 
 // Handler receives what the connection delivers. The executor (#1621) is the
@@ -745,7 +752,8 @@ func (c *Client) dispatch(ctx context.Context, frame serverFrame) {
 			Environment: frame.Environment, Artifact: frame.Artifact, Logs: frame.Logs,
 			Stack: frame.Stack, Revision: frame.Revision, Routes: frame.Routes, BaseDomain: frame.BaseDomain, Service: frame.Service,
 			Tag: frame.Tag, Policy: frame.Policy, Restore: frame.Restore, Version: frame.Version,
-			JobCommandID: frame.JobCommand, Message: frame.Message, Workspace: frame.Workspace}
+			JobCommandID: frame.JobCommand, Message: frame.Message, Workspace: frame.Workspace,
+			MaxJobs: frame.MaxJobs, MaxReadJobs: frame.MaxReadJobs}
 		if c.Handler == nil {
 			// Refused with a reason rather than left to Lore's sweep: an
 			// unacknowledged command reads as a dead machine, and this one

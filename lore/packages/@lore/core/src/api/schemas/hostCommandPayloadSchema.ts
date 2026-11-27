@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { HOST_JOBS_LIMIT_CEILING } from "./hostCommandValues.ts";
+
 /**
  * What a command carries besides its kind: the instance it targets on the
  * machine, and for a `deploy`, the artifact by digest.
@@ -145,6 +147,13 @@ export const hostCommandPayloadSchema = z.object({
     .string()
     .regex(/^[a-z0-9][a-z0-9_-]{0,62}$/)
     .optional(),
+  /**
+   * The lane widths a `jobs-limits` writes into Bay's `jobs.json` (#Q4543):
+   * the jobs that change code, and the others. Absent leaves that one as it
+   * is on the machine.
+   */
+  maxJobs: z.integer().min(1).max(HOST_JOBS_LIMIT_CEILING).optional(),
+  maxReadJobs: z.integer().min(1).max(HOST_JOBS_LIMIT_CEILING).optional(),
   /**
    * The `host_jobs` row a `job-run` carries. Lore's own, never sent to the
    * machine: it is how the spec pull and the log frames find the job.

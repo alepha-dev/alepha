@@ -177,6 +177,14 @@ func TestWireServerFramesDecode(t *testing.T) {
 	if rm.Kind != "job-workspace-remove" || rm.Project != "acme" || rm.Workspace != "q12" || rm.App != "" {
 		t.Fatalf("job-workspace-remove decoded wrong: %+v", rm)
 	}
+	// The lane widths a jobs-limits sets, and no app (#Q4543).
+	lim, err := decodeFrame(fixture(t, "command-jobs-limits.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lim.Kind != "jobs-limits" || lim.MaxJobs != 2 || lim.MaxReadJobs != 6 || lim.App != "" {
+		t.Fatalf("jobs-limits decoded wrong: %+v", lim)
+	}
 }
 
 func TestWireClientFramesEncode(t *testing.T) {

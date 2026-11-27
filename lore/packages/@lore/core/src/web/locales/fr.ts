@@ -3438,6 +3438,22 @@ export default {
   "hosts.agent.running": "$1 tâche(s) sur $2 en cours",
   "hosts.agent.running.lanes":
     "$1 tâche(s) en cours, sur $2 qui modifient le code et $3 autres à la fois",
+  "hosts.agent.limits.maxJobs": "Tâches qui modifient le code en même temps",
+  "hosts.agent.limits.maxReadJobs": "Autres tâches en même temps",
+  "hosts.agent.limits.edit": "Modifier les limites",
+  "hosts.agent.limits.save": "Enregistrer",
+  "hosts.agent.limits.cancel": "Annuler",
+  "hosts.agent.limits.hint":
+    "De 1 à $1 chacune. Écrites dans la configuration des tâches de l'hôte, comme bay config jobs sur la machine.",
+  "hosts.agent.limits.pending": "En attente de l'hôte…",
+  "hosts.agent.limits.queued":
+    "L'hôte n'a pas encore répondu : ses limites changent dès qu'il le fait.",
+  "hosts.agent.limits.done": "Enregistré sur l'hôte.",
+  "hosts.agent.limits.reported":
+    "L'hôte les a enregistrées, sans les avoir encore signalées : elles s'affichent à son prochain rapport.",
+  "hosts.agent.limits.failed": "Non enregistré : $1",
+  "hosts.agent.limits.oldBay":
+    "le Bay de cet hôte est trop ancien pour recevoir ses limites depuis Lore. Mettez Bay à jour, ou lancez bay config jobs sur la machine.",
   "feedback.untrusted": "Non fiable",
   "feedback.untrusted.description":
     "Écrit par une personne extérieure à l'équipe du projet. Aucun agent ne le lit tant qu'un membre ne l'a pas lu et ne lui a pas fait confiance.",
