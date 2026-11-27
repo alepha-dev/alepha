@@ -183,9 +183,9 @@ const MarkdownSelectionToolbar = (props: MarkdownSelectionToolbarProps) => {
                       // would both fire, and the native one draws a second
                       // black box a beat later, next to this one.
                       //
-                      // The lift and its curves live in
-                      // `.lore-md-toolbar-button` — two properties, two
-                      // easings, which `duration-*` cannot express.
+                      // The fill's easing lives in `.lore-md-toolbar-button`,
+                      // shared with the format bar; no lift on hover
+                      // (#Q4506).
                       //
                       // `hover:bg-hover`, deliberately stronger than the
                       // ghost variant's `hover:bg-hover`. This bar floats
