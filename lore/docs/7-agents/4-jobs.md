@@ -67,6 +67,13 @@ lanes, each with its own limit, and Lore sends it up to that many of each:
   own check: 8 at a time, or what `--max-read-jobs` says (16 at most). Such a
   job mostly waits on its model.
 
+Both limits are also on the host's **Agent** tab, under **Jobs that change code
+at once** and **Other jobs at once**. A member who may update the host clicks
+**Edit limits**, sets each from 1 to 16 and saves. Lore sends the values to Bay,
+which writes them into the same file as `bay config jobs`, and the tab shows the
+new values once the host answers. A Bay too old to take them says so there:
+upgrade it, or run `bay config jobs` on the machine.
+
 So a triage or a review never waits behind a job that works a quest. Jobs that
 only read the code share a workspace; a job that changes code has its
 workspace to itself.

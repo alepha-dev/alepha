@@ -5,6 +5,7 @@ import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 
 import type { AgentHostController } from "../../../../api/controllers/AgentHostController.ts";
+import BayAgentLimits from "./BayAgentLimits.tsx";
 
 export interface BayAgentHostProps {
   /** Whether the viewer may change the host (`host:update`). */
@@ -15,7 +16,7 @@ export interface BayAgentHostProps {
  * The host as an **Agent host** (#Q3985): the switch that makes it run agent
  * CLI jobs (it needs jobs allowed), the last capability check (available or
  * not, with the agent's message), how many jobs it runs (#Q4249) and of how
- * many per lane (#Q4525), and a link
+ * many per lane (#Q4525), those limits, editable (#Q4543), and a link
  * to the Tools section (#Q4254), which lists what the jobs user has. Lore
  * never sees a credential; the operator installs and signs in the tools by
  * hand for Bay's jobs user.
@@ -146,6 +147,9 @@ const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
                     ],
                   })}
             </span>
+            {/* The two limits, editable by a member who may update the
+                host, written to Bay's own config (#Q4543). */}
+            <BayAgentLimits canUpdate={canUpdate} />
             {/* The tools themselves are the Tools section's (#Q4254). */}
             {host.jobsTools &&
               !host.jobsTools.some(

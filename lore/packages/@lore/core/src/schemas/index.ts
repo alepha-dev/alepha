@@ -330,6 +330,7 @@ export {
 export {
   HOST_COMMAND_KINDS,
   HOST_COMMAND_STATUSES,
+  HOST_JOBS_LIMIT_CEILING,
 } from "../api/schemas/hostCommandValues.ts";
 export type { HostCommandKind } from "../api/schemas/hostCommandValues.ts";
 export {

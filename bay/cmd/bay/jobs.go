@@ -228,6 +228,52 @@ func cmdConfigJobs(args []string) error {
 	return nil
 }
 
+// jobsLimits is the `jobs-limits` command (#Q4543): Lore's ask to set the
+// two lane widths, written to jobs.json through the same save path and
+// within the same bounds as `bay config jobs --max-jobs N --max-read-jobs N`,
+// so a value set on the machine and one set from Lore are the same fact.
+// The inventory `finish` pushes after it says the new widths; the next job
+// reads the file again, so nothing restarts.
+func (a *actions) jobsLimits(cmd connector.Command) (status, step, reason string) {
+	if cmd.App != "" || cmd.Environment != "" {
+		return "failed", "", "a jobs-limits names maxJobs or maxReadJobs, and no app or environment"
+	}
+	if cmd.MaxJobs == 0 && cmd.MaxReadJobs == 0 {
+		return "failed", "", "a jobs-limits names maxJobs, maxReadJobs or both"
+	}
+	if cmd.MaxJobs != 0 && (cmd.MaxJobs < 1 || cmd.MaxJobs > maxJobsCeiling) {
+		return "failed", "", fmt.Sprintf("maxJobs is a number from 1 to %d", maxJobsCeiling)
+	}
+	if cmd.MaxReadJobs != 0 && (cmd.MaxReadJobs < 1 || cmd.MaxReadJobs > maxJobsCeiling) {
+		return "failed", "", fmt.Sprintf("maxReadJobs is a number from 1 to %d", maxJobsCeiling)
+	}
+	jobsConfigMu.Lock()
+	defer jobsConfigMu.Unlock()
+	cfg, err := loadJobsConfig(a.s.root)
+	if err != nil {
+		return "failed", "", "jobs.json is unreadable: " + err.Error()
+	}
+	if cfg.User == "" {
+		// The same refusal as `bay config jobs` without a user: a host with
+		// no jobs user runs no job, and its limits would mean nothing.
+		return "failed", "", "this bay has no jobs user: bay config jobs --user NAME first"
+	}
+	if cmd.MaxJobs != 0 {
+		cfg.MaxJobs = cmd.MaxJobs
+	}
+	if cmd.MaxReadJobs != 0 {
+		cfg.MaxReadJobs = cmd.MaxReadJobs
+	}
+	if err := saveJobsConfig(a.s.root, cfg); err != nil {
+		return "failed", "", "could not write jobs.json: " + err.Error()
+	}
+	return "done", "", fmt.Sprintf("%d changing code and %d others at a time", cfg.jobsLimit(), cfg.readJobsLimit())
+}
+
+// jobsConfigMu serialises the jobs-limits commands' read-modify-write of
+// jobs.json within this process.
+var jobsConfigMu sync.Mutex
+
 // checkJobsUser refuses a jobs user that would give a job more than a
 // dedicated account: root, or the user Bay itself runs as.
 func checkJobsUser(u *user.User, selfUID int) error {

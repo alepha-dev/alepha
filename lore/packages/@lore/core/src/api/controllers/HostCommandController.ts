@@ -3,7 +3,7 @@ import { FileService } from "alepha/api/files";
 import { users } from "alepha/api/users";
 import { $repository } from "alepha/orm";
 import { OwnedResourceProvider } from "alepha/security";
-import { $action, NotFoundError } from "alepha/server";
+import { $action, BadRequestError, NotFoundError } from "alepha/server";
 
 import { hostCommands } from "../entities/hostCommands.ts";
 import { type Host, hosts } from "../entities/hosts.ts";
@@ -15,6 +15,7 @@ import {
   hostCommandListItemSchema,
   hostCommandResourceSchema,
 } from "../schemas/hostCommandResourceSchema.ts";
+import { HOST_JOBS_LIMIT_CEILING } from "../schemas/hostCommandValues.ts";
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { HostCommandHandlerRegistry } from "../services/HostCommandHandlerRegistry.ts";
 import { HostCommandService } from "../services/HostCommandService.ts";
@@ -174,11 +175,51 @@ export class HostCommandController {
           kind: z.literal("upgrade"),
           version: z.string().max(20).regex(BayUpgrade.VERSION).optional(),
         }),
+        // An Agent host's two lane widths, written into Bay's `jobs.json`
+        // (#Q4543), within the bounds of `bay config jobs`. One or both.
+        z.object({
+          kind: z.literal("jobs-limits"),
+          maxJobs: z.integer().min(1).max(HOST_JOBS_LIMIT_CEILING).optional(),
+          maxReadJobs: z
+            .integer()
+            .min(1)
+            .max(HOST_JOBS_LIMIT_CEILING)
+            .optional(),
+        }),
       ]),
       response: hostCommandResourceSchema,
     },
     handler: async ({ params, body, user }) => {
       const host = this.owned.get<Host>();
+
+      if (body.kind === "jobs-limits") {
+        // Home project only, by this action's own gate, like the Agent
+        // tab's Check. Lore stores nothing: the host's columns move with the
+        // inventory Bay sends once it wrote the file.
+        if (body.maxJobs === undefined && body.maxReadJobs === undefined) {
+          throw new BadRequestError("Name maxJobs, maxReadJobs or both");
+        }
+        if (!this.hosts.isOnline(host)) {
+          throw new BadRequestError(
+            `Host "${host.slug}" is not connected right now: its limits are set once it is back`,
+          );
+        }
+        return this.commands.enqueue(
+          host,
+          {
+            kind: "jobs-limits",
+            payload: {
+              app: "",
+              environment: "",
+              ...(body.maxJobs !== undefined ? { maxJobs: body.maxJobs } : {}),
+              ...(body.maxReadJobs !== undefined
+                ? { maxReadJobs: body.maxReadJobs }
+                : {}),
+            },
+          },
+          user.id,
+        );
+      }
 
       if (body.kind === "upgrade") {
         // Home project only, by this action's own gate: a project that

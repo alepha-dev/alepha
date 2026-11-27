@@ -81,7 +81,19 @@ export const HOST_COMMAND_KINDS = [
   // a project is deleted or a quest's build is done with. Held to no switch:
   // it frees disk and touches no app. Bay's `actionJobWorkspaceRemove`.
   "job-workspace-remove",
+  // Sets the host's two lane widths in Bay's own `jobs.json` (#Q4543):
+  // `maxJobs` and/or `maxReadJobs`, each 1 to HOST_JOBS_LIMIT_CEILING, the
+  // bounds of `bay config jobs`. Lore keeps no copy: the inventory that
+  // follows is what the host page reads. Held to no switch: it runs
+  // nothing. Bay's `actionJobsLimits` is its other half.
+  "jobs-limits",
 ] as const;
+
+/**
+ * The most jobs of one lane a host runs at once: Bay's `maxJobsCeiling`,
+ * the bound of `bay config jobs --max-jobs` and `--max-read-jobs` (#Q4543).
+ */
+export const HOST_JOBS_LIMIT_CEILING = 16;
 
 export type HostCommandKind = (typeof HOST_COMMAND_KINDS)[number];
 

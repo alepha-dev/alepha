@@ -90,3 +90,64 @@ func TestJobWorkspaces(t *testing.T) {
 		}
 	})
 }
+
+func TestJobsLimitsCommand(t *testing.T) {
+	t.Run("writes the lane widths into jobs.json, keeping its user, and leaves an absent one as it is", func(t *testing.T) {
+		w := newJobWorld(t)
+		set := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "lim-1", Kind: "jobs-limits", MaxJobs: 3, MaxReadJobs: 5}, set.send)
+		if last := set.last(); last.Status != "done" || !strings.Contains(last.Reason, "3 changing code and 5 others") {
+			t.Fatalf("ack = %+v", last)
+		}
+		cfg, err := loadJobsConfig(w.f.root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if cfg.MaxJobs != 3 || cfg.MaxReadJobs != 5 || cfg.User == "" {
+			t.Fatalf("jobs.json = %+v", cfg)
+		}
+		one := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "lim-2", Kind: "jobs-limits", MaxReadJobs: 2}, one.send)
+		if one.last().Status != "done" {
+			t.Fatalf("ack = %+v", one.last())
+		}
+		cfg, _ = loadJobsConfig(w.f.root)
+		if cfg.MaxJobs != 3 || cfg.MaxReadJobs != 2 {
+			t.Fatalf("jobs.json = %+v", cfg)
+		}
+		// The inventory says them, as Lore reads them.
+		inv := w.acts.jobs.inventory(context.Background())
+		if inv == nil || inv.MaxJobs != 3 || inv.MaxReadJobs != 2 {
+			t.Fatalf("inventory = %+v", inv)
+		}
+	})
+
+	t.Run("refuses a width out of bay config jobs' bounds, an empty ask, an app, and a host with no jobs user", func(t *testing.T) {
+		w := newJobWorld(t)
+		for id, cmd := range map[string]connector.Command{
+			"lim-high":  {MaxJobs: maxJobsCeiling + 1},
+			"lim-low":   {MaxReadJobs: -1},
+			"lim-empty": {},
+			"lim-app":   {MaxJobs: 2, App: "shop"},
+		} {
+			cmd.ID, cmd.Kind = id, "jobs-limits"
+			rec := &ackRecorder{}
+			w.acts.Command(context.Background(), cmd, rec.send)
+			if rec.last().Status != "failed" {
+				t.Fatalf("%s: ack = %+v", id, rec.last())
+			}
+		}
+		cfg, _ := loadJobsConfig(w.f.root)
+		if cfg.MaxJobs != 0 || cfg.MaxReadJobs != 0 {
+			t.Fatalf("a refused ask wrote jobs.json: %+v", cfg)
+		}
+		if err := saveJobsConfig(w.f.root, jobsConfig{}); err != nil {
+			t.Fatal(err)
+		}
+		rec := &ackRecorder{}
+		w.acts.Command(context.Background(), connector.Command{ID: "lim-nouser", Kind: "jobs-limits", MaxJobs: 2}, rec.send)
+		if rec.last().Status != "failed" || !strings.Contains(rec.last().Reason, "no jobs user") {
+			t.Fatalf("ack = %+v", rec.last())
+		}
+	})
+}

@@ -166,6 +166,8 @@ export class HostCommandService {
       "job-message": 60,
       // An `rm -rf` of a clone or two.
       "job-workspace-remove": 300,
+      // A write of one small file.
+      "jobs-limits": 60,
     };
 
   protected readonly log = $logger();
@@ -224,6 +226,21 @@ export class HostCommandService {
       if (payload && (payload.app || payload.environment || !payload.project)) {
         throw new BadRequestError(
           "A job-workspace-remove names a project and no app or environment",
+        );
+      }
+      return;
+    }
+    // The lane widths (#Q4543): one or both, and no instance; held to no
+    // switch, since it runs nothing.
+    if (kind === "jobs-limits") {
+      if (
+        payload &&
+        (payload.app ||
+          payload.environment ||
+          (payload.maxJobs === undefined && payload.maxReadJobs === undefined))
+      ) {
+        throw new BadRequestError(
+          "A jobs-limits names maxJobs, maxReadJobs or both, and no app or environment",
         );
       }
       return;
@@ -606,6 +623,13 @@ export class HostCommandService {
       ...((command.kind === "job-cancel" || command.kind === "job-message") &&
       command.payload.jobCommandId
         ? { jobCommandId: command.payload.jobCommandId }
+        : {}),
+      // The lane widths, on a jobs-limits only (#Q4543).
+      ...(command.kind === "jobs-limits" && command.payload.maxJobs
+        ? { maxJobs: command.payload.maxJobs }
+        : {}),
+      ...(command.kind === "jobs-limits" && command.payload.maxReadJobs
+        ? { maxReadJobs: command.payload.maxReadJobs }
         : {}),
       // The member's words, on a job-message only (#Q4456).
       ...(command.kind === "job-message" && command.payload.message

@@ -1,0 +1,9 @@
+{
+  "type": "command",
+  "id": "9a1c3e5f-7b2d-4c6e-8f0a-1b2c3d4e5f6a",
+  "kind": "jobs-limits",
+  "app": "",
+  "environment": "",
+  "maxJobs": 2,
+  "maxReadJobs": 6
+}
