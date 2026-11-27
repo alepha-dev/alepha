@@ -1,5 +1,6 @@
 import { createTestProject } from "@lore/core/testing";
 import { createTestQuest } from "@lore/plan/testing";
+import { createTestFolio, KnowledgeTestEntities } from "@lore/remember/testing";
 import { audits } from "alepha/api/audits";
 import type { ToolPrimitive } from "alepha/mcp";
 import { $repository } from "alepha/orm";
@@ -95,6 +96,8 @@ describe("the assistant's write tools", () => {
       "feedback_submit",
       // #Q4512: a prompt's run, behind its card.
       "prompt_run",
+      // #Q4547: a folio's update, behind its card.
+      "folio_update",
     ]);
     for (const entry of toolset.writes) {
       const tool = entry.tool as ToolPrimitive<any>;
@@ -201,6 +204,43 @@ describe("the assistant's write tools", () => {
         where: { subjectType: { eq: "quest" }, subjectId: { eq: theirs.id } },
       }),
     ).toEqual([]);
+    await alepha.stop();
+  });
+
+  it("updates a text folio once its card is approved, and leaves it as it was when denied (#Q4547)", async ({
+    expect,
+  }) => {
+    const { alepha, project, pausedOn, answer } = await boot();
+    const folio = await createTestFolio(alepha, project, {
+      title: "Work log",
+      content: "## Summary as of 24/11\n\n12 done",
+    });
+    const read = async () =>
+      (await KnowledgeTestEntities.of(alepha).folios.findById(folio.id))!
+        .content;
+
+    const denied = await pausedOn("folio_update", {
+      project: project.id,
+      shortId: folio.shortId,
+      content: "## Summary as of 30/11\n\n15 done",
+    });
+    expect(denied.events.find((e) => e.type === "confirm")).toMatchObject({
+      name: "folio_update",
+    });
+    await answer(denied.conversationId, "deny");
+    expect(await read()).toBe("## Summary as of 24/11\n\n12 done");
+
+    const approved = await pausedOn("folio_update", {
+      project: project.id,
+      shortId: folio.shortId,
+      content: "## Summary as of 30/11\n\n15 done",
+    });
+    const resumed = await answer(approved.conversationId, "approve");
+    expect(resumed.find((e) => e.type === "tool_result")).toMatchObject({
+      name: "folio_update",
+      isError: false,
+    });
+    expect(await read()).toBe("## Summary as of 30/11\n\n15 done");
     await alepha.stop();
   });
 });

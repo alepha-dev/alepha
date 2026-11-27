@@ -57,13 +57,13 @@ import { LoreAiDocsController } from "./LoreAiDocsController.ts";
  * runs the tool as the turn's user, and the action's gate decides.
  *
  * Declaration order is what the vendor sees, and it stays stable so the
- * vendor caches it. Twenty-five read tools and seventeen writes: the eight
+ * vendor caches it. Twenty-five read tools and eighteen writes: the eight
  * operations reads (#Q4235) went past the ~25 a small model handles, on
  * purpose, since an agent asked to watch the house had nothing to watch it
  * with, and #Q4297 added eight writes, deletes among them, each behind its
- * card. Every other MCP tool is listed in {@link LoreAiToolset.EXCLUDED}
- * with the reason it is not offered, and `assistant-mcp-parity.spec.ts`
- * fails on a tool that is in neither.
+ * card, and #Q4547 a folio's update. Every other MCP tool is listed in
+ * {@link LoreAiToolset.EXCLUDED} with the reason it is not offered, and
+ * `assistant-mcp-parity.spec.ts` fails on a tool that is in neither.
  */
 export class LoreAiToolset {
   protected readonly alepha = $inject(Alepha);
@@ -148,6 +148,9 @@ export class LoreAiToolset {
     folio_attachment_delete: LoreAiToolset.LATER,
     folio_attachment_list: LoreAiToolset.LATER,
     folio_attachment_rename: LoreAiToolset.LATER,
+    // A table's rows stay out (#Q4547): `folio_update` does not reach them,
+    // and five row and column tools would grow a toolset already past the
+    // ~25 a small model handles. They wait for the tool search.
     folio_column_set: LoreAiToolset.LATER,
     folio_history: LoreAiToolset.LATER,
     folio_list: LoreAiToolset.LATER,
@@ -156,7 +159,6 @@ export class LoreAiToolset {
     folio_row_delete: LoreAiToolset.LATER,
     folio_row_list: LoreAiToolset.LATER,
     folio_row_update: LoreAiToolset.LATER,
-    folio_update: LoreAiToolset.LATER,
     host_jobs: LoreAiToolset.HOST,
     host_stats: LoreAiToolset.HOST,
     inbox_list: LoreAiToolset.LATER,
@@ -558,6 +560,15 @@ export class LoreAiToolset {
         tool: promptTools.prompt_run,
         permissions: ["host:read"],
         gate: promptController.runPrompt,
+      },
+      {
+        // A folio's update (#Q4547), last so the tools before it keep the
+        // order the vendor caches. Its card shows the folio and a diff of
+        // what its content becomes, since an update replaces the body. A
+        // table's rows are not reached by it, and their tools stay out.
+        tool: folioTools.folio_update,
+        permissions: ["folio:write"],
+        gate: folioController.update,
       },
     ];
 

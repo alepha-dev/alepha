@@ -28,6 +28,7 @@ const LABELLED = new Set([
   "quest_update",
   "quest_complete",
   "folio_create",
+  "folio_update",
   "feedback_submit",
 ]);
 

@@ -31,6 +31,7 @@ const WRITE_SET = [
   "dashboard_card_update",
   "feedback_submit",
   "prompt_run",
+  "folio_update",
 ];
 
 const READ_SET = [

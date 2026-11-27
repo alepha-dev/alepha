@@ -12,6 +12,7 @@ const WRITES = new Set([
   "quest_update",
   "quest_complete",
   "folio_create",
+  "folio_update",
 ]);
 
 /**
