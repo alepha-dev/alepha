@@ -158,7 +158,10 @@ test.describe("Errors", () => {
     });
 
     await test.step("the inbox no longer lists it as open", async () => {
-      await page.getByTestId("error-back").click();
+      // The breadcrumb's "Errors" crumb is the way back (#Q4540).
+      const crumbs = page.getByRole("navigation", { name: "breadcrumb" });
+      await expect(crumbs).toContainText("TypeError");
+      await crumbs.getByRole("link", { name: "Errors", exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`/${projectSlug}/errors$`));
       await expect(page.getByText("No open errors")).toBeVisible({
         timeout: 10_000,
