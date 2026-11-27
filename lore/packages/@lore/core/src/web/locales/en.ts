@@ -774,7 +774,7 @@ export default {
   "chat.composer.label": "Message",
   "chat.composer.placeholder": "Message #$1",
   "chat.composer.send": "Send",
-  "chat.agent.tag": "agent",
+  "chat.agent.tag": "Agent",
   "chat.agent.trace.read": "Read $1",
   "chat.agent.trace.changed": "Changed $1",
   "chat.agent.trace.readAndChanged": "Read $1, changed $2",

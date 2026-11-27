@@ -90,13 +90,16 @@ describe("ChatMessageRow, an agent's answer", () => {
     );
   };
 
-  it("shows the agent's name, its initials and the agent badge", async ({
+  it("shows the agent's name, its initials and the robot mark", async ({
     expect,
   }) => {
     await mount(answer(), "Jarvis");
 
     expect(screen.getByText("Jarvis")).toBeTruthy();
-    expect(screen.getByText("agent")).toBeTruthy();
+    // A small icon named "Agent", no longer a pill reading "agent".
+    const mark = screen.getByRole("img", { name: "Agent" });
+    expect(mark.getAttribute("title")).toBe("Agent");
+    expect(screen.queryByText("agent")).toBeNull();
     expect(screen.getByTestId("chat-agent-initials").textContent).toBe("JA");
   });
 
