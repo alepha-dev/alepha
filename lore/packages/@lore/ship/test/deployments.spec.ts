@@ -2577,6 +2577,8 @@ describe("what a deployed copy reports as its version", () => {
     const { user, project, instance } = await aCopy();
 
     expect((await listed(project, user, instance))?.version).toBeUndefined();
+    // Nor a last deploy (#Q4532): the Apps table's column stays blank.
+    expect((await listed(project, user, instance))?.deployed).toBeUndefined();
   });
 
   it("is the newest SUCCEEDED run, not the newest run", async ({ expect }) => {
@@ -2620,16 +2622,23 @@ describe("what a deployed copy reports as its version", () => {
       status: "succeeded",
     } as never);
     await alepha.inject(DateTimeProvider).travel(60_000, "ms");
-    await rows.deployments.create({
+    const finishedAt = "2026-11-20T10:05:00.000Z";
+    const newest = await rows.deployments.create({
       projectId: project.id,
       instanceId: instance.id,
       app: instance.app,
       tag: "0.29.0",
       sha256: "b".repeat(64),
       status: "succeeded",
+      finishedAt,
     } as never);
 
-    expect((await listed(project, user, instance))?.version).toBe("0.29.0");
+    const copy = await listed(project, user, instance);
+    expect(copy?.version).toBe("0.29.0");
+    // When it ran and when it succeeded, which the Apps table's Last deploy
+    // column shows (#Q4532).
+    expect(copy?.deployed?.at).toBe(newest.createdAt);
+    expect(copy?.deployed?.finishedAt).toBe(finishedAt);
   });
 
   it("is per copy, so a sibling on another tag reads its own", async ({

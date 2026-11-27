@@ -862,7 +862,12 @@ export class AppController {
       ...(build
         ? {
             version: build.tag,
-            deployed: { tag: build.tag, sha256: build.sha256, at: build.at },
+            deployed: {
+              tag: build.tag,
+              sha256: build.sha256,
+              at: build.at,
+              ...(build.finishedAt ? { finishedAt: build.finishedAt } : {}),
+            },
           }
         : {}),
     };

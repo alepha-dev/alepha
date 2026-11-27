@@ -645,6 +645,45 @@ const ProjectApps = () => {
                 <span />
               ),
           },
+          /*
+           * When the copy's newest succeeded deploy ran (#Q4532), from the
+           * `deployed` the list already reads for Version: one grouped query
+           * for every row (`DeployedBuildService.latest`), no round trip per
+           * row. Relative like Last seen, and a link to the copy's Deploy tab,
+           * which lists its runs. Blank for a copy Lore never deployed.
+           */
+          lastDeployAt: {
+            label: tr("apps.table.lastDeploy"),
+            sortable: true,
+            defaultHidden: true,
+            // When it succeeded, else when it started for a run recorded
+            // without an end.
+            sortValue: (instance) =>
+              instance.deployed?.finishedAt ?? instance.deployed?.at,
+            cell: (instance) =>
+              instance.deployed?.at ? (
+                <Link
+                  href={router.path("appDeploy", {
+                    params: {
+                      projectSlug: project.slug,
+                      app: instance.app,
+                      env: instance.env,
+                    },
+                  })}
+                  // The row opens the copy; this cell opens its deploys.
+                  onClick={(event) => event.stopPropagation()}
+                  className="hover:text-foreground text-muted-foreground"
+                  data-testid={`app-last-deploy-${instance.app}-${instance.env}`}
+                >
+                  <TimeAgo
+                    value={instance.deployed.finishedAt ?? instance.deployed.at}
+                    className="text-xs whitespace-nowrap"
+                  />
+                </Link>
+              ) : (
+                <span />
+              ),
+          },
           ...(uptimeOn
             ? {
                 uptime: {
