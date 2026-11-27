@@ -2367,6 +2367,7 @@ export default {
   "apps.table.env": "Env",
   "apps.table.address": "Address",
   "apps.table.lastSeen": "Last seen",
+  "apps.table.lastDeploy": "Last deploy",
   "apps.table.host": "Deploys to",
   "apps.table.created": "Created",
   "app.tab.overview": "Overview",

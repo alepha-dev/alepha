@@ -94,6 +94,11 @@ export const appInstanceResourceSchema = appInstances.schema
         tag: deployments.schema.shape.tag,
         sha256: deployments.schema.shape.sha256,
         at: z.string(),
+        /**
+         * When that run succeeded, which the Apps table's Last deploy column
+         * shows (#Q4532). Absent on a run recorded before it was written.
+         */
+        finishedAt: z.string().optional(),
         state: z.enum(["current", "moved", "gone"]).optional(),
         runtime: z.string().optional(),
         format: z.string().optional(),

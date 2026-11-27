@@ -19,7 +19,7 @@ import { AlephaContext, AlephaReact } from "alepha/react";
 import { AlephaReactI18n } from "alepha/react/i18n";
 import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
-import { afterEach, beforeAll, describe, it } from "vitest";
+import { afterEach, beforeAll, describe, type ExpectStatic, it } from "vitest";
 
 import type { AppInstanceResource } from "../../../../../api/schemas/appInstanceResourceSchema.ts";
 import { currentInstancesAtom } from "../../../atoms/currentInstancesAtom.ts";
@@ -29,6 +29,11 @@ class Routes {
   app = $page({
     name: "app",
     path: "/:projectSlug/apps/:app/:env",
+    component: () => null,
+  });
+  appDeploy = $page({
+    name: "appDeploy",
+    path: "/:projectSlug/apps/:app/:env/deploy",
     component: () => null,
   });
 }
@@ -463,7 +468,7 @@ describe("the Apps list", () => {
    * away.
    */
   describe("the hidden columns", () => {
-    const HIDDEN = ["Last seen", "Deploys to", "Created"];
+    const HIDDEN = ["Last seen", "Last deploy", "Deploys to", "Created"];
 
     const headers = (view: { container: HTMLElement }) =>
       [...view.container.querySelectorAll("thead th")].map(
@@ -523,6 +528,78 @@ describe("the Apps list", () => {
 
       await waitFor(() => expect(headers(view)).toContain("Last seen"));
       expect(rowText(view)[0]).not.toContain("-");
+    });
+  });
+
+  /**
+   * #Q4532: when each copy last deployed, from the run the list already
+   * reads for Version, linking to the copy's Deploy tab.
+   */
+  describe("the Last deploy column", () => {
+    const headers = (view: { container: HTMLElement }) =>
+      [...view.container.querySelectorAll("thead th")].map(
+        (cell) => cell.textContent?.trim() ?? "",
+      );
+
+    // Started a minute before it succeeded: the column shows the success.
+    const deployedAt = (at: string): Partial<AppInstanceResource> => ({
+      version: "1.0.0",
+      deployed: {
+        tag: "1.0.0",
+        sha256: "a".repeat(64),
+        at: new Date(new Date(at).getTime() - 60_000).toISOString(),
+        finishedAt: at,
+      },
+    });
+
+    const showColumn = async (
+      view: { container: HTMLElement },
+      expect: ExpectStatic,
+    ) => {
+      fireEvent.click(screen.getByRole("button", { name: "Toggle columns" }));
+      fireEvent.click(
+        await screen.findByRole("menuitemcheckbox", { name: "Last deploy" }),
+      );
+      await waitFor(() => expect(headers(view)).toContain("Last deploy"));
+    };
+
+    it("shows the last deploy as a time ago linking to the Deploy tab, blank for a copy never deployed", async ({
+      expect,
+    }) => {
+      const { view } = await mount([
+        anInstance("api", "production", deployedAt(agoHours(3))),
+        anInstance("api", "staging"),
+      ]);
+      await waitFor(() => expect(rowText(view)).toHaveLength(2));
+      await showColumn(view, expect);
+
+      const link = screen.getByTestId("app-last-deploy-api-production");
+      expect(link.getAttribute("href")).toBe(
+        "/alepha/apps/api/production/deploy",
+      );
+      expect(link.textContent).toMatch(/3 hours ago/);
+      expect(screen.queryByTestId("app-last-deploy-api-staging")).toBeNull();
+    });
+
+    it("sorts on it, the newest deploy first when descending", async ({
+      expect,
+    }) => {
+      const { view } = await mount([
+        anInstance("api", "old", deployedAt(agoHours(30))),
+        anInstance("api", "new", deployedAt(agoHours(1))),
+      ]);
+      await waitFor(() => expect(rowText(view)).toHaveLength(2));
+      await showColumn(view, expect);
+
+      const header = [...view.container.querySelectorAll("thead th")].find(
+        (cell) => cell.textContent?.trim() === "Last deploy",
+      ) as HTMLElement;
+      const sortButton = (header.querySelector("button") ??
+        header) as HTMLElement;
+      fireEvent.click(sortButton);
+      await waitFor(() => expect(rowText(view)[0]).toContain("old"));
+      fireEvent.click(sortButton);
+      await waitFor(() => expect(rowText(view)[0]).toContain("new"));
     });
   });
 
