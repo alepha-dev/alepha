@@ -1,0 +1,1 @@
+CREATE INDEX `analytics_sigil_pageviews_events_event_at_idx` ON `analytics_sigil_pageviews_events` (`event_at`);

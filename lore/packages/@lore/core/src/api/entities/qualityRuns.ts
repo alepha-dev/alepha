@@ -77,7 +77,7 @@ export const qualityRuns = $entity({
     }),
     /**
      * UTC day bucket, `YYYY-MM-DD`. Server-stamped, and half of what makes a
-     * row unique. Same shape as `sigil_uniques_daily.day`.
+     * row unique.
      */
     day: z.string().min(10).max(10),
     /**

@@ -11,8 +11,9 @@ import { sigils } from "./sigils.ts";
  *
  * Views, vitals and errors, keyed by sigil, and the host stats series,
  * keyed by host. The project activity rates and the MCP tool calls are
- * core's, in `ProjectAnalytics`. Unique visitors stay in `sigilUniquesDaily` because a
- * distinct count cannot survive sampling or a rollup.
+ * core's, in `ProjectAnalytics`. Visitors and visits are counted from
+ * `pageviews`, an event log: a distinct count cannot survive sampling or a
+ * rollup, and an event log keeps every row for 90 days.
  *
  * ⚠️ `errors` here does NOT replace `sigilErrorGroups`. That table keeps the
  * *first* stack sample, which needs a read before every write, and holds one

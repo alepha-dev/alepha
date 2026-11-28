@@ -55,10 +55,9 @@ export type { InsightsResource };
  * question-shaped `views.query(...)` / `vitals.query(...)`. The pseudo-
  * dimension `"day"` folds hour buckets into the daily timeline with no epoch
  * math on this end, the same way the old `substr(hour, 1, 10)` group did.
- * `uniqueVisitors` stays on `LoreAnalyticsStore` (the legacy
- * `sigil_uniques_daily` table): a distinct count cannot survive sampling or a
- * rollup, so it is out of scope for `$analytics()` by construction — see
- * `DeployAnalytics`'s class doc.
+ * Visitors, visits and the visit rates come from `SigilInsightsService`,
+ * which reads the page view log, sessions and visits as well as
+ * `sigil_views`.
  *
  * **The error budget lives here too**, and also stays on the legacy path.
  * `sigil_error_groups` is the only table that keeps failures split by app, and
@@ -191,8 +190,8 @@ export class InsightsController {
    * `InsightsController.spec.ts` asserts the SHAPE - that no chunk exceeds
    * this, and that a chunked read still answers about the whole set.
    *
-   * Only the reads that hit D1 need it. `sigil_error_groups` and
-   * `sigil_uniques_daily` are relational tables; views, vitals and the error
+   * Only the reads that hit D1 need it. `sigil_error_groups` is a
+   * relational table; views, vitals and the error
    * SERIES are `$analytics()` datasets, answered in production by Analytics
    * Engine, whose provider quotes its `IN` lists as literals and binds
    * nothing. Each site says which it is where it is built.

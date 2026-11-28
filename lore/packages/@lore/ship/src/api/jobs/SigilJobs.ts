@@ -1,3 +1,4 @@
+import { SIGIL_VISITOR_PERIOD_GRACE_MS } from "@alepha/lore/sigil";
 import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
@@ -5,68 +6,29 @@ import { $logger } from "alepha/logger";
 import { $repository, DatabaseProvider, sql } from "alepha/orm";
 
 import { sigilSessions } from "../entities/sigilSessions.ts";
-import {
-  sigilUniquesDaily,
-  UNIQUES_COLLAPSED_HASH,
-} from "../entities/sigilUniquesDaily.ts";
 import { sigilVisits } from "../entities/sigilVisits.ts";
 
 /**
- * Keeps `sigil_uniques_daily` from growing without bound.
+ * Keeps sessions and visits from outliving what they may say.
  *
  * Views and vitals live in the `sigil_views` / `sigil_vitals` `$analytics()`
- * datasets, whose retention `AnalyticsRollupJobs` (`alepha/api/analytics`)
- * owns; their old hourly tables were dropped (#E74).
+ * datasets, and the page view log is an event log: their retention is
+ * `AnalyticsRollupJobs`' (`alepha/api/analytics`). Sessions and visits are
+ * Lore's own tables, so their upkeep is here.
  *
- * Uniques could not follow the same path — a distinct visitor count cannot
- * survive sampling or a rollup — so this class survives for exactly that one
- * table. The collapse is privacy maintenance, not storage maintenance: it is
- * what makes the per-visitor hashes stop existing after
- * {@link SigilJobs.UNIQUES_COLLAPSE_AFTER_DAYS}, not a way to save space. Nothing else
- * would delete them at all — `ProjectErrorJobs` sweeps `projectErrors` only.
+ * The hash expiry is privacy maintenance, not storage maintenance: it is
+ * what makes a visitor hash stop existing once its period has ended, so no
+ * identifier outlives its period. The 400 day prune bounds the tables.
  *
- * The collapse *folds* rather than deletes, so `uniqueVisitors` never changes
- * for a window that was already fully outside the collapse boundary — see
- * `collapseUniques`'s own doc for the one cross-app case that is a known,
- * accepted approximation. Plain SQL-free repository work, so it behaves
- * identically on SQLite, Postgres and D1.
- *
- * **D1 safety**: `sigil_uniques_daily` is a CASCADE *child* of `sigils`.
- * Reshaping a child is safe; the wipe bomb is rebuilding a parent. `count` and
- * `traffic` were both added with a `DEFAULT` for the separate
- * `ADD COLUMN … NOT NULL` trap. `traffic` also widened the unique index to
- * four columns, which is a `DROP INDEX` + `CREATE UNIQUE INDEX` rather than a
- * rebuild - and adding a column to an index that was already satisfied can
- * only split groups, never create a duplicate, so it cannot fail on data.
+ * Every step is one bounded statement binding one or two values, so D1's 100
+ * bound parameters never come into it, and it behaves alike on SQLite,
+ * Postgres and D1.
  */
 export class SigilJobs {
   /**
-   * Milliseconds in a day — for the cutoff arithmetic.
+   * Milliseconds in a day, for the cutoff arithmetic.
    */
   protected readonly DAY_MS = 24 * 60 * 60 * 1000;
-
-  /**
-   * How long the per-visitor hash rows survive before being folded into a single
-   * count. Two days rather than one: the salt rotates at UTC midnight, so a day
-   * is only finished once the clock is comfortably past its end, and anything
-   * shorter would collapse a bucket that is still being written to.
-   */
-  protected readonly UNIQUES_COLLAPSE_AFTER_DAYS = 2;
-
-  /**
-   * Most days one sweep will fold. A table nobody has ever pruned can hold an
-   * arbitrary backlog, and this runs hourly on a Worker with a wall-clock and a
-   * memory ceiling — so the first few sweeps chew through the history instead of
-   * trying to swallow it whole. Nothing is lost by taking several hours: the
-   * fold is idempotent, so the next sweep simply picks up where this one stopped.
-   */
-  protected readonly MAX_DAYS_PER_SWEEP = 14;
-
-  protected readonly log = $logger();
-  protected readonly uniques = $repository(sigilUniquesDaily);
-  protected readonly sessions = $repository(sigilSessions);
-  protected readonly visits = $repository(sigilVisits);
-  protected readonly database = $inject(DatabaseProvider);
 
   /**
    * How long sessions and visits are kept.
@@ -74,20 +36,24 @@ export class SigilJobs {
   protected readonly VISITS_KEEP_DAYS = 400;
 
   /**
-   * Most rows one sweep touches per statement: bounded like
-   * `MAX_DAYS_PER_SWEEP`, so a backlog is worked off over several hours
-   * rather than in one statement past the job's timeout.
+   * Most rows one sweep touches per statement, so a backlog is worked off
+   * over several hours rather than in one statement past the job's timeout.
    */
   public static MAX_VISITOR_ROWS_PER_SWEEP = 5_000;
+
+  protected readonly log = $logger();
+  protected readonly sessions = $repository(sigilSessions);
+  protected readonly visits = $repository(sigilVisits);
+  protected readonly database = $inject(DatabaseProvider);
+  protected readonly dt = $inject(DateTimeProvider);
 
   /**
    * Erases each visitor hash once its period has ended, then prunes sessions
    * and visits past 400 days.
    *
-   * On the shared `0 * * * *` slot, beside `collapseAnalytics` and the other
-   * hourly jobs, so it costs no new Cloudflare cron trigger. Each step is one
-   * bounded statement binding one or two values, so D1's 100 bound
-   * parameters never come into it.
+   * On the shared `0 * * * *` slot, beside the other hourly jobs
+   * (`ProjectErrorJobs`, `HourlyJobs`, `EpicJobs`, `RequirementMetricJobs`),
+   * so it costs no Cloudflare cron trigger of its own.
    */
   public readonly expireVisitors = $job({
     name: "sigils.expire-visitors",
@@ -99,38 +65,7 @@ export class SigilJobs {
       await this.expireVisitorsNow();
     },
   });
-  protected readonly dt = $inject(DateTimeProvider);
 
-  /**
-   * Hourly sweep. Runs on the shared `0 * * * *` slot alongside
-   * `ProjectErrorJobs.purgeStaleProjectErrors` to keep the Cloudflare cron-trigger count
-   * down; neither pass is time-critical to the hour.
-   */
-  public readonly collapseAnalytics = $job({
-    name: "sigils.collapse-analytics",
-    description:
-      "Folds daily unique-visitor hashes older than two days into one count per sigil and traffic kind.",
-    cron: "0 * * * *",
-    // Two minutes, bounded further by MAX_DAYS_PER_SWEEP: the collapse is
-    // idempotent, so a sweep that runs out of time resumes next hour.
-    timeout: [2, "minutes"],
-    handler: async () => {
-      await this.collapseUniques();
-    },
-  });
-
-  /**
-   * Folds `(sigilId, day, visitorHash)` rows older than the window into one
-   * `(sigilId, day, UNIQUES_COLLAPSED_HASH, count)` row PER TRAFFIC KIND and
-   * deletes the hashes.
-   *
-   * Exact for a single app. The one thing it gives up is cross-app dedup: the
-   * live query counts distinct `(day, hash)` pairs, so someone who visited two
-   * of a project's apps on the same day counts once — after the collapse the
-   * hashes are gone and the two apps' counts can only be added, so that visitor
-   * counts twice. That is inherent to not keeping the hashes, and not keeping
-   * them is the point; the affected window is days already older than 48 hours.
-   */
   /**
    * One sweep of {@link expireVisitors}; public so specs run it under a
    * paused clock. Answers what each step touched.
@@ -140,7 +75,9 @@ export class SigilJobs {
     visits: number;
     sessions: number;
   }> {
-    const now = new Date(at).toISOString();
+    // Past the grace a late batch may still name the period in, so a batch
+    // never finds its session's hash already gone.
+    const ended = new Date(at - SIGIL_VISITOR_PERIOD_GRACE_MS).toISOString();
     const cutoff = new Date(
       at - this.VISITS_KEEP_DAYS * this.DAY_MS,
     ).toISOString();
@@ -150,7 +87,7 @@ export class SigilJobs {
     const touched = z.object({ id: z.string() });
 
     const erased = await this.database.run(
-      sql`UPDATE ${s} SET ${sql.raw(`"${s.visitorHash.name}"`)} = NULL WHERE ${s.id} IN (SELECT ${s.id} FROM ${s} WHERE ${s.visitorHash} IS NOT NULL AND ${s.periodEndsAt} <= ${now} LIMIT ${limit}) RETURNING ${s.id} AS id`,
+      sql`UPDATE ${s} SET ${sql.raw(`"${s.visitorHash.name}"`)} = NULL WHERE ${s.id} IN (SELECT ${s.id} FROM ${s} WHERE ${s.visitorHash} IS NOT NULL AND ${s.periodEndsAt} <= ${ended} LIMIT ${limit}) RETURNING ${s.id} AS id`,
       touched,
     );
     // Visits before sessions: a session's last event is at least its
@@ -174,120 +111,5 @@ export class SigilJobs {
       this.log.info("Expired visitor hashes and pruned old visits", result);
     }
     return result;
-  }
-
-  protected async collapseUniques(): Promise<void> {
-    const cutoff = this.dayString(
-      this.dt.nowMillis() - this.UNIQUES_COLLAPSE_AFTER_DAYS * this.DAY_MS,
-    );
-
-    let read = 0;
-    let written = 0;
-
-    for (const day of await this.staleDays(cutoff)) {
-      // Includes any row a previous sweep already collapsed — folding it back
-      // in is what makes a re-run idempotent instead of double-counting, and
-      // what makes it safe to work one day at a time.
-      const rows = await this.uniques.findMany({ where: { day: { eq: day } } });
-      if (rows.length === 0) continue;
-      read += rows.length;
-
-      // Folded per `(sigilId, traffic)`, not per sigil: a day that mixed
-      // readers and crawlers has to survive the collapse as two rows, or the
-      // traffic filter goes blind two days after the fact and a filtered
-      // window silently reports the unfiltered total.
-      //
-      // The pair is carried in the value rather than parsed back out of the
-      // key, because a sigil id is a uuid and splitting a composite key is one
-      // separator away from being wrong.
-      const totals = new Map<
-        string,
-        { sigilId: string; traffic: string; count: number }
-      >();
-      for (const row of rows) {
-        const key = `${row.sigilId}\u0000${row.traffic}`;
-        const total = totals.get(key);
-        if (total) {
-          total.count += row.count;
-        } else {
-          totals.set(key, {
-            sigilId: row.sigilId,
-            traffic: row.traffic,
-            count: row.count,
-          });
-        }
-      }
-
-      // Delete before writing: the collapsed row reuses the same unique index
-      // as the hash rows it replaces, so the other order would collide with a
-      // previous sweep's sentinel for this day.
-      await this.uniques.deleteMany({ day: { eq: day } });
-      await this.uniques.createMany(
-        [...totals.values()].map((total) => ({
-          sigilId: total.sigilId,
-          day,
-          visitorHash: UNIQUES_COLLAPSED_HASH,
-          count: total.count,
-          traffic: total.traffic,
-        })),
-      );
-      written += totals.size;
-    }
-
-    if (read > 0) {
-      this.log.info(
-        `Collapsed ${read} unique-visitor row(s) into ${written} daily total(s)`,
-      );
-    }
-  }
-
-  /**
-   * The distinct `day` values below the cutoff that still hold visitor hashes,
-   * oldest first.
-   *
-   * The sweep works one day at a time rather than loading every stale row: a
-   * table nobody has ever pruned can hold an unbounded backlog, and this runs
-   * on a Cloudflare Worker with a hard memory ceiling. One day's rows for all
-   * sigils is a bounded, self-limiting unit of work — and because the fold is
-   * idempotent, a sweep that runs out of time simply finishes on the next hour.
-   *
-   * ⚠️ **The `visitorHash` clause is what makes the sweep converge.** A
-   * collapsed row keeps the `day` it was folded from, so a filter on `day`
-   * alone re-selects every day this job has ever finished, forever: the fold
-   * re-runs, deletes the sentinel, and writes back the identical totals. That
-   * is invisible in the data — the fold is idempotent, which is exactly why it
-   * went unnoticed — and expensive on the wire, because each day costs a
-   * select, a delete and an insert against a remote database. Production was
-   * spending 12-13 seconds of D1 round-trips every hour re-folding 27 rows that
-   * were already folded, which is most of what the hourly cron slot cost.
-   *
-   * Excluding the sentinel leaves exactly the days with real hashes left to
-   * fold, so a finished day drops out permanently and an ordinary hour reads
-   * nothing. Late-arriving rows are unaffected: a row written for an
-   * already-collapsed day carries a real hash, so its day re-qualifies and the
-   * next sweep folds it into the existing sentinel. The per-day read in
-   * {@link collapseUniques} still includes the sentinel — that is what keeps
-   * the totals additive rather than double-counted, and it is a different
-   * question from which days are worth visiting.
-   */
-  protected async staleDays(cutoff: string): Promise<string[]> {
-    const rows = await this.uniques.findMany({
-      where: {
-        day: { lt: cutoff },
-        visitorHash: { ne: UNIQUES_COLLAPSED_HASH },
-      },
-      columns: ["day"],
-      distinct: ["day"],
-      orderBy: "day",
-      limit: this.MAX_DAYS_PER_SWEEP,
-    });
-    return [...new Set(rows.map((row) => row.day))];
-  }
-
-  /**
-   * UTC `YYYY-MM-DD` for a millisecond timestamp.
-   */
-  protected dayString(ms: number): string {
-    return new Date(ms).toISOString().slice(0, 10);
   }
 }

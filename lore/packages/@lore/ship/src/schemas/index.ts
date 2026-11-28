@@ -20,10 +20,6 @@ export { deployments } from "../api/entities/deployments.ts";
 export { registryCredentials } from "../api/entities/registryCredentials.ts";
 export type { RegistryCredentialResource } from "../api/schemas/registryCredentialResourceSchema.ts";
 export { sigilErrorGroups } from "../api/entities/sigilErrorGroups.ts";
-export {
-  UNIQUES_COLLAPSED_HASH,
-  sigilUniquesDaily,
-} from "../api/entities/sigilUniquesDaily.ts";
 export { type Sigil, sigils } from "../api/entities/sigils.ts";
 export { sigilSessions } from "../api/entities/sigilSessions.ts";
 export { sigilVisits } from "../api/entities/sigilVisits.ts";

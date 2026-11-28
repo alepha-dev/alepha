@@ -25,14 +25,14 @@ import {
   projectErrors,
   sigilErrorGroups,
   sigils,
-  sigilUniquesDaily,
+  sigilSessions,
 } from "../src/schemas/index.ts";
 
 class Probe {
   projects = $repository(projects);
   capabilities = $repository(projectCapabilities);
   sigils = $repository(sigils);
-  uniques = $repository(sigilUniquesDaily);
+  sessions = $repository(sigilSessions);
   errorGroups = $repository(sigilErrorGroups);
   projectErrors = $repository(projectErrors);
 }
@@ -515,14 +515,11 @@ describe("sigil ingest", () => {
     ]);
   });
 
-  it("stamps the traffic kind on the visitor row as well as the view", async () => {
+  it("gives a session to the visitor a proxy stamped human, and none to a declared bot", async () => {
     const { probe, sigil, post } = await setup();
 
-    // Same stamp, second destination. The views dataset and
-    // `sigil_uniques_daily` are written by two different calls in
-    // `absorbViews`, so a kind that reaches one and not the other is exactly
-    // the failure that leaves the headline unfiltered while everything below
-    // it moves.
+    // Same stamp, two destinations: the views dataset takes both, sessions
+    // only the person (a declared bot has no session, visit or log row).
     expect(
       (await post({ views: [{ path: "/" }], traffic: "bot", visitor: "v-bot" }))
         .status,
@@ -537,12 +534,10 @@ describe("sigil ingest", () => {
       ).status,
     ).toBe(204);
 
-    const rows = await probe.uniques.findMany({
+    const rows = await probe.sessions.findMany({
       where: { sigilId: { eq: sigil.id } },
     });
-    const byHash = new Map(rows.map((r) => [r.visitorHash, r.traffic]));
-    expect(byHash.get("v-bot")).toBe("bot");
-    expect(byHash.get("v-human")).toBe("human");
+    expect(rows.map((row) => row.visitorHash)).toEqual(["v-human"]);
   });
 
   it("refuses an unknown token", async () => {
@@ -623,10 +618,10 @@ describe("sigil ingest", () => {
         where: { projectId: { eq: project.id } },
       }),
     ).toHaveLength(0);
-    // The daily visitor hash is a view-side write too, and it is the one
-    // that is personal data: it must not survive the master switch either.
+    // The visitor hash is a view-side write too, and it is the one that is
+    // personal data: it must not survive the master switch either.
     expect(
-      await probe.uniques.findMany({ where: { sigilId: { eq: sigil.id } } }),
+      await probe.sessions.findMany({ where: { sigilId: { eq: sigil.id } } }),
     ).toHaveLength(0);
   });
 
@@ -664,14 +659,14 @@ describe("sigil ingest", () => {
     expect(rows[0].country).toBe("ZZ");
   });
 
-  it("counts a visitor once a day however many pages they load", async () => {
+  it("keeps one session per visitor however many pages they load", async () => {
     const { probe, sigil, post } = await setup();
 
     await post({ views: [{ path: "/a" }, { path: "/b" }], visitor: "v1" });
     await post({ views: [{ path: "/c" }], visitor: "v1" });
     await post({ views: [{ path: "/a" }], visitor: "v2" });
 
-    const rows = await probe.uniques.findMany({
+    const rows = await probe.sessions.findMany({
       where: { sigilId: { eq: sigil.id } },
     });
     expect(rows).toHaveLength(2);
@@ -691,10 +686,10 @@ describe("sigil ingest", () => {
     await post({ views: [{ path: "/a" }], visitor: "alice", country: "FR" });
     await post({ views: [{ path: "/b" }], visitor: "bob", country: "JP" });
 
-    const uniques = await probe.uniques.findMany({
+    const sessions = await probe.sessions.findMany({
       where: { sigilId: { eq: sigil.id } },
     });
-    expect(uniques).toHaveLength(2);
+    expect(sessions).toHaveLength(2);
 
     const rows = await readViews(analytics, sigil.id);
     expect(rows.map((r) => `${r.path}:${r.country}`).sort()).toEqual([

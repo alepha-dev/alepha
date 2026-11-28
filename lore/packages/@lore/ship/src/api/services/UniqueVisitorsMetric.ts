@@ -12,32 +12,30 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { appInstances } from "../entities/appInstances.ts";
+import { DeployAnalytics } from "../entities/deployAnalytics.ts";
 import { type Sigil, sigils } from "../entities/sigils.ts";
 import { DailyVisitorsService } from "./DailyVisitorsService.ts";
-import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 
 /**
  * The average day's human audience over the board's window, against the
  * window of the same length before it (#Q4215; yesterday against the day
  * before until then).
  *
- * ## Uniques, never views
+ * ## Visitors, never views
  *
- * `insightsResourceSchema` is explicit: `totalViews` is best-effort and
- * inflatable by anyone holding a sigil token, while `uniqueVisitors` is the
- * abuse-resistant headline. A delta amplifies whatever noise is in both of
- * its windows, so it belongs on the number that cannot be inflated.
+ * Views are best-effort and inflatable by anyone holding a sigil token,
+ * while a distinct visitor is one hash however many views it reports. A
+ * delta amplifies whatever noise is in both of its windows, so it belongs on
+ * the number that cannot be inflated.
  *
  * ## No `estimated` flag, and that is not an omission
  *
  * `insightsResourceSchema` carries `estimated` / `sampleInterval` so a UI
  * never renders a sampled number in the typography of a measured one. This
  * tile sets neither, because a distinct visitor count cannot be sampled: it
- * comes from `sigil_uniques_daily`, the one table `$analytics()` cannot
- * answer for precisely because sampling and rollup both destroy the ability
- * to say "have I seen this hash before". Uniques are always exact. A views
- * or page-views tile would have to carry the flags; this one has nothing to
- * disclose.
+ * comes from the page view log (`DeployAnalytics.pageviews`), an event log
+ * that keeps every row and is never sampled. A views tile would have to
+ * carry the flags; this one has nothing to disclose.
  *
  * ## Beacon or nothing
  *
@@ -62,7 +60,7 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
   protected readonly sigils = $repository(sigils);
   protected readonly instances = $repository(appInstances);
   protected readonly visitors = $inject(DailyVisitorsService);
-  protected readonly analytics = $inject(LoreAnalyticsStore);
+  protected readonly datasets = $inject(DeployAnalytics);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly catalog = $inject(DashboardMetricCatalog);
 
@@ -110,15 +108,18 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
     // Humans only: a crawler is not an audience. `humans` means "did not
     // declare itself a bot", the same population as the Insights page's
     // default (`trafficFilterSchema`).
+    // Distinct sessions per day from the page view log: each day exact. The
+    // window and the one before reach 60 days back at most, inside the
+    // log's 90. A declared bot has no row there, so this is people.
+    const read = await this.datasets.pageviews.query({
+      since: previousDays[0]!,
+      until,
+      where: { sigilId: { inArray: ids }, traffic: "human" },
+      groupBy: ["day"],
+      select: { visitors: { distinct: "sessionId" } },
+    });
     const byDay = new Map(
-      (
-        await this.analytics.uniqueVisitorsByDay({
-          sigilIds: ids,
-          traffic: "humans",
-          since: previousDays[0]!,
-          until,
-        })
-      ).map((row) => [row.day, row.uniques]),
+      read.rows.map((row) => [String(row.day), Number(row.visitors ?? 0)]),
     );
     const sum = (list: string[]) =>
       list.reduce((total, day) => total + (byDay.get(day) ?? 0), 0);
@@ -140,10 +141,9 @@ export class UniqueVisitorsMetric implements DashboardMetricResolver {
     });
 
     return {
-      // The average day, not a sum: per-visitor hashes are collapsed after
-      // two days (`SigilJobs.UNIQUES_COLLAPSE_AFTER_DAYS`), so a distinct
-      // count across the whole window cannot be computed, and a sum of daily
-      // uniques would read as one. Both windows have the same length, so
+      // The average day's visitors, not a sum: the tile means a day's
+      // audience (#Q4215), and a sum of daily counts would read as a
+      // distinct count of the window. Both windows have the same length, so
       // the delta of the sums is the delta of the averages.
       value: Math.round(current / length),
       delta: this.visitors.percentChange(previous, current),

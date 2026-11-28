@@ -236,7 +236,7 @@ offers no way to add a `NOT NULL` column to a populated table without also inven
 drizzle diffs the entity against the **snapshot**, never the live database — so this is
 invisible to tooling and lives only here and in the migration's own comment block. The
 only way to make the physical column match is a table rebuild, and `sigils` is the
-`ON DELETE CASCADE` parent of `sigil_uniques_daily`, `sigil_error_groups` and more,
+`ON DELETE CASCADE` parent of `sigil_sessions`, `sigil_visits`, `sigil_error_groups` and more,
 and the `SET NULL` parent of `errors.sigil_id` and `app_instances.sigil_id` — so that
 "fix" is the rebuild of a parent that `test/migration-safety.spec.ts` now refuses
 outright. Accepted drift beats a rebuild.
@@ -328,8 +328,8 @@ capability; some gain one. A newly minted sigil carries all four kinds, and
 so on every wizard-created project those flags are _absent_, the old `=== true`
 conjunct was false, and ingest was **silently discarding** everything those apps
 sent. The moment this deploys the same payloads are accepted: page views, web
-vitals, error groups, errors, and the daily visitor hash in `sigil_uniques_daily`
-— the one piece of personal data on this path. Enrolled apps never stopped
+vitals, error groups, errors, and the daily visitor hash then kept in a table
+since removed, the one piece of personal data on this path. Enrolled apps never stopped
 sending — they read their own `SIGIL_CONFIG` and know nothing of this — so the
 write gate reopening is enough. No owner action, no notification, no migration
 file in the diff.

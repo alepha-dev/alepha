@@ -215,8 +215,9 @@ export const LoreShipApi = $module({
     BackupFreshnessMetric,
     // The sink half: the token an app presents, and what happens to what it
     // sends. `SigilIngestService` itself holds no repository on any of the
-    // aggregate tables — writes go through `LoreAnalyticsStore` (uniques) and
-    // the `DeployAnalytics` `$analytics()` datasets (views, vitals). An entity
+    // aggregate tables: writes go through `SigilVisitService` (sessions and
+    // visits) and the `DeployAnalytics` datasets and log (views, vitals, page
+    // views). An entity
     // exists, for the migration generator, exactly as long as some
     // `$repository` names it.
     SigilTokenService,
@@ -317,7 +318,6 @@ export { DeployService } from "./services/DeployService.ts";
 export { HostCloudflareService } from "./services/HostCloudflareService.ts";
 
 export { ImageRegistryClient } from "./services/ImageRegistryClient.ts";
-export { LoreAnalyticsStore } from "./services/LoreAnalyticsStore.ts";
 export { OpenErrorCounter } from "./services/OpenErrorCounter.ts";
 export { RegistryTransport } from "./services/RegistryTransport.ts";
 export { RollbackService } from "./services/RollbackService.ts";
