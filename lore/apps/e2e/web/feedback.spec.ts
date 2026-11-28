@@ -190,6 +190,21 @@ test.describe("Feedback", () => {
         feedbackTitle,
         { timeout: 15_000 },
       );
+      // The status filter, three icons and no text (#Q4564), switched to
+      // the item's own status; a segment is named by its tooltip.
+      const filter = page.getByTestId("feedback-status-filter");
+      await expect(filter).toHaveText("");
+      await expect(filter.getByRole("radio")).toHaveCount(3);
+      await expect(
+        filter.getByRole("radio", { name: "Accepted" }),
+      ).toHaveAttribute("aria-checked", "true");
+      const pending = filter.getByRole("radio", { name: "Pending" });
+      await pending.hover();
+      await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(
+        "Pending",
+      );
+      await pending.click();
+      await expect(pending).toHaveAttribute("aria-checked", "true");
     });
   });
 

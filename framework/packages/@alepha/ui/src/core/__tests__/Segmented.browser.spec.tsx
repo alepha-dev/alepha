@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { expectAccessible } from "alepha/testing/react";
 import { useState } from "react";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -166,5 +166,42 @@ describe("Segmented Tab stops", () => {
     );
 
     expect(tabIndexes()).toEqual(["-1", "0", "-1"]);
+  });
+
+  it("names an icon segment by a tooltip, not the browser's title, when given `tooltip` (#Q4564)", async () => {
+    const picked: string[] = [];
+    render(
+      <Segmented
+        value="a"
+        onChange={(value) => picked.push(value)}
+        options={[
+          { value: "a", label: <svg />, tooltip: "Alpha" },
+          { value: "b", label: <svg />, tooltip: "Bravo" },
+          { value: "c", label: <svg />, title: "Charlie" },
+        ]}
+      />,
+    );
+
+    const bravo = screen.getByRole("radio", { name: "Bravo" });
+    expect(bravo.hasAttribute("title")).toBe(false);
+    // `title` keeps the native tooltip.
+    expect(
+      screen.getByRole("radio", { name: "Charlie" }).getAttribute("title"),
+    ).toBe("Charlie");
+
+    fireEvent.pointerEnter(bravo, { pointerType: "mouse" });
+    fireEvent.mouseEnter(bravo);
+    fireEvent.pointerMove(bravo, { pointerType: "mouse" });
+    fireEvent.mouseMove(bravo);
+    await waitFor(
+      () =>
+        expect(
+          document.querySelector('[data-slot="tooltip-content"]')?.textContent,
+        ).toBe("Bravo"),
+      { timeout: 2000 },
+    );
+
+    fireEvent.click(bravo);
+    expect(picked).toEqual(["b"]);
   });
 });

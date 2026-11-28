@@ -1,7 +1,5 @@
-import { Control } from "@alepha/ui/form";
+import { Segmented } from "@alepha/ui";
 import type { I18n } from "@lore/core/web";
-import { z } from "alepha";
-import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { Circle, CircleCheck, CircleX, type LucideIcon } from "lucide-react";
 
@@ -13,50 +11,38 @@ export interface ProjectFeedbackStatusSelectProps {
 }
 
 /**
- * The status the Feedback list shows (#Q4289): a small `Control` select
- * where it was a `Segmented`, so the band keeps room for the pinned prompts
- * and the bell. A one-field form whose change is the pick; the list keys it
- * by its value, so a status set from elsewhere (an addressed item switching
- * to its own) redraws it.
+ * The status the Feedback list shows: a `Segmented` of three icons, no text
+ * (#Q4564), each named by a tooltip and its `aria-label` as the band's icon
+ * buttons are. #Q4289 had made it a select to leave the band room for the
+ * pinned prompts and the bell; three icon segments are about as narrow as
+ * that select was, so the room stays. 32px tall at the default size, like
+ * the band's icon buttons, so one value spaces the whole band (#Q4449).
  */
 const ProjectFeedbackStatusSelect = (
   props: ProjectFeedbackStatusSelectProps,
 ) => {
   const { tr } = useI18n<I18n, "en">();
-  const form = useForm({
-    schema: z.object({ status: z.enum(FILTERS) }),
-    initialValues: { status: props.value },
-    keepDirty: false,
-    handler: async () => {},
-    onChange: (_key, next) => {
-      if (next && next !== props.value) {
-        props.onChange(next as FeedbackResource["status"]);
-      }
-    },
-  });
   return (
-    <span className="w-36 shrink-0">
-      {/* No visible label (#Q4324): in the band it pushed the select down,
-          with the required asterisk `z.enum` adds. The aria-label names it.
-          The default size, 32px like the band's icon buttons, so one value
-          spaces the whole band (#Q4449). */}
-      <Control
-        input={form.input.status}
-        label=""
-        inputProps={{
-          "aria-label": tr("feedback.filter.label"),
-          "data-testid": "feedback-status-filter",
-        }}
-        items={FILTERS.map((value) => {
-          const Icon = FILTER_ICONS[value];
-          return {
-            value,
-            label: tr(`feedback.filter.${value}` as const),
-            icon: <Icon className="size-3.5 shrink-0" />,
-          };
-        })}
-      />
-    </span>
+    <Segmented
+      variant="solid"
+      className="shrink-0"
+      aria-label={tr("feedback.filter.label")}
+      data-testid="feedback-status-filter"
+      value={props.value}
+      onChange={(next) => {
+        if (next !== props.value) {
+          props.onChange(next as FeedbackResource["status"]);
+        }
+      }}
+      options={FILTERS.map((value) => {
+        const Icon = FILTER_ICONS[value];
+        return {
+          value,
+          label: <Icon className="size-4 shrink-0" aria-hidden />,
+          tooltip: tr(`feedback.filter.${value}` as const),
+        };
+      })}
+    />
   );
 };
 
