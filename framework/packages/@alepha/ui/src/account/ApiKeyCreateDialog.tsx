@@ -329,7 +329,7 @@ export const ApiKeyCreateDialog = (props: ApiKeyCreateDialogProps) => {
             >
               {tr("account.keys.cancel", { default: "Cancel" })}
             </Button>
-            <Button type="submit" disabled={!options || state.loading}>
+            <Button type="submit" disabled={!options} loading={state.loading}>
               {tr("account.keys.submit", { default: "Create" })}
             </Button>
           </DialogFooter>

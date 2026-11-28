@@ -2,6 +2,7 @@ import type { OrganizationInvitationController } from "alepha/api/organizations"
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Building2, Check, Mail, X } from "lucide-react";
+import { useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
@@ -120,6 +121,12 @@ export const MyOrganizationInvitations = (
   );
   const items = invitations.data ?? [];
   const busy = invitations.loading || accept.loading || decline.loading;
+  // The invitation whose Accept or Decline runs: that button spins.
+  const [pendingId, setPendingId] = useState<string>();
+  const run = (action: typeof accept, invitationId: string) => {
+    setPendingId(invitationId);
+    void action.run(invitationId).finally(() => setPendingId(undefined));
+  };
 
   return (
     <DataTable<MyOrganizationInvitationItem>
@@ -236,7 +243,8 @@ export const MyOrganizationInvitations = (
                 variant="outlined"
                 size="sm"
                 disabled={busy}
-                onClick={() => void decline.run(invitation.id)}
+                loading={decline.loading && pendingId === invitation.id}
+                onClick={() => run(decline, invitation.id)}
               >
                 <X className="size-3.5" />
                 {tr("organizations.invitations.decline", {
@@ -246,7 +254,8 @@ export const MyOrganizationInvitations = (
               <Button
                 size="sm"
                 disabled={busy}
-                onClick={() => void accept.run(invitation.id)}
+                loading={accept.loading && pendingId === invitation.id}
+                onClick={() => run(accept, invitation.id)}
               >
                 <Check className="size-3.5" />
                 {tr("organizations.invitations.accept", {

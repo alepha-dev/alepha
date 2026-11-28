@@ -299,6 +299,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
                     size="sm"
                     onClick={() => removeAvatar.run()}
                     disabled={uploading}
+                    loading={removeAvatar.loading}
                   >
                     <Trash2 className="size-4" />
                     {tr("account.profile.avatarRemove", { default: "Remove" })}
@@ -403,7 +404,7 @@ export const AccountProfileView = (props: AccountProfileViewProps) => {
                   size="sm"
                   variant="outlined"
                   onClick={() => void verifyEmail.run()}
-                  disabled={verifyEmail.loading}
+                  loading={verifyEmail.loading}
                   data-testid="account-verify-email"
                 >
                   {tr("account.profile.verifyEmail", {

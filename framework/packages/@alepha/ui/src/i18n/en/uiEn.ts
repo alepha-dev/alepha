@@ -224,7 +224,6 @@ export const uiEn: Record<string, DictionaryEntry> = {
   "controlUpload.uploadedMany": "$1 files uploaded",
   "controlUpload.uploaded": "uploaded",
   "controlUpload.uploadedOne": "File uploaded",
-  "controlUpload.uploading": "Uploading…",
 
   // Sign-in, registration, password reset, email verification.
   "auth.login.cancel": "Cancel",
@@ -539,7 +538,6 @@ export const uiEn: Record<string, DictionaryEntry> = {
   "admin.files.unknown": "unknown",
   "admin.files.upload": "Upload",
   "admin.files.uploaded": "Uploaded $1",
-  "admin.files.uploading": "Uploading…",
   "admin.files.usageBucketFiles": "Files",
   "admin.files.usageBucketShareQuota": "Share of quota",
   "admin.files.usageBucketShareUsed": "Share of used",

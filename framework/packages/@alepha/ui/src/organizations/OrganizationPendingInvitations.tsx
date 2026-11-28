@@ -4,6 +4,7 @@ import type {
 } from "alepha/api/organizations";
 import { useI18n } from "alepha/react/i18n";
 import { Mail, MoreHorizontal } from "lucide-react";
+import { useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
@@ -31,9 +32,12 @@ export const OrganizationPendingInvitations = (
 ) => {
   const revoke = useRevokeOrganizationInvitation();
   const { tr } = useI18n();
+  // The row whose revoke runs: its menu button spins, the others only wait.
+  const [revokingId, setRevokingId] = useState<string>();
 
   const runRevoke = async (invitation: OrganizationInvitation) => {
     props.onBusyChange?.(true);
+    setRevokingId(invitation.id);
     try {
       const revoked = await revoke.revoke(
         props.organizationId,
@@ -42,6 +46,7 @@ export const OrganizationPendingInvitations = (
       );
       if (revoked.ok) await props.onRevoked();
     } finally {
+      setRevokingId(undefined);
       props.onBusyChange?.(false);
     }
   };
@@ -84,6 +89,7 @@ export const OrganizationPendingInvitations = (
                         size="icon"
                         data-testid="invitation-actions"
                         disabled={revoke.loading}
+                        loading={revoke.loading && revokingId === invitation.id}
                         aria-label={tr("organizations.invitations.actions", {
                           default: "Invitation actions",
                         })}

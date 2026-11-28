@@ -293,6 +293,11 @@ export interface TableAction {
   onClick: () => void;
   disabled?: boolean;
   /**
+   * The work this action started is running: the button shows the spinner
+   * of `Button`'s `loading` and takes no click until it is false again.
+   */
+  loading?: boolean;
+  /**
    * Render as the table's primary action: a solid labelled button rather
    * than a ghost icon. One per table is the intent; a toolbar with two
    * primary buttons has no primary action.

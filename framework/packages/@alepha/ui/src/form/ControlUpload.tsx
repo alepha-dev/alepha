@@ -11,7 +11,7 @@ import {
   useFormState,
 } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
-import { File as FileIcon, Loader2, Upload, X } from "lucide-react";
+import { File as FileIcon, Upload, X } from "lucide-react";
 import {
   type ChangeEvent,
   type DragEvent,
@@ -377,7 +377,8 @@ export const ControlUpload = (props: ControlUploadProps) => {
             type="button"
             variant="outlined"
             size="sm"
-            disabled={props.disabled || uploading}
+            disabled={props.disabled}
+            loading={uploading}
             onClick={() => fileInputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault();
@@ -389,19 +390,10 @@ export const ControlUpload = (props: ControlUploadProps) => {
           />
         }
       >
-        {uploading ? (
-          <>
-            <Loader2 className="me-1 size-4 animate-spin" />
-            {tr("controlUpload.uploading", { default: "Uploading…" })}
-          </>
-        ) : (
-          <>
-            <Upload className="me-1 size-4" />
-            {props.multi
-              ? tr("controlUpload.chooseFiles", { default: "Choose files" })
-              : tr("controlUpload.chooseFile", { default: "Choose a file" })}
-          </>
-        )}
+        <Upload className="me-1 size-4" />
+        {props.multi
+          ? tr("controlUpload.chooseFiles", { default: "Choose files" })
+          : tr("controlUpload.chooseFile", { default: "Choose a file" })}
       </TooltipTrigger>
       <TooltipContent>{dragDropHint}</TooltipContent>
     </Tooltip>

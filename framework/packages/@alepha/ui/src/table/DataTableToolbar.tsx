@@ -254,6 +254,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
                       className="h-9 px-3"
                       aria-label={action.label}
                       disabled={action.disabled}
+                      loading={action.loading}
                       onClick={action.onClick}
                     >
                       <ActionIcon className="size-4" />
@@ -272,6 +273,7 @@ export const DataTableToolbar = <T,>(props: DataTableToolbarProps<T>) => {
                           className="h-9 w-9 p-0"
                           aria-label={action.label}
                           disabled={action.disabled}
+                          loading={action.loading}
                           onClick={action.onClick}
                         />
                       }

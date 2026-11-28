@@ -1,5 +1,6 @@
 import type { AiPendingCallResource } from "alepha/api/ai";
 import { useI18n } from "alepha/react/i18n";
+import { useState } from "react";
 
 import { Button } from "../core/Button.tsx";
 import {
@@ -31,6 +32,8 @@ export interface AiChatConfirmCardProps {
  */
 export const AiChatConfirmCard = (props: AiChatConfirmCardProps) => {
   const { tr } = useI18n();
+  // `loading` is the chat's: the button the user pressed is the one that spins.
+  const [choice, setChoice] = useState<"approve" | "deny">();
 
   return (
     <Card data-testid="ai-chat-confirm" className="gap-2">
@@ -55,14 +58,22 @@ export const AiChatConfirmCard = (props: AiChatConfirmCardProps) => {
         <Button
           intent="primary"
           disabled={props.loading}
-          onClick={() => props.onApprove()}
+          loading={props.loading && choice === "approve"}
+          onClick={() => {
+            setChoice("approve");
+            props.onApprove();
+          }}
         >
           {tr("ai.chat.approve", { default: "Approve" })}
         </Button>
         <Button
           variant="outlined"
           disabled={props.loading}
-          onClick={() => props.onDeny()}
+          loading={props.loading && choice === "deny"}
+          onClick={() => {
+            setChoice("deny");
+            props.onDeny();
+          }}
         >
           {tr("ai.chat.deny", { default: "Deny" })}
         </Button>

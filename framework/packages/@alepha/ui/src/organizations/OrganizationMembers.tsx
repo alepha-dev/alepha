@@ -46,6 +46,8 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
   const [rankBusy, setRankBusy] = useState(false);
   const [invitationBusy, setInvitationBusy] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  // The member whose removal runs: their menu button spins, the others wait.
+  const [removingId, setRemovingId] = useState<string>();
   const [transferBusy, setTransferBusy] = useState(false);
   const [transferTarget, setTransferTarget] = useState<
     { userId: string; name: string } | undefined
@@ -205,6 +207,7 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
               variant="outlined"
               size="sm"
               disabled={busy}
+              loading={leave.loading}
               onClick={() => void leave.run()}
             >
               <LogOut className="size-3.5" />
@@ -253,6 +256,7 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
                         size="icon"
                         data-testid="member-actions"
                         disabled={busy}
+                        loading={remove.loading && removingId === member.userId}
                         aria-label={tr("organizations.members.actions", {
                           default: "Member actions",
                         })}
@@ -282,7 +286,12 @@ export const OrganizationMembers = (props: OrganizationMembersProps) => {
                     <DropdownMenuItem
                       variant="destructive"
                       data-testid="remove-member"
-                      onClick={() => void remove.run(member)}
+                      onClick={() => {
+                        setRemovingId(member.userId);
+                        void remove
+                          .run(member)
+                          .finally(() => setRemovingId(undefined));
+                      }}
                     >
                       <Trash2 className="size-4" />
                       {tr("organizations.members.remove", {

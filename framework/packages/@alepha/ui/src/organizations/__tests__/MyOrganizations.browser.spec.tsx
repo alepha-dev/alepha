@@ -90,7 +90,8 @@ describe("MyOrganizations", () => {
     await expectAccessible();
     fireEvent.click(view.getByRole("button", { name: "Open Acme" }));
 
-    expect(opened).toEqual([organizationId]);
+    // Opening runs as an action, so the card's button can spin meanwhile.
+    await waitFor(() => expect(opened).toEqual([organizationId]));
   });
 
   it("creates an organization, refreshes the list, and opens it", async () => {

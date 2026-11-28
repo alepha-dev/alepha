@@ -242,7 +242,7 @@ export const AccountPasswordDialog = (props: AccountPasswordDialogProps) => {
                 {tr("account.password.cancel", { default: "Cancel" })}
               </Button>
             )}
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" loading={submitting}>
               {title}
             </Button>
           </DialogFooter>
