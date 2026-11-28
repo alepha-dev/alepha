@@ -505,6 +505,20 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		return nil, out, err
 	}
 	dir := u.HomeDir
+	// The job's GitHub credential (#Q4361): written before any git, carried
+	// to every git and gh call through ctx, renewed while the job runs, and
+	// removed with it.
+	creds, dropCreds, err := r.prepareCredentials(ctx, u, id, spec.GitHub)
+	if err != nil {
+		return nil, out, err
+	}
+	defer dropCreds()
+	if creds != nil {
+		ctx = withJobCredentials(ctx, creds)
+		renewCtx, stopRenew := context.WithCancel(ctx)
+		defer stopRenew()
+		go creds.keepFresh(renewCtx, tokenRenewerOf(ctx), log, time.Now)
+	}
 	if spec.Kind == jobKindAgent {
 		if spec.Source.mode() == sourceRead {
 			// Deferred first, so it runs last: once the run ended and its
@@ -532,6 +546,9 @@ func (r *processRunner) run(ctx context.Context, id string, spec jobSpec, log *j
 		// The key in the environment only, where the adapter's MCP config
 		// expands it: never on a command line `ps` shows.
 		env = append(env, jobKeyEnv+"="+spec.Key)
+	}
+	if creds != nil {
+		env = append(env, creds.agentEnv(r.pathDirs(u.HomeDir))...)
 	}
 	if adapter.Prepare != nil {
 		extra, cleanup, err := adapter.Prepare(run)
@@ -701,8 +718,11 @@ func (r *processRunner) toolOutput(ctx context.Context, u *user.User, binary str
 // toolRun runs a tool as the jobs user, in its home, for at most 15 s, and
 // answers what it printed on each stream and its exit status.
 func (r *processRunner) toolRun(ctx context.Context, u *user.User, binary string, args, env []string) (stdout, stderr string, code int, err error) {
-	bin, err := r.lookPath(u.HomeDir, binary)
-	if err != nil {
+	var bin string
+	if creds := jobCredentialsOf(ctx); binary == "gh" && creds != nil && creds.gh != "" {
+		// A job that carries its GitHub token asks gh with it (#Q4361).
+		bin = creds.gh
+	} else if bin, err = r.lookPath(u.HomeDir, binary); err != nil {
 		return "", "", 0, err
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -930,7 +950,7 @@ func (j *jobs) inventory(ctx context.Context) *connector.InventoryJobs {
 	}
 	// Sources says this bay prepares a job's source (#Q4245): Lore sends a
 	// read or write job to no bay that does not say so.
-	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true, Result: true,
+	out := &connector.InventoryJobs{User: cfg.User, Running: j.runningIDs(), Sources: true, Result: true, GitHubTokens: true,
 		MaxJobs: cfg.jobsLimit(), MaxReadJobs: cfg.readJobsLimit()}
 	// What the jobs user has, read again when older than ten minutes: a
 	// version command per tool is cheap, but not on every inventory.
@@ -1011,6 +1031,18 @@ func (a *actions) jobRun(ctx context.Context, cmd connector.Command) (status, st
 		a.streamJobLog(runCtx, log)
 	}()
 
+	// Asked when the job's GitHub token nears its end (#Q4361).
+	runCtx = withTokenRenewer(runCtx, func(ctx context.Context) (jobGitHub, error) {
+		raw, err := connector.RenewJobToken(ctx, client, cfg, cmd.ID)
+		if err != nil {
+			return jobGitHub{}, err
+		}
+		var gh jobGitHub
+		if err := json.Unmarshal(raw, &gh); err != nil {
+			return jobGitHub{}, fmt.Errorf("the renewed token is not JSON")
+		}
+		return gh, nil
+	})
 	exit, outcome, runErr := a.jobs.run(runCtx, cmd.ID, spec, log)
 	extra = connector.Extra{Job: true, ExitCode: exit, Warning: outcome.Warning, Commit: outcome.Commit, Totals: outcome.Totals}
 	if outcome.HasResult {

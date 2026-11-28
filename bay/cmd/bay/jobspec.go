@@ -56,6 +56,10 @@ type jobSpec struct {
 	// asks its own fixed question.
 	Prompt         string `json:"prompt,omitempty"`
 	TimeoutSeconds int    `json:"timeoutSeconds"`
+	// GitHub is the job's GitHub credential (#Q4361): an installation token
+	// for the job's repository, its expiry and the App's bot. Absent, the
+	// job uses the jobs user's own gh login, as before (jobgithub.go).
+	GitHub *jobGitHub `json:"github,omitempty"`
 }
 
 // jobSession is a run's conversation: a uuid Lore minted, new until a job that
@@ -161,10 +165,16 @@ func (spec jobSpec) validate(sink string) error {
 		if spec.Session != nil && !sessionPattern.MatchString(spec.Session.ID) {
 			return errors.New("a session id is a lowercase uuid")
 		}
+		if err := spec.GitHub.validate(); err != nil {
+			return err
+		}
+		if spec.GitHub != nil && spec.Source.mode() == sourceNone {
+			return errors.New("a job with no source carries no GitHub token")
+		}
 	case jobKindCheck:
 		// A check asks its fixed question with nothing in reach: no
 		// workspace, no key, no MCP server, no prompt of Lore's.
-		if spec.Project != "" || spec.Workspace != "" || spec.Key != "" || spec.MCPURL != "" || spec.Prompt != "" || spec.Source != nil || spec.Output != "" || spec.Session != nil {
+		if spec.Project != "" || spec.Workspace != "" || spec.Key != "" || spec.MCPURL != "" || spec.Prompt != "" || spec.Source != nil || spec.Output != "" || spec.Session != nil || spec.GitHub != nil {
 			return errors.New("a check carries no workspace, source, key, MCP URL or prompt")
 		}
 		if spec.TimeoutSeconds < minJobTimeoutSeconds || spec.TimeoutSeconds > maxCheckTimeout {

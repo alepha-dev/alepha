@@ -138,7 +138,8 @@ func (r *processRunner) requireSignedIn(ctx context.Context, u *user.User, spec 
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	needs := []string{spec.Agent}
-	if spec.Source.mode() != sourceNone {
+	// A job that carries its GitHub token needs no gh login (#Q4361).
+	if spec.Source.mode() != sourceNone && spec.GitHub == nil {
 		needs = append(needs, "gh")
 	}
 	for _, name := range needs {

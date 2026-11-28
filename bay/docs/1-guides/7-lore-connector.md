@@ -236,10 +236,18 @@ sudo bay config jobs --user bay-agent
 ```
 
 The agent must be on that user's `PATH` (`~/.local/bin`, `~/.npm-global/bin`,
-`~/bin`, `/usr/local/bin` or `/usr/bin`). Install `git` and `gh` there too, and
-**sign `gh` in**: a job that reads or changes the project's code needs the
-repository on GitHub, and Bay fetches it through the jobs user's `gh`. Bay holds
-no credential.
+`~/bin`, `/usr/local/bin` or `/usr/bin`). Install `git` and `gh` there too.
+
+A job of a project **connected to GitHub** in Lore carries its own GitHub token:
+one hour, one repository, renewed by Bay while the job runs. Bay's fetches and
+pushes for that job, and the agent's `git` and `gh`, use it, and its commits
+are authored by the Lore instance's GitHub App bot. The jobs user needs no
+GitHub sign-in for it. The token lives in a directory only the jobs user can
+read, removed when the job ends, and never in the project's shared clone, a
+log or a command line.
+
+A job of a project that is not connected uses the jobs user's own `gh` login,
+so for those **sign `gh` in**:
 
 ```bash
 sudo -iu bay-agent gh auth login
@@ -250,7 +258,7 @@ to Lore: each agent CLI, `git`, `gh`, `cf` (Cloudflare's CLI) and `lore`, with
 a version or the error of its version command, and whether each is signed in,
 read with the tool's own status command. A job fails at once, before any git,
 when a tool it needs says it is signed out: its agent CLI, and `gh` for a job
-with code. `lore` is the exception: it must **not** be signed in as the jobs
+with code that carries no GitHub token. `lore` is the exception: it must **not** be signed in as the jobs
 user, since a job reaches Lore with a key held to its project, and `bay doctor`
 warns when it is (`sudo -iu bay-agent lore logout`).
 
