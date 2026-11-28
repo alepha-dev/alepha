@@ -36,8 +36,47 @@ const errorGroupSchema = z.object({
 
 export const insightsReadParamsSchema = projectParamsSchema.extend({
   range: z
-    .enum(["1d", "7d", "30d"])
-    .describe("Window to read. Defaults to 7d.")
+    .enum([
+      "1d",
+      "7d",
+      "30d",
+      "90d",
+      "12mo",
+      "thisMonth",
+      "lastMonth",
+      "thisYear",
+    ])
+    .describe(
+      "Window to read: 1d, 7d, 30d, 90d and 12mo end today; thisMonth, lastMonth and thisYear are calendar windows. Defaults to 7d. Ignored when `from` is given.",
+    )
+    .optional(),
+  from: z
+    .string()
+    .describe(
+      "First day of a custom window, `YYYY-MM-DD` (UTC), or an ISO instant. At most 400 days back.",
+    )
+    .optional(),
+  to: z
+    .string()
+    .describe(
+      "Last day of a custom window, included, `YYYY-MM-DD` (UTC), or an ISO instant, excluded. Defaults to today.",
+    )
+    .optional(),
+  grain: z
+    .enum(["hour", "day", "week", "month"])
+    .describe(
+      "Bucket of the analytics timeline. Defaults to hour up to 2 days, day up to 92, month beyond. Hour is refused past 7 days, and more than 30 days back.",
+    )
+    .optional(),
+  app: z
+    .string()
+    .describe(
+      "Read one deployed copy instead of the whole project: the app's name, with `env`.",
+    )
+    .optional(),
+  env: z
+    .string()
+    .describe("The copy's environment, with `app`. Defaults to production.")
     .optional(),
   segments: z
     .array(z.enum(["errors", "vitals", "analytics"]))
@@ -48,7 +87,7 @@ export const insightsReadParamsSchema = projectParamsSchema.extend({
   traffic: z
     .enum(["all", "humans", "bots"])
     .describe(
-      "Which population the analytics segment counts, `uniqueVisitors` included. Defaults to `all`. `humans` excludes crawlers that identify themselves in their user-agent; one driving a real browser is counted as human whatever it does, so a low engagement rate under `humans` still means automation. Does not touch the `errors` segment: a crawler's crash is still the app's crash.",
+      "Which population the analytics segment counts. Defaults to `all`, where views count everybody and visitors, visits and the visit rates are people's (`peopleOnly`). `humans` excludes crawlers that identify themselves in their user-agent; one driving a real browser is counted as human whatever it does. `bots` answers views only: a declared bot has no visit. Does not touch the `errors` segment: a crawler's crash is still the app's crash.",
     )
     .optional(),
 });
@@ -72,6 +111,10 @@ export const insightsReadResultSchema = z.object({
    * First day included, `YYYY-MM-DD`.
    */
   since: z.string(),
+  /**
+   * Last day included, `YYYY-MM-DD`.
+   */
+  until: z.string(),
   /**
    * Still-failing groups, most widespread first, capped at what the Insights
    * page shows. Filtered on `lastSeenAt` inside the window — a group that

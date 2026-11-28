@@ -438,23 +438,26 @@ prints a webhook's signing secret once. See
 
 ## Errors and insights
 
-| Command                        | What it does                                                                                        | Flags                                                                |
-| ------------------------------ | --------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
-| `lore error list`              | The inbox: one row per root cause, most widespread first. Open ones only by default.                | `--include-resolved`                                                 |
-| `lore error get <ref>`         | One error whole: where it stands, the apps that reported it, its quest, its 30 days and its thread. |                                                                      |
-| `lore error comment add <ref>` | Comment on an error's thread.                                                                       | `--body` (required), `--as <name>` (marks it as written by an agent) |
-| `lore error resolve <ref>`     | Close an error for good. A later report raises its count and never reopens it.                      |                                                                      |
-| `lore error forward <ref>`     | Turn an error into a new quest and close it, or link a quest already filed. One error, one quest.   | `--quest`                                                            |
-| `lore insights read`           | Analytics, Web Vitals and the error budget of each app.                                             | `--range`, `--segment`, `--traffic`                                  |
+| Command                        | What it does                                                                                        | Flags                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `lore error list`              | The inbox: one row per root cause, most widespread first. Open ones only by default.                | `--include-resolved`                                                               |
+| `lore error get <ref>`         | One error whole: where it stands, the apps that reported it, its quest, its 30 days and its thread. |                                                                                    |
+| `lore error comment add <ref>` | Comment on an error's thread.                                                                       | `--body` (required), `--as <name>` (marks it as written by an agent)               |
+| `lore error resolve <ref>`     | Close an error for good. A later report raises its count and never reopens it.                      |                                                                                    |
+| `lore error forward <ref>`     | Turn an error into a new quest and close it, or link a quest already filed. One error, one quest.   | `--quest`                                                                          |
+| `lore insights read`           | Visitors, visits and views, Web Vitals and the error budget, for the project or one app.            | `--range`, `--from`, `--to`, `--grain`, `--app`, `--env`, `--segment`, `--traffic` |
 
 Before resolving an error, check `lore insights read --segment errors`: it is
 what says whether the failure is still happening.
 
-| Flag        | Values                                                                       |
-| ----------- | ---------------------------------------------------------------------------- |
-| `--range`   | `1d`, `7d` (the default) or `30d`.                                           |
-| `--segment` | `errors`, `vitals`, `analytics`. Repeatable; all three by default.           |
-| `--traffic` | `all` (the default), `humans` or `bots`. It narrows analytics, never errors. |
+| Flag             | Values                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `--range`        | `1d`, `7d` (the default), `30d`, `90d`, `12mo`, `thisMonth`, `lastMonth` or `thisYear`.                                  |
+| `--from`, `--to` | A custom window: the first and last day, `YYYY-MM-DD`, UTC. At most 400 days back.                                       |
+| `--grain`        | `hour`, `day`, `week` or `month`: the timeline's bucket. By default hourly up to 2 days, daily up to 92, monthly beyond. |
+| `--app`, `--env` | Read one deployed copy instead of the whole project. `--env` defaults to `production`.                                   |
+| `--segment`      | `errors`, `vitals`, `analytics`. Repeatable; all three by default.                                                       |
+| `--traffic`      | `all` (the default), `humans` or `bots`. It narrows analytics, never errors.                                             |
 
 See [Telemetry](/lore/docs/ship-telemetry).
 

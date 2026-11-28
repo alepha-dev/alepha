@@ -1,3 +1,4 @@
+import type { SigilForwarded } from "@alepha/lore/sigil";
 import { ProjectController } from "@lore/core/api";
 import { Alepha } from "alepha";
 import { AlephaApiUsers, UserService } from "alepha/api/users";
@@ -10,10 +11,11 @@ import { AlephaFake } from "alepha/testing/faker";
 import { describe, expect, it } from "vitest";
 
 import { LoreShipApi } from "../src/api/index.ts";
-import { SigilTokenService } from "../src/api/index.ts";
+import { SigilIngestService, SigilTokenService } from "../src/api/index.ts";
 import { LoreShipMcp } from "../src/mcp/index.ts";
 import { ProjectErrorTools, InsightsTools } from "../src/mcp/index.ts";
 import {
+  appInstances,
   projectErrors,
   sigilErrorGroups,
   sigils,
@@ -30,6 +32,7 @@ import {
 
 class Probe {
   sigils = $repository(sigils);
+  instances = $repository(appInstances);
   errorGroups = $repository(sigilErrorGroups);
   projectErrors = $repository(projectErrors);
 }
@@ -68,7 +71,13 @@ const setup = async () => {
     asUser(owner.id, () => tool.execute(params));
 
   const project = await asUser(owner.id, () =>
-    projectApi.createProject({ body: { title: "Insights" } }),
+    projectApi.createProject({
+      body: {
+        title: "Insights",
+        // Ingest keeps views only under Ship's tracking option.
+        capabilities: [{ key: "ship", options: { track: true } }],
+      },
+    }),
   );
   const otherProject = await asUser(owner.id, () =>
     projectApi.createProject({ body: { title: "Elsewhere" } }),
@@ -106,9 +115,36 @@ const setup = async () => {
       ...over,
     });
 
+  /**
+   * A deployed copy with its sigil, and one visit of one visitor through
+   * the real ingest.
+   */
+  const copyWithVisit = async (
+    app: string,
+    env: string,
+    visitors: string[],
+  ) => {
+    const sigil = await enrol(`${app}/${env}`);
+    await probe.instances.create({
+      projectId: project.id,
+      app,
+      env,
+      sigilId: sigil.id,
+    });
+    for (const visitor of visitors) {
+      await alepha.inject(SigilIngestService).absorb(sigil, {
+        visitor,
+        traffic: "human",
+        views: [{ path: "/", entry: true }],
+      } as SigilForwarded);
+    }
+    return sigil;
+  };
+
   return {
     alepha,
     probe,
+    copyWithVisit,
     project,
     otherProject,
     call,
@@ -120,6 +156,55 @@ const setup = async () => {
 };
 
 describe("Lore MCP — insights", () => {
+  it("reads one copy by app and env over a custom window, with the v2 analytics", async () => {
+    const { project, call, insightsTools, copyWithVisit } = await setup();
+    await copyWithVisit("demo", "production", ["alice"]);
+    await copyWithVisit("demo", "staging", ["bob", "carol"]);
+    const today = new Date().toISOString().slice(0, 10);
+
+    const res = await call(insightsTools.insights_read, {
+      project: project.id,
+      app: "demo",
+      from: today,
+      to: today,
+      grain: "hour",
+      segments: ["analytics"],
+    });
+    expect(res.range).toBe("custom");
+    expect(res.analytics).toMatchObject({
+      visitors: 1,
+      visits: 1,
+      views: 1,
+      visitorsSpanApps: false,
+    });
+    expect(res.analytics.timeline).toHaveLength(24);
+
+    const staging = await call(insightsTools.insights_read, {
+      project: project.id,
+      app: "demo",
+      env: "staging",
+      segments: ["analytics"],
+    });
+    expect(staging.analytics.visitors).toBe(2);
+
+    const whole = await call(insightsTools.insights_read, {
+      project: project.id,
+      segments: ["analytics"],
+    });
+    expect(whole.analytics.visitors).toBe(3);
+    expect(whole.analytics.visitorsSpanApps).toBe(true);
+  });
+
+  it("refuses an app that has no copy by that name", async () => {
+    const { project, call, insightsTools } = await setup();
+    await expect(
+      call(insightsTools.insights_read, {
+        project: project.id,
+        app: "nope",
+      }),
+    ).rejects.toThrow();
+  });
+
   it("should keep apps apart, where the errors inbox merges them", async () => {
     /*
       The whole reason this tool exists. One fingerprint, two apps:
