@@ -1,9 +1,10 @@
 import type {
+  AppController,
   ProjectErrorController,
   ProjectErrorThreadController,
   InsightsController,
 } from "@lore/ship/api";
-import { $inject, z } from "alepha";
+import { $inject, AlephaError, z } from "alepha";
 import { $command } from "alepha/command";
 import { $client } from "alepha/server/links";
 
@@ -59,6 +60,7 @@ export class ErrorCommand {
   protected readonly insightsApi = $client<InsightsController>(
     this.client.scope(),
   );
+  protected readonly appApi = $client<AppController>(this.client.scope());
 
   protected static readonly PROJECT_FLAG = {
     project: z
@@ -386,12 +388,50 @@ export class ErrorCommand {
   public readonly read = $command({
     name: "read",
     description:
-      "Analytics, Web Vitals and the per-app error budget, over 1d, 7d or 30d",
+      "Analytics, Web Vitals and the per-app error budget, over a preset or a custom window, for the project or one app",
     flags: z.object({
       ...ErrorCommand.PROJECT_FLAG,
       range: z
-        .enum(["1d", "7d", "30d"])
-        .describe("The window to read. Defaults to 7d.")
+        .enum([
+          "1d",
+          "7d",
+          "30d",
+          "90d",
+          "12mo",
+          "thisMonth",
+          "lastMonth",
+          "thisYear",
+        ])
+        .describe(
+          "The window to read: 1d, 7d, 30d, 90d and 12mo end today; thisMonth, lastMonth and thisYear are calendar windows. Defaults to 7d.",
+        )
+        .optional(),
+      from: z
+        .text({
+          description:
+            "First day of a custom window, YYYY-MM-DD (UTC). At most 400 days back.",
+        })
+        .optional(),
+      to: z
+        .text({
+          description:
+            "Last day of a custom window, included, YYYY-MM-DD (UTC). Defaults to today.",
+        })
+        .optional(),
+      grain: z
+        .enum(["hour", "day", "week", "month"])
+        .describe(
+          "Bucket of the analytics timeline. Defaults to hour up to 2 days, day up to 92, month beyond.",
+        )
+        .optional(),
+      app: z
+        .text({ description: "Read one deployed copy: the app's name." })
+        .optional(),
+      env: z
+        .text({
+          description:
+            "The copy's environment, with --app. Defaults to production.",
+        })
         .optional(),
       segment: z
         .array(z.enum(["errors", "vitals", "analytics"]))
@@ -402,7 +442,7 @@ export class ErrorCommand {
       traffic: z
         .enum(["all", "humans", "bots"])
         .describe(
-          "Which population analytics counts. Defaults to all. It does not touch errors.",
+          "Which population analytics counts. Defaults to all: views count everybody, visitors and visits are people's. Bots answers views only. It does not touch errors.",
         )
         .optional(),
       ...LoreOutput.FLAGS,
@@ -412,9 +452,32 @@ export class ErrorCommand {
       await this.refusals.guard(context, async () => {
         const { projectId } = await this.projects.named(flags.project, context);
 
+        // One copy, resolved to its sigil the way `lore sigil create` names
+        // one: --app, and --env defaulting to production.
+        let sigilId: string | undefined;
+        if (flags.app) {
+          const env = flags.env ?? "production";
+          const instance = await this.appApi.getApp({
+            params: { projectId, app: flags.app, env },
+          });
+          if (!instance.sigil) {
+            throw new AlephaError(
+              `${flags.app}/${env} has no sigil: nothing reports for it.`,
+            );
+          }
+          sigilId = instance.sigil.id;
+        }
+
         const insights = await this.insightsApi.getInsights({
           params: { projectId },
-          query: { range: flags.range, traffic: flags.traffic },
+          query: {
+            range: flags.range,
+            from: flags.from,
+            to: flags.to,
+            grain: flags.grain,
+            sigilId,
+            traffic: flags.traffic,
+          },
         });
 
         if (flags.output === "json") {
@@ -429,6 +492,7 @@ export class ErrorCommand {
             ["Range", insights.range],
             ["Traffic", insights.traffic],
             ["Since", insights.since],
+            ["Until", insights.until],
           ],
           sections: [
             ...(wanted.includes("errors")
@@ -459,13 +523,7 @@ export class ErrorCommand {
               ? [
                   {
                     title: "Analytics",
-                    lines: [
-                      `${insights.totals.visitors ?? "-"} visitors, ${insights.totals.visits ?? "-"} visits, ${insights.totals.views ?? 0} views`,
-                      ...insights.leaderboards.path.map(
-                        (row) =>
-                          `${row.value}  ${row.visitors ?? "-"} visitors  ${row.views} views`,
-                      ),
-                    ],
+                    lines: this.analyticsLines(insights),
                   },
                 ]
               : []),
@@ -474,6 +532,49 @@ export class ErrorCommand {
       });
     },
   });
+
+  /**
+   * The analytics segment as text: the totals, what makes visitors a sum,
+   * the timeline and the pages board.
+   */
+  protected analyticsLines(
+    insights: Awaited<ReturnType<InsightsController["getInsights"]["run"]>>,
+  ): string[] {
+    const t = insights.totals;
+    const pct = (value: number | null) =>
+      value === null ? "-" : `${Math.round(value * 100)}%`;
+    const lines = [
+      `${t.visitors ?? "-"} visitors, ${t.visits ?? "-"} visits, ${t.views ?? 0} views`,
+      `bounce ${pct(t.bounceRate)}, engaged ${pct(t.engagedRate)}, ${t.avgVisitSeconds === null ? "-" : Math.round(t.avgVisitSeconds)} s a visit, ${t.pagesPerVisit === null ? "-" : t.pagesPerVisit.toFixed(1)} pages a visit`,
+    ];
+    if (insights.visitorsSpanPeriods || insights.visitorsSpanApps) {
+      lines.push(
+        `visitors are a sum: ${[
+          insights.visitorsSpanPeriods ? "the window crosses a period" : "",
+          insights.visitorsSpanApps ? "several apps" : "",
+        ]
+          .filter(Boolean)
+          .join(", ")}`,
+      );
+    }
+    if (insights.visitorsFrom) {
+      lines.push(`visitors counted from ${insights.visitorsFrom}`);
+    }
+    if (insights.peopleOnly) {
+      lines.push("visitors and visits are people only; views count bots too");
+    }
+    lines.push(
+      `timeline (${insights.grain}): ${insights.timeline
+        .map((b) => `${b.bucket} ${b.visitors ?? "-"}/${b.views}`)
+        .join("  ")}`,
+    );
+    for (const row of insights.leaderboards.path) {
+      lines.push(
+        `${row.value}  ${row.visitors ?? "-"} visitors  ${row.views} views`,
+      );
+    }
+    return lines;
+  }
 
   public readonly insights = $command({
     name: "insights",

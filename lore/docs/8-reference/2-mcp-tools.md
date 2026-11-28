@@ -271,23 +271,23 @@ webhook channel and react in whatever it calls. See
 See [Apps and instances](/lore/docs/ship-instances) and
 [Telemetry](/lore/docs/ship-telemetry).
 
-| Tool                  | What it does                                                                       |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| `app_instance_list`   | Every deployed copy and what it has unlocked, plus the distinct app names.         |
-| `app_instance_get`    | One copy, by app and environment.                                                  |
-| `app_instance_create` | Track a copy. Nothing is minted.                                                   |
-| `app_instance_update` | Rename it, pin its address, or point it at a host lent to the project.             |
-| `app_instance_delete` | Remove the copy and its sigil. It undeploys nothing, and is refused while it runs. |
-| `sigil_list`          | Every sigil, its copy, and when it last reported.                                  |
-| `sigil_create`        | Mint a copy's key. The token is shown once.                                        |
-| `sigil_rotate`        | Replace a leaked key and keep the history.                                         |
-| `sigil_delete`        | Remove a key and what it reported, errors aside. This cannot be undone.            |
-| `insights_read`       | Analytics, Web Vitals and the error budget, over 1, 7 or 30 days.                  |
-| `error_list`          | The open errors; `include_resolved` for the rest.                                  |
-| `error_get`           | One error whole: its apps, quest, matching ignore rules, 30 days and thread.       |
-| `error_comment_add`   | Comment on an error's thread. Pass `as` to say which agent wrote it.               |
-| `error_resolve`       | Close an error. A later report does not reopen it.                                 |
-| `error_forward`       | Turn an error into a new quest, or link one already filed with `quest_shortId`.    |
+| Tool                  | What it does                                                                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `app_instance_list`   | Every deployed copy and what it has unlocked, plus the distinct app names.                                                                 |
+| `app_instance_get`    | One copy, by app and environment.                                                                                                          |
+| `app_instance_create` | Track a copy. Nothing is minted.                                                                                                           |
+| `app_instance_update` | Rename it, pin its address, or point it at a host lent to the project.                                                                     |
+| `app_instance_delete` | Remove the copy and its sigil. It undeploys nothing, and is refused while it runs.                                                         |
+| `sigil_list`          | Every sigil, its copy, and when it last reported.                                                                                          |
+| `sigil_create`        | Mint a copy's key. The token is shown once.                                                                                                |
+| `sigil_rotate`        | Replace a leaked key and keep the history.                                                                                                 |
+| `sigil_delete`        | Remove a key and what it reported, errors aside. This cannot be undone.                                                                    |
+| `insights_read`       | Visitors, visits and views, Web Vitals and the error budget, over a preset or a custom window, for the project or one copy (`app`, `env`). |
+| `error_list`          | The open errors; `include_resolved` for the rest.                                                                                          |
+| `error_get`           | One error whole: its apps, quest, matching ignore rules, 30 days and thread.                                                               |
+| `error_comment_add`   | Comment on an error's thread. Pass `as` to say which agent wrote it.                                                                       |
+| `error_resolve`       | Close an error. A later report does not reopen it.                                                                                         |
+| `error_forward`       | Turn an error into a new quest, or link one already filed with `quest_shortId`.                                                            |
 
 ## Uptime
 
