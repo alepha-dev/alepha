@@ -7,6 +7,7 @@ import {
   fireEvent,
   render,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
@@ -415,16 +416,51 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     expect(width()).toBe("320px");
   });
 
-  it("shows the status filter with no visible label, named by its aria-label (#Q4324)", async ({
+  it("shows the status filter as three icon segments, no text, each named by its aria-label and a tooltip (#Q4564)", async ({
     expect,
   }) => {
     const alepha = await mount();
     const rendered = view(alepha);
-    const trigger = await rendered.findByTestId("feedback-status-filter");
-    expect(trigger.getAttribute("aria-label")).toBe("feedback.filter.label");
-    const band = trigger.closest("span")?.parentElement as HTMLElement;
+    const filter = await rendered.findByTestId("feedback-status-filter");
+    expect(filter.getAttribute("role")).toBe("radiogroup");
+    expect(filter.getAttribute("aria-label")).toBe("feedback.filter.label");
+    expect(filter.textContent).toBe("");
+    const radios = within(filter).getAllByRole("radio");
+    // The triage order, and the icons the rows and the empty state wear.
+    expect(radios.map((radio) => radio.getAttribute("aria-label"))).toEqual([
+      "feedback.filter.pending",
+      "feedback.filter.accepted",
+      "feedback.filter.rejected",
+    ]);
+    expect(
+      radios.map((radio) => radio.querySelector("svg")?.getAttribute("class")),
+    ).toEqual([
+      expect.stringContaining("lucide-circle "),
+      expect.stringContaining("lucide-circle-check"),
+      expect.stringContaining("lucide-circle-x"),
+    ]);
+    expect(radios.map((radio) => radio.getAttribute("aria-checked"))).toEqual([
+      "true",
+      "false",
+      "false",
+    ]);
+    // A tooltip, as the band's icon buttons, not the browser's own.
+    expect(radios.every((radio) => !radio.hasAttribute("title"))).toBe(true);
+    fireEvent.pointerEnter(radios[2]!, { pointerType: "mouse" });
+    fireEvent.mouseEnter(radios[2]!);
+    fireEvent.pointerMove(radios[2]!, { pointerType: "mouse" });
+    fireEvent.mouseMove(radios[2]!);
+    await waitFor(
+      () =>
+        expect(
+          [...document.querySelectorAll('[data-slot="tooltip-content"]')].map(
+            (node) => node.textContent,
+          ),
+        ).toContain("feedback.filter.rejected"),
+      { timeout: 2000 },
+    );
+    const band = filter.parentElement as HTMLElement;
     expect(band.querySelector("label")).toBeNull();
-    expect(band.textContent ?? "").not.toMatch(/status\s*\*/i);
   });
 
   it("spaces the header band: 32px controls, 12px padding, 6px between the icon buttons (#Q4449, #Q4508)", async ({
@@ -433,7 +469,7 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     const alepha = await mount();
     const rendered = view(alepha);
     const trigger = await rendered.findByTestId("feedback-status-filter");
-    const band = trigger.closest("span")?.parentElement as HTMLElement;
+    const band = trigger.parentElement as HTMLElement;
     // (56 - 32) / 2 = 12: `px-3` is the inset above, below and to the left
     // of a 32px control. The +, robot and bell are a group of their own,
     // half that apart: `gap-1.5`, 6px (#Q4508).
@@ -488,12 +524,11 @@ describe("ProjectFeedback - loading more at the end of the list", () => {
     const fake = alepha.inject(FakeLinkProvider);
     const rendered = view(alepha);
     const root = rendered.container as HTMLElement;
-    // The status is a select (#Q4289). No locale is loaded here, so a label
-    // renders as its key.
+    // The status is a segmented control of icons (#Q4564), each named by
+    // its label. No locale is loaded here, so a label renders as its key.
     const segment = async (label: string) => {
-      const trigger = await rendered.findByTestId("feedback-status-filter");
-      fireEvent.keyDown(trigger, { key: "ArrowDown" });
-      fireEvent.click(await rendered.findByRole("option", { name: label }));
+      const filter = await rendered.findByTestId("feedback-status-filter");
+      fireEvent.click(within(filter).getByRole("radio", { name: label }));
     };
 
     let release: () => void = () => {};

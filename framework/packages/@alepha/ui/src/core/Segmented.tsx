@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { inlineArrowKey } from "./inlineArrowKey.ts";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./Tooltip.tsx";
 import { cn } from "./utils.ts";
 
 export interface SegmentedOption {
@@ -23,6 +24,13 @@ export interface SegmentedOption {
    * `label` is an icon alone: without it an icon segment names nothing.
    */
   title?: string;
+  /**
+   * The segment's accessible name and a tooltip, drawn as an icon button's
+   * (`Tooltip`) rather than the browser's native one: for an icon-only
+   * segment in a toolbar beside icon buttons that carry theirs. Takes the
+   * place of `title`.
+   */
+  tooltip?: string;
 }
 
 export interface SegmentedProps extends Omit<
@@ -327,7 +335,7 @@ export const Segmented = (props: SegmentedProps) => {
         const showDivider =
           dividers && index > 0 && !active && index - 1 !== activeIndex;
 
-        return (
+        const button = (
           <button
             key={opt.value}
             ref={(el) => {
@@ -341,8 +349,8 @@ export const Segmented = (props: SegmentedProps) => {
             disabled={itemDisabled}
             data-state={active ? "active" : "inactive"}
             data-slot="segmented-item"
-            aria-label={opt.title}
-            title={opt.title}
+            aria-label={opt.tooltip ?? opt.title}
+            title={opt.tooltip ? undefined : opt.title}
             name={name}
             value={opt.value}
             onClick={() => !itemDisabled && handleSelect(opt.value)}
@@ -382,6 +390,13 @@ export const Segmented = (props: SegmentedProps) => {
               </span>
             )}
           </button>
+        );
+        if (!opt.tooltip) return button;
+        return (
+          <Tooltip key={opt.value}>
+            <TooltipTrigger render={button} />
+            <TooltipContent>{opt.tooltip}</TooltipContent>
+          </Tooltip>
         );
       })}
     </div>
