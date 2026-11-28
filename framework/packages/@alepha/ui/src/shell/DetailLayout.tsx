@@ -8,6 +8,7 @@ import type { ComponentType, SVGProps } from "react";
 import { Button } from "../core/Button.tsx";
 import { Segmented } from "../core/Segmented.tsx";
 import { Skeleton } from "../core/Skeleton.tsx";
+import { DetailLayoutTabMenu } from "./DetailLayoutTabMenu.tsx";
 
 type IconType = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -85,7 +86,9 @@ export interface DetailLayoutProps {
  *
  * The aside is hidden below `md`. A phone gets the tabs full width rather than
  * a 288px column and a sliver of content; the same facts are reachable from
- * the tab bodies.
+ * the tab bodies. Below `md` the tab strip is also replaced by a menu button
+ * naming the open tab (`DetailLayoutTabMenu`), and the toolbar wraps the
+ * actions onto a second line when the two do not fit on one.
  *
  * ```tsx
  * const [tab, setTab] = useDetailTab<"overview" | "stock">("overview");
@@ -170,7 +173,11 @@ export const DetailLayout = (props: DetailLayoutProps) => {
           the column is 3160px and `scrollWidth === clientWidth`; with it the
           column is 988px and the body scrolls 2172px. */}
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="bg-background flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        {/* Below `md` the bar may wrap (`min-h-14`, `flex-wrap`, `py-2`): the
+            tab menu and the actions share one line when they fit, and the
+            actions drop to a second one when they do not. From `md` up the
+            classes resolve to the single 56px line this always was. */}
+        <div className="bg-background flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b px-4 py-2 md:h-14 md:flex-nowrap md:py-0">
           {/* `lg` (h-9), not the `sm` (h-7) this started on. The toolbar is
               `h-14`, so at 28px the control filled exactly half of it and
               read as a small thing floating in a tall bar.
@@ -209,8 +216,14 @@ export const DetailLayout = (props: DetailLayoutProps) => {
               `py-1` is not spacing: `overflow-x: auto` makes the computed
               `overflow-y` `auto` too, and without 4px of slack the segment's
               3px focus ring is clipped top and bottom. The row is
-              `items-center` in a fixed 56px bar, so it costs no height. */}
-          <div className="min-w-0 overflow-x-auto py-1">
+              `items-center` in a fixed 56px bar, so it costs no height.
+
+              ⚠️ Below `md` the strip is not rendered at all (#Q4550): at 393px
+              an epic's actions left it 220px, which showed `Over` of
+              `Overview` and put four tabs behind a scroll iOS draws no
+              scrollbar for. The phone gets `DetailLayoutTabMenu` instead,
+              which names the open tab and lists every one at full width. */}
+          <div className="min-w-0 overflow-x-auto py-1 max-md:hidden">
             <Segmented
               size="lg"
               options={options}
@@ -218,8 +231,17 @@ export const DetailLayout = (props: DetailLayoutProps) => {
               onChange={props.onTabChange}
             />
           </div>
+          <DetailLayoutTabMenu
+            className="md:hidden"
+            tabs={props.tabs}
+            tab={props.tab}
+            onTabChange={props.onTabChange}
+          />
+          {/* `max-md:max-w-full max-md:flex-wrap`: on a phone the actions
+              may be wider than the screen on their own, and then wrap
+              inside their line rather than run past its edge. */}
           {props.actions ? (
-            <div className="ms-auto flex shrink-0 items-center gap-2">
+            <div className="ms-auto flex shrink-0 items-center gap-2 max-md:max-w-full max-md:flex-wrap max-md:justify-end">
               {props.actions}
             </div>
           ) : null}

@@ -1882,7 +1882,8 @@ test.describe("Epics - the aside", () => {
 
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`/${slug}/epics/${epic.number}`);
-    await expect(page.getByRole("radio", { name: /^Quests/ })).toBeVisible({
+    // On a phone the tabs are one menu button naming the open tab (#Q4550).
+    await expect(page.locator('[data-slot="detail-tab-menu"]')).toBeVisible({
       timeout: 15_000,
     });
     await expect(page.locator("aside dl")).toBeHidden();
