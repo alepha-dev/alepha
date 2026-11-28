@@ -922,6 +922,7 @@ export default {
 
   "quest.create.submit": "Créer la quête",
   "quest.create.submitAndAccept": "Créer et accepter",
+  "quest.create.submitAsDraft": "Créer en brouillon",
   "quest.create.moreOptions": "Plus d'options de création",
   "quest.create.update": "Modifier la quête",
   "quest.create.priority": "Priorité",
@@ -1115,6 +1116,8 @@ export default {
   "quest.event.unshelved": "a remis la quête en jeu",
   "quest.event.held": "a mis la quête en attente",
   "quest.event.unheld": "a levé la mise en attente",
+  "quest.event.drafted": "a passé la quête en brouillon",
+  "quest.event.readied": "a marqué la quête comme prête",
   "quest.event.updated": "a mis à jour la quête",
   "quest.event.change.priority": "a changé la priorité de $1 à $2",
   "quest.event.change.priorityTo": "a défini la priorité sur $1",
@@ -1243,6 +1246,15 @@ export default {
   "quest.view.actions.unshelve": "Remettre en jeu",
   "quest.view.actions.hold": "Mettre en attente",
   "quest.view.actions.unhold": "Lever l'attente",
+  "quest.view.actions.markReady": "Marquer comme prête",
+  "quest.view.actions.markDraft": "Repasser en brouillon",
+  // A quest of a draft epic: a draft the epic owns, so no per-quest verb.
+  "quest.view.draft.epic": "Brouillon jusqu'à ce que l'épopée $1 soit prête",
+  // Accept on a loose draft: the draft is marked ready first (#E178).
+  "quest.view.acceptDraft.title": "Marquer cette quête comme prête ?",
+  "quest.view.acceptDraft.confirm":
+    "$1 est un brouillon. L'accepter la marque d'abord comme prête.",
+  "quest.view.acceptDraft.confirmButton": "Marquer comme prête et accepter",
   "quest.view.complete.title": "Terminer cette quête",
   "quest.view.complete.description":
     "Laissez un bref résumé de ce qui a été fait : changements, décisions prises, ce qu'un lecteur futur (humain ou IA) doit savoir.",

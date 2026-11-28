@@ -22,7 +22,6 @@ import { Link, useRouter } from "alepha/react/router";
 import {
   ArrowLeft,
   CalendarClock,
-  CircleDot,
   FileText,
   ListChecks,
   Paperclip,
@@ -44,7 +43,11 @@ import {
   questAcceptGate,
 } from "./questAcceptGate.ts";
 import QuestAttachments from "./QuestAttachments.tsx";
-import { QUEST_STATUS_LABEL_KEYS, QUEST_STATUS_TONE } from "./questChips.ts";
+import {
+  QUEST_STATUS_ICON,
+  QUEST_STATUS_LABEL_KEYS,
+  QUEST_STATUS_TONE,
+} from "./questChips.ts";
 import QuestCompletionDialog from "./QuestCompletionDialog.tsx";
 import QuestDescription from "./QuestDescription.tsx";
 import QuestDiscussion from "./QuestDiscussion.tsx";
@@ -232,6 +235,9 @@ const QuestView = (props: QuestViewProps) => {
   // the meaning-to-tone map is shared with the quest table, so a status
   // cannot look like one thing in the list and another here.
   const statusTone = QUEST_STATUS_TONE[quest.metadata.status];
+  // The status's own glyph, as the feedback page's chip wears it, so a
+  // draft's dashed circle survives monochrome (#Q4195, #E178).
+  const StatusIcon = QUEST_STATUS_ICON[quest.metadata.status];
 
   // The due chip. Weekday only while the date is close enough for a weekday
   // to be unambiguous; past a week "Friday" could be any of several, so it
@@ -449,13 +455,59 @@ const QuestView = (props: QuestViewProps) => {
     [questMutations, quest.id, dialog, tr, props.onQuestChange],
   );
 
-  const acceptAction = useAction<[], void>(
+  // Mark as ready and Mark as draft (#E178), a loose quest's own verbs. No
+  // confirm on either: each is the other's undo, and neither touches work
+  // in progress.
+  const readyAction = useAction<[], void>(
     {
       handler: async () => {
-        applyLifecycle(await questMutations.accept(quest.id));
+        applyLifecycle(await questMutations.ready(quest.id));
       },
     },
     [questMutations, quest.id, props.onQuestChange],
+  );
+
+  const draftAction = useAction<[], void>(
+    {
+      handler: async () => {
+        applyLifecycle(await questMutations.draft(quest.id));
+      },
+    },
+    [questMutations, quest.id, props.onQuestChange],
+  );
+
+  // Accept on a loose draft asks first (#E178): the server refuses to accept
+  // a draft, so the page marks it ready and then accepts it, and says so
+  // before it does. A draft of an epic never gets here: its epic withholds
+  // Accept (`questAcceptGate`).
+  const acceptAction = useAction<[], void>(
+    {
+      handler: async () => {
+        if (quest.metadata.status === "draft" && quest.epicId == null) {
+          const ok = await dialog.confirm({
+            title: tr("quest.view.acceptDraft.title"),
+            description: tr("quest.view.acceptDraft.confirm", {
+              args: [formatReference("quest", quest.shortId)],
+            }),
+            confirmLabel: tr("quest.view.acceptDraft.confirmButton"),
+            cancelLabel: tr("common.cancel"),
+          });
+          if (!ok) return;
+          applyLifecycle(await questMutations.ready(quest.id));
+        }
+        applyLifecycle(await questMutations.accept(quest.id));
+      },
+    },
+    [
+      questMutations,
+      quest.id,
+      quest.shortId,
+      quest.epicId,
+      quest.metadata.status,
+      dialog,
+      tr,
+      props.onQuestChange,
+    ],
   );
 
   const completeAction = useAction<
@@ -509,6 +561,8 @@ const QuestView = (props: QuestViewProps) => {
     unshelveAction.loading ||
     holdAction.loading ||
     unholdAction.loading ||
+    readyAction.loading ||
+    draftAction.loading ||
     acceptAction.loading ||
     completing;
 
@@ -548,6 +602,10 @@ const QuestView = (props: QuestViewProps) => {
       onHold={holdQuest.onClick}
       onUnhold={unholdQuest.onClick}
       onUnassign={unassignQuest.onClick}
+      onReady={() => void readyAction.run()}
+      onDraft={() => void draftAction.run()}
+      readyDisabled={busy || !questMutations.can.ready}
+      draftDisabled={busy || !questMutations.can.draft}
       shelveDisabled={shelveQuest.disabled}
       unshelveDisabled={unshelveQuest.disabled}
       holdDisabled={holdQuest.disabled}
@@ -646,7 +704,7 @@ const QuestView = (props: QuestViewProps) => {
               {formatReference("quest", quest.shortId)}
             </span>
             <Badge variant="tint" tone={statusTone}>
-              <CircleDot className="size-3" />
+              <StatusIcon className="size-3" aria-hidden="true" />
               {statusLabel}
             </Badge>
 

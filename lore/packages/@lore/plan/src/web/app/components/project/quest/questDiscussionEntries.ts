@@ -87,7 +87,9 @@ export type QuestEventAction =
   | "objective_waived"
   | "reminder_sent"
   | "shelved"
-  | "unshelved";
+  | "unshelved"
+  | "drafted"
+  | "readied";
 
 /**
  * Builds the feed from what the quest already carries.

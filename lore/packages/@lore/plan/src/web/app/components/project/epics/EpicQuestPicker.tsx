@@ -21,6 +21,7 @@ import { useState } from "react";
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
 import {
+  QUEST_STATUS_ICON,
   QUEST_STATUS_LABEL_KEYS,
   QUEST_STATUS_TONE,
 } from "../quest/questChips.ts";
@@ -131,6 +132,12 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
                   className="shrink-0"
                   data-testid={`epic-quest-picker-status-${q.shortId}`}
                 >
+                  {(() => {
+                    const Icon = QUEST_STATUS_ICON[q.metadata.status];
+                    return (
+                      <Icon className="size-3 shrink-0" aria-hidden="true" />
+                    );
+                  })()}
                   {tr(QUEST_STATUS_LABEL_KEYS[q.metadata.status])}
                 </Badge>
               </CommandItem>

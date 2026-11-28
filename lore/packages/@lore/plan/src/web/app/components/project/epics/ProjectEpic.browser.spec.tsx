@@ -20,6 +20,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import { currentQuestCountAtom } from "../../../atoms/currentQuestCountAtom.ts";
 import { WorkShell } from "../../../shell/WorkShell.ts";
 import ProjectEpic from "./ProjectEpic.tsx";
 
@@ -300,4 +301,90 @@ describe("ProjectEpic, the Edit button", () => {
       expect(edit()).toBeNull();
     },
   );
+});
+
+/**
+ * Marking the epic ready releases its drafts (#Q4373), so the page refreshes
+ * what reads them, as the board does after the same write (#Q4375): the
+ * quest reads and the sidebar's open-quest badge.
+ */
+class ReadyLinkProvider extends FakeLinkProvider {
+  questReads = 0;
+  counts = 0;
+  statuses: string[] = [];
+
+  // matches the real client's own loose virtual-action shape
+  override client(): any {
+    return virtualClientFake({
+      ...super.client(),
+      getQuests: async (request: { query: { status?: string } }) => {
+        if (request.query.status !== "shelved") this.questReads += 1;
+        return { content: [] };
+      },
+      setEpicStatus: async (request: {
+        params: { id: number };
+        body: { status: string };
+      }) => {
+        this.statuses.push(request.body.status);
+        return { ...epicOf(request.params.id), status: request.body.status };
+      },
+      countOpenQuests: async () => {
+        this.counts += 1;
+        return { count: 7 };
+      },
+    });
+  }
+}
+
+describe("ProjectEpic, marking it ready", () => {
+  let alepha: Alepha | undefined;
+
+  beforeAll(() => {
+    setupJsdomMocks();
+  });
+
+  afterEach(async () => {
+    await alepha?.stop();
+    alepha = undefined;
+  });
+
+  it("reads the quests again and recounts the open-quest badge", async () => {
+    alepha = Alepha.create()
+      .with(AlephaLogger)
+      .with(AlephaDateTime)
+      .with({ provide: LinkProvider, use: ReadyLinkProvider })
+      .with(AlephaReact)
+      .with(AlephaReactRouter)
+      .with(AlephaReactI18n)
+      .with(EpicRoutes);
+    alepha.inject(I18n);
+    alepha.inject(ResourceTabRegistry);
+    alepha.inject(WorkShell);
+    alepha.inject(PinnedPromptsSlot);
+    await alepha.start();
+    await alepha.inject(I18nProvider).setLang("en");
+    alepha.store.set(currentProjectAtom, projectFixture());
+    const fake = alepha.inject(ReadyLinkProvider);
+
+    render(
+      <AlephaContext.Provider value={alepha}>
+        <DialogProvider>
+          <ProjectEpic epic={epicOf(5)} />
+        </DialogProvider>
+      </AlephaContext.Provider>,
+    );
+    await waitFor(() => expect(fake.questReads).toBe(1));
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Mark as ready" }),
+    );
+    await screen.findByText("Mark this epic as ready?");
+    const confirm = screen.getAllByRole("button", { name: "Mark as ready" });
+    fireEvent.click(confirm[confirm.length - 1]!);
+
+    await waitFor(() => expect(fake.statuses).toEqual(["ready"]));
+    await waitFor(() => expect(fake.counts).toBe(1));
+    await waitFor(() => expect(fake.questReads).toBe(2));
+    expect(alepha.store.get(currentQuestCountAtom)?.count).toBe(7);
+  });
 });

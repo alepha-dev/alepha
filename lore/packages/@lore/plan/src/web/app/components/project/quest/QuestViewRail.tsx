@@ -9,11 +9,13 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { useClient, useInject, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { useRouter } from "alepha/react/router";
+import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
   ArchiveRestore,
   CalendarClock,
+  Circle,
+  CircleDashed,
   CircleDot,
   Flag,
   Flame,
@@ -54,11 +56,15 @@ export interface QuestViewRailProps {
   onHold: () => void;
   onUnhold: () => void;
   onUnassign: () => void;
+  onReady: () => void;
+  onDraft: () => void;
   shelveDisabled?: boolean;
   unshelveDisabled?: boolean;
   holdDisabled?: boolean;
   unholdDisabled?: boolean;
   unassignDisabled?: boolean;
+  readyDisabled?: boolean;
+  draftDisabled?: boolean;
 }
 
 /**
@@ -128,6 +134,15 @@ const QuestViewRail = (props: QuestViewRailProps) => {
     ownPullRequests.length === 0 && pullRequests.length > 0;
 
   const statusLabel = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
+
+  // Draft by hand on a loose quest only (#E178): a quest filed under an epic
+  // is a draft while its epic is, and the epic is where that changes, so
+  // its page offers neither verb and says where to go instead.
+  const loose = quest.epicId == null;
+  const offerReady = loose && quest.metadata.status === "draft";
+  const offerDraft = loose && quest.metadata.status === "todo";
+  const draftOfEpic =
+    !loose && quest.metadata.status === "draft" ? epic : undefined;
 
   return (
     <div className="flex flex-col">
@@ -306,6 +321,54 @@ const QuestViewRail = (props: QuestViewRailProps) => {
         <div className="flex flex-col gap-1.5 border-t pt-4">
           <QuestViewDuplicateButton quest={quest} />
 
+          {offerReady && (
+            <Button
+              type="button"
+              variant="minimal"
+              className="[&_svg]:text-muted-foreground justify-start gap-3"
+              disabled={props.readyDisabled}
+              onClick={props.onReady}
+            >
+              <Circle className="size-4" />
+              {tr("quest.view.actions.markReady")}
+            </Button>
+          )}
+
+          {offerDraft && (
+            <Button
+              type="button"
+              variant="minimal"
+              className="[&_svg]:text-muted-foreground justify-start gap-3"
+              disabled={props.draftDisabled}
+              onClick={props.onDraft}
+            >
+              <CircleDashed className="size-4" />
+              {tr("quest.view.actions.markDraft")}
+            </Button>
+          )}
+
+          {/* In the verbs' place, the way to the one that applies: the
+              epic's own Mark as ready. A line, not a button, so it does not
+              read as an action this quest has. */}
+          {draftOfEpic && (
+            <Link
+              href={router.path("projectEpic", {
+                params: {
+                  projectSlug: project?.slug ?? "",
+                  epicNumber: String(draftOfEpic.number),
+                },
+              })}
+              title={draftOfEpic.title}
+              data-testid="quest-draft-epic"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-3 px-2.5 py-1.5 text-sm"
+            >
+              <CircleDashed className="size-4 shrink-0" />
+              {tr("quest.view.draft.epic", {
+                args: [String(draftOfEpic.number)],
+              })}
+            </Link>
+          )}
+
           {quest.heldAt ? (
             <Button
               type="button"
@@ -320,8 +383,11 @@ const QuestViewRail = (props: QuestViewRailProps) => {
           ) : (
             // Not offered on a shelved quest: `holdQuest` accepts `todo` and
             // `in_progress` only, and a quest already set aside as out of scope
-            // is not waiting for anything.
-            !quest.shelvedAt && (
+            // is not waiting for anything. Nor on a draft (#E178), which is
+            // not ready, so not waiting on anything either: refused on
+            // `draftAt`, as the server does.
+            !quest.shelvedAt &&
+            !quest.draftAt && (
               <Button
                 type="button"
                 variant="minimal"

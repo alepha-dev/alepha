@@ -109,9 +109,16 @@ const QuestAssigneePicker = (props: QuestAssigneePickerProps) => {
           `px-1`, and `align-top` drops the baseline gap an inline-flex box
           leaves under itself: together they took the row from 34px to the
           rail's 28 (#Q2424). */}
+          {/* Not on a draft (#E178): assigning accepts on someone's behalf,
+              and the server refuses a quest carrying `draftAt` as it
+              refuses Accept. The rail's Mark as ready, or the epic's, comes
+              first. */}
           <DropdownMenuTrigger
             disabled={
-              pending || candidates.length === 0 || !questApi.assignQuest.can()
+              pending ||
+              candidates.length === 0 ||
+              !questApi.assignQuest.can() ||
+              !!quest.draftAt
             }
             data-testid="quest-assignee-picker"
             className="hover:bg-hover -mx-1 -my-0.5 inline-flex items-center gap-1.5 rounded px-1 py-0.5 align-top disabled:opacity-60"

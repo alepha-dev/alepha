@@ -55,6 +55,11 @@ class FakeLinkProvider extends LinkProvider {
    */
   users: Array<{ id: string; username: string }> = [];
 
+  /**
+   * The draft verbs and accept, in the order they were sent (#E178).
+   */
+  calls: string[] = [];
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return virtualClientFake({
@@ -78,7 +83,38 @@ class FakeLinkProvider extends LinkProvider {
       },
       listQuestTags: async () => [],
       getEpicRefs: async () => this.epicRefs,
+      readyQuest: async () => {
+        this.calls.push("ready");
+        return this.status("todo");
+      },
+      draftQuest: async () => {
+        this.calls.push("draft");
+        return {
+          ...this.status("draft"),
+          draftAt: "2026-08-26T10:00:00.000Z",
+        };
+      },
+      acceptQuest: async () => {
+        this.calls.push("accept");
+        return {
+          ...this.status("in_progress"),
+          acceptedAt: "2026-08-26T10:00:00.000Z",
+        };
+      },
     });
+  }
+
+  /**
+   * An unaccepted loose quest in `status`, as a verb answers it.
+   */
+  public status(status: QuestResource["metadata"]["status"]): QuestResource {
+    const quest = this.quest();
+    return {
+      ...quest,
+      acceptedAt: undefined,
+      acceptedBy: undefined,
+      metadata: { ...quest.metadata, status },
+    };
   }
 
   public quest(): QuestResource {
@@ -93,6 +129,7 @@ class FakeLinkProvider extends LinkProvider {
       completedAt: undefined,
       shelvedAt: undefined,
       heldAt: undefined,
+      draftAt: undefined,
       epicId: undefined,
       feedbackId: undefined,
       dueAt: undefined,
@@ -487,5 +524,147 @@ describe("QuestView", () => {
     fireEvent.click(picker);
     await screen.findByTestId("quest-assignee-option");
     expect(screen.queryByTestId("quest-assignee-unassign")).toBeNull();
+  });
+
+  /**
+   * A loose quest's draft verbs sit in the rail, and Accept on a loose draft
+   * marks it ready first, once confirmed. A draft of an epic offers neither
+   * verb and links to the epic, whose status is what decides (#E178).
+   */
+  describe("draft", () => {
+    const mount = async (quest: (fake: FakeLinkProvider) => QuestResource) => {
+      alepha = Alepha.create()
+        .with(AlephaLogger)
+        .with(AlephaDateTime)
+        .with(AlephaFake)
+        .with({ provide: LinkProvider, use: FakeLinkProvider })
+        .with(AlephaReact)
+        .with(AlephaReactRouter)
+        .with(AlephaReactI18n);
+      alepha.inject(Routes);
+      alepha.inject(I18n);
+      alepha.inject(WorkShell);
+      alepha.inject(ResourceRailRegistry);
+      alepha.inject(PinnedPromptsSlot);
+      await alepha.start();
+      await alepha.inject(I18nProvider).setLang("en");
+      alepha.store.set(currentProjectAtom, projectFixture());
+      const fake = alepha.inject(FakeLinkProvider);
+
+      render(
+        <AlephaContext.Provider value={alepha}>
+          <DialogProvider>
+            <QuestView quest={quest(fake)} />
+          </DialogProvider>
+        </AlephaContext.Provider>,
+      );
+      return fake;
+    };
+
+    const looseDraft = (fake: FakeLinkProvider): QuestResource => ({
+      ...fake.status("draft"),
+      draftAt: "2026-08-26T10:00:00.000Z",
+    });
+
+    it("offers Mark as ready on a loose draft, and no hold", async () => {
+      const fake = await mount(looseDraft);
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Mark as ready" }),
+      );
+
+      await screen.findByRole("button", { name: "Mark as draft" });
+      expect(fake.calls).toEqual(["ready"]);
+      expect(screen.queryByRole("button", { name: "Mark as ready" })).toBe(
+        null,
+      );
+    });
+
+    it("hides Put on hold on a draft, which the server refuses", async () => {
+      await mount(looseDraft);
+
+      await screen.findByRole("button", { name: "Mark as ready" });
+      expect(screen.queryByRole("button", { name: "Put on hold" })).toBe(null);
+    });
+
+    it("disables the Assigned picker on a draft, which cannot be assigned", async () => {
+      await mount((fake) => {
+        fake.users = [
+          { id: "00000000-0000-4000-8000-0000000000a1", username: "ada" },
+        ];
+        return looseDraft(fake);
+      });
+
+      const picker = await screen.findByTestId("quest-assignee-picker");
+      expect((picker as HTMLButtonElement).disabled).toBe(true);
+
+      // Marked ready, the same member list makes it pickable: the draft was
+      // what held it.
+      fireEvent.click(screen.getByRole("button", { name: "Mark as ready" }));
+      await waitFor(() =>
+        expect(
+          (screen.getByTestId("quest-assignee-picker") as HTMLButtonElement)
+            .disabled,
+        ).toBe(false),
+      );
+    });
+
+    it("offers Mark as draft on a loose to-do quest", async () => {
+      const fake = await mount((it) => it.status("todo"));
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Mark as draft" }),
+      );
+
+      await screen.findByRole("button", { name: "Mark as ready" });
+      expect(fake.calls).toEqual(["draft"]);
+    });
+
+    it("confirms before Accept marks a loose draft ready, then accepts it", async () => {
+      const fake = await mount(looseDraft);
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Accept the quest" }),
+      );
+      const confirm = await screen.findByRole("alertdialog");
+      expect(confirm.textContent).toContain("Mark this quest as ready?");
+      fireEvent.click(
+        within(confirm).getByRole("button", {
+          name: "Mark as ready and accept",
+        }),
+      );
+
+      await waitFor(() => expect(fake.calls).toEqual(["ready", "accept"]));
+    });
+
+    it("sends nothing when the Accept confirm is cancelled", async () => {
+      const fake = await mount(looseDraft);
+
+      fireEvent.click(
+        await screen.findByRole("button", { name: "Accept the quest" }),
+      );
+      const confirm = await screen.findByRole("alertdialog");
+      fireEvent.click(within(confirm).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => expect(screen.queryByRole("alertdialog")).toBe(null));
+      expect(fake.calls).toEqual([]);
+    });
+
+    it("links a draft of an epic to its epic, with no per-quest verb", async () => {
+      await mount((fake) => {
+        fake.epicRefs = [{ id: 7, number: 7, title: "Plan", status: "draft" }];
+        return { ...looseDraft(fake), epicId: 7 };
+      });
+
+      const line = await screen.findByTestId("quest-draft-epic");
+      expect(line.textContent).toBe("Draft until Epic 7 is ready");
+      expect(line.getAttribute("href")).toBe("/epics/7");
+      expect(screen.queryByRole("button", { name: "Mark as ready" })).toBe(
+        null,
+      );
+      expect(screen.queryByRole("button", { name: "Mark as draft" })).toBe(
+        null,
+      );
+    });
   });
 });

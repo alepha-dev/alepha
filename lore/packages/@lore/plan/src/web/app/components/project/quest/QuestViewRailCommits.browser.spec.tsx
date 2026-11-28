@@ -128,6 +128,8 @@ describe("QuestViewRail commits", () => {
           onHold={() => {}}
           onUnhold={() => {}}
           onUnassign={() => {}}
+          onReady={() => {}}
+          onDraft={() => {}}
         />
       </AlephaContext.Provider>,
     );

@@ -131,6 +131,8 @@ describe("QuestViewRail pull requests", () => {
           onHold={() => {}}
           onUnhold={() => {}}
           onUnassign={() => {}}
+          onReady={() => {}}
+          onDraft={() => {}}
         />
       </AlephaContext.Provider>,
     );

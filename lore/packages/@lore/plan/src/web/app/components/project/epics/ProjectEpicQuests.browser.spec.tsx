@@ -339,4 +339,32 @@ describe("ProjectEpicQuests - columns", () => {
     await waitFor(() => expect(created).toEqual([99]));
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
   });
+
+  /**
+   * A draft wears its own chip here (#E178), and the create sheet files
+   * into the epic, so it never offers "Create as draft": the epic decides.
+   */
+  it("shows a draft's chip, and creates with no Create as draft", async () => {
+    const draft = {
+      ...questOf(13, "Sketch the thing", "low"),
+      draftAt: "2026-09-01T10:00:00.000Z",
+      metadata: {
+        ...questOf(13, "Sketch the thing", "low").metadata,
+        status: "draft",
+      },
+    } as QuestResource;
+    const { view } = await mount([draft]);
+
+    expect(view.getByText("Draft")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "New quest" }));
+    const sheet = await view.findByRole("dialog");
+    fireEvent.click(
+      await within(sheet).findByRole("button", { name: "More create options" }),
+    );
+    await screen.findAllByRole("menuitem");
+    expect(screen.getAllByRole("menuitem").map((it) => it.textContent)).toEqual(
+      ["Create and accept"],
+    );
+  });
 });

@@ -13,6 +13,8 @@ import {
   ArchiveRestore,
   BellRing,
   CheckSquare,
+  Circle,
+  CircleDashed,
   type LucideIcon,
   PauseCircle,
   Pencil,
@@ -279,6 +281,10 @@ const ICONS: Record<string, LucideIcon> = {
   unshelved: ArchiveRestore,
   held: PauseCircle,
   unheld: PlayCircle,
+  // The status chip's own glyphs (#E178): dashed while a draft, whole once
+  // it is ready to be taken.
+  drafted: CircleDashed,
+  readied: Circle,
   updated: Pencil,
 };
 
@@ -295,6 +301,8 @@ const PREDICATE_KEYS: Record<
   | "quest.event.unshelved"
   | "quest.event.held"
   | "quest.event.unheld"
+  | "quest.event.drafted"
+  | "quest.event.readied"
   | "quest.event.updated"
 > = {
   created: "quest.event.created",
@@ -312,6 +320,10 @@ const PREDICATE_KEYS: Record<
   // this event rather than as text on it.
   held: "quest.event.held",
   unheld: "quest.event.unheld",
+  // Written by `QuestDraftService` (#E178) when a loose quest is marked
+  // draft or ready.
+  drafted: "quest.event.drafted",
+  readied: "quest.event.readied",
   updated: "quest.event.updated",
 };
 
