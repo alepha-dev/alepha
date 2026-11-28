@@ -47,9 +47,9 @@ const stampFor = async (request: {
   await ctrl.ingest.options.handler({
     body: { views: [{ path: "/" }] },
     user: request.user,
+    ip: request.ip ?? "1.2.3.4",
     headers: {
       host: request.host ?? "app.example.com",
-      "cf-connecting-ip": request.ip ?? "1.2.3.4",
       "user-agent": request.ua ?? "UA",
     },
   } as any);

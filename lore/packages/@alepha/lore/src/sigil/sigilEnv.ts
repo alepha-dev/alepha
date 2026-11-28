@@ -28,11 +28,14 @@ export const SIGIL_DEFAULT_SINK = "https://lore.alepha.app";
  * entirely optional. See {@link sigilConfig} for why the switches belong
  * together and why they are not fetched from the sink.
  *
+ * `SIGIL_SALT_ROTATION` picks how long a visitor hash lives (a month by
+ * default), see `sigilVisitorPeriod`.
+ *
  * `SIGIL_SALT` is an override, not a requirement. The visitor salt falls back
  * to `APP_SECRET`, which Alepha already refuses to leave at its built-in
  * default in production, so the hash is unguessable with no configuration at
  * all. Set this only to decouple the two: rotating `APP_SECRET` otherwise
- * restarts the day's unique count, which is academic given that rotation also
+ * restarts the period's visitor count, which is academic given that rotation also
  * invalidates every session.
  *
  * @example
@@ -87,6 +90,19 @@ export const sigilEnv = z.object({
   SIGIL_SALT: z.text({
     default: "",
     description:
-      "Overrides the secret salting the daily visitor hash - server-only. Falls back to APP_SECRET when unset.",
+      "Overrides the secret salting the visitor hash - server-only. Falls back to APP_SECRET when unset.",
   }),
+  /**
+   * How long one visitor hash lives: a UTC calendar `month` (the default),
+   * an ISO `week` or a UTC `day`. A visitor is counted once per period, so a
+   * month is what makes a monthly visitor count exact; a shorter period
+   * trades that for an identifier that lives less long.
+   */
+  SIGIL_SALT_ROTATION: z
+    .enum(["month", "week", "day"])
+    .meta({ lowercase: true, secret: false })
+    .describe(
+      "Period of the visitor hash: month (default), week or day, all UTC.",
+    )
+    .default("month"),
 });

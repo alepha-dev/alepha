@@ -562,7 +562,7 @@ export class SigilSinkProvider {
    * wrong one.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}\u0000${stamp.auth ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.visitorPeriod ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}\u0000${stamp.auth ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -774,6 +774,12 @@ export class SigilSinkProvider {
 export interface SigilStamp {
   country?: string;
   visitor?: string;
+  /**
+   * The period `visitor` belongs to. In the batch key: two hashes of two
+   * periods are two visitors, and a flush spanning a period boundary must
+   * not send one under the other's period.
+   */
+  visitorPeriod?: string;
   device?: string;
   /**
    * `bot` | `human`, from the user-agent. See {@link sigilTrafficKind} for what
