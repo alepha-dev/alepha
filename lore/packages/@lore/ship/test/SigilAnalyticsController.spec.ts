@@ -116,9 +116,11 @@ describe("SigilAnalyticsController", () => {
 
     // A census, so a dataset added without a thought about the per-app
     // Explore panel is a red test rather than a silent third entry.
-    // `sigil_errors` joined on 2026-09-04 (feedback #2085).
+    // `sigil_errors` joined on 2026-09-04 (feedback #2085), and the page
+    // view log `sigil_pageviews` on 2026-11-28 (#E179).
     expect(list.map((entry) => entry.name).sort()).toEqual([
       "sigil_errors",
+      "sigil_pageviews",
       "sigil_requests",
       "sigil_views",
       "sigil_vitals",

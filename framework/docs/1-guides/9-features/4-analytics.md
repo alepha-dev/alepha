@@ -381,8 +381,15 @@ class Traffic {
     keep: "90d",
   });
 
-  async onView(appId: string, sessionId: string, path: string, country: string) {
-    await this.pageviews.append([{ appId, sessionId, path, country, views: 1 }]);
+  async onView(
+    appId: string,
+    sessionId: string,
+    path: string,
+    country: string,
+  ) {
+    await this.pageviews.append([
+      { appId, sessionId, path, country, views: 1 },
+    ]);
   }
 
   // How many different visitors read each page this month, from France.
@@ -443,6 +450,13 @@ value whatever its length, so D1's limit of 100 bound parameters never applies.
 
 On an app bound to Workers Analytics Engine, datasets go to Analytics Engine and event logs stay
 on the relational database: Analytics Engine samples, and an event log promises every row.
+
+### In the admin explorer
+
+`AlephaApiAnalyticsAdmin` lists every event log beside the datasets. Its columns are offered both
+as dimensions and as measures: `count(events)` counts rows, `distinct(<column>)` counts distinct
+values, and a numeric column also takes `sum`, `min` and `max`. It groups by `week` and `month` as
+well as `hour` and `day`.
 
 ## The histogram pattern
 
@@ -601,9 +615,14 @@ The hourly sweep that actually folds and prunes rows lives in a **separate modul
 
 ```typescript
 import { Alepha } from "alepha";
-import { AlephaApiAnalytics, AlephaApiAnalyticsRollup } from "alepha/api/analytics";
+import {
+  AlephaApiAnalytics,
+  AlephaApiAnalyticsRollup,
+} from "alepha/api/analytics";
 
-const alepha = Alepha.create().with(AlephaApiAnalytics).with(AlephaApiAnalyticsRollup);
+const alepha = Alepha.create()
+  .with(AlephaApiAnalytics)
+  .with(AlephaApiAnalyticsRollup);
 ```
 
 Forgetting `AlephaApiAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
@@ -861,7 +880,8 @@ so the same panel can point at this controller instead of the admin one:
     listDatasets: () => client.listTenantDatasets({ params }),
     queryDataset: (dataset, body) =>
       client.queryTenantDataset({ params: { ...params, name: dataset }, body }),
-    path: (dataset) => `/api/tenants/${tenantId}/analytics/datasets/${dataset}/query`,
+    path: (dataset) =>
+      `/api/tenants/${tenantId}/analytics/datasets/${dataset}/query`,
   }}
 />
 ```

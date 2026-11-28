@@ -37,12 +37,14 @@ describe("Lore admin analytics surface", () => {
     // reads. `mcp_calls` joined on 2026-09-20 too (#E65 again): what the MCP
     // surface is asked for, keyed by tool, and the first dataset here whose
     // events exist nowhere else in the app at all - a tool READ leaves no
-    // row in any entity table.
+    // row in any entity table. `sigil_pageviews` joined on 2026-11-28
+    // (#E179): the page view log, the first event log here.
     expect(names).toEqual([
       "host_stats",
       "mcp_calls",
       "project_activity",
       "sigil_errors",
+      "sigil_pageviews",
       "sigil_requests",
       "sigil_views",
       "sigil_vitals",

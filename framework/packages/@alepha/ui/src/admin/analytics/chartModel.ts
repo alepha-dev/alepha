@@ -178,7 +178,11 @@ export const analyticsAggregate = (
 };
 
 const isTimeGrain = (key: string): boolean =>
-  key === "day" || key === "hour" || key === "minute";
+  key === "day" ||
+  key === "hour" ||
+  key === "minute" ||
+  key === "week" ||
+  key === "month";
 
 /**
  * `2026-08-21` becomes `08-21`, `2026-08-21T14` becomes `08-21 14h`. The year
@@ -186,7 +190,7 @@ const isTimeGrain = (key: string): boolean =>
  * only noise.
  */
 const axisLabel = (key: string, value: string): string => {
-  if (key === "day") return value.slice(5);
+  if (key === "day" || key === "week") return value.slice(5);
   if (key === "hour") return `${value.slice(5).replace("T", " ")}h`;
   if (key === "minute") return value.slice(5).replace("T", " ");
   return value;

@@ -14,6 +14,7 @@ import {
   analyticsMeasures,
   analyticsRequestBody,
   analyticsSelect,
+  analyticsTimeGrains,
   analyticsToday,
   analyticsWhere,
   analyticsWindow,
@@ -82,7 +83,10 @@ describe("analyticsWindow", () => {
   it("includes the partial day when until is today", () => {
     expect(
       analyticsWindow(analyticsToday(NOW), state({ untilMode: "today" })),
-    ).toEqual({ from: "2026-07-23", to: "2026-08-21" });
+    ).toEqual({
+      from: "2026-07-23",
+      to: "2026-08-21",
+    });
   });
 
   it("steps the baseline back by a whole window, with no gap", () => {
@@ -97,7 +101,10 @@ describe("analyticsWindow", () => {
   it("steps the baseline back a year when comparing to last year", () => {
     expect(
       analyticsWindow(analyticsToday(NOW), state({ compare: "lastYear" }), 1),
-    ).toEqual({ from: "2025-07-22", to: "2025-08-20" });
+    ).toEqual({
+      from: "2025-07-22",
+      to: "2025-08-20",
+    });
   });
 
   it("keeps the window the length it was asked for", () => {
@@ -452,5 +459,57 @@ describe("analyticsWindowLabel", () => {
     expect(analyticsWindowLabel(window, "rtl")).toBe(
       "\u20672026-07-22 \u2190 2026-08-20\u2069",
     );
+  });
+});
+
+describe("event logs", () => {
+  const pageviews: AdminDatasetDescriptor = {
+    kind: "eventLog",
+    name: "pageviews",
+    index: "appId",
+    dimensions: { properties: { appId: {}, sessionId: {}, views: {} } },
+    measures: {
+      properties: { events: {}, appId: {}, sessionId: {}, views: {} },
+    },
+    folds: {
+      events: ["count"],
+      appId: ["distinct"],
+      sessionId: ["distinct"],
+      views: ["sum", "min", "max", "distinct"],
+    },
+    resolution: "1h",
+    retention: [{ resolution: "1h", keep: "90d" }],
+  };
+
+  it("groups by week and month as well as hour and day", () => {
+    expect(analyticsTimeGrains(pageviews)).toEqual([
+      "hour",
+      "day",
+      "week",
+      "month",
+    ]);
+    expect(analyticsTimeGrains(views)).toEqual(["hour", "day"]);
+  });
+
+  it("opens on its row count rather than every measure it offers", () => {
+    expect(analyticsActiveMeasures(pageviews, { measures: null })).toEqual([
+      "events_count",
+    ]);
+    expect(
+      analyticsActiveMeasures(pageviews, { measures: ["sessionId_distinct"] }),
+    ).toEqual(["sessionId_distinct"]);
+  });
+
+  it("offers a distinct count of a column and asks for it by name", () => {
+    expect(analyticsMeasures(pageviews)).toContain("sessionId_distinct");
+    expect(analyticsKeyLabel(pageviews, "sessionId_distinct")).toBe(
+      "distinct(sessionId)",
+    );
+    expect(
+      analyticsSelect(pageviews, ["events_count", "sessionId_distinct"]),
+    ).toEqual({
+      events: ["count"],
+      sessionId: ["distinct"],
+    });
   });
 });

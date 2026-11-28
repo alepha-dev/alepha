@@ -36,6 +36,7 @@ export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/adminAnalyticsQuerySchema.ts";
 export * from "./schemas/adminAnalyticsResultSchema.ts";
 export * from "./schemas/adminDatasetSchema.ts";
+export * from "./schemas/adminFoldSchema.ts";
 export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsFoldSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";

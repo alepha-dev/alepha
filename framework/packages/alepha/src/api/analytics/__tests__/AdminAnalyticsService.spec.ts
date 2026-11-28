@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 // const is what tags `$analytics` with `AlephaApiAnalytics`, whose `register()`
 // binds `MemoryAnalyticsProvider` in test mode. Importing the primitive
 // directly leaves the abstract `AnalyticsProvider` seam unbound.
-import { $analytics } from "../index.ts";
+import { $analytics, $eventLog } from "../index.ts";
 import { AdminAnalyticsService } from "../services/AdminAnalyticsService.ts";
 
 class TestDatasets {
@@ -305,5 +305,86 @@ describe("AdminAnalyticsService", () => {
         ),
       ).rejects.toThrow(NotFoundError);
     });
+  });
+});
+
+describe("AdminAnalyticsService event logs", () => {
+  class Logs {
+    public readonly pageviews = $eventLog({
+      index: "appId",
+      schema: z.object({
+        appId: z.text(),
+        sessionId: z.text(),
+        views: z.integer(),
+      }),
+      keep: "90d",
+    });
+  }
+
+  const boot = async () => {
+    const alepha = Alepha.create();
+    const logs = alepha.inject(Logs);
+    const service = alepha.inject(AdminAnalyticsService);
+    await alepha.start();
+    return { logs, service };
+  };
+
+  it("lists an event log with its columns, its distinct folds and its keep window", async () => {
+    const { service } = await boot();
+    const found = service
+      .listDatasets()
+      .find((descriptor) => descriptor.kind === "eventLog");
+    expect(found?.name).toBe("pageviews");
+    const log = found as NonNullable<typeof found>;
+    expect(Object.keys(log.dimensions.properties)).toEqual([
+      "appId",
+      "sessionId",
+      "views",
+    ]);
+    expect(log.folds).toEqual({
+      events: ["count"],
+      appId: ["distinct"],
+      sessionId: ["distinct"],
+      views: ["sum", "min", "max", "distinct"],
+    });
+    expect(log.retention).toEqual([{ resolution: "1h", keep: "90d" }]);
+  });
+
+  it("runs a distinct measure grouped by week", async () => {
+    const { logs, service } = await boot();
+    await logs.pageviews.append([
+      { appId: "a", sessionId: "s1", views: 1 },
+      { appId: "a", sessionId: "s1", views: 1 },
+      { appId: "a", sessionId: "s2", views: 1 },
+    ]);
+    const result = await service.queryDataset("pageviews", {
+      since: "2000-01-01",
+      groupBy: ["week"],
+      select: { sessionId: ["distinct"], events: ["count"], views: "sum" },
+    });
+    expect(result.estimated).toBe(false);
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0]).toMatchObject({
+      sessionId_distinct: 2,
+      events_count: 3,
+      views: 3,
+    });
+  });
+
+  it("refuses a fold the column does not offer and a column it does not have", async () => {
+    const { service } = await boot();
+    await expect(
+      service.queryDataset("pageviews", {
+        since: "2000-01-01",
+        select: { sessionId: "sum" },
+      }),
+    ).rejects.toThrow(BadRequestError);
+    await expect(
+      service.queryDataset("pageviews", {
+        since: "2000-01-01",
+        groupBy: ["nope"],
+        select: { events: "count" },
+      }),
+    ).rejects.toThrow(BadRequestError);
   });
 });
