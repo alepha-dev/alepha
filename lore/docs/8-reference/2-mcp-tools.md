@@ -353,6 +353,23 @@ the project has it off; the `job_*` tools do not.
 | `job_list`, `job_get`, `job_cancel`     | The project's jobs, one job with its prompt, args, cause, reply and log, and stopping one.                                                                                                                                    |
 | `job_poke`                              | A message to a running Claude Code job, read after the tool call it runs; without `message`, the Wake up preset.                                                                                                              |
 
+## GitHub
+
+See [GitHub](/lore/docs/project-github). Connecting and disconnecting need
+`project:update`, trusting a pull request `quest:update`, and starting,
+re-running or cancelling a workflow `deploy:workflow`. Called with an agent
+job's own key, every workflow write is refused.
+
+| Tool                                  | What it does                                                                               |
+| ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `github_status`                       | Whether the instance offers GitHub, and the repository the project is connected to.        |
+| `github_install`                      | The App's install link for the project, for a person to open in a browser.                 |
+| `github_connect`, `github_disconnect` | Connect a repository of an installation a member already connected through; disconnect it. |
+| `pull_request_trust`                  | Trust a pull request from outside the team, so prompt triggers act on it.                  |
+| `workflow_list`                       | The workflows that declare `workflow_dispatch`, with their inputs, and the recent runs.    |
+| `workflow_run`                        | Start a workflow on a branch or tag, its `inputs` checked against what it declares.        |
+| `workflow_rerun`, `workflow_cancel`   | Re-run a run, or only its failed jobs with `failed_only`; cancel one.                      |
+
 ## What has no tool
 
 Some of Lore is not reachable over MCP. Reach for the page or the

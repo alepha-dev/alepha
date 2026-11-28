@@ -735,6 +735,24 @@ repository; elsewhere from git, and `main` when nothing names it. A project
 that deploys through Lore needs nothing more: `lore artifacts push` records the
 same quests.
 
+## GitHub
+
+See [GitHub](/lore/docs/project-github).
+
+| Command                       | What it does                                                                                     | Flags                                                                           |
+| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `lore github status`          | Whether the instance offers GitHub, and the project's repository.                                |                                                                                 |
+| `lore github install`         | The App's install link for the project, to open in a browser.                                    |                                                                                 |
+| `lore github connect`         | Connect a repository of an installation a member already connected through.                      | `--installation-id`, `--repository-id` (both required)                          |
+| `lore github disconnect`      | Disconnect the project's repository.                                                             |                                                                                 |
+| `lore github app`             | The instance's GitHub App: its source, slug, install link and webhook (an instance admin's key). |                                                                                 |
+| `lore github rotate`          | Replace the stored App's private key, webhook secret or client secret (an instance admin's key). | `--private-key`, `--webhook-secret`, `--client-secret`, each as `@file` or `@-` |
+| `lore pull-request trust <n>` | Trust a pull request from outside the team, so prompt triggers act on it.                        |                                                                                 |
+| `lore workflow list`          | The workflows that declare `workflow_dispatch`, with their inputs, and the recent runs.          |                                                                                 |
+| `lore workflow run`           | Start a workflow on a branch or tag.                                                             | `--workflow-id`, `--ref` (both required), `--inputs name=value`, repeated       |
+| `lore workflow rerun`         | Re-run a run, or only its failed jobs.                                                           | `--run-id` (required), `--failed-only`                                          |
+| `lore workflow cancel`        | Cancel a run.                                                                                    | `--run-id` (required)                                                           |
+
 ## Container registries
 
 A project stores one credential per registry host. Private images are pulled

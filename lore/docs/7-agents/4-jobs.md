@@ -91,8 +91,8 @@ sudo -iu bay-agent gemini
 
 **Install `git` and `gh`.** A job that reads or changes the project's code
 needs the project's repository on GitHub. When the project is connected to
-GitHub (Settings, GitHub), each job carries its own short-lived token, scoped
-to that one repository: Bay fetches the code with it, the job pushes and opens
+[GitHub](/lore/docs/project-github), each job carries its own short-lived
+token, scoped to that one repository: Bay fetches the code with it, the job pushes and opens
 pull requests with it, and its commits are signed by the instance's GitHub App.
 Nothing needs signing in on the host, and the job's page says which credential
 it ran with.

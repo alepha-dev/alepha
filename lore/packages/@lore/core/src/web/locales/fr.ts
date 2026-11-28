@@ -1184,6 +1184,7 @@ export default {
   "pullRequest.checks.failing": "Vérifications en échec",
   "pullRequest.checks.pending": "Vérifications en cours",
   "project.github.title": "GitHub",
+  "project.github.guide": "Le guide GitHub",
   "project.github.notConnected": "Non connecté",
   "project.github.connect": "Connecter GitHub",
   "project.github.reconnect": "Connecter à nouveau",

@@ -7,6 +7,7 @@ import { ExternalLink, GitPullRequest } from "lucide-react";
 import type { AdminGitHubController } from "../../../../../api/controllers/AdminGitHubController.ts";
 import type { ProjectGitHubController } from "../../../../../api/controllers/ProjectGitHubController.ts";
 import { currentProjectAtom } from "../../../atoms/currentProjectAtom.ts";
+import { loreDocsUrl } from "../../../services/docsUrl.ts";
 import type { I18n } from "../../../services/I18n.ts";
 import { canInProject } from "../../../services/projectRank.ts";
 
@@ -85,7 +86,21 @@ const ProjectSettingsGitHubSection = () => {
   const busy = connect.loading || disconnect.loading;
 
   return (
-    <SettingsSection id="github" title={tr("project.github.title")}>
+    <SettingsSection
+      id="github"
+      title={tr("project.github.title")}
+      description={
+        <a
+          href={loreDocsUrl("project-github")}
+          target="_blank"
+          rel="noreferrer"
+          className="text-primary underline-offset-2 hover:underline"
+          data-testid="project-settings-github-guide"
+        >
+          {tr("project.github.guide")}
+        </a>
+      }
+    >
       <CardContent
         data-testid="project-settings-github"
         className="flex flex-col gap-3 px-4 py-3"

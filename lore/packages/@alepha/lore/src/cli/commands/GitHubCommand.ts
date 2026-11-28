@@ -189,6 +189,66 @@ export class GitHubCommand {
     },
   });
 
+  /**
+   * `lore github rotate`: replaces a secret of an App created from the Admin
+   * page. Each value is read from a file or stdin (`@path`, `@-`), never
+   * typed on the command line. An App from the environment is rotated
+   * there.
+   */
+  public readonly rotate = $command({
+    name: "rotate",
+    description:
+      "Replace the stored GitHub App's private key, webhook secret or client secret, each as @file or @- (an instance admin's key)",
+    flags: z.object({
+      privateKey: z
+        .text({
+          atFile: true,
+          description: "The new private key, as @key.pem",
+        })
+        .optional(),
+      webhookSecret: z
+        .text({
+          atFile: true,
+          description: "The new webhook secret, as @file or @- for stdin",
+        })
+        .optional(),
+      clientSecret: z
+        .text({
+          atFile: true,
+          description: "The new client secret, as @file or @- for stdin",
+        })
+        .optional(),
+      ...LoreOutput.FLAGS,
+    }),
+    handler: async ({ flags, print }) => {
+      const body = {
+        ...(flags.privateKey?.trim()
+          ? { privateKey: flags.privateKey.trim() }
+          : {}),
+        ...(flags.webhookSecret?.trim()
+          ? { webhookSecret: flags.webhookSecret.trim() }
+          : {}),
+        ...(flags.clientSecret?.trim()
+          ? { clientSecret: flags.clientSecret.trim() }
+          : {}),
+      };
+      if (Object.keys(body).length === 0) {
+        throw new AlephaError(
+          "Give --private-key @key.pem, --webhook-secret @- or --client-secret @-",
+        );
+      }
+      const context: LoreRefusalContext = {};
+      await this.refusals.guard(context, async () => {
+        const status = await this.admin.rotateGitHubApp({ body });
+        if (flags.output === "json") {
+          this.render.json(print, status);
+          return;
+        }
+        print(`Rotated: ${Object.keys(body).join(", ")}`);
+      });
+    },
+  });
+
   public readonly github = $command({
     name: "github",
     description: "The GitHub App and the repository a project connects",
@@ -198,6 +258,7 @@ export class GitHubCommand {
       this.connect,
       this.disconnect,
       this.app,
+      this.rotate,
     ],
     handler: async ({ help }) => {
       help();

@@ -1192,6 +1192,7 @@ export default {
   "pullRequest.checks.failing": "Checks failing",
   "pullRequest.checks.pending": "Checks running",
   "project.github.title": "GitHub",
+  "project.github.guide": "The GitHub guide",
   "project.github.notConnected": "Not connected",
   "project.github.connect": "Connect GitHub",
   "project.github.reconnect": "Connect again",

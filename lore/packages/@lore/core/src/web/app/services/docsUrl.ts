@@ -28,6 +28,7 @@ const GUIDES = [
   "ship-cloudflare-token",
   "project-dashboard",
   "project-chat-agents",
+  "project-github",
   "plan-releases",
   "plan-personas",
   "plan-use-cases",
