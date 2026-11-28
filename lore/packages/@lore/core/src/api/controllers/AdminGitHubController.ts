@@ -3,12 +3,16 @@ import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { githubAppRotateBodySchema } from "../schemas/githubAppRotateBodySchema.ts";
-import { githubAppStatusSchema } from "../schemas/githubAppStatusSchema.ts";
+import {
+  type GitHubAppStatus,
+  githubAppStatusSchema,
+} from "../schemas/githubAppStatusSchema.ts";
 import { githubDeliveryResourceSchema } from "../schemas/githubDeliveryResourceSchema.ts";
 import { githubManifestCompleteBodySchema } from "../schemas/githubManifestCompleteBodySchema.ts";
 import { githubManifestStartBodySchema } from "../schemas/githubManifestStartBodySchema.ts";
 import { githubManifestStartSchema } from "../schemas/githubManifestStartSchema.ts";
 import { GitHubAppService } from "../services/GitHubAppService.ts";
+import { GitHubClient } from "../services/GitHubClient.ts";
 import { GitHubDeliveryService } from "../services/GitHubDeliveryService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
@@ -25,6 +29,7 @@ export class AdminGitHubController {
   protected readonly apps = $inject(GitHubAppService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly deliveries = $inject(GitHubDeliveryService);
+  protected readonly github = $inject(GitHubClient);
 
   public readonly getGitHubApp = $action({
     method: "GET",
@@ -39,10 +44,11 @@ export class AdminGitHubController {
       // An App from the environment has no row to record a ping on: the
       // last signed delivery says GitHub reaches the URL just as well.
       const last = await this.deliveries.lastReceivedAt();
-      if (last && (!status.webhookPingAt || last > status.webhookPingAt)) {
-        return { ...status, webhookPingAt: last };
-      }
-      return status;
+      const reached =
+        last && (!status.webhookPingAt || last > status.webhookPingAt)
+          ? { ...status, webhookPingAt: last }
+          : status;
+      return { ...reached, ...(await this.settingsOf(reached)) };
     },
   });
 
@@ -75,6 +81,7 @@ export class AdminGitHubController {
         userId: user!.id,
         ...(body.name ? { name: body.name } : {}),
         ...(body.organization ? { organization: body.organization } : {}),
+        ...(body.public === undefined ? {} : { public: body.public }),
       }),
   });
 
@@ -155,4 +162,27 @@ export class AdminGitHubController {
       return { ok: true };
     },
   });
+
+  /**
+   * Where the App's logo is set (#Q4561): its settings page, which depends
+   * on whether a user or an organization owns it. Nothing stored says which,
+   * so GitHub is asked, as the App, on this page's read only. GitHub out of
+   * reach leaves the link out rather than failing the page.
+   */
+  protected async settingsOf(
+    status: GitHubAppStatus,
+  ): Promise<{ settingsUrl?: string }> {
+    if (!status.configured || !status.slug) return {};
+    try {
+      const owner = await this.github.getApp();
+      return {
+        settingsUrl: this.apps.settingsUrl(status.slug, {
+          login: owner.ownerLogin ?? status.ownerLogin,
+          type: owner.ownerType,
+        }),
+      };
+    } catch {
+      return {};
+    }
+  }
 }

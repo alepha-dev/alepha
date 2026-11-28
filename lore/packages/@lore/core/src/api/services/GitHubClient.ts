@@ -144,6 +144,18 @@ export class GitHubClient {
     }
   }
 
+  /**
+   * The App as GitHub has it (#Q4561): who owns it, a user or an
+   * organization, which decides where its settings page lives.
+   */
+  async getApp(): Promise<{ ownerLogin?: string; ownerType?: string }> {
+    const answer = await this.request("GET", "/app", { auth: { as: "app" } });
+    return {
+      ownerLogin: this.text(answer.data?.owner?.login, 100) || undefined,
+      ownerType: this.text(answer.data?.owner?.type, 32) || undefined,
+    };
+  }
+
   async getInstallation(installationId: number): Promise<{
     id: number;
     account?: string;

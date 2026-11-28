@@ -210,6 +210,20 @@ export class GitHubAppService {
     };
   }
 
+  /**
+   * The App's settings page on GitHub (#Q4561), where Display information
+   * takes its logo: GitHub's manifest has no logo field and no API uploads
+   * one. An organization's Apps live under the organization's settings, a
+   * user's under the user's own.
+   */
+  settingsUrl(slug: string, owner: { login?: string; type?: string }): string {
+    const app = encodeURIComponent(slug);
+    if (owner.type === "Organization" && owner.login) {
+      return `https://github.com/organizations/${encodeURIComponent(owner.login)}/settings/apps/${app}`;
+    }
+    return `https://github.com/settings/apps/${app}`;
+  }
+
   installUrl(slug: string): string {
     return `https://github.com/apps/${encodeURIComponent(slug)}/installations/new`;
   }
@@ -217,7 +231,7 @@ export class GitHubAppService {
   /**
    * The manifest GitHub creates the App from.
    */
-  manifest(name: string): Record<string, unknown> {
+  manifest(name: string, isPublic = true): Record<string, unknown> {
     const home = this.url("");
     const webhook = this.url(GitHubAppService.WEBHOOK_PATH);
     const returnTo = this.url(GitHubAppService.MANIFEST_RETURN_PATH);
@@ -241,7 +255,12 @@ export class GitHubAppService {
       // not used.
       request_oauth_on_install: true,
       setup_on_update: false,
-      public: false,
+      // Public by default (#Q4561): GitHub lets only its owner install a
+      // private App, so every project could connect only the owner's
+      // repositories. Public is safe, since a connection still proves the
+      // member's own GitHub account reaches the repository (#Q4362); its cost
+      // is a public App page showing the name and Lore's URL.
+      public: isPublic,
       default_permissions: GitHubAppService.PERMISSIONS,
       default_events: GitHubAppService.EVENTS,
     };
@@ -251,10 +270,11 @@ export class GitHubAppService {
     userId: string;
     name?: string;
     organization?: string;
+    public?: boolean;
   }): Promise<GitHubManifestStart> {
     await this.refuseIfConfigured();
     const name = input.name ?? this.defaultName();
-    const manifest = JSON.stringify(this.manifest(name));
+    const manifest = JSON.stringify(this.manifest(name, input.public ?? true));
     const state = await this.states.issue({
       purpose: "manifest",
       userId: input.userId,

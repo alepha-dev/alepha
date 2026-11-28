@@ -22,6 +22,11 @@ export const githubAppStatusSchema = z.object({
    */
   installUrl: z.string().optional(),
   /**
+   * The App's settings page on GitHub, where its logo is set (#Q4561).
+   * Absent when GitHub could not be asked who owns the App.
+   */
+  settingsUrl: z.string().optional(),
+  /**
    * Where GitHub posts deliveries: `<PUBLIC_URL>/api/github/webhook`.
    * Absent while `PUBLIC_URL` is not set, which also refuses the manifest.
    */
