@@ -11,7 +11,7 @@ import {
 } from "@lore/core/api";
 import { type Project, prioritySchema } from "@lore/core/schemas";
 import { formatReference } from "@lore/core/web";
-import { $inject, createPagination, z } from "alepha";
+import { $inject, AlephaError, createPagination, z } from "alepha";
 import { FileService } from "alepha/api/files";
 import { RankService } from "alepha/api/organizations";
 import { DateTimeProvider } from "alepha/datetime";
@@ -77,6 +77,7 @@ import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
 import { PlanLiveQuests } from "../services/PlanLiveQuests.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
+import { QuestDraftService } from "../services/QuestDraftService.ts";
 import { QuestEditAccess } from "../services/QuestEditAccess.ts";
 import { QuestEventSources } from "../services/QuestEventSources.ts";
 import { QuestJobStamp } from "../services/QuestJobStamp.ts";
@@ -235,6 +236,7 @@ export class QuestController {
   questService = $inject(QuestService);
   deletion = $inject(QuestDeletionService);
   shelving = $inject(QuestShelvingService);
+  drafts = $inject(QuestDraftService);
   areaService = $inject(AreaService);
   releaseAttachment = $inject(ReleaseAttachmentService);
   linkService = $inject(ResourceLinkService);
@@ -390,6 +392,19 @@ export class QuestController {
           `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is on hold. Lift the hold first, then ${action} it.`,
         );
       }
+      // A draft gets its own sentence for the same reason (#E178): it says
+      // what makes the quest workable, rather than which status was wanted.
+      // A quest in an epic is a draft because its epic is, and only the
+      // epic's status releases it: the sentence says so from `epicId` alone,
+      // without reading the epic for its number.
+      if (status === "draft") {
+        const ref = formatReference("quest", quest.shortId);
+        throw new BadRequestError(
+          quest.epicId != null
+            ? `Cannot ${action} quest ${ref}: it is a draft, because its epic is not marked ready yet. Its quests become ready together when the epic is marked ready (epic_set_status, or lore epic set status).`
+            : `Cannot ${action} quest ${ref}: it is a draft, not ready to be taken. Mark it ready first, then ${action} it.`,
+        );
+      }
       const expected = allowed.map((s) => `"${s}"`).join(" or ");
       throw new BadRequestError(
         `Cannot ${action} quest ${formatReference("quest", quest.shortId)}: it is "${status}", expected ${expected}.`,
@@ -497,12 +512,25 @@ export class QuestController {
    */
   protected statusConditions(status: QuestStatus): Record<string, any> {
     switch (status) {
+      case "draft":
+        // ⚠️ Its own case, never the `default` below: that one answers the
+        // shelved quests, so `?status=draft` would list the shelf (#E178).
+        return {
+          draftAt: { isNotNull: true },
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+          shelvedAt: { isNull: true },
+          heldAt: { isNull: true },
+        };
       case "todo":
+        // `draftAt IS NULL`, so To do never returns a row the table shows
+        // with a Draft chip, for the reason `on_hold` gives above.
         return {
           acceptedAt: { isNull: true },
           completedAt: { isNull: true },
           shelvedAt: { isNull: true },
           heldAt: { isNull: true },
+          draftAt: { isNull: true },
         };
       case "in_progress":
         return {
@@ -521,8 +549,12 @@ export class QuestController {
         };
       case "completed":
         return { completedAt: { isNotNull: true } };
-      default:
+      case "shelved":
         return { shelvedAt: { isNotNull: true } };
+      default:
+        throw new AlephaError(
+          `Unknown quest status: ${status satisfies never}`,
+        );
     }
   }
 
@@ -908,6 +940,7 @@ export class QuestController {
         tags: body.tags,
         dependsOn: body.dependsOn,
         feedbackId: body.feedbackId,
+        draft: body.draft,
         createdBy: user.id,
       });
 
@@ -1001,7 +1034,7 @@ export class QuestController {
         // evidence about the hold. Refusing it would mean the one moment
         // somebody has a picture of the problem is the one moment they
         // cannot attach it.
-        ["todo", "in_progress", "on_hold", "shelved", "completed"],
+        ["draft", "todo", "in_progress", "on_hold", "shelved", "completed"],
       );
 
       if (quest.attachments.includes(body.fileId)) {
@@ -1245,7 +1278,7 @@ export class QuestController {
         "remove an attachment from",
         // Held mirrors the attach side above: a hold must not turn a file
         // somebody just attached by mistake into one they cannot take back.
-        ["todo", "in_progress", "on_hold", "shelved"],
+        ["draft", "todo", "in_progress", "on_hold", "shelved"],
       );
 
       // Only an id this quest lists can be removed through it. The handler
@@ -2179,6 +2212,7 @@ export class QuestController {
     handler: async ({ params, user }) => {
       // "shelved" is allowed so re-shelving stays idempotent below.
       const { quest } = this.getQuestForTransition("shelve", [
+        "draft",
         "todo",
         "in_progress",
         "on_hold",
@@ -2300,7 +2334,17 @@ export class QuestController {
         "todo",
         "in_progress",
         "on_hold",
+        "draft",
       ]);
+      // A draft is not waiting on anything: it is not ready (#E178). Refused
+      // on `draftAt`, as accept is.
+      if (quest.draftAt) {
+        this.drafts.assertNotDraft(
+          quest,
+          await this.epicWorkflow.epicOf(quest),
+          "hold",
+        );
+      }
 
       // Not idempotent, unlike `shelveQuest`, and the difference is the
       // argument. Shelving takes none, so a second shelve can return the
@@ -2413,6 +2457,85 @@ export class QuestController {
   });
 
   /**
+   * Mark a loose `todo` quest draft: specified, not ready to be taken
+   * (#E178). Only from `todo`: an accepted, held, shelved or completed
+   * quest is refused, and a quest filed under an epic too, since its
+   * epic's status decides.
+   *
+   * A signal, not a permission: whoever may update the quest may mark it.
+   */
+  draftQuest = $action({
+    method: "POST",
+    path: "/draftQuest/:id",
+    use: [this.ownsQuestForWork("quest:update")],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ user }) => {
+      const quest = this.owned.get<Quest>();
+      this.drafts.assertLoose(
+        quest,
+        await this.epicWorkflow.epicOf(quest),
+        "draft",
+      );
+      const status = this.questMapper.questStatus(quest);
+      // A retry converges.
+      if (status === "draft") return this.mapQuestToResource(quest);
+      if (status !== "todo") {
+        throw new BadRequestError(
+          `Cannot mark quest ${formatReference("quest", quest.shortId)} draft: it is "${status}". Only a to-do quest nobody has taken can go back to draft.`,
+        );
+      }
+
+      await this.drafts.draft(quest, user);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
+   * Mark a loose draft ready: it becomes `todo`, and `readyAt` is stamped
+   * (#E178). Only from `draft`; a quest filed under an epic is refused,
+   * since its epic's status decides. A shelved draft is unshelved first.
+   */
+  readyQuest = $action({
+    method: "POST",
+    path: "/readyQuest/:id",
+    use: [this.ownsQuestForWork("quest:update")],
+    schema: {
+      params: z.object({
+        id: z.integer(),
+      }),
+      response: questResourceSchema,
+    },
+    handler: async ({ user }) => {
+      const quest = this.owned.get<Quest>();
+      this.drafts.assertLoose(
+        quest,
+        await this.epicWorkflow.epicOf(quest),
+        "ready",
+      );
+      const status = this.questMapper.questStatus(quest);
+      if (status !== "draft") {
+        if (status === "todo" && !quest.draftAt) {
+          // Already ready: a retry converges.
+          return this.mapQuestToResource(quest);
+        }
+        throw new BadRequestError(
+          quest.draftAt
+            ? `Cannot mark quest ${formatReference("quest", quest.shortId)} ready: it is "${status}". Unshelve it first, then mark it ready.`
+            : `Cannot mark quest ${formatReference("quest", quest.shortId)} ready: it is "${status}", not a draft.`,
+        );
+      }
+
+      await this.drafts.ready(quest, user);
+      return this.mapQuestToResource(quest);
+    },
+  });
+
+  /**
    * Where a mention posted from this controller points, and what it is
    * called.
    *
@@ -2448,9 +2571,12 @@ export class QuestController {
     },
     handler: async ({ params, user }) => {
       // "shelved" is allowed on purpose — see the un-shelving branch below.
+      // "draft" is allowed through the generic guard so the epic's refusal
+      // runs first, then the draft's own (#E178 review, item 8).
       const { quest, project } = this.getQuestForTransition("accept", [
         "todo",
         "shelved",
+        "draft",
       ]);
 
       // Epic phase gate (epic #31), BEFORE the questline gate: a quest can
@@ -2471,6 +2597,9 @@ export class QuestController {
         "accept",
         epic ?? null,
       );
+      // On `draftAt`, not the status: a shelved draft reads `shelved`, and
+      // the implicit unshelve below would otherwise accept it.
+      this.drafts.assertNotDraft(quest, epic, "accept");
 
       // Questline gate (Lore #32): refuse to accept while a non-null
       // predecessor is still in flight. The dependent quest stays
@@ -2580,12 +2709,20 @@ export class QuestController {
         "todo",
         "shelved",
         "in_progress",
+        "draft",
       ]);
 
       // Assigning makes a quest accepted without going through
       // `acceptQuest`, so it answers to the same epic phase gate, and it
-      // starts a ready epic the same way.
-      await this.epicWorkflow.assertQuestWorkable(quest, "assign");
+      // starts a ready epic the same way. A draft is refused after it, as
+      // `acceptQuest` refuses one.
+      const assignEpic = await this.epicWorkflow.epicOf(quest);
+      await this.epicWorkflow.assertQuestWorkable(
+        quest,
+        "assign",
+        assignEpic ?? null,
+      );
+      this.drafts.assertNotDraft(quest, assignEpic, "assign");
 
       // The assignee must be able to work the quest: membership alone is
       // not enough, since anyone can join an open project as a viewer
@@ -3563,7 +3700,7 @@ export class QuestController {
         // and `toggleQuestObjective` still requires `in_progress` - a tick is
         // a claim that work happened, which is exactly what a hold says is
         // not happening.
-        ["todo", "in_progress", "on_hold", "shelved"],
+        ["draft", "todo", "in_progress", "on_hold", "shelved"],
       );
 
       // The author, or somebody who may delete quests here: the same rule

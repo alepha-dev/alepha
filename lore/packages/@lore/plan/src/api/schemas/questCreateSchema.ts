@@ -81,4 +81,10 @@ export const questCreateSchema = z.object({
    * this quest.
    */
   dependsOn: z.integer().nullable().optional(),
+  /**
+   * Born a draft: specified, not ready to be taken, until somebody marks it
+   * ready. Absent, the quest is born `todo`. A quest filed into a draft epic
+   * is a draft whatever this says, since the epic decides.
+   */
+  draft: z.boolean().optional(),
 });

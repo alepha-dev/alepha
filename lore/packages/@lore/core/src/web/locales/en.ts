@@ -1140,6 +1140,7 @@ export default {
   "quest.event.change.epicCleared": "removed the quest from its epic",
   "quest.event.change.release": "put the quest in release $1",
   "quest.event.change.releaseCleared": "took the quest out of its release",
+  "quest.status.draft": "Draft",
   "quest.status.todo": "To do",
   "quest.status.inProgress": "In progress",
   "quest.status.completed": "Completed",

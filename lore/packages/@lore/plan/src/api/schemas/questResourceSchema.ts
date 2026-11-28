@@ -4,13 +4,18 @@ import { quests } from "../entities/quests.ts";
 import { questLiveCopySchema } from "./questLiveCopySchema.ts";
 
 /**
- * Quest status derived from completedAt / heldAt / acceptedAt / shelvedAt.
+ * Quest status derived from completedAt / heldAt / acceptedAt / shelvedAt /
+ * draftAt.
+ *
+ * `draft` is a quest that is specified and not ready to be taken (#E178):
+ * it only ever replaces `todo`, and it cannot be accepted or held.
  *
  * `on_hold` is derived like the rest, which is the whole reason it can be a
  * status at all: nothing stores "held from where", because `acceptedAt`
  * stays set underneath a hold and reappears the moment it is lifted.
  */
 export const questStatusSchema = z.enum([
+  "draft",
   "todo",
   "in_progress",
   "on_hold",

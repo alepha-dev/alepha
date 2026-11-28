@@ -17,7 +17,10 @@ export class QuestResourceMapper {
    * to the precedence cannot leave one caller disagreeing with another.
    */
   questStatus(
-    quest: Pick<Quest, "acceptedAt" | "completedAt" | "shelvedAt" | "heldAt">,
+    quest: Pick<
+      Quest,
+      "acceptedAt" | "completedAt" | "shelvedAt" | "heldAt" | "draftAt"
+    >,
   ): QuestStatus {
     // Shelving is only reachable from "todo", so `shelvedAt` never
     // coexists with the other two. The precedence is defensive:
@@ -31,6 +34,14 @@ export class QuestResourceMapper {
     // refuses a completed quest and `completeQuest` refuses a held one,
     // so the two cannot legitimately coexist — and if a row ever carries
     // both, the completion is the one that actually happened.
+    //
+    // `draftAt` sits BELOW `shelvedAt` and ABOVE nothing but `todo` (#E178):
+    // a draft only ever replaces `todo`. A quest of a draft epic that is
+    // shelved or held keeps `draftAt` underneath and reads `shelved` or
+    // `on_hold`, which is what happened to it; unshelved or unheld, it reads
+    // `draft` again with nothing to restore. Accept and hold refuse a quest
+    // carrying it, so it never sits under `acceptedAt` legitimately, and if
+    // it ever does, the accept is the one that happened.
     return quest.completedAt
       ? "completed"
       : quest.heldAt
@@ -39,7 +50,9 @@ export class QuestResourceMapper {
           ? "in_progress"
           : quest.shelvedAt
             ? "shelved"
-            : "todo";
+            : quest.draftAt
+              ? "draft"
+              : "todo";
   }
 
   mapQuestToResource(quest: Quest): QuestResource {

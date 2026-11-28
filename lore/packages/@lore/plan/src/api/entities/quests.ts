@@ -168,6 +168,34 @@ export const quests = $entity({
      */
     heldUntil: z.datetime().optional(),
     /**
+     * Set while the quest is a draft: specified, not ready to be taken
+     * (#E178, folio #1552). `QuestResourceMapper.questStatus` reads it below
+     * `shelved` and above `todo`, so a draft only ever replaces `todo`: a
+     * shelved or held draft reads `shelved` or `on_hold`, keeps this column
+     * underneath, and reads `draft` again when it comes back. Accept and hold
+     * refuse any quest carrying it, whatever it reads.
+     *
+     * A loose quest is a draft when somebody asked (`draft: true` at
+     * creation, or `draftQuest`); a quest filed under an epic is one when its
+     * epic is `draft`, and the epic's status writes it on its quests.
+     * `QuestDraftService` is the only writer, of this column and of
+     * `readyAt`.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`, for the reason `heldAt` gives.
+     */
+    draftAt: z.datetime().optional(),
+    /**
+     * When the quest last left draft: marked ready by hand, or released by
+     * its epic being marked ready. Lead time starts here when it is set
+     * (#Q4377). Holds the last time only: a quest drafted twice keeps the
+     * second release. Never cleared, and absent on a quest that was never a
+     * draft. Written by `QuestDraftService` only.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, as `draftAt`.
+     */
+    readyAt: z.datetime().optional(),
+    /**
      * Free-form summary set when the quest closes — what was actually
      * done. Editable post-completion via `updateQuest` (project memory
      * is meant to be curated). Surfaced to humans in the quest view +
@@ -284,6 +312,8 @@ export const quests = $entity({
             "unshelved",
             "held",
             "unheld",
+            "drafted",
+            "readied",
             /**
              * ⚠️ **No writer since epic #E48**, which deleted quest reopen,
              * and it must stay in this list anyway.

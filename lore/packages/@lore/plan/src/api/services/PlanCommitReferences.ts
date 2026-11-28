@@ -65,6 +65,7 @@ export class PlanCommitReferences {
         "completedAt",
         "shelvedAt",
         "heldAt",
+        "draftAt",
       ],
     });
     const wanted = shas.map((sha) => sha.toLowerCase());

@@ -303,6 +303,7 @@ export { FeedbackRateLimiter } from "./services/FeedbackRateLimiter.ts";
 export { OpenQuestScope } from "./services/OpenQuestScope.ts";
 export { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
 export { QuestService } from "./services/QuestService.ts";
+export { QuestDraftService } from "./services/QuestDraftService.ts";
 export { QuestTagTallyService } from "./services/QuestTagTallyService.ts";
 export { ReleaseContentService } from "./services/ReleaseContentService.ts";
 export {

@@ -142,6 +142,9 @@ export class LoreAudits {
       "unshelve",
       "hold",
       "unhold",
+      // A quest marked draft or ready by hand (#E178).
+      "draft",
+      "ready",
       "comment",
       "attachment",
       "commit",

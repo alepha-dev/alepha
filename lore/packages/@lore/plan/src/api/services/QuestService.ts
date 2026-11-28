@@ -7,6 +7,7 @@ import { ForbiddenError } from "alepha/server";
 import { feedback } from "../entities/feedback.ts";
 import { normalizeQuestTags, type Quest, quests } from "../entities/quests.ts";
 import { AreaService } from "./AreaService.ts";
+import { QuestDraftService } from "./QuestDraftService.ts";
 import { QuestEventSources } from "./QuestEventSources.ts";
 
 /**
@@ -70,6 +71,11 @@ export interface CreateQuestInput {
   dependsOn?: number | null;
   feedbackId?: number;
   /**
+   * Born a draft (#E178): not ready to be taken until marked ready. Absent
+   * or false, the quest is born `todo`.
+   */
+  draft?: boolean;
+  /**
    * The release this quest ships in. Callers are expected to have run it
    * through `ReleaseAttachmentService` first: this service never validates
    * it, the same way it takes `attachments` as given.
@@ -109,6 +115,7 @@ export class QuestService {
   protected readonly projects = $repository(projects);
   protected readonly areaService = $inject(AreaService);
   protected readonly limits = $inject(ProjectLimits);
+  protected readonly drafts = $inject(QuestDraftService);
 
   /**
    * Per-project sequence for `quests.shortId`. One atomic statement, so two
@@ -261,6 +268,7 @@ export class QuestService {
       source: input.source,
       createdBy: input.createdBy,
       history: [],
+      ...this.drafts.atCreation(input.draft),
     };
     return this.questEvents.create(data, input.createdBy);
   }

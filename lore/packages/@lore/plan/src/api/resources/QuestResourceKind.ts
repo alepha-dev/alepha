@@ -61,6 +61,7 @@ export class QuestResourceKind {
               "completedAt",
               "shelvedAt",
               "heldAt",
+              "draftAt",
             ],
           }),
         );
