@@ -1,0 +1,878 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "934eaa63-72bf-4176-8e30-d2d2ebb1001f",
+  "prevIds": ["3cb0fda7-bf03-468c-9616-2c9218f0591c"],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "sigil_sessions"],
+      "writes": [
+        "s|tbl|public.sigil_sessions",
+        "n|tbl|public.sigil_sessions",
+        "e|tbl|public.sigil_sessions",
+        "n|rel|public.sigil_sessions",
+        "n|type|public.sigil_sessions",
+        "n|rel|public.sigil_sessions_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": ["table", "public", "sigil_visits"],
+      "writes": [
+        "s|tbl|public.sigil_visits",
+        "n|tbl|public.sigil_visits",
+        "e|tbl|public.sigil_visits",
+        "n|rel|public.sigil_visits",
+        "n|type|public.sigil_visits",
+        "n|rel|public.sigil_visits_pkey"
+      ],
+      "reads": ["n|sch|public"]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sigil_sessions",
+        "sigil_sessions_sigil_id_period_visitor_hash_idx"
+      ],
+      "writes": [
+        "s|idx|public.sigil_sessions_sigil_id_period_visitor_hash_idx",
+        "n|idx|public.sigil_sessions_sigil_id_period_visitor_hash_idx",
+        "e|idx|public.sigil_sessions_sigil_id_period_visitor_hash_idx",
+        "n|rel|public.sigil_sessions_sigil_id_period_visitor_hash_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_sessions",
+        "n|sch|public",
+        "n|col|public.sigil_sessions.sigil_id",
+        "n|col|public.sigil_sessions.period",
+        "n|col|public.sigil_sessions.visitor_hash"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sigil_sessions",
+        "sigil_sessions_period_ends_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.sigil_sessions_period_ends_at_idx",
+        "n|idx|public.sigil_sessions_period_ends_at_idx",
+        "e|idx|public.sigil_sessions_period_ends_at_idx",
+        "n|rel|public.sigil_sessions_period_ends_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_sessions",
+        "n|sch|public",
+        "n|col|public.sigil_sessions.period_ends_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sigil_sessions",
+        "sigil_sessions_last_seen_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.sigil_sessions_last_seen_at_idx",
+        "n|idx|public.sigil_sessions_last_seen_at_idx",
+        "e|idx|public.sigil_sessions_last_seen_at_idx",
+        "n|rel|public.sigil_sessions_last_seen_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_sessions",
+        "n|sch|public",
+        "n|col|public.sigil_sessions.last_seen_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sigil_visits",
+        "sigil_visits_sigil_id_started_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.sigil_visits_sigil_id_started_at_idx",
+        "n|idx|public.sigil_visits_sigil_id_started_at_idx",
+        "e|idx|public.sigil_visits_sigil_id_started_at_idx",
+        "n|rel|public.sigil_visits_sigil_id_started_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_visits",
+        "n|sch|public",
+        "n|col|public.sigil_visits.sigil_id",
+        "n|col|public.sigil_visits.started_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sigil_visits",
+        "sigil_visits_session_id_last_seen_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.sigil_visits_session_id_last_seen_at_idx",
+        "n|idx|public.sigil_visits_session_id_last_seen_at_idx",
+        "e|idx|public.sigil_visits_session_id_last_seen_at_idx",
+        "n|rel|public.sigil_visits_session_id_last_seen_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_visits",
+        "n|sch|public",
+        "n|col|public.sigil_visits.session_id",
+        "n|col|public.sigil_visits.last_seen_at"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "sigil_visits",
+        "sigil_visits_last_seen_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.sigil_visits_last_seen_at_idx",
+        "n|idx|public.sigil_visits_last_seen_at_idx",
+        "e|idx|public.sigil_visits_last_seen_at_idx",
+        "n|rel|public.sigil_visits_last_seen_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_visits",
+        "n|sch|public",
+        "n|col|public.sigil_visits.last_seen_at"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "sigil_sessions"],
+      "writes": [
+        "s|fk|public.sigil_sessions.sigil_sessions_sigil_id_sigils_id_fkey",
+        "n|fk|public.sigil_sessions.sigil_sessions_sigil_id_sigils_id_fkey",
+        "e|fk|public.sigil_sessions.sigil_sessions_sigil_id_sigils_id_fkey",
+        "n|con|public.sigil_sessions.sigil_sessions_sigil_id_sigils_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_sessions",
+        "n|sch|public",
+        "n|tbl|public.sigils",
+        "n|sch|public",
+        "n|col|public.sigil_sessions.sigil_id",
+        "n|col|public.sigils.id",
+        "e|uniqueness|public.sigils.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "sigil_visits"],
+      "writes": [
+        "s|fk|public.sigil_visits.sigil_visits_sigil_id_sigils_id_fkey",
+        "n|fk|public.sigil_visits.sigil_visits_sigil_id_sigils_id_fkey",
+        "e|fk|public.sigil_visits.sigil_visits_sigil_id_sigils_id_fkey",
+        "n|con|public.sigil_visits.sigil_visits_sigil_id_sigils_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_visits",
+        "n|sch|public",
+        "n|tbl|public.sigils",
+        "n|sch|public",
+        "n|col|public.sigil_visits.sigil_id",
+        "n|col|public.sigils.id",
+        "e|uniqueness|public.sigils.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": ["table", "public", "sigil_visits"],
+      "writes": [
+        "s|fk|public.sigil_visits.sigil_visits_session_id_sigil_sessions_id_fkey",
+        "n|fk|public.sigil_visits.sigil_visits_session_id_sigil_sessions_id_fkey",
+        "e|fk|public.sigil_visits.sigil_visits_session_id_sigil_sessions_id_fkey",
+        "n|con|public.sigil_visits.sigil_visits_session_id_sigil_sessions_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.sigil_visits",
+        "n|sch|public",
+        "n|tbl|public.sigil_sessions",
+        "n|sch|public",
+        "n|col|public.sigil_visits.session_id",
+        "n|col|public.sigil_sessions.id",
+        "e|uniqueness|public.sigil_sessions.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "sigil_sessions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "sigil_visits",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "sigil_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "period",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "period_ends_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "visitor_hash",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "first_seen_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "last_seen_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "session_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "started_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "last_seen_at",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "views",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "engaged",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "entry_path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "exit_path",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "referrer",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "campaign",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "country",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "device",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "browser",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "os",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "traffic",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "auth",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "network",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "sigil_sessions_sigil_id_period_visitor_hash_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "sigil_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "period",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "visitor_hash",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "sigil_sessions_period_ends_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "period_ends_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "sigil_sessions_last_seen_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "last_seen_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_visits_sigil_id_started_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "sigil_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "started_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_visits_session_id_last_seen_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "session_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "last_seen_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_visits_last_seen_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "last_seen_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "sigil_sessions_sigil_id_sigils_id_fkey",
+        "nameExplicit": false,
+        "columns": ["sigil_id"],
+        "schemaTo": "public",
+        "tableTo": "sigils",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_visits_sigil_id_sigils_id_fkey",
+        "nameExplicit": false,
+        "columns": ["sigil_id"],
+        "schemaTo": "public",
+        "tableTo": "sigils",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_visits_session_id_sigil_sessions_id_fkey",
+        "nameExplicit": false,
+        "columns": ["session_id"],
+        "schemaTo": "public",
+        "tableTo": "sigil_sessions",
+        "columnsTo": ["id"],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_sessions",
+        "name": "sigil_sessions_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "sigil_visits",
+        "name": "sigil_visits_pkey",
+        "columns": ["id"],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

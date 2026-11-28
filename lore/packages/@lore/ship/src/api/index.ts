@@ -81,6 +81,7 @@ import { ShipPromptChecks } from "./services/ShipPromptChecks.ts";
 import { SigilIngestRefusals } from "./services/SigilIngestRefusals.ts";
 import { SigilIngestService } from "./services/SigilIngestService.ts";
 import { SigilTokenService } from "./services/SigilTokenService.ts";
+import { SigilVisitService } from "./services/SigilVisitService.ts";
 import { StackBundleReader } from "./services/StackBundleReader.ts";
 import { StackComposeParser } from "./services/StackComposeParser.ts";
 import { StackConsoleService } from "./services/StackConsoleService.ts";
@@ -219,6 +220,7 @@ export const LoreShipApi = $module({
     // `$repository` names it.
     SigilTokenService,
     SigilIngestService,
+    SigilVisitService,
     // A host's machine secret (`HostTokenService`) is core's since #E166.
     // The credential sealer is listed by core since #E166: a core service
     // listed here would register this module whenever core injects it.
@@ -322,6 +324,7 @@ export {
   SchemaCompatibility,
 } from "./services/SchemaCompatibility.ts";
 export { SigilIngestService } from "./services/SigilIngestService.ts";
+export * from "./services/SigilVisitService.ts";
 export { SigilTokenService } from "./services/SigilTokenService.ts";
 export { TeardownService } from "./services/TeardownService.ts";
 export { BayRemovalService } from "./services/BayRemovalService.ts";
