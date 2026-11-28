@@ -14,9 +14,12 @@ It is off unless the operator of your Lore turns it on (see
 Click the chat button, **Talk to Lore**, in a project's header. Lore opens in
 a card over the page's bottom corner, and the page under it stays usable, so a
 link in a reply opens the page beside the conversation. Drag the card by its
-header to move it out of the way (a double click puts it back in its corner),
-expand it to full screen, or fold it into a pill to keep the conversation for
-later. Reopen an earlier conversation from its history menu.
+header to move it out of the way (a double click puts it back in its corner), or
+expand it to full screen. Closing it puts it away into the chat button without
+stopping Lore: an answer on its way keeps coming, the button shows that Lore is
+still working, then that an answer is waiting, and reopening shows the
+conversation where it was. Reopen an earlier conversation from its history
+menu.
 
 **It knows the page you are on.** On a quest, an epic, a folio or a use case,
 "this quest", "this epic" or "this use case" means the one in front of you:

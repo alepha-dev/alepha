@@ -331,6 +331,7 @@ export const useAiChat = (options: UseAiChatOptions = {}): UseAiChat => {
     pending,
     error,
     loading: send.loading || answer.loading || open.loading,
+    answering: send.loading || answer.loading,
     send: (message) => send.run(message),
     approve: () => answer.run("approve"),
     deny: () => answer.run("deny"),
@@ -416,6 +417,11 @@ export interface UseAiChat {
   pending?: AiPendingCallResource;
   error?: string;
   loading: boolean;
+  /**
+   * A turn is running: a message sent or a card answered, not a stored
+   * conversation loading.
+   */
+  answering: boolean;
   send: (message: string) => Promise<RunResult<void>>;
   approve: () => Promise<RunResult<void>>;
   deny: () => Promise<RunResult<void>>;

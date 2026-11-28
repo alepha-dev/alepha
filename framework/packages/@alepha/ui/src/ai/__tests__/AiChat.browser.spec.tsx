@@ -8,9 +8,10 @@ import { $page, AlephaReactRouter } from "alepha/react/router";
 import { LinkProvider } from "alepha/server/links";
 import { setupJsdomMocks, expectAccessible } from "alepha/testing/react";
 import { type ComponentType, useState } from "react";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { AiChat, type AiChatProps } from "../AiChat.tsx";
+import { TooltipProvider } from "../../core/Tooltip.tsx";
+import { type AiChatActivity, AiChat, type AiChatProps } from "../AiChat.tsx";
 import type { AiChatConfirmCardProps } from "../AiChatConfirmCard.tsx";
 import { AiChatDockSlot } from "../AiChatDockSlot.tsx";
 import { useAiContext } from "../useAiContext.ts";
@@ -1124,5 +1125,215 @@ describe("AiChat", () => {
     fireEvent.click(view.getByRole("button", { name: "Close" }));
     expect(view.queryByTestId("ai-chat-dock")).toBeNull();
     expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
+  });
+
+  it("names every header button by a tooltip, as an app header's icon buttons (#Q4563)", async () => {
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          { type: "text", text: "Hello." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {},
+      (props) => (
+        <TooltipProvider delay={0}>
+          <FloatLayout {...props} />
+        </TooltipProvider>
+      ),
+    );
+    await say("hi");
+    await view.findByText("Hello.");
+
+    const header = view.getByTestId("ai-chat-header");
+    const tooltips = () =>
+      [...document.querySelectorAll('[data-slot="tooltip-content"]')].map(
+        (node) => node.textContent,
+      );
+    for (const name of [
+      "History",
+      "New conversation",
+      "Minimize",
+      "Full screen",
+      "Close",
+    ]) {
+      const button = within(header).getByRole("button", { name });
+      // A tooltip, not a native `title`.
+      expect(button.getAttribute("title")).toBeNull();
+      fireEvent.pointerEnter(button, { pointerType: "mouse" });
+      fireEvent.mouseEnter(button);
+      fireEvent.pointerMove(button, { pointerType: "mouse" });
+      fireEvent.mouseMove(button);
+      await waitFor(() => expect(tooltips()).toContain(name));
+      fireEvent.pointerLeave(button, { pointerType: "mouse" });
+      fireEvent.mouseLeave(button);
+    }
+  });
+
+  it("drops minimize and its pill when not minimizable, and closing keeps the turn running, reported to the app (#Q4563)", async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const activity: AiChatActivity[] = [];
+    const { view, say, links } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          { type: "text", text: "Half" },
+          { wait: held },
+          { type: "text", text: " and the rest." },
+          { type: "end", reason: "stop" },
+        ]);
+      },
+      {
+        minimizable: false,
+        onActivityChange: (value) => activity.push(value),
+      },
+      FloatLayout,
+    );
+
+    await view.findByTestId("ai-chat-float");
+    expect(view.queryByRole("button", { name: "Minimize" })).toBeNull();
+    expect(activity.at(-1)).toBe("idle");
+
+    await say("hi");
+    await view.findByTestId("ai-chat-streaming");
+    await waitFor(() => expect(activity.at(-1)).toBe("running"));
+
+    // Closed mid-answer: gone, no pill, and the turn goes on.
+    fireEvent.click(view.getByRole("button", { name: "Close" }));
+    expect(view.queryByTestId("ai-chat-float")).toBeNull();
+    expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
+    expect(view.getByTestId("open-state").textContent).toBe("false");
+    expect(activity.at(-1)).toBe("running");
+
+    release();
+    // The answer lands while closed: unread until the panel opens.
+    await waitFor(() => expect(activity.at(-1)).toBe("unread"));
+    expect(links.bodies("chat")).toHaveLength(1);
+
+    fireEvent.click(view.getByRole("button", { name: "Ask" }));
+    await view.findByText("Half and the rest.");
+    await waitFor(() => expect(activity.at(-1)).toBe("idle"));
+  });
+
+  it("says nothing was answered for a turn that failed while closed, nor for a conversation loading (#Q4563)", async () => {
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const activity: AiChatActivity[] = [];
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          { wait: held },
+          { type: "error", message: "The model is down" },
+          { type: "end", reason: "error" },
+        ]);
+      },
+      { onActivityChange: (value) => activity.push(value) },
+      FloatLayout,
+    );
+    await say("hi");
+    await waitFor(() => expect(activity.at(-1)).toBe("running"));
+    fireEvent.click(view.getByRole("button", { name: "Close" }));
+    release();
+    await waitFor(() => expect(activity.at(-1)).toBe("idle"));
+    expect(activity).not.toContain("unread");
+  });
+
+  it("reports an action waiting for approval while closed (#Q4563)", async () => {
+    const activity: AiChatActivity[] = [];
+    const { view, say } = await mount(
+      (l) => {
+        l.streams.push([
+          { type: "conversation", conversationId },
+          {
+            type: "confirm",
+            callId: "c1",
+            name: "createNote",
+            input: { body: { title: "x" } },
+          },
+          { type: "end", reason: "paused" },
+        ]);
+      },
+      { onActivityChange: (value) => activity.push(value) },
+      FloatLayout,
+    );
+    await say("add a note");
+    await view.findByTestId("ai-chat-confirm");
+    fireEvent.click(view.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(activity.at(-1)).toBe("waiting"));
+  });
+
+  it("folds a closing floating card into foldTarget, and brings it back whole when reopened mid-fold (#Q4563)", async () => {
+    const animations: Array<{
+      keyframes: Keyframe[];
+      onfinish: (() => void) | null;
+      cancel: ReturnType<typeof vi.fn>;
+    }> = [];
+    const animate = vi.fn((keyframes: Keyframe[]) => {
+      const animation = { keyframes, onfinish: null, cancel: vi.fn() };
+      animations.push(animation);
+      return animation;
+    });
+    (HTMLElement.prototype as any).animate = animate;
+    try {
+      const { view } = await mount(
+        () => {},
+        {
+          foldTarget: () => view.getByRole("button", { name: "Ask" }),
+        },
+        FloatLayout,
+      );
+      await view.findByTestId("ai-chat-float");
+
+      fireEvent.click(view.getByRole("button", { name: "Close" }));
+      expect(view.getByTestId("open-state").textContent).toBe("false");
+      // Still drawn while it folds, out of reach of a click or a reader.
+      const card = view.getByTestId("ai-chat-float");
+      expect(card.hasAttribute("data-folding")).toBe(true);
+      expect(card.hasAttribute("inert")).toBe(true);
+      // The focus follows the card into the button it folds into.
+      expect(document.activeElement).toBe(
+        view.getByRole("button", { name: "Ask" }),
+      );
+      expect(animate).toHaveBeenCalledTimes(1);
+      const last = animations[0]!.keyframes.at(-1)!;
+      expect(String(last.transform)).toContain("scale(0.04, 0.04)");
+      expect(last.opacity).toBe(0);
+
+      animations[0]!.onfinish?.();
+      await waitFor(() =>
+        expect(view.queryByTestId("ai-chat-float")).toBeNull(),
+      );
+
+      // Reopened before the fold ends: the fold is cancelled, the card stays.
+      fireEvent.click(view.getByRole("button", { name: "Ask" }));
+      await view.findByTestId("ai-chat-float");
+      fireEvent.click(view.getByRole("button", { name: "Close" }));
+      fireEvent.click(view.getByRole("button", { name: "Ask" }));
+      await waitFor(() => expect(animations[1]!.cancel).toHaveBeenCalled());
+      expect(
+        view.getByTestId("ai-chat-float").hasAttribute("data-folding"),
+      ).toBe(false);
+      // A fresh panel: the composer takes the focus, as on any open.
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          view.getByRole("textbox", { name: "Message" }),
+        ),
+      );
+
+      // From full screen it closes at once.
+      fireEvent.click(view.getByTestId("ai-chat-maximize"));
+      const dialog = await view.findByTestId("ai-chat-fullscreen");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+      await waitFor(() =>
+        expect(view.queryByTestId("ai-chat-fullscreen")).toBeNull(),
+      );
+      expect(view.queryByTestId("ai-chat-float")).toBeNull();
+      expect(animate).toHaveBeenCalledTimes(2);
+    } finally {
+      delete (HTMLElement.prototype as any).animate;
+    }
   });
 });

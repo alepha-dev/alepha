@@ -1,6 +1,9 @@
 import { $module, type Alepha } from "alepha";
 
-import { assistantOpenAtom } from "./assistantOpenAtom.ts";
+import {
+  assistantActivityAtom,
+  assistantOpenAtom,
+} from "./assistantOpenAtom.ts";
 import { LoreAssistantShell } from "./LoreAssistantShell.ts";
 
 /**
@@ -12,7 +15,7 @@ import { LoreAssistantShell } from "./LoreAssistantShell.ts";
  */
 export const LoreAssistantWeb = $module({
   name: "lore.assistant.web",
-  atoms: [assistantOpenAtom],
+  atoms: [assistantOpenAtom, assistantActivityAtom],
   register: (alepha: Alepha) => {
     alepha.inject(LoreAssistantShell);
   },

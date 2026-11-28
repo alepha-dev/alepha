@@ -10,3 +10,14 @@ export const assistantOpenAtom = $atom({
   schema: z.boolean(),
   default: false,
 });
+
+/**
+ * What the assistant's conversation is doing (#Q4563), as `AiChat` reports
+ * it: the header's chat button shows it while the panel is closed, since
+ * closing never stops a turn.
+ */
+export const assistantActivityAtom = $atom({
+  name: "lore.assistant.activity",
+  schema: z.enum(["idle", "running", "waiting", "unread"]),
+  default: "idle",
+});

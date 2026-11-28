@@ -11,7 +11,8 @@ import {
 /**
  * The assistant in Lore's chrome (#Q3211): the header button appears when the
  * switch is on, the panel floats over the page's corner (#Q4269), a turn
- * renders, and a link in the reply navigates the page under the conversation.
+ * renders, a link in the reply navigates the page under the conversation,
+ * and closing keeps a turn running, shown on the header's button (#Q4563).
  *
  * The e2e server runs the production build with `AI_ASSISTANT_ENABLED`
  * unset, as every copy does by default (and a production boot with it set
@@ -26,6 +27,7 @@ const scriptAssistant = async (
   page: Page,
   reply: string,
   sent: unknown[] = [],
+  hold?: Promise<void>,
 ) => {
   const scripted: Record<string, unknown> = {
     aiAssistantStatus: { enabled: true, model: "claude-sonnet-5-5" },
@@ -60,8 +62,10 @@ const scriptAssistant = async (
       ),
     });
   });
-  await page.route("**/api/ai/chat", (route) => {
+  await page.route("**/api/ai/chat", async (route) => {
     sent.push(route.request().postDataJSON());
+    // A held turn is one still running, for as long as the spec wants.
+    await hold;
     return route.fulfill({
       status: 200,
       headers: { "content-type": "text/event-stream" },
@@ -193,6 +197,61 @@ test.describe("the assistant", () => {
         title: "Apply a promo code",
       },
     });
+  });
+
+  test("closing keeps Lore answering: the card folds into the chat button, which shows the turn, then the answer (#Q4563)", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const t = Date.now();
+    await registerAndVerify(page, `aiclose${t}@example.com`, "GoodPassw0rd");
+    const { slug } = await createProjectViaWizard(page, `AC${t}`.slice(0, 20));
+    let release = () => {};
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await scriptAssistant(page, "Three quests are open.", [], held);
+
+    await page.goto(`/${slug}`);
+    await page.waitForLoadState("networkidle");
+    const button = page.getByTestId("assistant-button");
+    await expect(button).toBeVisible({ timeout: 15_000 });
+    await button.click();
+    const card = page.getByTestId("ai-chat-float");
+    await expect(card).toBeVisible();
+
+    // No help link and no minimize: history, new, full screen and close,
+    // each named by a tooltip.
+    const header = card.getByTestId("ai-chat-header");
+    await expect(header.getByRole("button")).toHaveCount(4);
+    await expect(header.getByRole("link")).toHaveCount(0);
+    await header.getByRole("button", { name: "Close" }).hover();
+    await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText(
+      "Close",
+    );
+
+    const composer = card.getByTestId("ai-chat-composer").locator("textarea");
+    await composer.fill("What is open?");
+    await composer.press("Enter");
+
+    // Closed mid-turn: the card folds away, no pill is left, and the
+    // header's button turns its ring while Lore answers.
+    await header.getByRole("button", { name: "Close" }).click();
+    await expect(card).toHaveCount(0);
+    await expect(page.getByTestId("ai-chat-launcher")).toHaveCount(0);
+    await expect(button).toHaveAttribute("data-activity", "running");
+    await expect(page.getByTestId("assistant-button-ring")).toBeVisible();
+
+    // The answer lands while closed: a dot says it waits to be read.
+    release();
+    await expect(button).toHaveAttribute("data-activity", "unread");
+    await expect(page.getByTestId("assistant-button-dot")).toBeVisible();
+    await expect(button).toHaveAccessibleName("Talk to Lore · Lore answered");
+
+    // Reopened, the conversation is where it was, and the dot is gone.
+    await button.click();
+    await expect(card.getByText("Three quests are open.")).toBeVisible();
+    await expect(button).toHaveAttribute("data-activity", "idle");
+    await expect(page.getByTestId("assistant-button-dot")).toHaveCount(0);
   });
 
   test("shows no button while the server says the assistant is off", async ({

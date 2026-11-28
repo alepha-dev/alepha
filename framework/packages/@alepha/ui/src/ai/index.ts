@@ -15,6 +15,7 @@ export * from "./AiChatDock.tsx";
 export * from "./AiChatDockSlot.tsx";
 export * from "./AiChatEmpty.tsx";
 export * from "./AiChatFloat.tsx";
+export * from "./AiChatHeaderButton.tsx";
 export * from "./AiChatHistory.tsx";
 export * from "./AiChatLauncher.tsx";
 export * from "./AiChatMessage.tsx";

@@ -16,7 +16,6 @@ import {
 } from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
-import { Button } from "../core/Button.tsx";
 import { Spinner } from "../core/Spinner.tsx";
 import { cn } from "../core/utils.ts";
 import {
@@ -29,6 +28,7 @@ import {
   type AiChatConfirmCardProps,
 } from "./AiChatConfirmCard.tsx";
 import { AiChatEmpty, type AiChatSuggestion } from "./AiChatEmpty.tsx";
+import { AiChatHeaderButton } from "./AiChatHeaderButton.tsx";
 import { AiChatHistory } from "./AiChatHistory.tsx";
 import { AiChatMessage, type AiChatToolLabel } from "./AiChatMessage.tsx";
 import {
@@ -72,7 +72,8 @@ export interface AiChatViewProps {
   focusOnOpen?: boolean;
   /**
    * The app's own controls in the panel's header, before the history menu:
-   * a link to the assistant's help page, say.
+   * a link to the assistant's help page, say. `AiChatHeaderButton` gives an
+   * icon button the same look and tooltip as the panel's own.
    */
   headerActions?: ReactNode;
   /**
@@ -140,9 +141,9 @@ export interface AiChatPanelProps extends AiChatViewProps {
 
 /**
  * The conversation itself, with no container: a quiet header (history menu,
- * new conversation, minimize, close), the thread with its tool steps and a
- * confirmation card for every mutation the assistant wants to run, and the
- * composer. `AiChat` puts it in a drawer or in a dock; an app with its own
+ * new conversation, minimize, full screen, close, each named by a
+ * tooltip), the thread with its tool steps and a confirmation card for every
+ * mutation the assistant wants to run, and the composer. `AiChat` puts it in a drawer or in a dock; an app with its own
  * container renders it there, with the `useAiChat()` it owns.
  */
 export const AiChatPanel = (props: AiChatPanelProps) => {
@@ -206,37 +207,26 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
             onOpen={(id) => chat.open(id)}
           />
         )}
-        <Button
-          size="icon-sm"
-          variant="minimal"
+        <AiChatHeaderButton
           disabled={chat.loading || empty}
-          aria-label={tr("ai.chat.new", { default: "New conversation" })}
+          label={tr("ai.chat.new", { default: "New conversation" })}
           onClick={() => chat.open(undefined)}
         >
           <SquarePen className="size-4" />
-        </Button>
+        </AiChatHeaderButton>
         {props.onMinimize && (
-          <Button
-            size="icon-sm"
-            variant="minimal"
-            aria-label={tr("ai.chat.minimize", { default: "Minimize" })}
+          <AiChatHeaderButton
+            label={tr("ai.chat.minimize", { default: "Minimize" })}
             onClick={props.onMinimize}
           >
             <Minus className="size-4" />
-          </Button>
+          </AiChatHeaderButton>
         )}
         {props.onMaximize && (
-          <Button
-            size="icon-sm"
-            variant="minimal"
+          <AiChatHeaderButton
             data-testid="ai-chat-maximize"
             aria-pressed={Boolean(props.maximized)}
-            aria-label={
-              props.maximized
-                ? tr("ai.chat.exitFullscreen", { default: "Exit full screen" })
-                : tr("ai.chat.fullscreen", { default: "Full screen" })
-            }
-            title={
+            label={
               props.maximized
                 ? tr("ai.chat.exitFullscreen", { default: "Exit full screen" })
                 : tr("ai.chat.fullscreen", { default: "Full screen" })
@@ -248,16 +238,14 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
             ) : (
               <Maximize2 className="size-4" />
             )}
-          </Button>
+          </AiChatHeaderButton>
         )}
-        <Button
-          size="icon-sm"
-          variant="minimal"
-          aria-label={tr("ai.chat.close", { default: "Close" })}
+        <AiChatHeaderButton
+          label={tr("ai.chat.close", { default: "Close" })}
           onClick={props.onClose}
         >
           <X className="size-4" />
-        </Button>
+        </AiChatHeaderButton>
       </div>
       <div
         ref={thread}
