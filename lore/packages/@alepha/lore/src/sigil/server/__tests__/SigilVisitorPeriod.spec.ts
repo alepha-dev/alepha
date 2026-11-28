@@ -155,3 +155,30 @@ describe("the visitor hash per period", () => {
     await alepha.stop();
   });
 });
+
+describe("the visitor's network", () => {
+  const stampWith = async (geo: unknown) => {
+    const { ctrl, sink } = await boot();
+    await ctrl.ingest.options.handler({
+      body: { views: [{ path: "/" }] },
+      ip: "1.2.3.4",
+      geo,
+      headers: { host: "app.example.com", "user-agent": "UA" },
+    } as any);
+    return sink.ingested[0].stamp;
+  };
+
+  it("is stamped from request.geo.network when the platform gives it", async () => {
+    const stamp = await stampWith({
+      network: { number: 13335, name: "  Cloudflare, Inc.\u0007 " },
+    });
+    expect(stamp.network).toEqual({ number: 13335, name: "Cloudflare, Inc." });
+  });
+
+  it("is omitted elsewhere, and when the value is not a network", async () => {
+    expect((await stampWith({})).network).toBeUndefined();
+    expect(
+      (await stampWith({ network: { number: -1, name: "x" } })).network,
+    ).toBeUndefined();
+  });
+});

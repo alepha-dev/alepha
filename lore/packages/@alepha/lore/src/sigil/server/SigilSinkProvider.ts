@@ -20,6 +20,7 @@ import {
 import type { SigilTracker } from "../shared/sigilFeatures.ts";
 import { sigilFingerprintSource } from "../shared/sigilFingerprint.ts";
 import { sigilKeyProject } from "../shared/sigilKey.ts";
+import type { SigilNetwork } from "../shared/sigilNetwork.ts";
 import { SIGIL_INGEST_PATH } from "../shared/sigilPaths.ts";
 import { SIGIL_DEFAULT_SINK, sigilEnv } from "../sigilEnv.ts";
 
@@ -562,7 +563,7 @@ export class SigilSinkProvider {
    * wrong one.
    */
   protected batchFor(stamp: SigilStamp): PendingBatch {
-    const key = `${stamp.visitor ?? ""}\u0000${stamp.visitorPeriod ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}\u0000${stamp.auth ?? ""}`;
+    const key = `${stamp.visitor ?? ""}\u0000${stamp.visitorPeriod ?? ""}\u0000${stamp.country ?? ""}\u0000${stamp.device ?? ""}\u0000${stamp.traffic ?? ""}\u0000${stamp.host ?? ""}\u0000${stamp.browser ?? ""}\u0000${stamp.os ?? ""}\u0000${stamp.auth ?? ""}\u0000${stamp.network?.number ?? ""}\u0000${stamp.network?.name ?? ""}`;
     let batch = this.pending.get(key);
     if (!batch) {
       batch = {
@@ -780,6 +781,12 @@ export interface SigilStamp {
    * not send one under the other's period.
    */
   visitorPeriod?: string;
+  /**
+   * The visitor's network, when the platform gives it. In the batch key:
+   * two visitors on two networks in one flush window are two batches, each
+   * sent under its own network.
+   */
+  network?: SigilNetwork;
   device?: string;
   /**
    * `bot` | `human`, from the user-agent. See {@link sigilTrafficKind} for what
