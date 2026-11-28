@@ -18,9 +18,11 @@ quest.
 The bar above the table searches, and filters by **Status**, **Area**, **Tag**,
 **Release**, **Epic** and **Assignee**. Two kinds of quests are left out until you ask for
 them: shelved quests, which appear when the Status filter names **Shelved**, and
-the quests of a draft [epic](/lore/docs/plan-epics), which appear when the Epic
-filter names that epic. The Release and Epic filters both start with **None**,
-for the quests that belong to no release or no epic.
+[drafts](#drafts), which appear when it names **Draft**. Naming an
+[epic](/lore/docs/plan-epics) in the Epic filter lists all of its quests,
+drafts included. A draft's row wears a dashed ring where the others have a
+dot. The Release and Epic filters both start with **None**, for the quests
+that belong to no release or no epic.
 
 A row's menu accepts, edits, shelves or deletes the quest, sets its release and
 copies its ID. Tick several rows to shelve, unshelve, delete them or add them to
@@ -35,7 +37,10 @@ a release in one go.
    **Advanced** are the tags, the due date, the objectives, the quest it
    depends on and its release.
 4. Click **Create quest**. The arrow beside it offers **Create and accept**,
-   which also assigns the quest to you.
+   which also assigns the quest to you, and **Create as draft**, which files
+   it as a [draft](#drafts) nobody can take yet.
+
+A new quest is **To do**, ready to be taken, unless you created it as a draft.
 
 ### What a quest carries
 
@@ -89,8 +94,8 @@ size, due date, area, epic, release, commits, pull requests and tags.
 
 The button at the top is the next step: **Accept the quest**, then **Complete
 quest**. The rail holds the rest: the **Assigned** row hands the quest to
-another member, and its last rows are **Duplicate**, **Put on hold**, **Shelve**
-and **Unassign**. **Edit** opens the same form as creation. When a quest depends
+another member, and its last rows are **Duplicate**, **Mark as ready** or
+**Mark as draft**, **Put on hold**, **Shelve** and **Unassign**. **Edit** opens the same form as creation. When a quest depends
 on another, or others depend on it, the page shows what it is blocked by and
 what it unlocks.
 
@@ -111,27 +116,32 @@ feedback item.
 
 ## Statuses
 
-A quest is always in one of five statuses:
+A quest is always in one of six statuses:
 
 | Status          | Meaning                                                                      |
 | --------------- | ---------------------------------------------------------------------------- |
+| **Draft**       | Specified, not ready to be taken. Nobody can accept it yet.                  |
 | **To do**       | In the backlog, nobody on it.                                                |
 | **In progress** | Accepted: someone (a person or an agent) is working on it.                   |
 | **On hold**     | Blocked on something outside itself: an answer, a credential, a decision.    |
 | **Shelved**     | Set aside as out of scope for now. Kept, but hidden from lists and progress. |
 | **Completed**   | Done.                                                                        |
 
-Agents and the command line name them `todo`, `in_progress`, `on_hold`,
-`shelved` and `completed`.
+Agents and the command line name them `draft`, `todo`, `in_progress`,
+`on_hold`, `shelved` and `completed`.
 
 ```mermaid
 flowchart LR
+  draft -->|mark as ready| todo
+  todo -->|mark as draft| draft
+  draft -->|shelve| shelved
   todo -->|accept| in_progress
   in_progress -->|complete| completed
   in_progress -->|unassign| todo
   todo -->|shelve| shelved
   in_progress -->|shelve| shelved
   shelved -->|unshelve| todo
+  shelved -->|unshelve a draft| draft
   todo -->|hold| on_hold
   in_progress -->|hold| on_hold
   on_hold -->|lift hold| back[previous status]
@@ -161,6 +171,35 @@ flowchart LR
   worth keeping.
 - **Unassign** sends the quest back to the backlog and stops its reminders.
   Nothing written on it is lost.
+
+### Drafts
+
+A draft is a quest written down and not ready to be taken: a problem noticed
+in passing, a follow-up nobody should pick up before its owner has read it, a
+quest whose spec is still being argued. It is listed like any other quest, and
+it is left out of what is open: the Quests page's default view, the counts in
+the sidebar and on the [dashboard](/lore/docs/project-dashboard), and the
+open figures of the [reports](/lore/docs/project-reports).
+
+A quest becomes a draft in one of three ways:
+
+- **Create as draft**, under the arrow of **Create quest**, or **Add a card**
+  in the board's **Draft** column;
+- **Mark as draft** on the page of a quest still to do that is in no epic;
+- its [epic](/lore/docs/plan-epics) is a draft: every quest of a draft epic
+  that nobody has taken is one.
+
+**Mark as ready** on a draft's page makes it **To do**, open to anyone. Neither
+button asks first, since each undoes the other. A quest in an epic offers
+neither: its rail says **Draft until Epic 12 is ready** instead, linked to the
+epic, because the epic's status decides for all of its quests at once.
+
+A draft cannot be accepted, assigned or put on hold, and each refusal says how
+to make it ready. **Accept the quest** on a draft in no epic asks **Mark this
+quest as ready?** first, and **Mark as ready and accept** does both. A draft
+can be edited, commented on, shelved and deleted; a shelved draft is still a
+draft when it is unshelved. A quest that depends on a draft says **Blocked by
+draft**, because nothing moves until someone marks it ready.
 
 ### A quest an agent job is working
 
@@ -203,21 +242,21 @@ shelve the quest instead.
 
 ## The board
 
-With the **Board** option on, **Kanban** in the sidebar shows the same quests
-as cards in columns.
+**Board**, the second tab of **Quests**, shows the same quests as cards in
+columns. The page reopens on the tab you used last.
 
 ![The Kanban board, with quests as cards in columns](/screenshots/lore/board-light.png)
 
-The board starts with **To do** and **Completed**. Someone whose rank may
-change the project's settings (the owner, by default) adds up to five columns
-between them, with **Add a column** on the board or in
+The board starts with **Draft**, **To do** and **Completed**. Someone whose
+rank may change the project's settings (the owner, by default) adds up to five
+columns between To do and Completed, with **Add a column** on the board or in
 **Settings ▸ Plan ▸ Board**. A column's menu on the board renames it, colours
 it or deletes it once it is empty. The settings page orders the columns and
 sets, for each one:
 
-- what a card dropped there means: **To do**, **In progress** (the default) or
-  **Done**. When one of your columns means To do or Done, it replaces the
-  board's own;
+- what a card dropped there means (**Maps to**): **Draft**, **To do**, **In
+  progress** (the default) or **Done**. When one of your columns means Draft,
+  To do or Done, it replaces the board's own;
 - a **WIP limit**. Going over it shows a warning and blocks nothing.
 
 Dragging a card is the same move as on the quest page. From To do into an
@@ -225,10 +264,23 @@ in-progress column accepts the quest, back to To do unassigns it, and into a
 completed column completes it. A quest still to do has to be accepted before it
 can be completed, and a completed card cannot be moved.
 
+The **Draft** column holds the [drafts](#drafts), held ones included, and its
+one door is To do:
+
+- a card in no epic dragged from Draft to To do is marked ready, and from To
+  do back to Draft is marked draft;
+- a draft of an epic dropped on To do asks **Mark Epic 12 ready?**, naming how
+  many quests go with it: confirmed, the epic is marked ready and all of its
+  drafts move to To do together;
+- any other drop into or out of Draft is refused, and the message says why: a
+  draft has to be marked ready before it is taken, and an epic's to-do quest
+  goes back to draft only with its epic.
+
 Above the board, a search and the **My cards**, **Overdue** and **Due this
 week** filters narrow the cards, and the lanes control groups them **By area**
 or **By epic**. **Add a card** in a column creates a quest from its title
-alone, in the area the board is filtered on or else the project's first area.
+alone, in the area the board is filtered on or else the project's first area;
+in the Draft column, the quest is a draft.
 
 ## Commits
 
@@ -298,6 +350,8 @@ partial, rather than claim a quest is missing from it.
 ```bash
 lore quest list --status in_progress
 lore quest create --title "Add a dark mode toggle" --area web --priority medium --accept
+lore quest create --title "Retry the webhook on 502" --area api --priority low --draft
+lore quest ready 14
 lore quest complete 12 --message "Redirect fixed" --commit 3f9c2a1
 ```
 
@@ -317,6 +371,12 @@ pushes its commit rather than after the merge. It records the
 pull request it opened with `quest_pull_request_add`, or with
 `epic_pull_request_add` when the quest is part of an epic. `quest_get` carries
 `live`, the copies running the quest's commits, as the rail shows them.
+
+`quest_list` leaves drafts out unless `status` names `draft`. Work an agent
+finds in passing and will not take in the same run is filed as a draft
+(`quest_create` with `draft: true`), for its owner to read and mark ready;
+`quest_ready` and `quest_draft` are the page's two buttons, and an agent
+refused because a quest is a draft is told which one applies.
 
 The full list is in [MCP tools](/lore/docs/reference-mcp-tools). To hand a
 quest to an agent from the browser, see [Prompts](/lore/docs/agents-prompts).

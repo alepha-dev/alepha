@@ -7,7 +7,7 @@ anything else.
 
 ![The project dashboard with its cards](/screenshots/lore/dashboard-light.png)
 
-Lore sometimes calls the dashboard "the board". It is not the **Kanban** page
+Lore sometimes calls the dashboard "the board". It is not the **Board** tab
 of [Quests](/lore/docs/plan-quests).
 
 ## One dashboard for the whole team
@@ -167,7 +167,7 @@ The **Add card** panel lists them in these groups.
 | **Completed this week** | Against the week before                 |
 | **Cycle time**          | Median hours from accepted to completed |
 | **Quests by area**      | By area, tag or priority                |
-| **Board**               | Open quests per kanban column           |
+| **Board**               | Open quests per board column, no drafts |
 
 **Epics & releases**
 

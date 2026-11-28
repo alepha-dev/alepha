@@ -344,14 +344,15 @@ These events let the built-ins hand work to each other:
 - `epic.ready` is an epic marked ready. Its run works that epic: one run per
   epic.
 - **Work on loose quests** hears `quest.created` only for a quest it would
-  take: under no epic and not tagged **`needs-human`**. Any other quest starts
-  nothing and records no skip.
+  take: under no epic, not a draft and not tagged **`needs-human`**. Any other
+  quest starts nothing and records no skip. Marking a draft ready starts no
+  run either: the quest waits for the next one.
 
 Feedback then starts a triage, the quest that triage files starts one run on
 loose quests, and nothing that run does starts another. To keep a quest you
-file from being worked on its own, tag it **`needs-human`** or file it under
-an epic when you create it: a run starts as soon as a loose quest is filed.
-A shelved quest is never taken either. A new project starts with every
+file from being worked on its own, create it as a draft, tag it
+**`needs-human`** or file it under an epic when you create it: a run starts as
+soon as a loose quest is filed. A shelved quest is never taken either. A new project starts with every
 trigger set to **manual**.
 
 ### When something goes wrong
@@ -392,8 +393,17 @@ quests one pull request holds depends on how the work was handed over:
 
 A run of **Work on loose quests** takes its list once, when it starts: at most
 10 to-do quests in no epic, by priority, all accepted before the first one is
-worked. A quest filed while it runs waits for the next run, so a run always
-ends.
+worked, and never a draft. A quest filed while it runs waits for the next run,
+so a run always ends.
+
+What an agent finds in passing and will not take in the same run (a bug next to
+the one it fixes, a follow-up its work revealed) is filed as a
+[draft](/lore/docs/plan-quests#drafts) in no epic, never as a quest someone
+could start at once: you read it, and **Mark as ready** when it is worth
+doing. **Work on quest**, **Work on epic** and **Work on loose quests** all
+work this way. A note that belongs to the quest at hand stays a comment on it,
+and inside an epic in progress, work that belongs to the epic is an objective
+on one of its quests.
 
 Whatever the shape, one quest is one commit, and the pull request is merged by
 rebase, so main receives every quest's commit as it is and a bad quest can be

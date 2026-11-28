@@ -118,7 +118,9 @@ above five tabs:
   [Artifacts](/lore/docs/ship-artifacts)).
 
 The progress bar counts the quests in four groups: done, in progress, not
-started and declined (shelved).
+started and declined (shelved). A [draft](/lore/docs/plan-quests#drafts) counts
+as not started: its row on **Contents** wears a **Draft** chip, and the Flow
+draws it as **Draft**, so you see that nobody can take it yet.
 
 ## Publishing
 
