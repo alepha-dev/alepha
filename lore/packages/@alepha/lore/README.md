@@ -53,13 +53,14 @@ the module still captures, and aggregated errors go to the app's own logger
 instead. That is the headless case: an app that must not phone home to
 anything.
 
-### The optional three
+### The optional four
 
-|                |                                                                                  |
-| -------------- | -------------------------------------------------------------------------------- |
-| `SIGIL_SINK`   | origin of the sink. Defaults to `https://lore.alepha.app`; set it to self-host.  |
-| `SIGIL_CONFIG` | JSON object of switches over what to collect. Every field optional.              |
-| `SIGIL_SALT`   | overrides the secret salting the daily visitor hash. Falls back to `APP_SECRET`. |
+|                       |                                                                                 |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `SIGIL_SINK`          | origin of the sink. Defaults to `https://lore.alepha.app`; set it to self-host. |
+| `SIGIL_CONFIG`        | JSON object of switches over what to collect. Every field optional.             |
+| `SIGIL_SALT`          | overrides the secret salting the visitor hash. Falls back to `APP_SECRET`.      |
+| `SIGIL_SALT_ROTATION` | how long one visitor hash lives: `month` (the default), `week` or `day`, UTC.   |
 
 `SIGIL_CONFIG` turns things off, with one exception:
 
@@ -124,9 +125,19 @@ The browser posts to `/api/sigil/ingest` on the app's own origin, and the app
 forwards to the sink server-to-server. So the enrolment key stays on the server,
 there is no CORS to configure, and no third-party origin appears in the page.
 
-Visitor identity is a daily-rotating hash over the request's host and address,
-salted with a secret that never leaves the server. No cookie, no local storage,
-nothing that follows a person between sites or across days.
+Visitor identity is a hash over the request's host, address and user-agent (or
+the user id when someone is signed in), salted with a secret that never leaves
+the server and rotated every period: a UTC calendar month by default, a week or
+a day with `SIGIL_SALT_ROTATION`. An IPv6 address is cut to its /64 before
+hashing. Each report names the period its hash belongs to, and the sink erases
+the hash once that period has ended. No cookie, no local storage, nothing that
+follows a person between sites or past one period.
+
+On Cloudflare Workers, each report also carries the visitor's network: the
+autonomous system number and name of the address, such as
+`AS13335 Cloudflare, Inc.`, read from the request's `cf` object. It tells a
+visit from a hosting provider from one from a home connection. Off Workers the
+field is absent.
 
 ## The feedback button mounts itself
 

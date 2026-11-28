@@ -18,17 +18,33 @@ instance and a sigil are, and how to create them, is in
 ## Reading an instance
 
 Once an instance has a sigil, its page gains up to four tabs, depending on
-what the sigil collects. Each reads over **Today**, **7 days** or **30 days**.
+what the sigil collects.
 
-**Analytics** shows unique visitors, total views, page loads and the share of
-views with no sign of a reader, then the top pages, landing pages, referrers,
-campaigns, devices, browsers, systems and countries. A switch narrows it to
-**Humans** or **Bots**, counting as bots the crawlers that identify themselves.
+**Analytics** reads over a range: **Today**, **7 days**, **30 days**,
+**90 days**, **This month** (the default), **Last month**, **This year**,
+**12 months**, or two dates of your own. **Compare** sets each number beside
+the same span just before it. Five tiles give visitors, visits, views, the
+bounce rate and the average visit duration; a chart draws views and visitors
+over time; and leaderboards rank pages, entry and exit pages, sources,
+campaigns, devices, browsers, systems, countries and networks by visitors and
+views. Clicking a row filters the whole page by it, visitors included.
 
-![An app instance's Analytics tab, with visitors, views and top pages](/screenshots/lore/app-analytics-light.png)
+![An app instance's Analytics tab, with visitors, visits, views and top pages](/screenshots/lore/app-analytics-light.png)
 
-**Unique visitors** is the number to trust. Page views come from the browser,
-so anyone who can load the app can inflate them.
+- A **visitor** is one person over one period, a calendar month by default.
+  Lore counts them without a cookie (see [What an app sends](#what-an-app-sends)).
+- A **visit** is a run of page views by one visitor, closed by 30 minutes
+  without one. A visit with a single view is a **bounce**.
+- When a range spans more than one period, or a count adds up several apps, a
+  visitor is counted once per period and per app, and the number is a sum. The
+  tile marks it with **Σ** and says why.
+
+A traffic switch narrows the page to **Humans** or **Bots**. Bots are the
+crawlers that identify themselves, and they are counted in views only: no
+visitors, visits or bounce. **All** adds their views to the people's.
+
+Visitors are the number to trust. Page views come from the browser, so anyone
+who can load the app can inflate them.
 
 **Vitals** shows the Web Vitals (LCP, CLS, INP, FCP and TTFB) at the 75th
 percentile, for the app and per page. Each is given as a range rather than an
@@ -43,8 +59,11 @@ The **Overview** tab shows the instance's address and last report, and what
 the app sends beside what Lore accepts from it. A copy that is wired but silent
 is usually explained there.
 
-Lore keeps page views, vitals and error counts by the hour for 30 days, then by
-the day up to 400 days.
+Lore keeps page view, vitals and error counts by the hour for 30 days, then by
+the day up to 400 days. Each page view is also kept on its own for 90 days,
+which is what lets any filter count visitors exactly; visits are kept 400
+days. Further back than 90 days, a page's views are still counted but its
+visitors are not, and the page says from which day visitors count.
 
 ## Wiring an app
 
@@ -81,12 +100,13 @@ The browser never talks to Lore. It posts to the app's own server, at
 `/api/sigil/ingest`, which forwards the batch with the key. So the key never
 reaches the browser, and there is no cross-origin request to allow.
 
-| Variable       | What it does                                                                                     |
-| -------------- | ------------------------------------------------------------------------------------------------ |
-| `SIGIL_KEY`    | The instance's key. Without one, errors go to the app's log instead.                             |
-| `SIGIL_SINK`   | The Lore instance to report to. Defaults to `https://lore.alepha.app`; set it when self-hosting. |
-| `SIGIL_SALT`   | The salt for visitor hashes. Falls back to `APP_SECRET`.                                         |
-| `SIGIL_CONFIG` | A JSON object to turn parts off.                                                                 |
+| Variable              | What it does                                                                                     |
+| --------------------- | ------------------------------------------------------------------------------------------------ |
+| `SIGIL_KEY`           | The instance's key. Without one, errors go to the app's log instead.                             |
+| `SIGIL_SINK`          | The Lore instance to report to. Defaults to `https://lore.alepha.app`; set it when self-hosting. |
+| `SIGIL_SALT`          | The salt for visitor hashes. Falls back to `APP_SECRET`.                                         |
+| `SIGIL_SALT_ROTATION` | How long a visitor hash lives: `month` (the default), `week` or `day`, in UTC.                   |
+| `SIGIL_CONFIG`        | A JSON object to turn parts off.                                                                 |
 
 `SIGIL_CONFIG` takes `analytics`, `blights`, `vitals` and `feedback` (booleans,
 all on by default), `feedbackButton` (`bottom-right`, `bottom-left` or
@@ -106,9 +126,16 @@ See [Deploying an app](/lore/docs/ship-deploying).
   else `utm_source`), country (when Cloudflare sends it), device class, browser,
   OS, whether it declared itself a bot, and whether the visitor was signed in.
 - **Visitors**, counted with no cookie and no local storage. The app's server
-  hashes its host with the visitor's IP and user-agent, or their user id when
-  signed in, with a salt that changes every day. Lore folds the hashes into a
-  daily count after two days.
+  hashes its host with the visitor's address and user-agent, or their user id
+  when signed in, with a salt that changes every period: a calendar month by
+  default, or a week or a day with `SIGIL_SALT_ROTATION`. An IPv6 address is
+  cut to its /64 first, so one household's changing addresses stay one
+  visitor. Lore erases each hash once its period has ended, so no identifier
+  outlives its month.
+- **The visitor's network**, the autonomous system number and name of the
+  address (`AS13335 Cloudflare, Inc.`), when the app runs on Cloudflare
+  Workers. It is a leaderboard of its own, and shows which visits come from
+  hosting providers rather than homes.
 - **Web Vitals**, as ranges.
 - **Server request durations**, as ranges, per route pattern (never the URL),
   method and status class. They are what a requirement verified by an API's
@@ -164,14 +191,14 @@ from a shell. The full list is in [The lore CLI](/lore/docs/reference-cli).
 
 ## From an agent
 
-| Tool                                           | What it does                                                      |
-| ---------------------------------------------- | ----------------------------------------------------------------- |
-| `insights_read`                                | Analytics, Web Vitals and the error budget, over 1, 7 or 30 days. |
-| `error_list`                                   | The open errors; `include_resolved` for the rest.                 |
-| `error_get`, `error_comment_add`               | One error whole, and a comment on its thread.                     |
-| `error_resolve`, `error_forward`               | Close an error, or turn it into a quest, new or already filed.    |
-| `sigil_list`                                   | Every sigil, its instance and when it last reported.              |
-| `sigil_create`, `sigil_rotate`, `sigil_delete` | Manage keys. Needs `sigil:manage`.                                |
+| Tool                                           | What it does                                                                          |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `insights_read`                                | Analytics, Web Vitals and the error budget, over any range, for a project or one app. |
+| `error_list`                                   | The open errors; `include_resolved` for the rest.                                     |
+| `error_get`, `error_comment_add`               | One error whole, and a comment on its thread.                                         |
+| `error_resolve`, `error_forward`               | Close an error, or turn it into a quest, new or already filed.                        |
+| `sigil_list`                                   | Every sigil, its instance and when it last reported.                                  |
+| `sigil_create`, `sigil_rotate`, `sigil_delete` | Manage keys. Needs `sigil:manage`.                                                    |
 
 Deleting an error and managing ignore rules have no tool. See
 [MCP tools](/lore/docs/reference-mcp-tools).
