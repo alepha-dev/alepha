@@ -128,6 +128,34 @@ describe("ServerRequestParser", () => {
   });
 
   describe("getRequestGeo", () => {
+    it("reads the network from a Workers request's cf object, and nothing else", ({
+      expect,
+    }) => {
+      const parser = Alepha.create().inject(ServerRequestParser);
+      const withCf = (cf: unknown) =>
+        ({
+          ...createMockRequestData(),
+          raw: {
+            web: { req: Object.assign(new Request("https://x.test"), { cf }) },
+          },
+        }) as ServerRequestData;
+
+      expect(
+        parser.getRequestGeo(
+          withCf({ asn: 64512, asOrganization: "Example Net" }),
+        ).network,
+      ).toEqual({ number: 64512, name: "Example Net" });
+      expect(parser.getRequestGeo(withCf({ asn: 64512 })).network).toEqual({
+        number: 64512,
+      });
+      expect(
+        parser.getRequestGeo(withCf({ asn: "64512" })).network,
+      ).toBeUndefined();
+      expect(
+        parser.getRequestGeo(createMockRequestData()).network,
+      ).toBeUndefined();
+    });
+
     it("should parse Cloudflare geo headers", ({ expect }) => {
       const alepha = Alepha.create();
       const parser = alepha.inject(ServerRequestParser);

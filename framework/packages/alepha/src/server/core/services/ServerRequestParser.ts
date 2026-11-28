@@ -5,6 +5,7 @@ import { NodeServerRequestData } from "../helpers/NodeServerRequestData.ts";
 import { ParsedServerRequest } from "../helpers/ParsedServerRequest.ts";
 import type {
   RequestGeo,
+  RequestNetwork,
   RequestReferer,
   ServerRequest,
   ServerRequestData,
@@ -225,7 +226,36 @@ export class ServerRequestParser {
       // Coordinates: Cloudflare, Vercel
       latitude: headers["cf-iplatitude"] || headers["x-vercel-ip-latitude"],
       longitude: headers["cf-iplongitude"] || headers["x-vercel-ip-longitude"],
+
+      // Network: Cloudflare Workers, from the request's `cf` object
+      network: this.getRequestNetwork(request),
     };
+  }
+
+  /**
+   * The autonomous system a request came from, when the platform says.
+   *
+   * Cloudflare puts it on the incoming Workers `Request` as `cf.asn` and
+   * `cf.asOrganization`, not as a header, so it is read from the raw web
+   * request. Anywhere else there is no `cf` object and the answer is
+   * undefined: a header cannot stand in for it, since a client could send
+   * one.
+   */
+  public getRequestNetwork(
+    request: ServerRequestData,
+  ): RequestNetwork | undefined {
+    const raw = request.raw?.web?.req as
+      | (Request & { cf?: { asn?: unknown; asOrganization?: unknown } })
+      | undefined;
+    const cf = raw?.cf;
+    if (!cf || typeof cf.asn !== "number" || !Number.isInteger(cf.asn)) {
+      return undefined;
+    }
+    const name =
+      typeof cf.asOrganization === "string" && cf.asOrganization.trim()
+        ? cf.asOrganization.trim()
+        : undefined;
+    return name ? { number: cf.asn, name } : { number: cf.asn };
   }
 
   // ─────────────────────────────────────────────────────────────────────────────
