@@ -1,0 +1,67 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "7eda0427-eb50-45c7-8515-a968ec3d21a6",
+  "prevIds": ["c24327af-d918-4f7e-90ae-52a54db738fb"],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": ["table", "public", "sigil_uniques_daily"],
+      "writes": [
+        "s|tbl|public.sigil_uniques_daily",
+        "n|tbl|public.sigil_uniques_daily",
+        "e|tbl|public.sigil_uniques_daily",
+        "n|rel|public.sigil_uniques_daily",
+        "n|type|public.sigil_uniques_daily"
+      ],
+      "reads": ["n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"sigil_uniques_daily\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"sigil_uniques_daily\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"sigil_uniques_daily\",\"sigil_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"sigil_uniques_daily\",\"day\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"sigil_uniques_daily\",\"visitor_hash\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"sigil_uniques_daily\",\"count\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"sigil_uniques_daily\",\"traffic\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"sigil_uniques_daily_sigil_id_day_visitor_hash_traffic_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"sigil_uniques_daily_sigil_id_day_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"sigil_uniques_daily\",\"sigil_uniques_daily_sigil_id_sigils_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"sigil_uniques_daily\",\"sigil_uniques_daily_pkey\"]"
+    }
+  ]
+}

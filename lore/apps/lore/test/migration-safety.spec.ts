@@ -10,7 +10,8 @@ import {
   projectErrors,
   sigilErrorGroups,
   sigils,
-  sigilUniquesDaily,
+  sigilSessions,
+  sigilVisits,
 } from "@lore/ship/schemas";
 import { Alepha } from "alepha";
 import { organizations } from "alepha/api/organizations";
@@ -123,6 +124,10 @@ const entityTables = async (): Promise<string[]> => {
  * a migration the baseline replaced, and git history keeps their reasons.
  */
 const SANCTIONED_DROPS: Record<string, string[]> = {
+  // The daily uniques table goes with analytics v2 (#Q4397): a leaf, a
+  // cascade child of sigils with no child of its own.
+  "20261128143734_drop_sigil_uniques_daily": ["sigil_uniques_daily"],
+  "20261128143751_drop_sigil_uniques_daily": ["sigil_uniques_daily"],
   // Adoption is gone (#Q3628): a leaf, referenced by nothing.
   "20261115064301_automation_adoptions_dropped": ["automation_adoptions"],
   "20261115064310_automation_adoptions_dropped": ["automation_adoptions"],
@@ -439,7 +444,8 @@ describe("migration safety", () => {
       "epics",
       "areas",
       "sigils",
-      "sigil_uniques_daily",
+      "sigil_sessions",
+      "sigil_visits",
       "sigil_error_groups",
       "folio_revisions",
       "quest_comments",
@@ -674,7 +680,8 @@ describe("migration safety", () => {
       users = $repository(users);
       sigils = $repository(sigils);
       projectErrors = $repository(projectErrors);
-      uniques = $repository(sigilUniquesDaily);
+      sessions = $repository(sigilSessions);
+      visits = $repository(sigilVisits);
       errorGroups = $repository(sigilErrorGroups);
     }
 
@@ -692,7 +699,8 @@ describe("migration safety", () => {
     // union of signatures TypeScript refuses to call.
     expect(await repos.sigils.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.projectErrors.findMany({ limit: 1 })).toEqual([]);
-    expect(await repos.uniques.findMany({ limit: 1 })).toEqual([]);
+    expect(await repos.sessions.findMany({ limit: 1 })).toEqual([]);
+    expect(await repos.visits.findMany({ limit: 1 })).toEqual([]);
     expect(await repos.errorGroups.findMany({ limit: 1 })).toEqual([]);
   });
 });

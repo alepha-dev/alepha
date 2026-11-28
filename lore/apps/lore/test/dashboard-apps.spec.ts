@@ -14,13 +14,8 @@ import {
 } from "@lore/core/schemas";
 import { ReadCounter } from "@lore/core/testing";
 import { DeployAnalytics } from "@lore/ship/api";
-import {
-  appInstances,
-  deployments,
-  sigils,
-  sigilUniquesDaily,
-} from "@lore/ship/schemas";
-import { Alepha } from "alepha";
+import { appInstances, deployments, sigils } from "@lore/ship/schemas";
+import { $inject, Alepha } from "alepha";
 import { AlephaApiUsers, users } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -42,7 +37,40 @@ class AppsRepositories {
   instances = $repository(appInstances);
   deployments = $repository(deployments);
   quality = $repository(qualityRuns);
-  uniques = $repository(sigilUniquesDaily);
+  analytics = $inject(DeployAnalytics);
+  /**
+   * One visitor seen on one day, written where the tile reads it: a page
+   * view of a session of its own in the page view log.
+   */
+  uniques = {
+    create: async (row: {
+      sigilId: string;
+      day: string;
+      visitorHash: string;
+      traffic?: string;
+    }): Promise<void> => {
+      await this.analytics.pageviews.append([
+        {
+          at: Date.parse(`${row.day}T12:00:00.000Z`),
+          sigilId: row.sigilId,
+          sessionId: crypto.randomUUID(),
+          visitId: crypto.randomUUID(),
+          path: "/",
+          country: "FR",
+          device: "desktop",
+          browser: "chrome",
+          os: "macos",
+          referrer: "direct",
+          campaign: "none",
+          traffic: row.traffic ?? "human",
+          auth: "anon",
+          network: null,
+          views: 1,
+          engaged: 0,
+        },
+      ]);
+    },
+  };
   capabilities = $repository(projectCapabilities);
   users = $repository(users);
   hosts = $repository(hosts);

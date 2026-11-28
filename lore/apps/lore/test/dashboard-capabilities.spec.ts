@@ -11,8 +11,9 @@ import {
   eligibleProjects,
   metricUnavailableKey,
 } from "@lore/core/web";
-import { type Sigil, sigils, sigilUniquesDaily } from "@lore/ship/schemas";
-import { Alepha } from "alepha";
+import { DeployAnalytics } from "@lore/ship/api";
+import { type Sigil, sigils } from "@lore/ship/schemas";
+import { $inject, Alepha } from "alepha";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -40,7 +41,40 @@ import {
  */
 class DashboardCapabilityRepositories {
   sigils = $repository(sigils);
-  uniques = $repository(sigilUniquesDaily);
+  analytics = $inject(DeployAnalytics);
+  /**
+   * One visitor seen on one day, written where the tile reads it: a page
+   * view of a session of its own in the page view log.
+   */
+  uniques = {
+    create: async (row: {
+      sigilId: string;
+      day: string;
+      visitorHash: string;
+      traffic?: string;
+    }): Promise<void> => {
+      await this.analytics.pageviews.append([
+        {
+          at: Date.parse(`${row.day}T12:00:00.000Z`),
+          sigilId: row.sigilId,
+          sessionId: crypto.randomUUID(),
+          visitId: crypto.randomUUID(),
+          path: "/",
+          country: "FR",
+          device: "desktop",
+          browser: "chrome",
+          os: "macos",
+          referrer: "direct",
+          campaign: "none",
+          traffic: row.traffic ?? "human",
+          auth: "anon",
+          network: null,
+          views: 1,
+          engaged: 0,
+        },
+      ]);
+    },
+  };
 }
 
 interface TestContext {

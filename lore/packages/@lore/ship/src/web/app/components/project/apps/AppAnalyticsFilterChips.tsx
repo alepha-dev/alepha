@@ -51,10 +51,8 @@ export interface AppAnalyticsFilterChipsProps {
  *
  * ⚠️ **The traffic control is deliberately NOT a chip.** It is a mode, not a
  * value: it decides which population every number describes, it is one of a
- * fixed three rather than one of whatever the window happens to hold, and it is
- * the only filter `uniqueVisitors` can honour (`sigil_uniques_daily` carries a
- * `traffic` column and no other dimension). Folding it in here would put a mode
- * and a value in the same row and imply the count narrows with both. It stays a
+ * fixed three rather than one of whatever the window happens to hold. Folding
+ * it in here would put a mode and a value in the same row. It stays a
  * segmented control beside the range, which is the other mode.
  */
 const AppAnalyticsFilterChips = (props: AppAnalyticsFilterChipsProps) => {

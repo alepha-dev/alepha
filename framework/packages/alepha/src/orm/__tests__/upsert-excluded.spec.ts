@@ -57,8 +57,8 @@ const testCounterThroughExcluded = async (alepha: Alepha) => {
 };
 
 /**
- * The unique-visitor shape of Lore's `LoreAnalyticsStore`: `set` takes the
- * incoming value as it is, and the fragment renders the physical name.
+ * A last-write-wins upsert: `set` takes the incoming value as it is, and
+ * the fragment renders the physical name.
  */
 const testSetToIncomingValue = async (alepha: Alepha) => {
   const app = alepha.inject(App);

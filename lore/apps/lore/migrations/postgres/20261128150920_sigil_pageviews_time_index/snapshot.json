@@ -1,0 +1,55 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "e28c8970-2a1d-49c6-83d3-77fea60c5ce8",
+  "prevIds": ["7eda0427-eb50-45c7-8515-a968ec3d21a6"],
+  "footprints": [
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "analytics_sigil_pageviews_events",
+        "analytics_sigil_pageviews_events_event_at_idx"
+      ],
+      "writes": [
+        "s|idx|public.analytics_sigil_pageviews_events_event_at_idx",
+        "n|idx|public.analytics_sigil_pageviews_events_event_at_idx",
+        "e|idx|public.analytics_sigil_pageviews_events_event_at_idx",
+        "n|rel|public.analytics_sigil_pageviews_events_event_at_idx"
+      ],
+      "reads": [
+        "n|tbl|public.analytics_sigil_pageviews_events",
+        "n|sch|public",
+        "n|col|public.analytics_sigil_pageviews_events.event_at"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "analytics_sigil_pageviews_events",
+        "name": "analytics_sigil_pageviews_events_event_at_idx",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "event_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    }
+  ]
+}

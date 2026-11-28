@@ -53,8 +53,8 @@ export class QualityService {
    * The newest run on a branch, or across the project when no branch is named.
    *
    * Ordered by `day`, which is a `YYYY-MM-DD` string and therefore sorts
-   * lexicographically the way it sorts chronologically - the same reason
-   * `sigil_uniques_daily` can range over one.
+   * lexicographically the way it sorts chronologically, so a plain string
+   * comparison ranges over it.
    */
   public async findLatest(
     projectId: number,

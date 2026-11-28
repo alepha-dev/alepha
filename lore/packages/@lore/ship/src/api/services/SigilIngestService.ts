@@ -19,7 +19,6 @@ import { projectErrors } from "../entities/projectErrors.ts";
 import { sigilErrorGroups } from "../entities/sigilErrorGroups.ts";
 import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { ErrorTrustEvents } from "./ErrorTrustEvents.ts";
-import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 import { ProjectErrorRuleService } from "./ProjectErrorRuleService.ts";
 import {
   type SigilVisitEvent,
@@ -49,10 +48,13 @@ export interface SigilGates {
 /**
  * Turns one sigil envelope into rows.
  *
- * Everything here is an upsert into a bucket, never an append of an event. That
- * is the whole storage strategy: what an operator asks of this data is always
- * an aggregate ("how many", "how often", "how bad"), and computing aggregates
- * from retained events costs more every day the app succeeds.
+ * Almost everything here is an upsert into a bucket, never an append of an
+ * event: what an operator asks of this data is an aggregate ("how many", "how
+ * often", "how bad"), and computing aggregates from retained events costs
+ * more every day the app succeeds. The one exception is the page view log
+ * (`DeployAnalytics.pageviews`), kept 90 days, which is what counts distinct
+ * visitors and visits exactly; sessions and visits are rows of their own
+ * (`SigilVisitService`).
  *
  * ## Errors are written twice, on purpose
  *
@@ -85,18 +87,6 @@ export class SigilIngestService {
    * so an ingest batch pays for it once.
    */
   protected readonly security = $inject(ProjectSecurityService);
-
-  /**
-   * Uniques only. `LoreAnalyticsStore` used to hold views and vitals too,
-   * behind the now-deleted `AnalyticsStore` interface from
-   * `../entities/sigilAnalytics.ts` — see that class's doc for why a distinct visitor
-   * count is the one question storage-swappable `$analytics()` datasets
-   * cannot answer, and so is the one thing that stayed on a repository.
-   * Error groups and errors stay on repositories for an unrelated reason:
-   * they keep the *first* stack sample, which needs a read before every
-   * write, something an append-only analytics backend cannot do.
-   */
-  protected readonly analytics = $inject(LoreAnalyticsStore);
 
   /**
    * Where views and vitals actually live: the portable `$analytics()`
@@ -584,7 +574,6 @@ export class SigilIngestService {
     now: string;
   }): Promise<void> {
     const { sigil, views, engagements, stamp, visitor, now } = options;
-    const day = this.dayBucket(now);
 
     // Folded before the write, not just for speed: the store turns a batch
     // into ONE statement, one `ON CONFLICT` clause, and Postgres refuses to
@@ -745,21 +734,10 @@ export class SigilIngestService {
         ),
     });
 
-    await this.analytics.absorb({
-      // One row per visitor per day. Recorded once per batch rather than per
-      // view: the same person loading ten pages is one unique. `views` has no
-      // counterpart here anymore — it stays bespoke, see `LoreAnalyticsStore`'s
-      // class doc.
-      uniques: visitor
-        ? [{ sigilId: sigil.id, day, visitorHash: visitor, traffic: kind }]
-        : [],
-    });
-
     // The only write for `sigil_views` — `InsightsController` reads it back
-    // through the same `DeployAnalytics` declaration. Unlike the uniques write
-    // above, nothing catches a failure here: there is no other copy of this
-    // batch to fall back on, so a throw is real data loss and has to surface
-    // as one, not be swallowed the way the now-deleted dual-write mirror did.
+    // through the same `DeployAnalytics` declaration. Nothing catches a
+    // failure here: there is no other copy of this batch to fall back on, so
+    // a throw is real data loss and has to surface as one.
     const recorded = this.datasets.views.recordMany(
       [...buckets.values()].map((bucket) => ({
         sigilId: sigil.id,
@@ -995,13 +973,6 @@ export class SigilIngestService {
    */
   protected hourBucket(at: string): string {
     return at.slice(0, 13);
-  }
-
-  /**
-   * `YYYY-MM-DD`, UTC.
-   */
-  protected dayBucket(at: string): string {
-    return at.slice(0, 10);
   }
 }
 

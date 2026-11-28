@@ -35,11 +35,9 @@ const userDataSchema = z.object({
  *
  * Views and vitals are written into the `sigil_views` / `sigil_vitals`
  * `$analytics()` datasets — what the controller has read since Task 12.
- * Unique visitors and error groups stay on the legacy aggregate tables,
- * because those two questions stayed on `LoreAnalyticsStore` (a distinct
- * count cannot survive sampling or a rollup, and an error group keeps the
- * *first* stack sample, which needs a read before every write — see
- * `DeployAnalytics`'s class doc).
+ * Error groups stay on their own table: an error group keeps the *first*
+ * stack sample, which needs a read before every write. Visitors and visits
+ * are fed through the real ingest, in the v2 block.
  *
  * Going through the ingest endpoint would only ever produce rows in the current
  * hour, and every assertion here is about a window.
@@ -1275,13 +1273,12 @@ describe("InsightsController", () => {
     ⚠️ **In-memory SQLite does not enforce D1's hundred-parameter ceiling**, so
     none of these can fail by hitting it. They assert the SHAPE that keeps a
     project-wide read under it, and they are only meaningful read together with
-    the reason recorded on `InsightsController.SIGIL_CHUNK` and
-    `LoreAnalyticsStore.scope`: D1 refuses a statement carrying more than 100
+    the reason recorded on `InsightsController.SIGIL_CHUNK`: D1 refuses a
+    statement carrying more than 100
     bound parameters (folio #F1173, probed: 100 ok, 101 fails), and a
     project-wide read binds one per app.
 
-    Two D1 reads carry a project-wide app set, and each is bounded a different
-    way because a distinct count cannot be chunked and merged. Views, vitals
+    The error budget's read carries a project-wide app set, chunked. Views, vitals
     and the error series are `$analytics()` datasets and are not in this band
     at all.
   */
