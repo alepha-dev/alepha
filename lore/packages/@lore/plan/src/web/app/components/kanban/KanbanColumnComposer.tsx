@@ -112,7 +112,8 @@ const KanbanColumnComposer = (props: KanbanColumnComposerProps) => {
         <Button
           size="sm"
           className="h-7 text-xs"
-          disabled={pending || props.disabled || !title.trim()}
+          disabled={props.disabled || !title.trim()}
+          loading={pending}
           data-testid={`kanban-composer-submit-${props.position}`}
           onClick={() => void submit()}
         >

@@ -218,7 +218,8 @@ const NotificationAddDialog = (props: NotificationAddDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={busy || !selected}
+              disabled={!selected}
+              loading={busy}
               data-testid="notification-save"
             >
               {tr("notifications.form.save")}

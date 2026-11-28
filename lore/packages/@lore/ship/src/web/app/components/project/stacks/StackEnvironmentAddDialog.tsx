@@ -85,7 +85,7 @@ const StackEnvironmentAddDialog = (props: StackEnvironmentAddDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              loading={loading}
               data-testid="stack-environment-add"
             >
               {tr("stacks.environment.add")}

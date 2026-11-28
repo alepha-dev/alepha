@@ -858,6 +858,7 @@ const ProjectDashboard = (props: ProjectDashboardProps) => {
         onAdd={(input) => void addAction.run(input)}
         onUpdate={(card, input) => void updateAction.run(card, input)}
         busy={busy}
+        saving={addAction.loading || updateAction.loading}
       />
     </div>
   );

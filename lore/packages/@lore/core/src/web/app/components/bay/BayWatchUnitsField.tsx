@@ -10,6 +10,8 @@ export interface BayWatchUnitsFieldProps {
   /** The units the host watches now. */
   units: string[];
   busy: boolean;
+  /** This field's own save is running: its button spins. */
+  saving?: boolean;
   /** Saves the list as typed; the server normalises and refuses bad names. */
   onSave: (units: string[]) => void;
 }
@@ -54,6 +56,7 @@ const BayWatchUnitsField = (props: BayWatchUnitsFieldProps) => {
           variant="outlined"
           size="sm"
           disabled={props.busy || typed.trim() === current}
+          loading={props.saving}
           onClick={() =>
             props.onSave(
               typed

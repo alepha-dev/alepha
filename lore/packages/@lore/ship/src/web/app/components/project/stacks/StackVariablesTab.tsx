@@ -15,6 +15,7 @@ import { z } from "alepha";
 import { useAction, useClient, useQuery, useQueryClient } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { useState } from "react";
 
 import type { StackController } from "../../../../../api/controllers/StackController.ts";
 import type { StackVariableController } from "../../../../../api/controllers/StackVariableController.ts";
@@ -98,6 +99,8 @@ const StackVariablesTab = (props: StackVariablesTabProps) => {
   });
   const { loading } = useFormState(form, ["loading"]);
 
+  // The variable whose removal runs: its button spins, the others wait.
+  const [removing, setRemoving] = useState<string>();
   const remove = useAction<[name: string], boolean>(
     {
       handler: async (_ctx, name) => {
@@ -169,7 +172,13 @@ const StackVariablesTab = (props: StackVariablesTabProps) => {
                   variant="minimal"
                   className="ml-auto"
                   disabled={remove.loading}
-                  onClick={() => void remove.run(item.key)}
+                  loading={remove.loading && removing === item.key}
+                  onClick={() => {
+                    setRemoving(item.key);
+                    void remove
+                      .run(item.key)
+                      .finally(() => setRemoving(undefined));
+                  }}
                 >
                   {tr("stacks.variables.remove")}
                 </Button>
@@ -208,7 +217,7 @@ const StackVariablesTab = (props: StackVariablesTabProps) => {
               </div>
               <Button
                 type="submit"
-                disabled={loading}
+                loading={loading}
                 data-testid="stack-variable-save"
               >
                 {tr("stacks.variables.save")}

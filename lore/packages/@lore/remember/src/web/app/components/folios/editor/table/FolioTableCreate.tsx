@@ -3,7 +3,7 @@ import { Control } from "@alepha/ui/form";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useStore } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import type { ReactElement } from "react";
@@ -58,6 +58,7 @@ const FolioTableCreate = (props: FolioTableCreateProps): ReactElement => {
       );
     },
   });
+  const { loading } = useFormState(form, ["loading"]);
 
   return (
     <form
@@ -73,7 +74,7 @@ const FolioTableCreate = (props: FolioTableCreateProps): ReactElement => {
         input={form.input.title}
         label={tr("folios.title-placeholder")}
       />
-      <Button type="submit">
+      <Button type="submit" loading={loading}>
         {calendar
           ? tr("folios.calendar.create.submit")
           : tr("folios.table.create.submit")}

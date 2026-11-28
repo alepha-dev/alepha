@@ -159,7 +159,8 @@ const BayMoveDialog = (props: BayMoveDialogProps) => {
           </Button>
           <Button
             type="button"
-            disabled={targetId === undefined || collides || move.loading}
+            disabled={targetId === undefined || collides}
+            loading={move.loading}
             onClick={() => void move.run()}
             data-testid="bay-move-submit"
           >

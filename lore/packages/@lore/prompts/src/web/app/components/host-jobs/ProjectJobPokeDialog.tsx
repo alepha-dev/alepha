@@ -104,7 +104,8 @@ const ProjectJobPokeDialog = (props: ProjectJobPokeDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={!message || props.sending}
+              disabled={!message}
+              loading={props.sending}
               data-testid="job-poke-send"
             >
               {tr("jobs.poke.send")}

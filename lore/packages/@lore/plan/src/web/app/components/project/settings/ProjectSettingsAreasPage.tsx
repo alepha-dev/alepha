@@ -52,6 +52,8 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
   // One permission behind three areas verbs on the server, so one flag here.
   const canManage = areaApi.deleteArea.can();
 
+  // The area whose delete runs: its row's button spins, the others wait.
+  const [removingId, setRemovingId] = useState<number>();
   const removeAction = useAction<[area: AreaResource], void>(
     {
       handler: async (_ctx, area) => {
@@ -181,7 +183,13 @@ const ProjectSettingsAreasPage = (props: ProjectSettingsAreasPageProps) => {
                   variant="minimal"
                   size="sm"
                   disabled={removeAction.loading}
-                  onClick={() => void removeAction.run(area)}
+                  loading={removeAction.loading && removingId === area.id}
+                  onClick={() => {
+                    setRemovingId(area.id);
+                    void removeAction
+                      .run(area)
+                      .finally(() => setRemovingId(undefined));
+                  }}
                 >
                   {tr("project.settings.areas.delete.action")}
                 </Button>

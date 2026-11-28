@@ -3,7 +3,7 @@ import { Control } from "@alepha/ui/form";
 import { SettingsSection } from "@alepha/ui/settings";
 import { z } from "alepha";
 import { useAlepha, useClient, useStore } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
 import type { ProjectController } from "../../../../../api/controllers/ProjectController.ts";
@@ -37,6 +37,7 @@ const ProjectSettingsCoverageTarget = () => {
       setCurrentProject(alepha, updated);
     },
   });
+  const { loading } = useFormState(form, ["loading"]);
 
   // The card edge of `SettingsSection` and the grid of `SettingsRow`, so it
   // matches the other cards of the page and its Save sits on the right,
@@ -54,7 +55,7 @@ const ProjectSettingsCoverageTarget = () => {
             description={tr("project.settings.coverageTarget.hint")}
           />
           <div className="flex justify-start sm:justify-end">
-            <Button type="submit" variant="outlined">
+            <Button type="submit" variant="outlined" loading={loading}>
               {tr("project.settings.coverageTarget.save")}
             </Button>
           </div>

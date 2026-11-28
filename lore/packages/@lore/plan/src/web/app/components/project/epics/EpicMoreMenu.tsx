@@ -119,7 +119,7 @@ const EpicMoreMenu = (props: EpicMoreMenuProps) => {
             type="button"
             variant="minimal"
             size="icon"
-            disabled={move.loading || remove.loading}
+            loading={move.loading || remove.loading}
             aria-label={tr("epic.more")}
             title={tr("epic.more")}
             data-testid="epic-more"

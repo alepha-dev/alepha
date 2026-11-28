@@ -4,7 +4,7 @@ import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { Lock, X } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type { EpicController } from "../../../../../api/controllers/EpicController.ts";
 import type { ReleaseContentQuest } from "../../../../../api/schemas/releaseContentQuestSchema.ts";
@@ -113,6 +113,8 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
   // A `useAction` (#E59, #Q2326): a refusal is the server's sentence, toasted
   // by the root `ActionErrorToaster`, and the refresh and the cascade report
   // run inside the handler, so neither follows a failure.
+  // The epic whose removal runs: its button spins, the others wait.
+  const [detachingId, setDetachingId] = useState<number>();
   const detachAction = useAction<[epicId: number], void>(
     {
       handler: async (_ctx, epicId) => {
@@ -242,7 +244,13 @@ const ReleaseContents = (props: ReleaseContentsProps) => {
                   size="icon-sm"
                   aria-label={tr("release.contents.remove")}
                   disabled={detachAction.loading}
-                  onClick={() => void detachAction.run(epic.id)}
+                  loading={detachAction.loading && detachingId === epic.id}
+                  onClick={() => {
+                    setDetachingId(epic.id);
+                    void detachAction
+                      .run(epic.id)
+                      .finally(() => setDetachingId(undefined));
+                  }}
                 >
                   <X className="size-3.5" />
                 </Button>

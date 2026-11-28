@@ -315,14 +315,11 @@ const FolioAttachmentsTab = (props: FolioAttachmentsTabProps): ReactElement => {
                 size="sm"
                 variant="outlined"
                 disabled={busy}
+                loading={uploadAction.loading}
                 onClick={browse}
                 className="h-7 text-xs"
               >
-                {busy ? (
-                  <Loader2 className="size-3.5 animate-spin" />
-                ) : (
-                  <Plus className="size-3.5" />
-                )}
+                <Plus className="size-3.5" />
                 {tr("folios.editor.inspector.attachments-add")}
               </Button>
             )}

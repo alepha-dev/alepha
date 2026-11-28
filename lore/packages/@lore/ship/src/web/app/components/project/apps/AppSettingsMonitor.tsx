@@ -226,6 +226,7 @@ const AppSettingsMonitor = () => {
                     variant="outlined"
                     size="sm"
                     disabled={busy}
+                    loading={rotate.loading}
                     onClick={() => void rotate.run()}
                   >
                     {tr("uptime.rotate")}

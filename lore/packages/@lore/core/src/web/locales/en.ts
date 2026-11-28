@@ -2402,7 +2402,6 @@ export default {
   "apps.filter.allVersions": "All versions",
   "app.deploy": "Deploy",
   "app.deploy.action": "Deploy",
-  "app.deploy.starting": "Starting...",
   "app.deploy.started": "Deploying $1",
   "app.deploy.pick": "What to ship here",
   "app.deploy.wrongRuntime":
@@ -3142,7 +3141,6 @@ export default {
   "bay.instance.problems": "Bay reports",
   "bay.logs.title": "Logs",
   "bay.logs.fetch": "Fetch logs",
-  "bay.logs.fetching": "Asking the machine…",
   "bay.logs.offline":
     "The machine is not connected, so its logs cannot be read. A tail delivered hours later would be worthless.",
   "bay.logs.timeout":
@@ -3235,7 +3233,6 @@ export default {
   "hosts.cloudflare.mint": "Mint one with the right permissions",
   "hosts.cloudflare.mint.scope":
     "The form opens with the six permissions filled in. Narrow Account Resources to the one account before you create it.",
-  "hosts.cloudflare.checking": "Checking with Cloudflare…",
   "hosts.cloudflare.accountLabel": "account $1",
   "hosts.credential.valid": "credential valid",
   "hosts.credential.invalid": "credential invalid",

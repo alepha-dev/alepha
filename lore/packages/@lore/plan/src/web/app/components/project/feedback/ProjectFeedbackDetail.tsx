@@ -300,6 +300,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
               className="shrink-0"
               onClick={() => void trustAction.run()}
               disabled={busy}
+              loading={trustAction.loading}
               title={tr("feedback.trust.description")}
               data-testid="feedback-trust"
             >
@@ -529,6 +530,7 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
           <Button
             onClick={handlePromote}
             disabled={busy}
+            loading={promoteAction.loading}
             data-testid="feedback-accept-button"
           >
             <Plus className="size-4" />
@@ -538,11 +540,17 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
             variant="outlined"
             onClick={handleReject}
             disabled={busy}
+            loading={rejectAction.loading}
             data-testid="feedback-reject-button"
           >
             {tr("feedback.reject")}
           </Button>
-          <Button variant="minimal" onClick={handleDelete} disabled={busy}>
+          <Button
+            variant="minimal"
+            onClick={handleDelete}
+            disabled={busy}
+            loading={deleteAction.loading}
+          >
             {tr("feedback.delete")}
           </Button>
           <PinnedPromptsButton
@@ -560,11 +568,20 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
         <div className="border-border chrome flex flex-wrap justify-start gap-2 border-t p-3">
           {/* Same order as the pending footer above, minus Reject: an
               accepted item has nothing to reject. */}
-          <Button onClick={handlePromote} disabled={busy}>
+          <Button
+            onClick={handlePromote}
+            disabled={busy}
+            loading={promoteAction.loading}
+          >
             <Plus className="size-4" />
             {tr("feedback.createQuest")}
           </Button>
-          <Button variant="minimal" onClick={handleDelete} disabled={busy}>
+          <Button
+            variant="minimal"
+            onClick={handleDelete}
+            disabled={busy}
+            loading={deleteAction.loading}
+          >
             {tr("feedback.delete")}
           </Button>
           <PinnedPromptsButton
@@ -580,7 +597,12 @@ const ProjectFeedbackDetail = (props: ProjectFeedbackDetailProps) => {
 
       {feedback.status === "rejected" && (
         <div className="border-border chrome flex justify-start gap-2 border-t p-3">
-          <Button variant="minimal" onClick={handleDelete} disabled={busy}>
+          <Button
+            variant="minimal"
+            onClick={handleDelete}
+            disabled={busy}
+            loading={deleteAction.loading}
+          >
             {tr("feedback.delete")}
           </Button>
           {/* ⚠️ This footer had no menu at all, and gains one rather than

@@ -184,10 +184,9 @@ const FolioMenubar = (props: FolioMenubarProps): ReactElement => {
           type="button"
           size="xs"
           disabled={
-            !isFolioActionEnabled("folio.save", props.state) ||
-            props.saving ||
-            !props.dirty
+            !isFolioActionEnabled("folio.save", props.state) || !props.dirty
           }
+          loading={props.saving}
           onClick={() => dispatch("folio.save")}
         >
           {tr("folios.editor.action.save")}

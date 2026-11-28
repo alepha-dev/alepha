@@ -207,6 +207,7 @@ const ProjectErrorRail = (props: ProjectErrorRailProps) => {
                 variant="outlined"
                 size="sm"
                 disabled={verbs.busy}
+                loading={verbs.forward.loading}
                 onClick={() => void verbs.forward.run()}
               >
                 {tr("errors.action.forwardNew")}
@@ -215,6 +216,7 @@ const ProjectErrorRail = (props: ProjectErrorRailProps) => {
                 variant="outlined"
                 size="sm"
                 disabled={verbs.busy}
+                loading={verbs.link.loading}
                 onClick={() => void verbs.link.run()}
               >
                 {tr("errors.action.forwardExisting")}

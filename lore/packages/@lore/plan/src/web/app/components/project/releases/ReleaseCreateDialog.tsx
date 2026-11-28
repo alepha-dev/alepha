@@ -196,9 +196,8 @@ const ReleaseCreateDialog = (props: ReleaseCreateDialogProps) => {
           </Button>
           <Button
             onClick={() => void submit()}
-            disabled={
-              submitting || !tag.trim() || !releaseApi.createRelease.can()
-            }
+            disabled={!tag.trim() || !releaseApi.createRelease.can()}
+            loading={submitting}
           >
             {tr("release.create.confirm")}
           </Button>

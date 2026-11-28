@@ -93,7 +93,7 @@ const ProjectSettingsThreshold = (props: ProjectSettingsThresholdProps) => {
             disabled={save.loading}
           />
           <div className="flex justify-start sm:justify-end">
-            <Button type="submit" variant="outlined" disabled={save.loading}>
+            <Button type="submit" variant="outlined" loading={save.loading}>
               {tr("thresholds.save")}
             </Button>
           </div>

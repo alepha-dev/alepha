@@ -121,6 +121,8 @@ const ProjectJob = (props: ProjectJobProps) => {
   // Poke (#Q4456): offered only while the server says the job's agent and
   // its host's Bay read messages.
   const [poking, setPoking] = useState(false);
+  // Which of Start fresh and Run again was pressed: that one spins.
+  const [continuing, setContinuing] = useState<boolean>();
   const poke = useAction<[string], void>(
     {
       handler: async (_ctx, message) => {
@@ -168,7 +170,11 @@ const ProjectJob = (props: ProjectJobProps) => {
   // workspace and on its branch (#Q4340); Start fresh is the other choice.
   const unfinished =
     row !== undefined && ProjectJob.CONTINUABLE.includes(row.status);
-  const runAgain = (continued: boolean) =>
+  const runAgain = (continued: boolean) => {
+    setContinuing(continued);
+    return runPrompt(continued);
+  };
+  const runPrompt = (continued: boolean) =>
     row &&
     prompt &&
     run.run(prompt.name, {
@@ -192,6 +198,7 @@ const ProjectJob = (props: ProjectJobProps) => {
               variant="outlined"
               size="lg"
               disabled={run.loading}
+              loading={run.loading && continuing === false}
               onClick={() => void runAgain(false)}
               data-testid="job-start-fresh"
             >
@@ -202,6 +209,7 @@ const ProjectJob = (props: ProjectJobProps) => {
           <Button
             size="lg"
             disabled={run.loading}
+            loading={run.loading && continuing === unfinished}
             onClick={() => void runAgain(unfinished)}
             data-testid="job-run-again"
           >

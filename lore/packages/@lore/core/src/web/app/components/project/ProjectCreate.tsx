@@ -503,9 +503,8 @@ const ProjectCreate = () => {
                       key="submit"
                       type="submit"
                       size="lg"
-                      disabled={
-                        submitting || !canAdvanceFromName || !hasSubject
-                      }
+                      disabled={!canAdvanceFromName || !hasSubject}
+                      loading={submitting}
                       className="h-11 px-6"
                     >
                       <Hammer className="size-4" />

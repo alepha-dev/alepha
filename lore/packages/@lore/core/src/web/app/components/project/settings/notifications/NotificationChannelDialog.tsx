@@ -213,7 +213,7 @@ const NotificationChannelDialog = (props: NotificationChannelDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={busy}
+              loading={busy}
               data-testid="notification-channel-save"
             >
               {tr("notifications.channels.save")}

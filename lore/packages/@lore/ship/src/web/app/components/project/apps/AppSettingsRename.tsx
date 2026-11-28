@@ -176,7 +176,8 @@ const AppSettingsRename = (props: AppSettingsRenameProps) => {
         {canManage ? (
           <Button
             variant="outlined"
-            disabled={busy || !changed}
+            disabled={!changed}
+            loading={busy}
             onClick={() => void save()}
           >
             {tr("app.settings.rename.save")}

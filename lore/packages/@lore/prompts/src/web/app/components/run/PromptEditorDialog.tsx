@@ -335,7 +335,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
             >
               {tr("prompts.cancel")}
             </Button>
-            <Button type="submit" disabled={busy} data-testid="prompt-save">
+            <Button type="submit" loading={busy} data-testid="prompt-save">
               {tr("prompts.save")}
             </Button>
           </DialogFooter>

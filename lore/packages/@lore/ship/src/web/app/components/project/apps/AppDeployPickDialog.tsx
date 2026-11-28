@@ -116,6 +116,7 @@ const AppDeployPickDialog = (props: AppDeployPickDialogProps) => {
                   size="sm"
                   variant={usable ? "solid" : "outlined"}
                   disabled={!usable || deployAction.loading}
+                  loading={deployAction.loading && picked === group.tag}
                   title={
                     usable
                       ? undefined
@@ -131,9 +132,7 @@ const AppDeployPickDialog = (props: AppDeployPickDialogProps) => {
                   }}
                   data-testid={`app-deploy-${group.tag}`}
                 >
-                  {deployAction.loading && picked === group.tag
-                    ? tr("app.deploy.starting")
-                    : tr("app.deploy.action")}
+                  {tr("app.deploy.action")}
                 </Button>
               );
             }}

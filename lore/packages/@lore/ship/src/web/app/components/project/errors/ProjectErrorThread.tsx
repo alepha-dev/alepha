@@ -53,6 +53,14 @@ export interface ProjectErrorThreadProps {
    * A triage verb is running elsewhere on the page.
    */
   busy: boolean;
+  /**
+   * The trust asked from the notice is running.
+   */
+  trusting?: boolean;
+  /**
+   * A forward asked from a comment is running.
+   */
+  forwarding?: boolean;
 }
 
 /**
@@ -73,6 +81,9 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
   const users = useProjectUsers();
   const [draft, setDraft] = useState("");
   const [running, setRunning] = useState(false);
+  // The comment a forward or a delete was asked from: its button spins.
+  const [forwardingId, setForwardingId] = useState<number>();
+  const [deletingId, setDeletingId] = useState<number>();
   const errorId = props.detail.error.id;
   const params = { projectId: props.projectId, errorId };
   const key = ["project-error-thread", props.projectId, errorId];
@@ -171,7 +182,11 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
     >
       {!props.detail.error.trustedAt &&
         props.detail.error.status === "open" && (
-          <ProjectErrorTrustNotice onTrust={props.onTrust} busy={busy} />
+          <ProjectErrorTrustNotice
+            onTrust={props.onTrust}
+            busy={busy}
+            trusting={props.trusting}
+          />
         )}
       <ol className="divide-border/40 flex flex-col divide-y px-1">
         {timeline.map((entry) =>
@@ -190,15 +205,25 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
               errorId={errorId}
               members={members}
               busy={busy}
+              deleting={remove.loading && deletingId === entry.entry.id}
+              forwarding={!!props.forwarding && forwardingId === entry.entry.id}
               onDelete={
                 viewerId && entry.entry.userId === viewerId
-                  ? () => void remove.run(entry.entry)
+                  ? () => {
+                      setDeletingId(entry.entry.id);
+                      void remove
+                        .run(entry.entry)
+                        .finally(() => setDeletingId(undefined));
+                    }
                   : undefined
               }
               // An agent's finding, on an error not forwarded yet.
               onForward={
                 onForwardFinding && entry.entry.source
-                  ? () => onForwardFinding(entry.entry.id)
+                  ? () => {
+                      setForwardingId(entry.entry.id);
+                      onForwardFinding(entry.entry.id);
+                    }
                   : undefined
               }
             />
@@ -219,6 +244,7 @@ const ProjectErrorThread = (props: ProjectErrorThreadProps) => {
           onChange={setDraft}
           onSubmit={() => void post.run()}
           busy={busy}
+          sending={post.loading}
           placeholder={tr("errors.thread.placeholder")}
           submitLabel={tr("errors.thread.submit")}
           // An editor with the `@` picker; no image paste, since an error

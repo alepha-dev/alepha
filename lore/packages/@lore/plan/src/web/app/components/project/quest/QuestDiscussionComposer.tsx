@@ -9,7 +9,7 @@ import {
 import { DateTimeProvider } from "alepha/datetime";
 import { useAction, useClient, useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Loader2, MessageSquareReply, Paperclip } from "lucide-react";
+import { MessageSquareReply, Paperclip } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import type { QuestCommentController } from "../../../../../api/controllers/QuestCommentController.ts";
@@ -92,6 +92,8 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
   const [body, setBody] = useState("");
   const [pending, setPending] = useState<DiscussionAttachment[]>([]);
   const [uploading, setUploading] = useState(0);
+  // The post that answers runs from its own button, which then spins.
+  const [answering, setAnswering] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   // Files waiting to go count as a draft too: a refresh must not drop them.
   const drafting = body.trim() !== "" || pending.length > 0 || uploading > 0;
@@ -206,6 +208,7 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
       onChange={setBody}
       onSubmit={() => void postAction.run()}
       busy={posting}
+      sending={postAction.loading && !answering}
       canSubmit={canSubmit}
       members={props.members}
       // Pasted images become the comment's attachments, never inline.
@@ -243,13 +246,10 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
                 size="sm"
                 variant="outlined"
                 disabled={posting}
+                loading={uploadAction.loading}
                 onClick={() => fileInputRef.current?.click()}
               >
-                {uploadAction.loading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Paperclip className="size-4" />
-                )}
+                <Paperclip className="size-4" />
                 {tr("discussion.attach")}
               </Button>
             </>
@@ -260,7 +260,11 @@ const QuestDiscussionComposer = (props: QuestDiscussionComposerProps) => {
               size="sm"
               variant="outlined"
               disabled={posting || !canSubmit}
-              onClick={() => void postAction.run(true)}
+              loading={postAction.loading && answering}
+              onClick={() => {
+                setAnswering(true);
+                void postAction.run(true).finally(() => setAnswering(false));
+              }}
             >
               <MessageSquareReply className="size-4" />
               {tr("quest.discussion.composer.answer")}

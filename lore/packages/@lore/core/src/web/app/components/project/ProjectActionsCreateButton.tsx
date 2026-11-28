@@ -198,7 +198,7 @@ const ProjectActionsCreateButton = () => {
             <Button variant="outlined" onClick={() => setShowInvite(false)}>
               {tr("organizations.members.cancel")}
             </Button>
-            <Button onClick={handleInvite} disabled={inviteMember.loading}>
+            <Button onClick={handleInvite} loading={inviteMember.loading}>
               {tr("organizations.invitations.send")}
             </Button>
           </DialogFooter>

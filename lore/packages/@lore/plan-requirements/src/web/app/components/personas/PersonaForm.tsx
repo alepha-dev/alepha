@@ -176,7 +176,7 @@ const PersonaForm = (props: PersonaFormProps) => {
         </div>
       </div>
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
-        <Button type="submit" disabled={loading || !canSave}>
+        <Button type="submit" disabled={!canSave} loading={loading}>
           {persona ? <Save className="size-4" /> : <Plus className="size-4" />}
           {tr(
             persona

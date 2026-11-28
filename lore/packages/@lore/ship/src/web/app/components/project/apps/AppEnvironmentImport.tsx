@@ -216,7 +216,8 @@ const AppEnvironmentImport = (props: AppEnvironmentImportProps) => {
           </Button>
           <Button
             type="button"
-            disabled={sendable.length === 0 || importAction.loading}
+            disabled={sendable.length === 0}
+            loading={importAction.loading}
             onClick={() => void importAction.run()}
             data-testid="app-environment-import-submit"
           >

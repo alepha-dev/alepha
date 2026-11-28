@@ -148,6 +148,8 @@ const ProjectErrorPage = (props: ProjectErrorPageProps) => {
             projectSlug={projectSlug}
             questHref={questHref}
             busy={verbs.busy}
+            trusting={verbs.trust.loading}
+            forwarding={verbs.forwardFinding.loading}
             onTrust={verbs.canTriage ? () => void verbs.trust.run() : undefined}
             onForwardFinding={
               verbs.canTriage && canForward

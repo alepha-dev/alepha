@@ -80,6 +80,8 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
 
   const invitable = props.users.filter((user) => !memberIds.has(user.id));
   const busy = invite.loading || remove.loading;
+  // The member whose removal runs: their button spins, the others wait.
+  const [removingId, setRemovingId] = useState<string>();
   const count = props.members.length + (props.agents?.length ?? 0);
 
   return (
@@ -126,7 +128,13 @@ const RoomMembersPanel = (props: RoomMembersPanelProps) => {
                       variant="minimal"
                       size="xs"
                       disabled={busy}
-                      onClick={() => void remove.run(member.userId)}
+                      loading={remove.loading && removingId === member.userId}
+                      onClick={() => {
+                        setRemovingId(member.userId);
+                        void remove
+                          .run(member.userId)
+                          .finally(() => setRemovingId(undefined));
+                      }}
                     >
                       {tr("chat.room.remove")}
                     </Button>

@@ -114,6 +114,7 @@ const BayAgentHost = ({ canUpdate }: BayAgentHostProps) => {
                   variant="outlined"
                   size="sm"
                   disabled={busy || host.agentStatus === "checking"}
+                  loading={check.loading}
                   onClick={() => void check.run()}
                   data-testid="bay-agent-check"
                 >

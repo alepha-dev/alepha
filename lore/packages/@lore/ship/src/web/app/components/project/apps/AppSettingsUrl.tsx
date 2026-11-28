@@ -118,7 +118,8 @@ const AppSettingsUrl = () => {
         {canManage ? (
           <Button
             variant="outlined"
-            disabled={busy || !changed}
+            disabled={!changed}
+            loading={busy}
             onClick={() => void save()}
           >
             {tr("app.settings.url.save")}

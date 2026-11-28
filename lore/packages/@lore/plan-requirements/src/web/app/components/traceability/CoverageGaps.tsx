@@ -121,7 +121,7 @@ const CoverageGaps = (props: CoverageGapsProps) => {
               <Button
                 size="sm"
                 variant="outlined"
-                disabled={technical.loading}
+                loading={technical.loading}
                 onClick={() =>
                   void technical.run(gaps.epicsWithoutUseCase[0].number)
                 }

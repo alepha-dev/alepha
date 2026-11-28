@@ -77,7 +77,7 @@ const RoomInviteDialog = (props: RoomInviteDialogProps) => {
             >
               {tr("chat.room.new.cancel")}
             </Button>
-            <Button type="submit" disabled={props.busy}>
+            <Button type="submit" loading={props.busy}>
               {tr("chat.room.invite.submit")}
             </Button>
           </DialogFooter>

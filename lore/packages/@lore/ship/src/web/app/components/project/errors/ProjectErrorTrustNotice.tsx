@@ -10,6 +10,10 @@ export interface ProjectErrorTrustNoticeProps {
    */
   onTrust?: () => void;
   busy: boolean;
+  /**
+   * The trust this notice asked for is running: its button spins.
+   */
+  trusting?: boolean;
 }
 
 /**
@@ -34,6 +38,7 @@ const ProjectErrorTrustNotice = (props: ProjectErrorTrustNoticeProps) => {
           variant="outlined"
           size="sm"
           disabled={props.busy}
+          loading={props.trusting}
           onClick={props.onTrust}
           data-testid="error-untrusted-trust"
         >

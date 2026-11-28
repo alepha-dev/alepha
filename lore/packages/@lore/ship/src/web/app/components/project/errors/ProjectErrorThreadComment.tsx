@@ -31,6 +31,14 @@ export interface ProjectErrorThreadCommentProps {
    */
   onForward?: () => void;
   busy: boolean;
+  /**
+   * This comment's forward is running: its button spins.
+   */
+  forwarding?: boolean;
+  /**
+   * This comment's delete is running: its button spins.
+   */
+  deleting?: boolean;
 }
 
 /**
@@ -68,6 +76,7 @@ const ProjectErrorThreadComment = (props: ProjectErrorThreadCommentProps) => {
                 className="h-7 shrink-0 gap-1.5 px-2 text-xs"
                 data-testid="error-thread-comment-forward"
                 disabled={props.busy}
+                loading={props.forwarding}
                 onClick={props.onForward}
               >
                 <Send className="size-3.5" />
@@ -83,6 +92,7 @@ const ProjectErrorThreadComment = (props: ProjectErrorThreadCommentProps) => {
                 aria-label={tr("errors.thread.delete")}
                 data-testid="error-thread-comment-delete"
                 disabled={props.busy}
+                loading={props.deleting}
                 onClick={props.onDelete}
               >
                 <Trash2 className="size-3.5" />

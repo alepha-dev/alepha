@@ -854,6 +854,7 @@ const QuestView = (props: QuestViewProps) => {
                     type="button"
                     variant="outlined"
                     disabled={unholdQuest.disabled}
+                    loading={unholdAction.loading}
                     onClick={unholdQuest.onClick}
                   >
                     <PlayCircle className="size-4" />
@@ -889,6 +890,7 @@ const QuestView = (props: QuestViewProps) => {
                       !questApi.acceptQuest.can() ||
                       acceptWithheld !== undefined
                     }
+                    loading={acceptAction.loading}
                     title={acceptWithheld}
                     onClick={() => void acceptAction.run()}
                   >

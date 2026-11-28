@@ -479,7 +479,8 @@ const QuestCreate = (props: QuestCreateProps) => {
         {update ? (
           <Button
             type="submit"
-            disabled={submitting || !questApi.updateQuestById.can()}
+            disabled={!questApi.updateQuestById.can()}
+            loading={submitting}
           >
             <Save className="size-4" />
             {tr("quest.create.update")}
@@ -488,7 +489,8 @@ const QuestCreate = (props: QuestCreateProps) => {
           <div className="flex items-stretch">
             <Button
               type="submit"
-              disabled={submitting || !questApi.createQuest.can()}
+              disabled={!questApi.createQuest.can()}
+              loading={submitting}
               className="rounded-r-none"
             >
               <Plus className="size-4" />
