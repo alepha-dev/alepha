@@ -2258,6 +2258,7 @@ __metadata:
     "@types/ws": "npm:^8.18.2"
     alepha: "workspace:*"
     lucide-react: "npm:^1.73.0"
+    miniflare: "npm:5.20261103.0-beta"
     react: "npm:^19.3.1"
     react-dom: "npm:^19.3.1"
     react-is: "npm:^19.3.1"

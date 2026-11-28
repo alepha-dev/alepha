@@ -565,7 +565,20 @@ export {
   GitHubAppService,
   type GitHubAppCredentials,
 } from "./services/GitHubAppService.ts";
+export { GitHubAppJwt } from "./services/GitHubAppJwt.ts";
+export {
+  GitHubClient,
+  type GitHubAnswer,
+  type GitHubAuth,
+  type GitHubRepository,
+} from "./services/GitHubClient.ts";
 export { GitHubKeyFormat } from "./services/GitHubKeyFormat.ts";
+export {
+  GitHubTokenService,
+  type GitHubBotIdentity,
+  type GitHubInstallationToken,
+  type GitHubPermissions,
+} from "./services/GitHubTokenService.ts";
 export { GitHubStateService } from "./services/GitHubStateService.ts";
 export {
   GitHubTransport,
