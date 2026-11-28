@@ -10,6 +10,7 @@ import { EventLogProvider } from "./providers/EventLogProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { MemoryEventLogProvider } from "./providers/MemoryEventLogProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
+import { OrmEventLogProvider } from "./providers/OrmEventLogProvider.ts";
 import { AdminAnalyticsService } from "./services/AdminAnalyticsService.ts";
 import { AnalyticsRetentionGuard } from "./services/AnalyticsRetentionGuard.ts";
 
@@ -30,6 +31,7 @@ export * from "./providers/EventLogProvider.ts";
 export * from "./providers/MemoryAnalyticsProvider.ts";
 export * from "./providers/MemoryEventLogProvider.ts";
 export * from "./providers/OrmAnalyticsProvider.ts";
+export * from "./providers/OrmEventLogProvider.ts";
 export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/adminAnalyticsQuerySchema.ts";
 export * from "./schemas/adminAnalyticsResultSchema.ts";
@@ -90,12 +92,13 @@ export const AlephaApiAnalytics = $module({
     MemoryAnalyticsProvider,
     OrmAnalyticsProvider,
     MemoryEventLogProvider,
+    OrmEventLogProvider,
   ],
   register: (alepha) => {
     alepha.with({
       optional: true,
       provide: EventLogProvider,
-      use: MemoryEventLogProvider,
+      use: alepha.isTest() ? MemoryEventLogProvider : OrmEventLogProvider,
     });
     alepha.with({
       optional: true,

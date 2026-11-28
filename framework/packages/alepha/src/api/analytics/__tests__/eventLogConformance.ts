@@ -26,7 +26,7 @@ export const eventLogConformance = (
       appId: z.string(),
       sessionId: z.string(),
       path: z.string(),
-      country: z.string().nullable(),
+      country: z.string().nullable().optional(),
       views: z.number(),
       engaged: z.boolean(),
     }),
