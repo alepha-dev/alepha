@@ -21,8 +21,9 @@ export interface AnalyticsEventLog {
    */
   index: string;
   /**
-   * The columns of a row. Strings, numbers and booleans; a column may be
-   * nullable. The time of the event is not a column here: it is `at` on the
+   * The columns of a row. Strings, numbers and booleans; a column that may
+   * hold no value is declared `.nullable().optional()`, which is what makes
+   * it a nullable column on a relational backend. The time of the event is not a column here: it is `at` on the
    * appended row.
    */
   schema: ZObject;

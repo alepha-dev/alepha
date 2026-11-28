@@ -31,6 +31,7 @@ export * from "./providers/EventLogProvider.ts";
 export * from "./providers/MemoryAnalyticsProvider.ts";
 export * from "./providers/MemoryEventLogProvider.ts";
 export * from "./providers/OrmAnalyticsProvider.ts";
+export * from "./providers/OrmEventLogProvider.ts";
 export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/adminAnalyticsQuerySchema.ts";
 export * from "./schemas/adminAnalyticsResultSchema.ts";

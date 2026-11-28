@@ -14,7 +14,7 @@ class Traffic {
     schema: z.object({
       appId: z.string(),
       sessionId: z.string(),
-      path: z.string().nullable(),
+      path: z.string().nullable().optional(),
     }),
     keep: "90d",
   });
