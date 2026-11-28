@@ -723,6 +723,7 @@ export class ReleaseController {
     completedAt: quest.completedAt,
     acceptedAt: quest.acceptedAt,
     shelvedAt: quest.shelvedAt,
+    draftAt: quest.draftAt,
   });
 
   getReleaseChangelog = $action({

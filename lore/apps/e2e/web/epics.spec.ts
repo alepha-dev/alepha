@@ -680,7 +680,33 @@ test.describe("Epics — the questline", () => {
     const card = (q: { shortId: number; title: string }) =>
       page.getByRole("button", { name: `#Q${q.shortId} ${q.title}` });
 
+    await test.step("a draft epic's quests are drafts on the board", async () => {
+      await page.goto(`/${slug}/epics/${epic.number}?tab=flow`);
+
+      for (const quest of [root, left, right, loose]) {
+        await expect(card(quest)).toBeVisible({ timeout: 15_000 });
+      }
+      // The epic is a draft, so are its quests: none is ready or waiting
+      // until the epic is marked ready.
+      await expect(page.getByTitle("Draft", { exact: true })).toContainText(
+        "4",
+      );
+      await expect(page.getByTitle("Ready", { exact: true })).toContainText(
+        "0",
+      );
+    });
+
     await test.step("every quest is on the board at once", async () => {
+      await page.evaluate(async (epicId) => {
+        const r = await fetch(`/api/setEpicStatus/${epicId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status: "ready" }),
+        });
+        if (!r.ok)
+          throw new Error(`setEpicStatus ${r.status} ${await r.text()}`);
+      }, epic.id);
       await page.goto(`/${slug}/epics/${epic.number}?tab=flow`);
 
       for (const quest of [root, left, right, loose]) {

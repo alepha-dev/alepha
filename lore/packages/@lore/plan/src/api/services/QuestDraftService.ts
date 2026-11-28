@@ -137,6 +137,27 @@ export class QuestDraftService {
   }
 
   /**
+   * The questline refusal on accept: the quest waits on a predecessor that
+   * is not completed (#Q4380). A draft predecessor is said to be one, since
+   * it will not move until someone marks it ready, and the sentence names
+   * who: the predecessor itself when loose, its epic when the epic owns its
+   * draft. A shelved draft reads `shelved`, and the plain sentence stays.
+   */
+  blockedBySentence(
+    predecessor: Pick<Quest, "shortId" | "draftAt" | "shelvedAt">,
+    epic: Pick<Epic, "number"> | undefined,
+  ): string {
+    const ref = formatReference("quest", predecessor.shortId);
+    const base = `Cannot accept quest: blocked by ${ref}`;
+    if (!predecessor.draftAt || predecessor.shelvedAt) return base;
+    if (epic) {
+      const epicRef = formatReference("epic", epic.number);
+      return `${base}, a draft because Epic ${epicRef} is. Nothing in it can be taken until Epic ${epicRef} is marked ready (epic_set_status, or lore epic set status).`;
+    }
+    return `${base}, a draft. It cannot be taken until it is marked ready (quest_ready, lore quest ready, or Mark as ready on its page).`;
+  }
+
+  /**
    * An epic is marked ready: every quest of it still marked draft becomes
    * to do, in ONE statement, `readyAt` stamped (#Q4373). Only where
    * `draft_at IS NOT NULL` (#E178 review, item 4): a completed quest, or one

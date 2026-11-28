@@ -1168,6 +1168,7 @@ const NO_QUESTLINE: {
     title: string;
     completedAt?: string;
     shelvedAt?: string;
+    draftAt?: string;
   };
   dependents: Array<{
     id: number;
@@ -1175,6 +1176,7 @@ const NO_QUESTLINE: {
     title: string;
     completedAt?: string;
     shelvedAt?: string;
+    draftAt?: string;
   }>;
 } = { dependents: [] };
 

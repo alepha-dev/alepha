@@ -23,10 +23,11 @@ export interface QuestlineSummary {
 /**
  * One end of a questline link.
  *
- * `completedAt` / `shelvedAt` are what let a reader tell "blocked" from
- * "unblocked" and from "blocked by something parked". They were missing
- * here while `QuestView`'s own state carried them, so anything typed
- * against this interface could not see the difference.
+ * `completedAt` / `shelvedAt` / `draftAt` are what let a reader tell
+ * "blocked" from "unblocked", from "blocked by something parked" and from
+ * "blocked by a draft", which waits on someone marking it ready (#Q4380).
+ * They were missing here while `QuestView`'s own state carried them, so
+ * anything typed against this interface could not see the difference.
  */
 export interface QuestlineNode {
   id: number;
@@ -34,6 +35,7 @@ export interface QuestlineNode {
   title: string;
   completedAt?: string;
   shelvedAt?: string;
+  draftAt?: string;
 }
 
 export interface QuestViewQuestlineProps {
@@ -122,15 +124,17 @@ const QuestViewQuestline = (props: QuestViewQuestlineProps) => {
     <div className="flex flex-col gap-2">
       {predecessor &&
         row(
-          String(
-            done
-              ? tr("quest.view.questline.unblocked")
-              : predecessor.shelvedAt
-                ? // A shelved predecessor never completes on its own, so say
-                  // so rather than implying the block will clear by itself.
-                  tr("quest.view.questline.blockedByShelved")
+          done
+            ? tr("quest.view.questline.unblocked")
+            : predecessor.shelvedAt
+              ? // A shelved predecessor never completes on its own, so say
+                // so rather than implying the block will clear by itself.
+                tr("quest.view.questline.blockedByShelved")
+              : predecessor.draftAt
+                ? // Nor does a draft: nobody can take it until it is marked
+                  // ready (#Q4380). Shelved wins, as in the status.
+                  tr("quest.view.questline.blockedByDraft")
                 : tr("quest.view.questline.blockedBy"),
-          ),
           predecessor.shortId,
           predecessor.title,
           done

@@ -243,13 +243,15 @@ export interface QuestlineStatBarZoom {
 
 /**
  * Shelved quests are counted into the total but get no chip: they are the
- * deliberate "not doing this", which is not a stage of progress.
+ * deliberate "not doing this", which is not a stage of progress. A draft
+ * does get one (#Q4380): it is open work, only not ready to be taken.
  */
 const COUNTED = [
   "done",
   "running",
   "ready",
   "waiting",
+  "draft",
 ] as const satisfies readonly QuestlineState[];
 
 type CountedState = (typeof COUNTED)[number];
@@ -258,13 +260,15 @@ type StateLabelKey =
   | "questline.state.done"
   | "questline.state.running"
   | "questline.state.ready"
-  | "questline.state.waiting";
+  | "questline.state.waiting"
+  | "questline.state.draft";
 
 const LABEL: Record<CountedState, StateLabelKey> = {
   done: "questline.state.done",
   running: "questline.state.running",
   ready: "questline.state.ready",
   waiting: "questline.state.waiting",
+  draft: "questline.state.draft",
 };
 
 const DOT: Record<CountedState, string> = {
@@ -272,4 +276,5 @@ const DOT: Record<CountedState, string> = {
   running: "bg-amber-500",
   ready: "bg-primary",
   waiting: "bg-muted-foreground/35",
+  draft: "bg-violet-500/70",
 };

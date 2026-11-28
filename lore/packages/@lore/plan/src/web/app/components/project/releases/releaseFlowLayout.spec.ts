@@ -17,7 +17,7 @@ const quest = (
   options: Partial<
     Pick<
       ReleaseContentQuest,
-      "dependsOn" | "completedAt" | "acceptedAt" | "shelvedAt"
+      "dependsOn" | "completedAt" | "acceptedAt" | "shelvedAt" | "draftAt"
     >
   > = {},
 ): ReleaseContentQuest => ({
@@ -101,6 +101,26 @@ describe("ReleaseFlowLayout", () => {
       expect(states.get(3)).toBe("running");
       expect(states.get(4)).toBe("shelved");
       expect(states.get(5)).toBe("waiting");
+    });
+
+    it("draws a draft row as a draft, and a shelved draft as shelved", () => {
+      const map = layout.build({
+        epics: [],
+        looseQuests: [
+          quest(1, { draftAt: AT }),
+          quest(2, { dependsOn: 1 }),
+          quest(3, { draftAt: AT, shelvedAt: AT }),
+        ],
+      });
+
+      const states = new Map(
+        map
+          .loose!.tracks.flatMap((track) => track.nodes)
+          .map((node) => [node.quest.id, node.state]),
+      );
+      expect(states.get(1)).toBe("draft");
+      expect(states.get(2)).toBe("waiting");
+      expect(states.get(3)).toBe("shelved");
     });
   });
 
