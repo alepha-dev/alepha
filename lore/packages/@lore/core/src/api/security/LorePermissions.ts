@@ -137,6 +137,9 @@ export class LorePermissions {
     "area:manage",
     "app:manage",
     "deploy:manage",
+    // Starting, re-running and cancelling the connected repository's GitHub
+    // workflows (#Q4366): held by the ranks that deploy.
+    "deploy:workflow",
     "artifact:delete",
     "sigil:manage",
     "error:triage",
@@ -428,6 +431,20 @@ export class LorePermissions {
     group: "deploy",
     name: "manage",
     label: "permission.deploy.manage",
+    groupLabel: "permission.group.deploy",
+    groupOrder: 36,
+  });
+
+  /**
+   * Starting a workflow of the project's connected GitHub repository, with
+   * its inputs, re-running a run or its failed jobs, and cancelling one
+   * (#Q4366). Beside `deploy:manage`, since a workflow is how most projects
+   * ship: an Admin holds it, a Member does not.
+   */
+  deployWorkflow = $permission({
+    group: "deploy",
+    name: "workflow",
+    label: "permission.deploy.workflow",
     groupLabel: "permission.group.deploy",
     groupOrder: 36,
   });

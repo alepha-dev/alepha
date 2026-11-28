@@ -243,6 +243,10 @@ export class LoreAiToolset {
     usecase_run_record: LoreAiToolset.LATER,
     usecase_update: LoreAiToolset.LATER,
     usecase_validate: LoreAiToolset.LATER,
+    workflow_cancel: LoreAiToolset.LATER,
+    workflow_list: LoreAiToolset.LATER,
+    workflow_rerun: LoreAiToolset.LATER,
+    workflow_run: LoreAiToolset.LATER,
   };
 
   /**

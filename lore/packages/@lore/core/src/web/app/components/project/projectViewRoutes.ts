@@ -269,6 +269,8 @@ export const SECTION_LABEL_KEYS: Record<string, string> = {
   projectMonitor: "project.menu.apps",
   projectStacks: "stacks.title",
   projectStackEnvironment: "stacks.title",
+  // Ship's Workflows (#Q4366): a leaf and its section, like Stacks.
+  projectWorkflows: "project.menu.workflows",
   projectJob: "jobs.title",
   projectPrompt: "prompts.title",
   // ⚠️ A leaf and the whole section, so it is deliberately absent from

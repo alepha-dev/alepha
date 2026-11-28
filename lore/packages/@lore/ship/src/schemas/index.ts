@@ -18,6 +18,7 @@ export { projectErrorEvents } from "../api/entities/projectErrorEvents.ts";
 export { deployments } from "../api/entities/deployments.ts";
 
 export { registryCredentials } from "../api/entities/registryCredentials.ts";
+export { workflowDispatches } from "../api/entities/workflowDispatches.ts";
 export type { RegistryCredentialResource } from "../api/schemas/registryCredentialResourceSchema.ts";
 export { sigilErrorGroups } from "../api/entities/sigilErrorGroups.ts";
 export { type Sigil, sigils } from "../api/entities/sigils.ts";
@@ -62,3 +63,7 @@ export {
   type ProbeResult,
   probeResultSchema,
 } from "../api/schemas/probeResultSchema.ts";
+export type { Workflow } from "../api/schemas/workflowSchema.ts";
+export type { WorkflowInput } from "../api/schemas/workflowInputSchema.ts";
+export type { WorkflowRun } from "../api/schemas/workflowRunSchema.ts";
+export type { WorkflowsResource } from "../api/schemas/workflowsResourceSchema.ts";

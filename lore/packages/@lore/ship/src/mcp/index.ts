@@ -9,6 +9,7 @@ import { MonitorTools } from "./tools/MonitorTools.ts";
 import { ProjectErrorTools } from "./tools/ProjectErrorTools.ts";
 import { SigilTools } from "./tools/SigilTools.ts";
 import { StackTools } from "./tools/StackTools.ts";
+import { WorkflowTools } from "./tools/WorkflowTools.ts";
 
 /**
  * The MCP tools and resources of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts.
@@ -31,6 +32,8 @@ export const LoreShipMcp = $module({
     StackTools,
     // Uptime monitors for agents (#Q3591).
     MonitorTools,
+    // The connected repository's GitHub workflows, for a member (#Q4366).
+    WorkflowTools,
     // The coverage and open-errors thresholds (#Q3914).
   ],
 });
@@ -46,3 +49,4 @@ export { InsightsTools } from "./tools/InsightsTools.ts";
 export { MonitorTools } from "./tools/MonitorTools.ts";
 export { SigilTools } from "./tools/SigilTools.ts";
 export { StackTools } from "./tools/StackTools.ts";
+export { WorkflowTools } from "./tools/WorkflowTools.ts";

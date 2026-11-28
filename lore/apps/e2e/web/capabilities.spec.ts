@@ -159,12 +159,14 @@ test.describe("Project capabilities", () => {
     await page.waitForLoadState("networkidle");
 
     // No Artifacts: they are builds pushed to deploy, and this project's
-    // Ship has `track` without `deploy` (#Q3631).
+    // Ship has `track` without `deploy` (#Q3631). Workflows is baseline Ship
+    // (#Q4366): its page says when the project is not connected to GitHub.
     expect(await navHrefs(page, slug)).toEqual([
       "/",
       "/activity",
       "/apps",
       "/reports",
+      "/workflows",
     ]);
     // Feedback is off, so the feedback inbox is not a page this project has.
     await expect404(page, `/${slug}/feedback`);

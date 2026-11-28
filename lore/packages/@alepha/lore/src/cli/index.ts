@@ -43,6 +43,7 @@ import { StackCommand } from "./commands/StackCommand.ts";
 import { SubscriptionCommand } from "./commands/SubscriptionCommand.ts";
 import { ThresholdCommand } from "./commands/ThresholdCommand.ts";
 import { UseCaseCommand } from "./commands/UseCaseCommand.ts";
+import { WorkflowCommand } from "./commands/WorkflowCommand.ts";
 import type { LoreEnvironmentOptions } from "./schemas/loreEnvironmentOptions.ts";
 import { AttachmentDownloader } from "./services/AttachmentDownloader.ts";
 import { AttachmentUploader } from "./services/AttachmentUploader.ts";
@@ -170,6 +171,7 @@ export const AlephaLoreCli = $module({
     // The GitHub App and a project's repository (epic #E177).
     GitHubCommand,
     PullRequestCommand,
+    WorkflowCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,

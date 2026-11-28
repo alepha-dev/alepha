@@ -294,6 +294,24 @@ export class DeployRouter {
   });
 
   /**
+   * The connected repository's GitHub workflows (#Q4366): start one, re-run
+   * or cancel a run. The page says so when the project is not connected.
+   */
+  projectWorkflows = $pageProject({
+    name: "projectWorkflows",
+    path: "/workflows",
+    head: (_props, previous) => ({
+      title: `${previous?.title ?? ""} › Workflows`,
+    }),
+    lazy: () => import("./components/project/workflows/ProjectWorkflows.tsx"),
+    loader: async () => {
+      if (!hasCapability(this.alepha.store.get(currentProjectAtom), "ship")) {
+        throw new NotFoundError("Apps are not enabled for this project");
+      }
+    },
+  });
+
+  /**
    * One stack environment: its services, deploys, revisions, routes,
    * variables, volumes and settings. Two segments, like an app instance.
    */
