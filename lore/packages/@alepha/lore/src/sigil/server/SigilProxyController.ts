@@ -14,8 +14,10 @@ import { sigilBrowserName } from "../shared/sigilBrowserName.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import { sigilDeviceClass } from "../shared/sigilDeviceClass.ts";
 import { sigilHost } from "../shared/sigilHost.ts";
+import { sigilNormalizeIp } from "../shared/sigilNormalizeIp.ts";
 import { sigilOsName } from "../shared/sigilOsName.ts";
 import { sigilTrafficKind } from "../shared/sigilTrafficKind.ts";
+import { sigilVisitorPeriod } from "../shared/sigilVisitorPeriod.ts";
 import { sigilEnv } from "../sigilEnv.ts";
 import { SigilSinkProvider } from "./SigilSinkProvider.ts";
 
@@ -50,8 +52,6 @@ export class SigilProxyController {
       body: sigilEnvelope,
       headers: z.object({
         "cf-ipcountry": z.string().optional(),
-        "cf-connecting-ip": z.string().optional(),
-        "x-forwarded-for": z.string().optional(),
         "user-agent": z.string().optional(),
         host: z.string().optional(),
       }),
@@ -64,62 +64,58 @@ export class SigilProxyController {
       const country = request.headers["cf-ipcountry"] ?? undefined;
 
       /**
-       * A daily-stable visitor hash that cannot be tested against a guess.
+       * A visitor hash, stable for one period, that cannot be tested against
+       * a guess.
        *
-       * `cf-connecting-ip` → `x-forwarded-for` → `request.ip`, so it works
-       * behind Cloudflare, behind Bay's proxy, and direct. The salt rotates
-       * every UTC day, which is what makes the hash useless as a long-term
-       * identifier while still counting a visitor once per day.
+       * **The address is `request.ip`, normalised.** The framework resolves
+       * it the safe way (`ServerRequestParser.getRequestIp`): Cloudflare's
+       * `cf-connecting-ip`, else the entry `TRUST_PROXY_HOPS` from the right
+       * of `x-forwarded-for`. Reading `x-forwarded-for` here instead, as
+       * this once did, hashed whatever the client typed in its leftmost hop,
+       * so rotating one header minted a new visitor per request. IPv6 is cut
+       * to its /64 (see `sigilNormalizeIp`).
+       *
+       * **The salt rotates per period**: a UTC calendar month by default,
+       * an ISO week or a UTC day under `SIGIL_SALT_ROTATION`. The period is
+       * what makes the hash useless as a long-term identifier while still
+       * counting a visitor once per period, and it is stamped on the
+       * envelope (`visitorPeriod`) so the sink knows which period a hash
+       * belongs to.
        *
        * Salted with this app's own host, so two apps behind one sink produce
-       * different hashes for the same person — the sink counts each app's
+       * different hashes for the same person: the sink counts each app's
        * visitors without ever being able to tell they are the same visitor.
        *
        * **And salted with a secret, which is what makes it one-way at all.**
-       * The salt was once `hash("alepha-sigil:" + utcDate)` — derivable by
+       * The salt was once `hash("alepha-sigil:" + utcDate)`, derivable by
        * anyone who knows the date. Host and date are public, so a single
        * SHA-256 answered "did this IP with this user-agent visit today?"
-       * against any stored value, and enumerating IPv4 × common user-agents was
-       * tractable on one GPU. The rotation and the host scoping were real; the
-       * one-wayness was not. Everything downstream that calls this data
-       * "aggregated" — including the sink's own unique count — rests on this
-       * line.
+       * against any stored value, and enumerating IPv4 x common user-agents
+       * was tractable on one GPU.
        *
        * `SIGIL_SALT` when set, else `APP_SECRET`. Alepha refuses to start in
        * production while `APP_SECRET` is still its built-in default, so the
-       * fallback is guaranteed present, guaranteed strong, and guaranteed
-       * identical across every replica — three properties this hash needs and
-       * none of which a per-process value could give it. It also survives
-       * rotating the sigil credential, which an earlier version of this
-       * fallback did not.
+       * fallback is guaranteed present, strong, and identical across every
+       * replica. The derivation is labelled rather than hashing `APP_SECRET`
+       * directly (the `info` idea from HKDF), which keeps this salt distinct
+       * from every other thing the same secret derives.
        *
-       * The derivation is labelled rather than hashing `APP_SECRET` directly.
-       * `APP_SECRET` signs sessions; prefixing the purpose is the `info`
-       * parameter idea from HKDF, and it is what keeps this salt provably
-       * distinct from every other thing the same secret will be asked to derive
-       * later. Retrofitting domain separation after hashes are stored is not
-       * possible, so it goes in now.
-       *
-       * A cookie would be more accurate here, and per-origin by nature. It is
-       * deliberately not used: an analytics cookie is not "strictly necessary"
-       * under ePrivacy, so it would require consent — a banner in every app
-       * that installs this package. A daily-rotating hash is the same trade
-       * every cookieless analytics tool makes, and the rotation is what keeps
-       * the identifier short-lived, which a cookie would not be.
+       * A cookie would be more accurate, and is deliberately not used: an
+       * analytics cookie is not "strictly necessary" under ePrivacy, so it
+       * would need consent, a banner in every app that installs this
+       * package. A rotating hash is the trade every cookieless analytics tool
+       * makes.
        */
-      const ip =
-        request.headers["cf-connecting-ip"] ??
-        request.headers["x-forwarded-for"] ??
-        request.ip ??
-        "0.0.0.0";
+      const ip = sigilNormalizeIp(request.ip ?? "0.0.0.0");
       const ua = request.headers["user-agent"] ?? "";
-      const utcDate = new Date(this.dateTime.nowMillis())
-        .toISOString()
-        .slice(0, 10);
+      const visitorPeriod = sigilVisitorPeriod(
+        this.dateTime.nowMillis(),
+        this.env.SIGIL_SALT_ROTATION,
+      );
       const host = request.headers.host ?? "";
       const secret = this.env.SIGIL_SALT || this.secrets.secretKey;
-      const dailySalt = await this.crypto.hash(
-        `alepha-sigil-visitor:${secret}:${utcDate}`,
+      const periodSalt = await this.crypto.hash(
+        `alepha-sigil-visitor:${secret}:${visitorPeriod}`,
       );
       // ⚠️ The SUBJECT of the hash, and the only thing this change swaps.
       //
@@ -132,7 +128,7 @@ export class SigilProxyController {
       //
       // Everything around it is untouched, which is the point. Still salted
       // with the app's own host, so two apps behind one sink cannot be
-      // correlated. Still rotating daily, so it is useless as a long-term
+      // correlated. Still rotating per period, so it is useless as a long-term
       // identifier. Still one-way: the user id never leaves the app, only its
       // hash does, and the sink can no more reverse `u:<uuid>` than it could
       // reverse an IP.
@@ -152,16 +148,16 @@ export class SigilProxyController {
       // session on the request to read. Read a flat 0% signed in as that
       // before reading it as a bug.
       //
-      // ⚠️ **Unique visitors step ONCE when this deploys.** Somebody who
-      // browses signed out and then signs in on the same day counts as two
-      // identities that day: the anonymous half is already written, and
-      // nothing can merge it retroactively. Bounded at one extra per person
-      // per day, and only on a day they actually arrive signed out. The
-      // discontinuity in the chart is this, not a regression.
+      // ⚠️ Somebody who browses signed out and then signs in within one
+      // period counts as two identities in it: the anonymous half is already
+      // written, and nothing can merge it retroactively. Bounded at one extra
+      // per person per period, and only in a period they arrive signed out.
       const subject = request.user?.id
         ? `u:${request.user.id}`
         : `ip:${ip}:${ua}`;
-      const visitor = await this.crypto.hash(`${host}:${subject}:${dailySalt}`);
+      const visitor = await this.crypto.hash(
+        `${host}:${subject}:${periodSalt}`,
+      );
 
       // Classified here rather than in the browser for the same reason
       // `country` is: the header is already in hand server-side, so spending
@@ -215,6 +211,7 @@ export class SigilProxyController {
       await this.sink.ingest(body, {
         country,
         visitor,
+        visitorPeriod,
         device,
         traffic,
         browser,

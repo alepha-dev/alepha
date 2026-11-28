@@ -36,7 +36,6 @@ const visitorFor = async (env: Record<string, any>): Promise<string> => {
     body: { views: [{ path: "/" }] },
     headers: {
       host: "app.example.com",
-      "cf-connecting-ip": "1.2.3.4",
       "user-agent": "UA",
     },
   });

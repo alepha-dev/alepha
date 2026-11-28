@@ -203,6 +203,15 @@ export const sigilForwarded = sigilEnvelope.extend({
   country: z.string().max(8).optional(),
   visitor: z.string().max(128).optional(),
   /**
+   * The period `visitor` belongs to: `2026-11`, `2026-W48` or `2026-11-25`,
+   * all UTC (see `sigilVisitorPeriod`).
+   *
+   * Absent means the sender's UTC day, which is what a client older than
+   * the field implies: it salted daily. A sink checks the value rather than
+   * trusting it, since anyone holding a token can put anything here.
+   */
+  visitorPeriod: z.string().max(16).optional(),
+  /**
    * `mobile` | `tablet` | `desktop`, classified from the user-agent.
    *
    * Stamped by the proxy next to `country` rather than sent by the browser,

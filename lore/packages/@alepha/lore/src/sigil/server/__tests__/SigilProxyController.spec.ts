@@ -35,7 +35,6 @@ describe("SigilProxyController.ingest", () => {
       body: { views: [{ path: "/" }] },
       headers: {
         "cf-ipcountry": "FR",
-        "cf-connecting-ip": "1.2.3.4",
         "user-agent": "UA",
       },
     });
@@ -53,7 +52,6 @@ describe("SigilProxyController.ingest", () => {
 
     const headers = {
       "cf-ipcountry": "FR",
-      "cf-connecting-ip": "1.2.3.4",
       "user-agent": "UA",
     };
 
@@ -115,7 +113,7 @@ describe("SigilProxyController.ingest", () => {
 
     await ctrl.ingest.run({
       body: { views: [] },
-      headers: { "cf-connecting-ip": "5.5.5.5", "user-agent": "bot" },
+      headers: { "user-agent": "bot" },
     });
 
     const fwd = alepha.inject(SigilSinkProvider) as FakeSink;
@@ -203,7 +201,7 @@ describe("SigilProxyController.ingest", () => {
     const ctrl = alepha.inject(SigilProxyController);
     await alepha.start();
 
-    const edge = { "cf-connecting-ip": "1.2.3.4", "user-agent": "UA" };
+    const edge = { "user-agent": "UA" };
     await ctrl.ingest.run({
       body: { views: [] },
       headers: { ...edge, host: "a.example.com" },
