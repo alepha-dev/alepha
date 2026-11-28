@@ -33,6 +33,9 @@ export const appInsightsFiltersSchema = z.object({
   browser: z.string().optional(),
   os: z.string().optional(),
   auth: z.string().optional(),
+  entry: z.string().optional(),
+  exit: z.string().optional(),
+  network: z.string().optional(),
   /**
    * The leaderboard whose full list is open in a dialog over the tab
    * (#Q3674), by dimension. In the URL so a reload or a shared link reopens

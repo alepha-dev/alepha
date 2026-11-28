@@ -2722,25 +2722,32 @@ export default {
   "insights.traffic.bots": "Robots",
   "insights.traffic.note":
     "Les robots qui s’annoncent sont comptés comme tels. Celui qui pilote un vrai navigateur et envoie un user-agent ordinaire ne l’est pas : seul le taux d’engagement le trahit.",
-  "insights.uniqueVisitors": "Visiteurs uniques",
+  "insights.uniqueVisitors": "Visiteurs",
   "insights.uniqueVisitors.note":
-    "Visiteurs distincts sans cookie, la mesure de référence.",
+    "Visiteurs distincts sans cookie, comptés une fois par période et par app (un mois civil par défaut).",
+  "insights.uniqueVisitors.peopleOnly":
+    "Personnes seulement : les robots déclarés n'ont pas de visites. Les pages vues comptent tout le monde.",
+  "insights.visits": "Visites",
+  "insights.visits.note":
+    "Suites de pages vues closes par 30 minutes sans activité.",
   "insights.totalViews": "Pages vues",
   "insights.totalViews.note": "Approximatif : une tendance, pas un compte.",
   "insights.totalViews.tooltip":
-    "Nombre brut de pages vues. Rien ne limite ce qu’une application enrôlée déclare, donc ce chiffre est gonflable par qui détient son jeton. Fiez-vous plutôt aux visiteurs uniques.",
+    "Nombre brut de pages vues. Rien ne limite ce qu’une application enrôlée déclare, donc ce chiffre est gonflable par qui détient son jeton. Fiez-vous plutôt au nombre de visiteurs.",
   "insights.overTime": "Pages vues dans le temps",
   "insights.estimated": "Estimation",
   "insights.estimated.note":
-    "Les pages vues et les performances sont échantillonnées : ces chiffres sont des estimations. Les visiteurs uniques sont exacts.",
+    "Les pages vues et les performances sont échantillonnées : ces chiffres sont des estimations. Les visiteurs et les visites sont exacts.",
   "insights.topCountries": "Principaux pays",
   "insights.topPaths": "Pages les plus vues",
-  "insights.entries": "Chargements de page",
-  "insights.entries.note":
-    "Les arrivées, hors navigation à l'intérieur de l'application.",
   "insights.topEntryPaths": "Pages d'entrée",
   "insights.topEntryPaths.note":
     "La page sur laquelle chaque visite a commencé.",
+  "insights.topExitPaths": "Pages de sortie",
+  "insights.topNetworks": "Réseaux",
+  "insights.filter.entry": "Page d'entrée",
+  "insights.filter.exit": "Page de sortie",
+  "insights.filter.network": "Réseau",
   "insights.topCampaigns": "Campagnes",
   "insights.topCampaigns.note":
     "D'après utm_campaign ou utm_source dans l'URL d'arrivée.",
@@ -2759,21 +2766,19 @@ export default {
   "insights.device.desktop": "Ordinateur",
   "insights.topReferrers": "Sources de trafic",
   "insights.topReferrers.note":
-    "D'où viennent les visites. Seule la première page d'une visite porte un référent, donc Direct couvre aussi la navigation interne.",
+    "D'où viennent les visites. Chaque page d'une visite compte pour la source par laquelle elle est arrivée.",
   "insights.topReferrers.direct": "Direct",
   "insights.empty": "Aucune page vue enregistrée sur cette période.",
   "insights.dimension.value": "Valeur",
   "insights.dimension.count": "Nombre",
   "insights.dimension.share": "Part",
   "insights.more": "Voir tout",
-  "insights.bounce": "Sans engagement",
-  "insights.bounce.note": "Vues sans signe de lecture.",
+  "insights.bounce": "Taux de rebond",
+  "insights.bounce.note": "Visites limitées à une seule page.",
   "insights.bounce.tooltip":
-    "Ce n'est pas un taux de rebond par session : rien ici ne conserve de sessions. C'est la part des vues que personne n'a fait défiler, cliquées ou gardées ouvertes, ce que les données permettent de dire de plus proche et le seul signal que l'automatisation ne gonfle pas par accident.",
+    "La part des visites d'une seule page vue. Sous un filtre de page, celle des visites commencées sur cette page.",
   "insights.delta.tooltip":
     "Par rapport à la fenêtre de même largeur qui précède immédiatement, mesurée de la même façon. La fenêtre courante se termine aujourd'hui, donc son dernier jour se remplit encore.",
-  "insights.uniqueVisitors.unfiltered":
-    "Non filtré par $1 : les visiteurs sont comptés par app et par jour, sans ces dimensions.",
   "insights.errors.inbox": "Ouvrir la boîte Fléaux",
   "insights.filter.path": "Page",
   "insights.filter.country": "Pays",

@@ -34,6 +34,9 @@ export const APP_INSIGHTS_FILTER_KEYS = [
   "browser",
   "os",
   "auth",
+  "entry",
+  "exit",
+  "network",
 ] as const;
 
 export type AppInsightsFilterKey = (typeof APP_INSIGHTS_FILTER_KEYS)[number];
@@ -53,13 +56,15 @@ export const APP_INSIGHTS_ROW_FILTER: Record<
 > = {
   country: "country",
   path: "path",
-  entryPath: "path",
+  entry: "entry",
+  exit: "exit",
   campaign: "campaign",
   device: "device",
   referrer: "referrer",
   browser: "browser",
   os: "os",
   auth: "auth",
+  network: "network",
 };
 
 /**

@@ -460,9 +460,10 @@ export class ErrorCommand {
                   {
                     title: "Analytics",
                     lines: [
-                      `${insights.uniqueVisitors} unique visitors, ${insights.totalViews} views`,
-                      ...insights.topPaths.map(
-                        (path) => `${path.path}  ${path.count}`,
+                      `${insights.totals.visitors ?? "-"} visitors, ${insights.totals.visits ?? "-"} visits, ${insights.totals.views ?? 0} views`,
+                      ...insights.leaderboards.path.map(
+                        (row) =>
+                          `${row.value}  ${row.visitors ?? "-"} visitors  ${row.views} views`,
                       ),
                     ],
                   },

@@ -871,6 +871,28 @@ export class SigilInsightsService {
    * v2's first instant for these apps: their first session's first event.
    */
   protected async v2Start(sigilIds: string[]): Promise<number | undefined> {
+    // One page asks for a reading and a dozen leaderboards over the same
+    // apps: their first session is read once a minute, not each time.
+    const key = [...sigilIds].sort().join(",");
+    const cached = this.v2Starts.get(key);
+    const now = this.dateTime.nowMillis();
+    if (cached && cached.at > now - 60_000) return cached.value;
+    const value = await this.readV2Start(sigilIds);
+    // Only a known start is kept: an app with no session yet gets one any
+    // moment, and must not read views-only for a minute after it does.
+    if (value !== undefined) {
+      if (this.v2Starts.size > 500) this.v2Starts.clear();
+      this.v2Starts.set(key, { at: now, value });
+    }
+    return value;
+  }
+
+  protected readonly v2Starts = new Map<
+    string,
+    { at: number; value: number | undefined }
+  >();
+
+  protected async readV2Start(sigilIds: string[]): Promise<number | undefined> {
     const t = this.sessions.table;
     let first: string | undefined;
     for (const chunk of this.chunked(sigilIds)) {

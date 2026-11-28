@@ -1,264 +1,93 @@
 import { type Infer, z } from "alepha";
 
+import { insightsGrainSchema } from "./insightsGrainSchema.ts";
+import { insightsLeaderboardRowSchema } from "./insightsLeaderboardRowSchema.ts";
+import { insightsRangeSchema } from "./insightsRangeSchema.ts";
+import { insightsTotalsSchema } from "./insightsTotalsSchema.ts";
 import { trafficFilterSchema } from "./trafficFilterSchema.ts";
 import { vitalsMetricSchema } from "./vitalsMetricSchema.ts";
 
 /**
- * One app's (or one project's) analytics over a 1d / 7d / 30d window.
+ * One app's (or one project's) analytics over a window: visitors, visits and
+ * views with the visit rates, their timeline and leaderboards, the vitals and
+ * the error budget.
  *
- * ⚠️ `totalViews` is best-effort by construction. Nothing throttles what an
- * enrolled app reports, so the raw count is inflatable by whoever holds a sigil
- * token. `uniqueVisitors` is the trustworthy headline, and the UI labels the
- * two accordingly.
+ * ⚠️ Views are best-effort by construction: nothing throttles what an
+ * enrolled app reports, so a raw count is inflatable by whoever holds a sigil
+ * token. Visitors are a count of distinct hashes, one per person per period.
  *
  * Lives here rather than beside the controller because the browser reads it
- * too: `useAppInsights` types the analytics tabs against this schema, and
- * importing it from `InsightsController.ts` would pull the repositories and
- * the database provider into the client bundle.
+ * too: importing it from `InsightsController.ts` would pull the repositories
+ * and the database provider into the client bundle.
+ */
+
+/**
+ * The response of `InsightsController.getInsights`.
  */
 export const insightsResourceSchema = z.object({
-  range: z.enum(["1d", "7d", "30d"]),
-  /**
-   * Which population these numbers describe, echoed back from the request.
-   *
-   * Here for the same reason `range` is: the page renders from the payload,
-   * not from the control that produced it, so the control can be restored
-   * from a response the page did not itself ask for. `all` when the caller
-   * asked for nothing, so a reader never has to treat absence as a third
-   * state.
-   */
+  range: z.union([insightsRangeSchema, z.literal("custom")]),
   traffic: trafficFilterSchema,
   /**
-   * First UTC day included in the window, `YYYY-MM-DD`.
+   * `[from, to)`, ISO 8601 UTC instants.
+   */
+  from: z.string(),
+  to: z.string(),
+  grain: insightsGrainSchema,
+  /**
+   * The same window as whole UTC days, inclusive: what vitals and the error
+   * budget are read over.
    */
   since: z.string(),
-  /**
-   * Last UTC day included, `YYYY-MM-DD`.
-   *
-   * Normally today, and then the window ends **mid-day**: `range: "1d"` means
-   * today-so-far, not yesterday. That distinction is invisible until you
-   * compare two windows, at which point a partial day measured against a
-   * complete one reads as a collapse every morning and recovers by dinner.
-   * `until: "lastCompleteDay"` on the request is what moves this to yesterday
-   * and makes a delta a statement about traffic.
-   */
   until: z.string(),
+  totals: insightsTotalsSchema,
   /**
-   * The window of the same width immediately before this one, present only
-   * when the caller asked to compare.
-   *
-   * Measured the same way, in the same request, so the delta is not two
-   * numbers a client fetched separately and subtracted.
+   * The window of the same length just before, when `compare` was asked.
    */
   previous: z
     .object({
-      since: z.string(),
-      until: z.string(),
-      /**
-       * The trustworthy half of the comparison. Always exact.
-       */
-      uniqueVisitors: z.integer(),
-      /**
-       * Best-effort, like its current-window counterpart.
-       */
-      totalViews: z.integer(),
+      from: z.string(),
+      to: z.string(),
+      totals: insightsTotalsSchema,
     })
     .optional(),
-  /**
-   * Change in `uniqueVisitors` against `previous`, whole percent.
-   *
-   * Absent when there is nothing honest to say: no comparison was asked for,
-   * or the previous window was zero, where a percentage is undefined rather
-   * than infinite. A UI must render the absence as "no comparison", never as
-   * `+0%`.
-   *
-   * On uniques and not on `totalViews` deliberately — see the note at the top
-   * of this file. A delta amplifies whatever noise is in both windows, so it
-   * belongs on the number that cannot be inflated.
-   */
-  uniqueVisitorsDelta: z.number().optional(),
-  /**
-   * Best-effort raw pageview count. Inflatable — see above.
-   */
-  totalViews: z.integer(),
-  /**
-   * Abuse-resistant headline: distinct cookieless daily visitor hashes.
-   */
-  uniqueVisitors: z.integer(),
-  /**
-   * Filters this request carried that `uniqueVisitors` could NOT honour.
-   *
-   * Empty on almost every request, and then the count describes exactly the
-   * same slice as every other number here. Non-empty means the count is
-   * WIDER than the rest of the payload, and names by how much.
-   *
-   * It exists because the two numbers come from different stores.
-   * `totalViews` and the leaderboards are read from the `sigil_views`
-   * dataset, which carries every dimension; `uniqueVisitors` is read from
-   * `sigil_uniques_daily`, which is keyed `(sigilId, day, visitorHash)` and
-   * carries `traffic` and nothing else. Narrowing it by a further dimension
-   * is possible - `traffic` was added to that exact table in 2026-08, joined
-   * its unique index, and `SigilJobs.collapseUniques` folds per
-   * `(sigilId, traffic)` - but it is paid for in rows and sentinel rows per
-   * distinct value, which is a very different bill for `country` (~200
-   * values) or `path` (unbounded) than it was for `traffic` (two).
-   *
-   * So the cost is not paid, and the honesty is put here instead: a reader
-   * that ignores this field would show a project-wide visitor count beside
-   * filtered views with nothing on screen saying so. A UI should label the
-   * tile or hide it. This list is derived from what the uniques table can
-   * narrow by, so a dimension added there later drops out of it on its own.
-   */
-  uniqueVisitorsIgnores: z.array(z.string()),
-  topCountries: z.array(
+  timeline: z.array(
     z.object({
-      /**
-       * ISO-3166 alpha-2, or `ZZ` when the edge did not say.
-       */
-      country: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  topPaths: z.array(
-    z.object({
-      path: z.string(),
-      count: z.integer(),
-      /**
-       * Share of `totalViews`, rounded to a whole percent.
-       */
-      percentage: z.number(),
+      bucket: z.string(),
+      visitors: z.integer().nullable(),
+      visits: z.integer().nullable(),
+      views: z.integer(),
     }),
   ),
   /**
-   * Where visits came from, by host.
-   *
-   * `direct` is the catch-all bucket, and it will normally be the largest one
-   * by a wide margin: only a page load's own view carries a referrer at all,
-   * so every client-side navigation lands here alongside genuine bookmark and
-   * typed-URL arrivals. Read the *other* rows; `direct` is a denominator, not
-   * a traffic source.
+   * The visitor count adds up several periods of one app.
    */
+  visitorsSpanPeriods: z.boolean(),
   /**
-   * Page loads, as opposed to `totalViews` which also counts every
-   * client-side navigation. This is the denominator for a bounce rate and the
-   * number a landing-page report is a breakdown of.
+   * The visitor count adds up several apps.
    */
-  entries: z.integer(),
+  visitorsSpanApps: z.boolean(),
   /**
-   * Views the visitor scrolled, clicked, typed on, or stayed ten seconds on.
-   *
-   * The one number here that a scraper cannot inflate by accident: an
-   * automated fetch renders the page, reports the view, and never does any of
-   * those things. Compare it against `totalViews` before believing a traffic
-   * spike is people.
+   * The day visitors are counted from, when later than the window's start.
    */
-  engagedViews: z.integer(),
+  visitorsFrom: z.string().nullable(),
   /**
-   * `engagedViews / totalViews`, rounded to a whole percent.
+   * Visitors, visits and the visit rates are the people's, while views count
+   * declared bots too (`traffic: all`).
    */
-  engagementRate: z.number(),
-  /**
-   * Where visits *started*, by `entries` rather than by total views.
-   */
-  topEntryPaths: z.array(
-    z.object({
-      path: z.string(),
-      count: z.integer(),
-      percentage: z.number(),
-    }),
-  ),
-  /**
-   * `utm_campaign` / `utm_source` tags on arrivals. `none` is untagged.
-   */
-  topCampaigns: z.array(
-    z.object({
-      campaign: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  /**
-   * `mobile` / `tablet` / `desktop`, by total views.
-   */
-  topDevices: z.array(
-    z.object({
-      device: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  /**
-   * `chrome` / `safari` / `firefox` / `edge` / `other`, by total views.
-   *
-   * ⚠️ Rows written before the dimension existed carry `""` on Analytics
-   * Engine - a default fills a column on write, it does not rewrite stored
-   * rows - and they are folded into `other` rather than dropped or left as an
-   * empty bucket. Both readings are "we cannot name the browser", so the
-   * merge loses nothing; excluding them instead would silently make the
-   * leaderboard's shares sum to less than the traffic it claims to describe.
-   */
-  topBrowsers: z.array(
-    z.object({
-      browser: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  /**
-   * `windows` / `macos` / `ios` / `android` / `linux` / `other`, by total
-   * views. Legacy `""` folded into `other`, exactly as for browsers.
-   */
-  topSystems: z.array(
-    z.object({
-      os: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  /**
-   * `user` / `anon`, by total views: what share of this app's traffic is
-   * signed in.
-   *
-   * ⚠️ **Legacy rows carry `""`, and it folds into `anon`** rather than into
-   * `other`, which is where every other dimension's empty string goes. The
-   * difference is deliberate: `other` means "we cannot name this", and here
-   * we can - a row written before the dimension existed came from a proxy
-   * that stamped nothing, and a visit with no session stamped is a visit with
-   * no session. Anonymous is the true reading, and an `other` bucket beside
-   * `user` and `anon` would be a third audience that does not exist.
-   *
-   * ⚠️ **Cookie sessions only.** An app that keeps its token in memory posts
-   * to its proxy with a `fetch` carrying no `Authorization` header, so it
-   * reports 100% anonymous - correctly, since there is no session on that
-   * request to read. A flat zero is that before it is a bug.
-   */
-  topAudience: z.array(
-    z.object({
-      auth: z.string(),
-      count: z.integer(),
-    }),
-  ),
-  topReferrers: z.array(
-    z.object({
-      /**
-       * A bare host (`news.ycombinator.com`), or `direct`.
-       */
-      referrer: z.string(),
-      count: z.integer(),
-      /**
-       * Share of `totalViews`, rounded to a whole percent.
-       */
-      percentage: z.number(),
-    }),
-  ),
-  /**
-   * Web-vitals distributions across every sigil in scope.
-   *
-   * Derived from the stored histograms, so the cost does not grow with traffic,
-   * which is also why each metric is a distribution and a p75 BUCKET rather
-   * than a p75 value. See {@link vitalsMetricSchema} for what printing the
-   * bucket's ceiling as a millisecond figure did to this page.
-   *
-   * Every metric is always present, with `samples: 0` where the window saw
-   * nothing. Absent and empty are different claims, and only the second lets a
-   * UI say "no interaction samples yet" for INP instead of rendering a blank.
-   */
+  peopleOnly: z.boolean(),
+  leaderboards: z.object({
+    path: z.array(insightsLeaderboardRowSchema),
+    entry: z.array(insightsLeaderboardRowSchema),
+    exit: z.array(insightsLeaderboardRowSchema),
+    referrer: z.array(insightsLeaderboardRowSchema),
+    campaign: z.array(insightsLeaderboardRowSchema),
+    country: z.array(insightsLeaderboardRowSchema),
+    device: z.array(insightsLeaderboardRowSchema),
+    browser: z.array(insightsLeaderboardRowSchema),
+    os: z.array(insightsLeaderboardRowSchema),
+    auth: z.array(insightsLeaderboardRowSchema),
+    network: z.array(insightsLeaderboardRowSchema),
+  }),
   vitals: z.object({
     /**
      * Largest Contentful Paint, ms.
@@ -281,15 +110,6 @@ export const insightsResourceSchema = z.object({
      */
     ttfb: vitalsMetricSchema,
   }),
-  timeline: z.array(
-    z.object({
-      /**
-       * UTC day, `YYYY-MM-DD`.
-       */
-      date: z.string(),
-      views: z.integer(),
-    }),
-  ),
   /**
    * The per-app error budget: one row per `(sigil, fingerprint)` still seen
    * inside the window, worst first.

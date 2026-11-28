@@ -18,7 +18,7 @@ import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import {
   BarChart3,
-  DoorOpen,
+  Route,
   Eye,
   Info,
   MousePointerClick,
@@ -138,13 +138,29 @@ const AppAnalytics = () => {
    * denominator that makes two cards comparable: a bar whose 100% meant "the
    * top of this list" would read as dominance on a board with one row.
    */
+  const totalViews = data.totals.views ?? 0;
   const share = (count: number) =>
-    data.totalViews > 0 ? Math.round((count / data.totalViews) * 100) : 0;
+    totalViews > 0 ? Math.round((count / totalViews) * 100) : 0;
 
   const timelineData = data.timeline.map((p) => ({
-    date: p.date.slice(5),
+    date: p.bucket.slice(5),
     views: p.views,
   }));
+
+  /**
+   * One leaderboard of the response as the cards draw it: views per value,
+   * as a share of the window's views.
+   */
+  const board = (
+    dimension: keyof typeof data.leaderboards,
+    label: (value: string) => string = (value) => value,
+  ) =>
+    data.leaderboards[dimension].map((row) => ({
+      value: row.value,
+      label: label(row.value),
+      count: row.views,
+      percentage: share(row.views),
+    }));
 
   /**
    * The share of views that showed no signal of a reader.
@@ -156,9 +172,17 @@ const AppAnalytics = () => {
    * cannot inflate by accident. The tooltip says so rather than leaving the
    * reader to assume the usual definition.
    */
-  const bounce = 100 - data.engagementRate;
+  const bounce = Math.round((data.totals.bounceRate ?? 0) * 100);
 
-  const delta = data.uniqueVisitorsDelta;
+  const visitors = data.totals.visitors;
+  const previousVisitors = data.previous?.totals.visitors;
+  const delta =
+    visitors !== null &&
+    previousVisitors !== null &&
+    previousVisitors !== undefined &&
+    previousVisitors > 0
+      ? Math.round(((visitors - previousVisitors) / previousVisitors) * 100)
+      : undefined;
   /**
    * A delta is only honest between two windows of the same width.
    *
@@ -206,7 +230,7 @@ const AppAnalytics = () => {
           <CardContent>
             <div className="flex flex-wrap items-baseline gap-2">
               <span className="text-3xl font-bold tabular-nums">
-                {data.uniqueVisitors.toLocaleString()}
+                {visitors === null ? "-" : visitors.toLocaleString()}
               </span>
               {/*
                 The comparison the endpoint has answered since 2026-08-21 with
@@ -242,17 +266,8 @@ const AppAnalytics = () => {
               )}
             </div>
             <p className="text-muted-foreground mt-1 text-xs">
-              {/*
-                The payload names any filter this count could not honour, and
-                it is rendered rather than swallowed: a project-wide visitor
-                figure sitting under filtered views with nothing on screen
-                saying so is the exact lie `uniqueVisitorsIgnores` exists to
-                prevent.
-              */}
-              {data.uniqueVisitorsIgnores.length > 0
-                ? tr("insights.uniqueVisitors.unfiltered", {
-                    args: [data.uniqueVisitorsIgnores.join(", ")],
-                  })
+              {data.peopleOnly
+                ? tr("insights.uniqueVisitors.peopleOnly")
                 : tr("insights.uniqueVisitors.note")}
             </p>
           </CardContent>
@@ -276,7 +291,7 @@ const AppAnalytics = () => {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tabular-nums">
-              {data.totalViews.toLocaleString()}
+              {totalViews.toLocaleString()}
             </div>
             <p className="text-muted-foreground mt-1 text-xs">
               {tr("insights.totalViews.note")}
@@ -288,20 +303,22 @@ const AppAnalytics = () => {
           </CardContent>
         </Card>
 
-        {/* Page loads, as opposed to every client-side navigation. */}
-        <Card data-testid="insights-entries">
+        {/* Visits: runs of views closed by 30 minutes without one. */}
+        <Card data-testid="insights-visits">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-muted-foreground flex items-center gap-2 text-sm font-medium">
-              <DoorOpen className="size-4" />
-              {tr("insights.entries")}
+              <Route className="size-4" />
+              {tr("insights.visits")}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold tabular-nums">
-              {data.entries.toLocaleString()}
+              {data.totals.visits === null
+                ? "-"
+                : data.totals.visits.toLocaleString()}
             </div>
             <p className="text-muted-foreground mt-1 text-xs">
-              {tr("insights.entries.note")}
+              {tr("insights.visits.note")}
             </p>
           </CardContent>
         </Card>
@@ -390,23 +407,18 @@ const AppAnalytics = () => {
             {
               dimension: "path",
               title: tr("insights.topPaths"),
-              rows: data.topPaths.map((row) => ({
-                value: row.path,
-                label: row.path,
-                count: row.count,
-                percentage: row.percentage,
-              })),
+              rows: board("path"),
             },
             {
-              dimension: "entryPath",
+              dimension: "entry",
               title: tr("insights.topEntryPaths"),
               note: tr("insights.topEntryPaths.note"),
-              rows: data.topEntryPaths.map((row) => ({
-                value: row.path,
-                label: row.path,
-                count: row.count,
-                percentage: row.percentage,
-              })),
+              rows: board("entry"),
+            },
+            {
+              dimension: "exit",
+              title: tr("insights.topExitPaths"),
+              rows: board("exit"),
             },
           )}
         />
@@ -419,38 +431,17 @@ const AppAnalytics = () => {
               dimension: "referrer",
               title: tr("insights.topReferrers"),
               note: tr("insights.topReferrers.note"),
-              rows: data.topReferrers.map((row) => ({
-                value: row.referrer,
-                // `direct` is a sentinel bucket, not a host, and it is the
-                // denominator rather than a source: without it on the same
-                // board, "12 views from Hacker News" reads as a share of the
-                // referred traffic rather than of the traffic.
-                label:
-                  row.referrer === "direct"
-                    ? tr("insights.topReferrers.direct")
-                    : row.referrer,
-                count: row.count,
-                percentage: row.percentage,
-              })),
+              rows: board("referrer", (value) =>
+                value === "direct" ? tr("insights.topReferrers.direct") : value,
+              ),
             },
             {
               dimension: "campaign",
               title: tr("insights.topCampaigns"),
               note: tr("insights.topCampaigns.note"),
-              rows: data.topCampaigns.map((row) => ({
-                value: row.campaign,
-                label:
-                  row.campaign === "none"
-                    ? tr("insights.topCampaigns.untagged")
-                    : row.campaign,
-                count: row.count,
-                // Out of `entries`, not `totalViews`: a campaign describes how
-                // a visit began, so the share it holds is a share of arrivals.
-                percentage:
-                  data.entries > 0
-                    ? Math.round((row.count / data.entries) * 100)
-                    : 0,
-              })),
+              rows: board("campaign", (value) =>
+                value === "none" ? tr("insights.topCampaigns.untagged") : value,
+              ),
             },
           )}
         />
@@ -468,32 +459,17 @@ const AppAnalytics = () => {
             {
               dimension: "device",
               title: tr("insights.topDevices"),
-              rows: data.topDevices.map((row) => ({
-                value: row.device,
-                label: deviceLabel(tr, row.device),
-                count: row.count,
-                percentage: share(row.count),
-              })),
+              rows: board("device", (value) => deviceLabel(tr, value)),
             },
             {
               dimension: "browser",
               title: tr("insights.topBrowsers"),
-              rows: data.topBrowsers.map((row) => ({
-                value: row.browser,
-                label: row.browser,
-                count: row.count,
-                percentage: share(row.count),
-              })),
+              rows: board("browser"),
             },
             {
               dimension: "os",
               title: tr("insights.topSystems"),
-              rows: data.topSystems.map((row) => ({
-                value: row.os,
-                label: row.os,
-                count: row.count,
-                percentage: share(row.count),
-              })),
+              rows: board("os"),
             },
             {
               // A fourth segment rather than a stat tile of its own: it adds
@@ -503,12 +479,7 @@ const AppAnalytics = () => {
               // number this was asked for.
               dimension: "auth",
               title: tr("insights.topAudience"),
-              rows: data.topAudience.map((row) => ({
-                value: row.auth,
-                label: audienceLabel(tr, row.auth),
-                count: row.count,
-                percentage: share(row.count),
-              })),
+              rows: board("auth", (value) => audienceLabel(tr, value)),
             },
           )}
         />
@@ -516,16 +487,18 @@ const AppAnalytics = () => {
         <AppAnalyticsLeaderboard
           testId="insights-countries"
           onPick={pick}
-          segments={segments({
-            dimension: "country",
-            title: tr("insights.topCountries"),
-            rows: data.topCountries.map((row) => ({
-              value: row.country,
-              label: `${flagEmoji(row.country)} ${row.country}`,
-              count: row.count,
-              percentage: share(row.count),
-            })),
-          })}
+          segments={segments(
+            {
+              dimension: "country",
+              title: tr("insights.topCountries"),
+              rows: board("country", (value) => `${flagEmoji(value)} ${value}`),
+            },
+            {
+              dimension: "network",
+              title: tr("insights.topNetworks"),
+              rows: board("network"),
+            },
+          )}
         />
       </div>
     </div>

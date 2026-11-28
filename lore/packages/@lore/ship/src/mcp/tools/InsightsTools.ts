@@ -94,18 +94,13 @@ export class InsightsTools {
         ...(wanted.has("analytics")
           ? {
               analytics: {
-                uniqueVisitors: res.uniqueVisitors,
-                totalViews: res.totalViews,
-                entries: res.entries,
-                engagedViews: res.engagedViews,
-                engagementRate: res.engagementRate,
-                topPaths: res.topPaths,
-                topEntryPaths: res.topEntryPaths,
-                topCampaigns: res.topCampaigns,
-                topDevices: res.topDevices,
-                topCountries: res.topCountries,
-                topReferrers: res.topReferrers,
+                ...res.totals,
+                visitorsSpanPeriods: res.visitorsSpanPeriods,
+                visitorsSpanApps: res.visitorsSpanApps,
+                visitorsFrom: res.visitorsFrom,
+                peopleOnly: res.peopleOnly,
                 timeline: res.timeline,
+                leaderboards: res.leaderboards,
               },
             }
           : {}),

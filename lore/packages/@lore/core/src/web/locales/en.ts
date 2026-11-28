@@ -2719,23 +2719,30 @@ export default {
   "insights.traffic.bots": "Bots",
   "insights.traffic.note":
     "Crawlers that identify themselves are counted as bots. One driving a real browser and sending an ordinary user-agent is not, and only the engagement rate gives it away.",
-  "insights.uniqueVisitors": "Unique visitors",
+  "insights.uniqueVisitors": "Visitors",
   "insights.uniqueVisitors.note":
-    "Cookieless distinct visitors, the trustworthy headline.",
+    "Distinct visitors without a cookie, counted once per period and app (a calendar month by default).",
+  "insights.uniqueVisitors.peopleOnly":
+    "People only: declared bots have no visits. Views count everybody.",
+  "insights.visits": "Visits",
+  "insights.visits.note": "Runs of views closed by 30 minutes without one.",
   "insights.totalViews": "Total views",
   "insights.totalViews.note": "Best-effort: directional, not exact.",
   "insights.totalViews.tooltip":
-    "Raw page-view count. Nothing throttles what an enrolled app reports, so this number is inflatable by whoever holds its token. Trust the unique-visitor count instead.",
+    "Raw page-view count. Nothing throttles what an enrolled app reports, so this number is inflatable by whoever holds its token. Trust the visitor count instead.",
   "insights.overTime": "Views over time",
   "insights.estimated": "Estimated",
   "insights.estimated.note":
-    "Page views and performance are sampled, so these are estimates. Unique visitors are exact.",
+    "Page views and performance are sampled, so these are estimates. Visitors and visits are exact.",
   "insights.topCountries": "Top countries",
   "insights.topPaths": "Top pages",
-  "insights.entries": "Page loads",
-  "insights.entries.note": "Arrivals, not counting navigation inside the app.",
   "insights.topEntryPaths": "Landing pages",
   "insights.topEntryPaths.note": "The page each visit started on.",
+  "insights.topExitPaths": "Exit pages",
+  "insights.topNetworks": "Networks",
+  "insights.filter.entry": "Entry page",
+  "insights.filter.exit": "Exit page",
+  "insights.filter.network": "Network",
   "insights.topCampaigns": "Campaigns",
   "insights.topCampaigns.note":
     "From utm_campaign or utm_source on the arrival URL.",
@@ -2754,21 +2761,19 @@ export default {
   "insights.device.desktop": "Desktop",
   "insights.topReferrers": "Top referrers",
   "insights.topReferrers.note":
-    "Where visits came from. Only the first page of a visit carries a referrer, so Direct also covers navigation inside the app.",
+    "Where visits came from. Every page of a visit counts toward the source it arrived from.",
   "insights.topReferrers.direct": "Direct",
   "insights.empty": "No page views recorded in this range yet.",
   "insights.dimension.value": "Value",
   "insights.dimension.count": "Count",
   "insights.dimension.share": "Share",
   "insights.more": "More",
-  "insights.bounce": "No engagement",
-  "insights.bounce.note": "Views with no sign of a reader.",
+  "insights.bounce": "Bounce rate",
+  "insights.bounce.note": "Visits that saw a single page.",
   "insights.bounce.tooltip":
-    "Not a session bounce rate: nothing here keeps sessions. It is the share of views nobody scrolled, clicked or stayed on, which is the closest thing the data supports and the one signal automation does not inflate by accident.",
+    "The share of visits with exactly one page view. Under a page filter, of the visits that started on that page.",
   "insights.delta.tooltip":
     "Against the window of the same width immediately before this one, measured the same way. The current window ends today, so its last day is still filling.",
-  "insights.uniqueVisitors.unfiltered":
-    "Not narrowed by $1: visitor counts are kept per app and day, without those dimensions.",
   "insights.errors.inbox": "Open the Errors inbox",
   "insights.filter.path": "Page",
   "insights.filter.country": "Country",
