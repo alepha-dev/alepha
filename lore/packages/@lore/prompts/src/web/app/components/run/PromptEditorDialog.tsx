@@ -287,6 +287,12 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
                     label={tr("prompts.editor.argName", {
                       args: [String(slot + 1)],
                     })}
+                    // The first row shows what a value looks like (#Q4554).
+                    placeholder={
+                      slot === 0
+                        ? tr("prompts.editor.argName.placeholder")
+                        : undefined
+                    }
                     disabled={busy}
                   />
                   <Control
@@ -302,6 +308,11 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
                   <Control
                     input={input[`arg${slot}_accepts`]}
                     label={tr("prompts.editor.argAccepts")}
+                    placeholder={
+                      slot === 0
+                        ? tr("prompts.editor.argAccepts.placeholder")
+                        : undefined
+                    }
                     disabled={busy}
                   />
                 </div>

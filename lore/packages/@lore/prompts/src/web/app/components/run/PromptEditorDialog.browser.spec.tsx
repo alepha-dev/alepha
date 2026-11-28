@@ -128,6 +128,20 @@ describe("PromptEditorDialog", () => {
     expect(screen.getByTestId("prompt-legend")).toBeTruthy();
   });
 
+  it("shows example values on the first arg row only, under short labels", async ({
+    expect,
+  }) => {
+    await show("create");
+    const placeholders = (label: string) =>
+      screen
+        .getAllByLabelText(label)
+        .map((field) => field.getAttribute("placeholder"));
+    expect(placeholders("Arg 1")).toEqual(["quest"]);
+    expect(placeholders("Arg 2")).toEqual([null]);
+    expect(placeholders("Accepts")[0]).toBe("todo, in_progress");
+    expect(placeholders("Accepts").slice(1)).toEqual([null, null, null]);
+  });
+
   it("saves the fields of every tab with the one Save, in edit and duplicate", async ({
     expect,
   }) => {
