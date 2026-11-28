@@ -19,6 +19,10 @@ import type { HostJobKind } from "../schemas/hostJobValues.ts";
 import { HOST_JOB_TERMINAL } from "../schemas/hostJobValues.ts";
 import type { HostLogFrame } from "../schemas/hostLogFrameSchema.ts";
 import { jobRepositoryOf } from "../schemas/jobRepository.ts";
+import {
+  AgentJobGitHub,
+  type AgentJobGitHubCredential,
+} from "./AgentJobGitHub.ts";
 import { type AgentJobStepsJob, AgentJobSteps } from "./AgentJobSteps.ts";
 import { BestEffort } from "./BestEffort.ts";
 import { BoundParameters } from "./BoundParameters.ts";
@@ -87,6 +91,7 @@ export class HostJobService {
   protected readonly bestEffort = $inject(BestEffort);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly alepha = $inject(Alepha);
+  protected readonly github = $inject(AgentJobGitHub);
 
   constructor() {
     this.port.registerQueue({
@@ -323,6 +328,10 @@ export class HostJobService {
       ? await this.port.mintKey(this.summary(job), input.key)
       : undefined;
     const source = await this.sourceSpec(job);
+    // The job's GitHub token (#Q4365), minted now like the key, never
+    // stored: only for a job with code, of a connected project, on a host
+    // whose Bay runs job tokens (an older one refuses the field).
+    const github = source ? await this.githubFor(job) : undefined;
     return {
       kind: job.kind,
       ...agent,
@@ -337,7 +346,48 @@ export class HostJobService {
       mcpUrl: `${origin}/mcp`,
       prompt: input.prompt ?? "",
       timeoutSeconds: input.timeoutSeconds,
+      ...(github ? { github } : {}),
     };
+  }
+
+  /**
+   * The GitHub credential of a job's spec, and the record of which one the
+   * job runs with (`input.credential`, Lore's alone): `app` when it carries
+   * a token, `host` when its Bay or its project gives none.
+   */
+  protected async githubFor(
+    job: HostJob,
+  ): Promise<AgentJobGitHubCredential | undefined> {
+    const [host] = await this.hosts.findMany({
+      where: { id: { eq: job.hostId } },
+      columns: ["id", "jobsGitHubTokens"],
+      limit: 1,
+    });
+    const github = host?.jobsGitHubTokens
+      ? await this.github.credentialFor(job)
+      : undefined;
+    const credential = github ? "app" : "host";
+    if (job.input.credential !== credential) {
+      await this.bestEffort.run("job credential", () =>
+        this.jobs.updateById(job.id, {
+          input: { ...job.input, credential },
+        }),
+      );
+    }
+    return github;
+  }
+
+  /**
+   * A fresh token for a running job (#Q4361's renewal), with the job's own
+   * permission set; undefined once the job ended or when it carries none.
+   */
+  public async renewGitHub(
+    job: HostJob,
+  ): Promise<AgentJobGitHubCredential | undefined> {
+    if (job.status !== "running" || job.input.credential !== "app") {
+      return undefined;
+    }
+    return await this.github.credentialFor(job);
   }
 
   /**

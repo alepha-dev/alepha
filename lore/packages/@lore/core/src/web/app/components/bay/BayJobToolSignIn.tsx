@@ -7,6 +7,11 @@ export interface BayJobToolSignInProps {
   tool: HostJobTool;
   /** The jobs user, for the command that signs a tool in or out. */
   user: string;
+  /**
+   * The host's Bay runs jobs with their own GitHub token (#Q4365): gh's
+   * sign-in is only for projects not connected to GitHub.
+   */
+  githubTokens?: boolean;
 }
 
 /**
@@ -35,6 +40,16 @@ const BayJobToolSignIn = (props: BayJobToolSignInProps) => {
         {tool.account
           ? tr("hosts.tools.signedInAs", { args: [tool.account] })
           : tr("hosts.tools.signedIn")}
+      </span>
+    );
+  }
+  if (tool.signedIn === false && tool.name === "gh" && props.githubTokens) {
+    return (
+      <span
+        className="text-muted-foreground"
+        data-testid="bay-job-tool-gh-optional"
+      >
+        {tr("hosts.tools.ghOptional")}
       </span>
     );
   }

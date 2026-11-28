@@ -596,6 +596,10 @@ export {
   GitHubAppService,
   type GitHubAppCredentials,
 } from "./services/GitHubAppService.ts";
+export {
+  AgentJobGitHub,
+  type AgentJobGitHubCredential,
+} from "./services/AgentJobGitHub.ts";
 export { GitHubAppJwt } from "./services/GitHubAppJwt.ts";
 export {
   GitHubClient,

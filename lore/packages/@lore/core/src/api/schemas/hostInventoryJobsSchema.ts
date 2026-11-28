@@ -68,6 +68,12 @@ export const hostInventoryJobsSchema = z.object({
    * (#Q4288): a host that does not say so leaves its jobs without one.
    */
   result: z.boolean().optional(),
+  /**
+   * The machine runs a job with the GitHub token its spec carries (#Q4361,
+   * #Q4365): Lore sends the token, and skips the jobs user's gh sign-in,
+   * only to a host that says so, since an older Bay refuses the field.
+   */
+  githubTokens: z.boolean().optional(),
 });
 
 export type HostInventoryJobs = Infer<typeof hostInventoryJobsSchema>;

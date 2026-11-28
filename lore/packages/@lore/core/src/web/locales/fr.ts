@@ -3454,6 +3454,9 @@ export default {
   "jobs.field.ended": "Terminée",
   "jobs.field.exit": "Code de sortie",
   "jobs.field.source": "Source",
+  "jobs.field.github": "GitHub",
+  "jobs.github.app": "Le jeton de l'App GitHub",
+  "jobs.github.host": "La connexion gh de l'hôte",
   "jobs.field.ref": "Référence",
   "jobs.field.branch": "Branche",
   "jobs.field.commit": "Commit",
@@ -3483,6 +3486,8 @@ export default {
   "hosts.tools.signedIn": "connecté",
   "hosts.tools.signedInAs": "connecté en tant que $1",
   "hosts.tools.signedOut": "déconnecté : $1",
+  "hosts.tools.ghOptional":
+    "déconnecté : utile seulement aux projets non connectés à GitHub",
   "hosts.tools.signInUnknown": "connexion inconnue",
   "hosts.tools.loreSignedIn":
     "connecté : une tâche dépasserait les limites de sa clé ($1)",

@@ -240,6 +240,34 @@ describe("BaySettings", () => {
     ).toContain("sudo -iu bay-agent lore logout");
   });
 
+  it("says a signed-out gh is only needed for projects not connected to GitHub, on a Bay that runs job tokens (#Q4365)", async ({
+    expect,
+  }) => {
+    await show(
+      ["host:read"],
+      {
+        jobsUser: "bay-agent",
+        jobsGitHubTokens: true,
+        jobsTools: [
+          {
+            name: "gh",
+            kind: "tool",
+            found: true,
+            version: "2.40.1",
+            signedIn: false,
+          },
+        ],
+      },
+      BayAgent,
+    );
+    expect(screen.getByTestId("bay-job-tool-gh").textContent).toContain(
+      "signed out: only needed for projects not connected to GitHub",
+    );
+    expect(screen.getByTestId("bay-job-tool-gh").textContent).not.toContain(
+      "auth login",
+    );
+  });
+
   it("tells a host with no jobs user from one that never reported (#Q4254)", async ({
     expect,
   }) => {

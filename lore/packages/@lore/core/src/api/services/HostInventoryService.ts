@@ -79,6 +79,8 @@ export class HostInventoryService {
     const sources = frame.jobs?.sources === true;
     // Whether its terminal acks carry an agent's reply (#Q4288).
     const result = frame.jobs?.result === true;
+    // Whether it runs a job with the GitHub token its spec carries (#Q4365).
+    const githubTokens = frame.jobs?.githubTokens === true;
     // How many jobs it runs at once, and runs now (#Q4249).
     const maxJobs = frame.jobs?.maxJobs ?? null;
     // How many of the jobs that change no code it runs beside them (#Q4525).
@@ -92,6 +94,7 @@ export class HostInventoryService {
     if (
       (host.jobsSources ?? false) !== sources ||
       (host.jobsResult ?? false) !== result ||
+      (host.jobsGitHubTokens ?? false) !== githubTokens ||
       (host.jobsMaxJobs ?? null) !== maxJobs ||
       (host.jobsMaxReadJobs ?? null) !== maxReadJobs ||
       (host.jobsRunning ?? null) !== running ||
@@ -100,6 +103,7 @@ export class HostInventoryService {
       await this.hosts.updateById(host.id, {
         jobsSources: sources,
         jobsResult: result,
+        jobsGitHubTokens: githubTokens,
         jobsMaxJobs: maxJobs,
         jobsMaxReadJobs: maxReadJobs,
         jobsRunning: running,

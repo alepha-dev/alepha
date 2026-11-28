@@ -47,6 +47,12 @@ export class HostCommandPullController {
   public static readonly JOB_PATH = "/estates/commands/:id/job";
 
   /**
+   * Where a running job's Bay asks for a fresh GitHub token (#Q4361).
+   */
+  public static readonly GITHUB_TOKEN_PATH =
+    "/estates/commands/:id/github-token";
+
+  /**
    * Where a command's answer is stored. Its own bucket, because what is in it
    * is a machine's journal: bounded, short-lived and read by one owner.
    */
@@ -196,6 +202,40 @@ export class HostCommandPullController {
       }
       reply.setHeader("cache-control", "no-store");
       return this.hostJobs.spec(job, url.origin);
+    },
+  });
+
+  /**
+   * `GET /estates/commands/:id/github-token`: a fresh GitHub token for the
+   * running job a `job-run` carries (#Q4361, #Q4365), with the job's own
+   * permission set. Refused, like every pull, for a command that is not
+   * this host's or not open, and for a job that ended or carries no token.
+   * Never logged, never cached.
+   */
+  renewJobGitHub = $route({
+    method: "GET",
+    path: HostCommandPullController.GITHUB_TOKEN_PATH,
+    schema: {
+      params: z.object({ id: z.string().min(1).max(64) }),
+      headers: z.object({ authorization: z.string().optional() }),
+      response: z.record(z.string(), z.any()),
+    },
+    handler: async ({ params, headers, reply }) => {
+      const command = await this.resolve(params.id, headers.authorization);
+      const jobId = command.payload.jobId;
+      if (command.kind !== "job-run" || !jobId) {
+        throw this.refused();
+      }
+      const job = await this.hostJobs.getRow(jobId).catch(() => undefined);
+      if (!job || job.hostId !== command.hostId) {
+        throw this.refused();
+      }
+      const github = await this.hostJobs.renewGitHub(job);
+      if (!github) {
+        throw this.refused();
+      }
+      reply.setHeader("cache-control", "no-store");
+      return github;
     },
   });
 

@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  AgentJobGitHub,
   type AgentHostRef,
   type AgentJobRequest,
   AgentJobs,
@@ -73,6 +74,7 @@ export class AgentJobService {
   protected readonly preamble = $inject(AgentRunPreamble);
   protected readonly projects = $repository(projects);
   protected readonly agentJobs = $inject(AgentJobs);
+  protected readonly github = $inject(AgentJobGitHub);
 
   constructor() {
     // The runner of core's port (#E175): Plan reaches it through
@@ -112,8 +114,13 @@ export class AgentJobService {
           `Host "${host.slug}" runs a Bay that does not prepare job sources: upgrade Bay on ${host.slug}`,
         );
       }
-      // The mirror fetches through gh (#Q4256): the job would fail there.
-      if (host.ghSignedOut) {
+      // The mirror fetches through gh (#Q4256): the job would fail there,
+      // unless it carries its own GitHub token (#Q4365): a Bay that runs
+      // job tokens, for a project connected to GitHub.
+      if (
+        host.ghSignedOut &&
+        !(host.githubTokens && (await this.github.covers(request.projectId)))
+      ) {
         throw new BadRequestError(
           `Host "${host.slug}" reports its jobs user's gh CLI signed out: sudo -iu ${host.jobsUser ?? "<jobs user>"} gh auth login`,
         );
