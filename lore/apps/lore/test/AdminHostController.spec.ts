@@ -138,6 +138,24 @@ describe("AdminHostController", () => {
     ).toHaveLength(1);
   });
 
+  it("says which hosts are Agent hosts, for the Capabilities column's agent pill (#Q4558)", async ({
+    expect,
+  }) => {
+    const alice = await createUser(ctx, "alice");
+    const agent = await createTestHost(ctx.alepha, alice, { slug: "agent-1" });
+    await createTestHost(ctx.alepha, alice, { slug: "deploy-1" });
+    await ctx.repos.hosts.updateById(agent.id, { agentHost: true });
+
+    const result = await ctx.admin.findHosts(
+      { query: page },
+      { user: adminToken() },
+    );
+    const bySlug = Object.fromEntries(
+      result.content.map((item) => [item.slug, item.agentHost]),
+    );
+    expect(bySlug).toEqual({ "agent-1": true, "deploy-1": false });
+  });
+
   it("narrows by slug", async ({ expect }) => {
     const alice = await createUser(ctx, "alice");
     await createTestHost(ctx.alepha, alice, { slug: "ovh-1" });

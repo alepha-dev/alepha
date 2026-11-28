@@ -10,8 +10,9 @@ export interface HostCapabilityBadgesProps {
   type: "bay" | "cloudflare";
   deployAllowed?: boolean;
   /**
-   * Whether the host is an Agent host where it is shown, and the project's
-   * default one: the project's Hosts tab knows, Admin > Hosts does not.
+   * Whether the host is an Agent host, `available` when it is. Both the
+   * project's Hosts tab and Admin > Hosts pass it (#Q4558); `default` is
+   * left from the default Agent host, which no longer exists (#Q4223).
    */
   agent?: "default" | "available";
   /**
