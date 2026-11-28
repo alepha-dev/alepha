@@ -33,12 +33,16 @@ constructed.
 ### Primitives
 
 - [`$analytics`](/docs/reference-primitives-$analytics) - Declares an analytics dataset: what you record, and what you can ask.
+- [`$eventLog`](/docs/reference-primitives-$eventlog) - Declares an event log: one stored row per event, kept for a bounded time,
 
 ### Providers
 
 - [`AnalyticsProvider`](/docs/reference-providers-analyticsprovider) - Where a dataset's rows live.
+- [`EventLogProvider`](/docs/reference-providers-eventlogprovider) - Where an event log's rows live.
 - [`MemoryAnalyticsProvider`](/docs/reference-providers-memoryanalyticsprovider) - An in-memory dataset, and the reference implementation of the seam.
+- [`MemoryEventLogProvider`](/docs/reference-providers-memoryeventlogprovider) - Event logs in process memory: the provider every test runs on, and the
 - [`OrmAnalyticsProvider`](/docs/reference-providers-ormanalyticsprovider) - One relational table per retention tier of a dataset: the finest buckets as
+- [`OrmEventLogProvider`](/docs/reference-providers-ormeventlogprovider) - Event logs on a relational database: SQLite, Cloudflare D1 and Postgres.
 - [`WaeAnalyticsProvider`](/docs/reference-providers-waeanalyticsprovider) - Hot rows on Workers Analytics Engine, rolled rows in a durable store.
 
 ### Environment Variables

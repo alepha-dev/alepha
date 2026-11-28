@@ -354,10 +354,95 @@ caller-side and obvious rather than needing a merge-rule enforcement layer insid
 A dataset cannot answer "how many _distinct_ visitors" - a distinct count cannot survive
 sampling (a sampled window drops rows, so a naive `COUNT(DISTINCT ...)` under-counts) or a
 rollup (once hour buckets fold into a day bucket, which visitor hashes contributed to which hour
-is gone). Lore keeps unique-visitor counts on its own table
-(`LoreAnalyticsStore`/`sigil_uniques_daily`) for exactly this reason - see that class's doc for
-the full argument. If your app needs distinct counts, they need their own storage; `$analytics`
-is not the tool for them.
+is gone). When you need distinct counts, use an event log, below.
+
+## Event logs: one row per event, distinct counts
+
+`$eventLog` is the other kind of analytics storage. Where a dataset folds every reading into a
+sum per bucket as it is recorded, an event log keeps the events themselves, one row each, for a
+bounded time. That is what lets it count distinct values exactly, under any combination of
+filters:
+
+```typescript
+import { z } from "alepha";
+import { $eventLog } from "alepha/api/analytics";
+
+class Traffic {
+  pageviews = $eventLog({
+    name: "pageviews",
+    index: "appId",
+    schema: z.object({
+      appId: z.text(),
+      sessionId: z.text(),
+      path: z.text(),
+      country: z.text(),
+      views: z.integer(),
+    }),
+    keep: "90d",
+  });
+
+  async onView(appId: string, sessionId: string, path: string, country: string) {
+    await this.pageviews.append([{ appId, sessionId, path, country, views: 1 }]);
+  }
+
+  // How many different visitors read each page this month, from France.
+  async readersByPage(appId: string) {
+    return this.pageviews.query({
+      since: "2026-11-01",
+      where: { appId, country: "FR" },
+      groupBy: ["path"],
+      select: {
+        visitors: { distinct: "sessionId" },
+        views: { sum: "views" },
+      },
+      orderBy: { key: "visitors", direction: "desc" },
+      limit: 20,
+    });
+  }
+}
+```
+
+- **`append(rows)`** stores one row per event. Each row may carry `at` (millis), when it
+  happened; it defaults to now. An `at` more than five minutes ahead of the server clock is
+  clamped to now, and one older than `keep` is dropped. A column a row omits is stored as null;
+  declare such a column `.nullable().optional()`.
+- **`query()`** takes the same window as a dataset (`since`/`until` days, or `from`/`to`
+  instants) and the same `where` (equality and `inArray`). It groups by columns and by the UTC
+  grains `hour`, `day`, `week` (ISO, keyed by its Monday) and `month` (keyed `YYYY-MM`). Each
+  entry of `select` names one computation over one column: `count` (`"*"` for rows), `sum`,
+  `min`, `max` or `distinct`. Results always report `estimated: false`.
+- **Append only.** A row is never updated. A later fact about an event (a reader who scrolled
+  after the page loaded) is a row of its own.
+
+### Dataset or event log?
+
+| You want                                          | Use          |
+| ------------------------------------------------- | ------------ |
+| Totals kept for a year or more, cheaply           | a dataset    |
+| Gauges (min, max, last) per device                | a dataset    |
+| Distinct counts (visitors, sessions, devices)     | an event log |
+| Any combination of filters, decided at query time | an event log |
+| A window shorter than the data's useful life      | an event log |
+
+An event log costs a row per event, so its size grows with traffic for as long as `keep` says;
+a dataset costs a row per bucket and distinct key, whatever the traffic. The two combine well: a
+dataset for the long-term totals, an event log for the last few months' exact detail.
+
+### Retention
+
+The hourly sweep of `AlephaApiAnalyticsRollup` deletes an event log's rows older than `keep`,
+oldest first, at most 10,000 rows per log per sweep; the next sweep finishes a backlog. Without
+that module nothing deletes them, and `AnalyticsRetentionGuard` warns at boot naming the log.
+
+### Backends
+
+An event log runs on the relational provider (SQLite, Cloudflare D1, Postgres) and in memory for
+tests. Each log is one table, `analytics_<name>_events`, indexed on its index column and time.
+On SQLite and D1 a batch is one `INSERT` binding one value, and an `inArray` filter binds one
+value whatever its length, so D1's limit of 100 bound parameters never applies.
+
+On an app bound to Workers Analytics Engine, datasets go to Analytics Engine and event logs stay
+on the relational database: Analytics Engine samples, and an event log promises every row.
 
 ## The histogram pattern
 
@@ -516,14 +601,9 @@ The hourly sweep that actually folds and prunes rows lives in a **separate modul
 
 ```typescript
 import { Alepha } from "alepha";
-import {
-  AlephaApiAnalytics,
-  AlephaApiAnalyticsRollup,
-} from "alepha/api/analytics";
+import { AlephaApiAnalytics, AlephaApiAnalyticsRollup } from "alepha/api/analytics";
 
-const alepha = Alepha.create()
-  .with(AlephaApiAnalytics)
-  .with(AlephaApiAnalyticsRollup);
+const alepha = Alepha.create().with(AlephaApiAnalytics).with(AlephaApiAnalyticsRollup);
 ```
 
 Forgetting `AlephaApiAnalyticsRollup` is silent in the sense that nothing throws: `record()` and
@@ -781,8 +861,7 @@ so the same panel can point at this controller instead of the admin one:
     listDatasets: () => client.listTenantDatasets({ params }),
     queryDataset: (dataset, body) =>
       client.queryTenantDataset({ params: { ...params, name: dataset }, body }),
-    path: (dataset) =>
-      `/api/tenants/${tenantId}/analytics/datasets/${dataset}/query`,
+    path: (dataset) => `/api/tenants/${tenantId}/analytics/datasets/${dataset}/query`,
   }}
 />
 ```

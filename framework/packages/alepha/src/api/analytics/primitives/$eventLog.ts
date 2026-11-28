@@ -1,4 +1,4 @@
-import type { PrimitiveSide } from "alepha";
+import type { PrimitiveSide, ZObject } from "alepha";
 import { $inject, createPrimitive, Primitive } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { KIND } from "alepha/internal";
@@ -70,13 +70,31 @@ export const $eventLog = (options: EventLogPrimitiveOptions) =>
 
 export interface EventLogPrimitiveOptions extends Omit<
   AnalyticsEventLog,
-  "name"
+  "name" | "index" | "schema" | "keep"
 > {
   /**
    * Storage-facing name, snake_case. Defaults to the property key, which
-   * must then be snake_case itself.
+   * must then be snake_case itself. The relational table is
+   * `analytics_<name>_events`.
    */
   name?: string;
+  /**
+   * The column nearly every query filters on, such as an app or a tenant.
+   * The table is indexed on it and on the event time.
+   */
+  index: string;
+  /**
+   * The columns of a row: strings, numbers and booleans. A column a row may
+   * leave empty is declared `.nullable().optional()`. The event's time is not
+   * a column: it is `at` on the appended row.
+   */
+  schema: ZObject;
+  /**
+   * How long a row is kept: `<n>h` or `<n>d`, such as `"90d"`. Older rows are
+   * refused on append and deleted by the hourly sweep of
+   * `AlephaApiAnalyticsRollup`.
+   */
+  keep: string;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
