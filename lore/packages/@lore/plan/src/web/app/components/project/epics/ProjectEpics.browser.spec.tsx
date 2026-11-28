@@ -310,8 +310,39 @@ describe("ProjectEpics - the status filter", () => {
     expect(blockers.className).toContain("text-danger-text");
     expect(screen.queryByTestId("epic-open-questions-1")).toBeNull();
     expect(screen.getByTestId("epic-open-questions-2").textContent).toBe(
-      "1 review questions open",
+      "1 review question open",
     );
+  });
+
+  /**
+   * On a phone the sentence is for a screen reader only and the eye gets the
+   * icon and the count (#Q4551): the full sentence left the title `#…` at
+   * 393px. jsdom does no layout, so this pins the classes; the widths are
+   * measured by the e2e `epics-mobile.spec.ts`.
+   */
+  it("shrinks the review badge to its count below md (#Q4551)", async () => {
+    await mount(
+      [],
+      [
+        { ...epicOf(1, "Draft epic", "draft"), openBlockers: 1 },
+        { ...epicOf(2, "Asked epic", "ready"), openQuestions: 3 },
+      ],
+    );
+
+    for (const [id, count, sentence] of [
+      ["epic-open-blockers-1", "1", "1 review blocker open"],
+      ["epic-open-questions-2", "3", "3 review questions open"],
+    ] as const) {
+      const badge = screen.getByTestId(id);
+      expect(badge.getAttribute("data-count")).toBe(count);
+      expect(badge.className).toContain(
+        "max-md:after:content-[attr(data-count)_/_'']",
+      );
+      expect(badge.getAttribute("title")).toBe(sentence);
+      const text = badge.querySelector("span");
+      expect(text?.textContent).toBe(sentence);
+      expect(text?.className).toContain("max-md:sr-only");
+    }
   });
 
   /**

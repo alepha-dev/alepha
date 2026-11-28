@@ -4233,8 +4233,10 @@ export default {
   "epic.tab.folios": "Folios",
   "epic.tab.activity": "Activity",
   "epic.tab.review": "Review",
-  "epic.list.openQuestions": "$1 review questions open",
-  "epic.list.openBlockers": "$1 review blockers open",
+  "epic.list.openQuestions.one": "$1 review question open",
+  "epic.list.openQuestions.other": "$1 review questions open",
+  "epic.list.openBlockers.one": "$1 review blocker open",
+  "epic.list.openBlockers.other": "$1 review blockers open",
   "epic.agent.job": "Review job",
   "epic.review.empty":
     "No review has been filed for this epic yet. Run Review Epic from the Prompts menu to file one.",

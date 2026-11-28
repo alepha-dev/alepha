@@ -4267,8 +4267,10 @@ export default {
   "epic.tab.folios": "Folios",
   "epic.tab.activity": "Activité",
   "epic.tab.review": "Revue",
-  "epic.list.openQuestions": "$1 questions de revue ouvertes",
-  "epic.list.openBlockers": "$1 blocages de revue ouverts",
+  "epic.list.openQuestions.one": "$1 question de revue ouverte",
+  "epic.list.openQuestions.other": "$1 questions de revue ouvertes",
+  "epic.list.openBlockers.one": "$1 blocage de revue ouvert",
+  "epic.list.openBlockers.other": "$1 blocages de revue ouverts",
   "epic.agent.job": "Tâche de revue",
   "epic.review.empty":
     "Aucune revue n’a encore été déposée pour cette épopée. Lancez « Relire l’épopée » depuis le menu Prompts pour en déposer une.",
