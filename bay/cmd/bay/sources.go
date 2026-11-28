@@ -283,7 +283,13 @@ func (r *processRunner) git(ctx context.Context, u *user.User, dir string, args 
 	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Minute)
 	defer cancel()
-	cmd, err := r.command(ctx, u, dir, bin, args, r.jobEnv(u))
+	env := r.jobEnv(u)
+	if creds := jobCredentialsOf(ctx); creds != nil {
+		// The job's own token for github.com (#Q4361), per call: never the
+		// mirror's config, never the host's login.
+		env = append(env, creds.gitEnv()...)
+	}
+	cmd, err := r.command(ctx, u, dir, bin, args, env)
 	if err != nil {
 		return "", err
 	}

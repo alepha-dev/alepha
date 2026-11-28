@@ -56,6 +56,11 @@ type InventoryJobs struct {
 	// Result is true on a bay whose job-run terminal ack carries the agent's
 	// final reply (#Q4288), so Lore can tell a host that returns none.
 	Result bool `json:"result,omitempty"`
+	// GitHubTokens is true on a bay that runs a job with the GitHub token
+	// its spec carries (#Q4361): Lore sends the token, and skips the jobs
+	// user's gh sign-in, only to a bay that says so, since an older one
+	// refuses a spec with a field it does not know.
+	GitHubTokens bool `json:"githubTokens,omitempty"`
 }
 
 /*

@@ -73,3 +73,25 @@ func PullJobSpec(ctx context.Context, client *http.Client, cfg Config, commandID
 	}
 	return raw, nil
 }
+
+/*
+RenewJobToken asks Lore for a fresh GitHub token for a running job (#Q4361):
+`GET /estates/commands/<id>/github-token`, with the host's secret. Lore
+answers `{token, expiresAt, botName, botEmail}` for a job of a connected
+project that runs on this host, and refuses it once the job ended.
+*/
+func RenewJobToken(ctx context.Context, client *http.Client, cfg Config, commandID string) ([]byte, error) {
+	res, err := get(ctx, client, cfg, commandURL(cfg, commandID, "github-token"))
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(res.Body, 4096))
+	if err != nil {
+		return nil, fmt.Errorf("read the renewed token: %w", err)
+	}
+	if !json.Valid(raw) {
+		return nil, fmt.Errorf("the renewed token is not JSON")
+	}
+	return raw, nil
+}
