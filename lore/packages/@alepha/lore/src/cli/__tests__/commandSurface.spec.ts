@@ -306,6 +306,8 @@ describe("the Lore CLI command surface", () => {
         "create",
         "update",
         "accept",
+        "ready",
+        "draft",
         "objective",
         "comment",
         "commit",

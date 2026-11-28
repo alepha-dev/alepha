@@ -231,7 +231,7 @@ export class EpicCommand {
   public readonly create = $command({
     name: "create",
     description:
-      "Create an epic, as a draft: its quests stay out of the backlog until it is ready",
+      "Create an epic, as a draft: its quests are drafts, not ready to be taken, until it is marked ready",
     flags: z.object({
       ...EpicCommand.PROJECT_FLAG,
       title: z.text({
@@ -351,7 +351,7 @@ export class EpicCommand {
       status: z
         .enum(["draft", "ready"])
         .describe(
-          "draft keeps its quests out of the backlog; ready lets them be accepted.",
+          "ready makes its draft quests todo, to be accepted; draft makes its quests nobody took drafts again.",
         ),
       ...LoreOutput.FLAGS,
     }),

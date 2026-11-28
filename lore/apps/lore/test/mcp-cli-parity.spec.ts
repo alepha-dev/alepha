@@ -56,12 +56,7 @@ const ALIASES: Record<string, string> = {
   pull_request_trust: "pull-request trust",
 };
 
-const GAPS: string[] = [
-  // `lore quest ready` and `lore quest draft` land with the CLI's quest of
-  // epic #E178 (#Q4379), in the same pull request; these two go with them.
-  "quest_ready",
-  "quest_draft",
-];
+const GAPS: string[] = [];
 
 /**
  * The params a command takes as its positional argument: the reference it
@@ -100,9 +95,6 @@ const POSITIONAL = new Set([
  * The params that have no flag, each for a reason.
  */
 const NOT_A_FLAG: Record<string, string[]> = {
-  // `lore quest create --draft` lands with the CLI's quest of epic #E178
-  // (#Q4379), in the same pull request; this entry goes with it.
-  quest_create: ["draft"],
   // The tool drops the caller's own events by the session's user; nothing
   // tells a CLI process who it is, so the command keeps them (#F1437).
   project_activity: ["includeOwn"],
@@ -214,8 +206,6 @@ describe("MCP and the CLI", () => {
 
     for (const tool of tools()) {
       if (ALIASES[tool.name]?.startsWith("attachments")) continue;
-      // A gap has no command to hold flags; the first case names it.
-      if (GAPS.includes(tool.name)) continue;
       const command = commandOf(tool.name, all);
       const flags = new Set(Object.keys(command?.flags.shape ?? {}).map(stem));
       const takesArg = !!command?.options.args;

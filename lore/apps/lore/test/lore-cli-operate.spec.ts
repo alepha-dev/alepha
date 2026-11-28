@@ -603,9 +603,14 @@ describe("the rest of MCP, from the lore CLI, against Lore", () => {
     const ref = `Q${quest.shortId}`;
 
     expect(await lore.run("quest list")).not.toContain(ref);
-    expect(await lore.run("quest list", ["--include-drafts"])).toContain(ref);
+    expect(await lore.run("quest list", ["--status", "draft"])).toContain(ref);
     expect(
-      await lore.run("quest list", ["--include-drafts", "--search", "nothing"]),
+      await lore.run("quest list", [
+        "--status",
+        "draft",
+        "--search",
+        "nothing",
+      ]),
     ).not.toContain(ref);
 
     const read = await lore.json("quest get", [ref]);

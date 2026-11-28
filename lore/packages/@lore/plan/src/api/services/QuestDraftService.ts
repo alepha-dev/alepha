@@ -98,8 +98,8 @@ export class QuestDraftService {
     const epicRef = formatReference("epic", epic.number);
     throw new BadRequestError(
       verb === "ready"
-        ? `Cannot mark quest ${ref} ready: it belongs to Epic ${epicRef}, whose status decides. Mark Epic ${epicRef} ready (epic_set_status) and every draft quest in it becomes to do.`
-        : `Cannot mark quest ${ref} draft: it belongs to Epic ${epicRef}, whose status decides. Mark Epic ${epicRef} draft (epic_set_status) to take all of its to-do quests back to draft.`,
+        ? `Cannot mark quest ${ref} ready: it belongs to Epic ${epicRef}, whose status decides. Mark Epic ${epicRef} ready (epic_set_status, or lore epic set status) and every draft quest in it becomes to do.`
+        : `Cannot mark quest ${ref} draft: it belongs to Epic ${epicRef}, whose status decides. Mark Epic ${epicRef} draft (epic_set_status, or lore epic set status) to take all of its to-do quests back to draft.`,
     );
   }
 
@@ -123,16 +123,16 @@ export class QuestDraftService {
     if (epic) {
       const epicRef = formatReference("epic", epic.number);
       throw new BadRequestError(
-        `Cannot ${verb} quest ${ref}: it is a draft, because Epic ${epicRef} is. Its quests become ready together when Epic ${epicRef} is marked ready (epic_set_status).`,
+        `Cannot ${verb} quest ${ref}: it is a draft, because Epic ${epicRef} is. Its quests become ready together when Epic ${epicRef} is marked ready (epic_set_status, or lore epic set status).`,
       );
     }
     if (quest.shelvedAt) {
       throw new BadRequestError(
-        `Cannot ${verb} quest ${ref}: it is a shelved draft. Unshelve it (quest_unshelve), mark it ready (quest_ready), then ${verb} it.`,
+        `Cannot ${verb} quest ${ref}: it is a shelved draft. Unshelve it (quest_unshelve, or lore quest unshelve), mark it ready (quest_ready, or lore quest ready), then ${verb} it.`,
       );
     }
     throw new BadRequestError(
-      `Cannot ${verb} quest ${ref}: it is a draft, not ready to be taken. Mark it ready first (quest_ready, or Mark as ready on its page), then ${verb} it.`,
+      `Cannot ${verb} quest ${ref}: it is a draft, not ready to be taken. Mark it ready first (quest_ready, lore quest ready, or Mark as ready on its page), then ${verb} it.`,
     );
   }
 

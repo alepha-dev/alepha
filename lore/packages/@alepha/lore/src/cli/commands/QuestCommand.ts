@@ -26,14 +26,16 @@ import {
 } from "../services/LoreRefusals.ts";
 
 /**
- * `lore quest list | get | create | update | accept | objective set |
- * comment add | commit add | hold | unhold | shelve | unshelve | unassign |
- * complete | delete | tags | attachment get`.
+ * `lore quest list | get | create | update | accept | ready | draft |
+ * objective set | comment add | commit add | hold | unhold | shelve |
+ * unshelve | unassign | complete | delete | tags | attachment get`.
  *
  * ```bash
  * lore quest list -p alepha --status in_progress --tag bug
  * lore quest get Q12 -p alepha
  * lore quest create -p alepha --title "Fix it" --area alepha/orm --priority high --description @plan.md
+ * lore quest create -p alepha --title "Found in passing" --area alepha/orm --priority low --draft
+ * lore quest ready Q13 -p alepha
  * lore quest accept Q12 -p alepha
  * lore quest objective set Q12 --objective 0 -p alepha
  * lore quest complete Q12 -p alepha --message @- --commit 1a2b3c4 --waive 1="manual step"
@@ -100,6 +102,7 @@ export class QuestCommand {
    * `--status accepted`, the word before #Q2269, would list everything.
    */
   public static readonly STATUSES = [
+    "draft",
     "todo",
     "in_progress",
     "on_hold",
@@ -138,7 +141,7 @@ export class QuestCommand {
       status: z
         .array(z.enum(QuestCommand.STATUSES))
         .describe(
-          "Only quests in this status: todo, in_progress, on_hold, completed or shelved. Without it, every status but shelved.",
+          "Only quests in this status: draft, todo, in_progress, on_hold, completed or shelved. Without it, every status but draft and shelved; with --epic, that epic's drafts too.",
         )
         .optional(),
       tag: z
@@ -159,12 +162,6 @@ export class QuestCommand {
         .optional(),
       search: z
         .text({ description: "Only titles containing this." })
-        .optional(),
-      "include-drafts": z
-        .boolean()
-        .describe(
-          "Also list quests filed under draft epics, hidden as they are in the backlog.",
-        )
         .optional(),
       limit: z
         .integer()
@@ -204,14 +201,9 @@ export class QuestCommand {
           query: {
             size: flags.limit,
             offset: flags.offset,
-            // `--include-drafts` reads as a status list naming `draft`: the
-            // list has no flag for it any more, and drafts are named or they
-            // stay out. Only with no `--status`, which answers for itself.
-            ...(flags.status?.length
-              ? { status: flags.status.join(",") }
-              : flags["include-drafts"]
-                ? { status: "todo,draft,in_progress,on_hold,completed" }
-                : {}),
+            // Drafts are named or they stay out (#E178): `--status draft`
+            // lists them, and `--epic` keeps that epic's own.
+            ...(flags.status?.length ? { status: flags.status.join(",") } : {}),
             ...(flags.tag?.length ? { tag: flags.tag.join(",") } : {}),
             ...(epicId ? { epicId } : {}),
             ...(flags.search ? { search: flags.search } : {}),
@@ -327,6 +319,7 @@ export class QuestCommand {
             ["Size", QuestCommand.SIZES[quest.size - 1]],
             ["Area", quest.area],
             ["Tags", quest.tags.join(", ")],
+            ["Ready", quest.readyAt],
             ["Accepted", quest.acceptedAt],
             ["Agent job", quest.agentJobId],
             ["Agent", quest.agentJobId ? quest.agentName : undefined],
@@ -453,13 +446,19 @@ export class QuestCommand {
       epic: z
         .text({
           description:
-            "File it into this epic, 45 or E45. The epic must be draft or ready, and ready with --accept.",
+            "File it into this epic, 45 or E45. The epic must be draft or ready, and ready with --accept. Into a draft epic the quest is a draft until the epic is marked ready.",
         })
         .optional(),
       accept: z
         .boolean()
         .describe(
           "Accept it too. A refused accept leaves the quest created and exits 1.",
+        )
+        .optional(),
+      draft: z
+        .boolean()
+        .describe(
+          "File it as a draft: work found and not to be taken now, which nobody can accept until lore quest ready. Refused with --accept, and with --epic naming an epic that is not a draft.",
         )
         .optional(),
       "depends-on": z
@@ -487,6 +486,12 @@ export class QuestCommand {
     handler: async ({ flags, print }) => {
       const context: LoreRefusalContext = {};
       await this.refusals.guard(context, async () => {
+        // Before any request: a draft is not ready to be taken.
+        if (flags.draft && flags.accept) {
+          throw new UsageError(
+            "Nothing written: a draft is not ready to be taken, so it cannot be accepted. Drop --draft or --accept.",
+          );
+        }
         const { projectId } = await this.projects.named(flags.project, context);
 
         // Read first, so an unknown number fails with nothing written.
@@ -496,7 +501,10 @@ export class QuestCommand {
             })
           : undefined;
         if (epic) {
-          this.assertEpicTakes(epic, !!flags.accept);
+          this.assertEpicTakes(epic, {
+            accept: !!flags.accept,
+            draft: !!flags.draft,
+          });
         }
         const dependsOn = await this.dependsOn(projectId, flags["depends-on"]);
         const feedbackId = await this.feedbackId(projectId, flags.feedback);
@@ -515,6 +523,7 @@ export class QuestCommand {
             description: flags.description,
             size: flags.size,
             tags: flags.tag,
+            ...(flags.draft ? { draft: true } : {}),
             objectives: flags.objective?.map((title) => ({
               title,
               completed: false,
@@ -523,7 +532,7 @@ export class QuestCommand {
         });
         const handle = `Q${created.shortId}`;
 
-        const done: string[] = [];
+        const done: string[] = flags.draft ? ["as a draft"] : [];
         let subject: unknown = created;
         try {
           if (epic) {
@@ -757,7 +766,7 @@ export class QuestCommand {
           print,
           flags.output,
           updated,
-          `Updated Q${quest.shortId}: ${changed.join(", ")}`,
+          `Updated Q${quest.shortId}: ${changed.join(", ")}${flags.epic !== undefined ? `; now ${updated.metadata.status}` : ""}`,
         );
       });
     },
@@ -839,9 +848,9 @@ export class QuestCommand {
         const quest = await this.questApi.getQuestByShortId({
           params: { projectId, shortId },
         });
-        // No special case for a quest already in progress, or an epic that
-        // is a draft: the server says why, in its own words, and the command
-        // does not guess who accepted it.
+        // No special case for a quest already in progress, a draft, or an
+        // epic that is a draft: the server says why, in its own words, and
+        // what to run instead, and the command does not guess.
         const accepted = await this.questApi.acceptQuest({
           params: { id: quest.id },
         });
@@ -853,6 +862,32 @@ export class QuestCommand {
           `Accepted Q${quest.shortId} ${quest.title}`,
         );
       });
+    },
+  });
+
+  public readonly ready = $command({
+    name: "ready",
+    description:
+      "Mark a loose draft ready: it becomes todo and can be accepted. An epic's quests become ready with their epic (lore epic set status)",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Marked ready", (id) =>
+        this.questApi.readyQuest({ params: { id } }),
+      );
+    },
+  });
+
+  public readonly draft = $command({
+    name: "draft",
+    description:
+      "Mark a loose todo quest as a draft: not ready to be taken until lore quest ready. An epic's quests follow their epic (lore epic set status)",
+    args: QuestCommand.REF_ARG,
+    flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
+    handler: async ({ args, flags, print }) => {
+      await this.transition(args, flags, print, "Marked draft", (id) =>
+        this.questApi.draftQuest({ params: { id } }),
+      );
     },
   });
 
@@ -1139,7 +1174,8 @@ export class QuestCommand {
 
   public readonly unshelve = $command({
     name: "unshelve",
-    description: "Bring a shelved quest back to the backlog",
+    description:
+      "Bring a shelved quest back: todo, or draft if it was a draft before",
     args: QuestCommand.REF_ARG,
     flags: z.object({ ...QuestCommand.PROJECT_FLAG, ...LoreOutput.FLAGS }),
     handler: async ({ args, flags, print }) => {
@@ -1328,13 +1364,15 @@ export class QuestCommand {
   public readonly quest = $command({
     name: "quest",
     description:
-      "A project's quests: list, read, create, update, accept, tick, comment, record commits and pull requests, hold, shelve, complete and delete them",
+      "A project's quests: list, read, create, update, accept, mark ready or draft, tick, comment, record commits and pull requests, hold, shelve, complete and delete them",
     children: [
       this.list,
       this.get,
       this.create,
       this.update,
       this.accept,
+      this.ready,
+      this.draft,
       this.objective,
       this.comment,
       this.commit,
@@ -1507,15 +1545,18 @@ export class QuestCommand {
   /**
    * Refuse, before anything is written, what the epic's status already says
    * the server will refuse: a quest is filed into an epic only while it is
-   * `draft` or `ready`, and accepted only while it is `ready` or
-   * `in_progress`.
+   * `draft` or `ready`, accepted only while it is `ready` or `in_progress`,
+   * and filed as a draft only into a draft epic, whose status decides for its
+   * quests (#E178 review, items 7 and 23). The one source of these sentences:
+   * `quest_create` reads the same rules off `QuestDraftService` on the
+   * server, which this package cannot import.
    *
    * ⚠️ A draft epic's refusal does not tell the caller to mark it ready.
    * Whether a plan is finished is the owner's call.
    */
   protected assertEpicTakes(
     epic: { number: number; status: string },
-    accept: boolean,
+    asked: { accept: boolean; draft: boolean },
   ): void {
     if (epic.status !== "draft" && epic.status !== "ready") {
       throw new CommandError(
@@ -1525,7 +1566,15 @@ export class QuestCommand {
         },
       );
     }
-    if (accept && epic.status === "draft") {
+    if (asked.draft && epic.status !== "draft") {
+      throw new CommandError(
+        { exitCode: 1 },
+        {
+          message: `Nothing written: E${epic.number} is ${epic.status}, so its quests are todo, and its status decides. Leave out --draft, or file it as a loose draft without --epic.`,
+        },
+      );
+    }
+    if (asked.accept && epic.status === "draft") {
       throw new CommandError(
         { exitCode: 1 },
         {
