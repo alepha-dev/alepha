@@ -49,6 +49,8 @@ export class ProjectSlugService {
     "login",
     "register",
     "settings",
+    // GitHub's return after a project installs the App (#Q4362).
+    "github",
     "robots",
     "manifest",
     "favicon",

@@ -11,6 +11,7 @@ import type { HomeController } from "../../api/controllers/HomeController.ts";
 import type { InvitationController } from "../../api/controllers/InvitationController.ts";
 import type { ProjectController } from "../../api/controllers/ProjectController.ts";
 import type { ProjectDashboardController } from "../../api/controllers/ProjectDashboardController.ts";
+import type { ProjectGitHubController } from "../../api/controllers/ProjectGitHubController.ts";
 import type { ReportsSummaryController } from "../../api/controllers/ReportsSummaryController.ts";
 import { reportsUrlSchema } from "../../api/schemas/reportsUrlSchema.ts";
 import { $pageProject, $pageProjectSettings } from "./$pageProject.ts";
@@ -43,6 +44,7 @@ export class CoreRouter {
   router = $inject(ReactRouter);
   projectRouter = $inject(ProjectRouter);
   realmApi = $client<RealmController>();
+  githubApi = $client<ProjectGitHubController>();
   homeApi = $client<HomeController>();
   dateTime = $inject(DateTimeProvider);
 
@@ -55,6 +57,7 @@ export class CoreRouter {
       this.home,
       this.login,
       this.oauthContinue,
+      this.githubConnect,
       this.register,
       this.resetPassword,
       this.projectRouter.project,
@@ -136,6 +139,57 @@ export class CoreRouter {
     name: "oauthContinue",
     head: { title: "Connecting › Alepha Lore" },
     lazy: () => import("./components/auth/OAuthContinuePage.tsx"),
+  });
+
+  /**
+   * Where GitHub sends a member back after installing the instance's App
+   * for a project (#Q4362): the App's callback URL. `github` is a reserved
+   * slug for it.
+   */
+  githubConnect = $page({
+    path: "/github/connect",
+    name: "githubConnect",
+    head: { title: "GitHub › Alepha Lore" },
+    use: [$secure()],
+    lazy: () => import("./components/github/GitHubConnectPage.tsx"),
+    schema: {
+      query: z.object({
+        state: z.text({ maxLength: 200 }).optional(),
+        code: z.text({ maxLength: 100 }).optional(),
+        installation_id: z.text({ maxLength: 20 }).optional(),
+        setup_action: z.text({ maxLength: 20 }).optional(),
+      }),
+    },
+    /**
+     * GitHub's code is handed over HERE, once per navigation: an effect in
+     * the page ran twice under React's development remount, and the second
+     * call found the state used. The answer, or the refusal, is the page.
+     */
+    loader: async ({ query }) => {
+      const installationId = Number(query.installation_id);
+      const setupAction = query.setup_action;
+      try {
+        const result = await this.githubApi.completeGitHubInstall({
+          body: {
+            state: query.state ?? "",
+            ...(query.code ? { code: query.code } : {}),
+            ...(Number.isInteger(installationId) && installationId > 0
+              ? { installationId }
+              : {}),
+            ...(setupAction === "install" ||
+            setupAction === "update" ||
+            setupAction === "request"
+              ? { setupAction }
+              : {}),
+          },
+        });
+        return { result };
+      } catch (error) {
+        return {
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    },
   });
 
   register = $page({

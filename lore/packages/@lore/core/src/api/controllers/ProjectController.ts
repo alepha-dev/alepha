@@ -68,6 +68,7 @@ import { ProjectDeletionService } from "../services/ProjectDeletionService.ts";
 import { ProjectLimits } from "../services/ProjectLimits.ts";
 import { ProjectReaderPermissions } from "../services/ProjectReaderPermissions.ts";
 import { ProjectRecencyService } from "../services/ProjectRecencyService.ts";
+import { ProjectRepositoryService } from "../services/ProjectRepositoryService.ts";
 import { ProjectResourceMapper } from "../services/ProjectResourceMapper.ts";
 import { ProjectSecurityService } from "../services/ProjectSecurityService.ts";
 import { UserDockService } from "../services/UserDockService.ts";
@@ -1225,7 +1226,21 @@ export class ProjectController {
         // Same normalisation as `preferredLanguage`: an empty string from a
         // cleared form field means "unset", not "the empty URL".
         const url = body.repositoryUrl?.trim();
-        project.repositoryUrl = url ? url : undefined;
+        const next = url ? url : undefined;
+        // A connected project's URL is its repository's (#Q4362): one source
+        // of truth, which a hand edit would contradict. Sending it unchanged
+        // (a form saving every field) is fine.
+        if (
+          (next ?? "") !== (project.repositoryUrl ?? "") &&
+          (await this.alepha
+            .inject(ProjectRepositoryService)
+            .connectionOf(project.id))
+        ) {
+          throw new ConflictError(
+            "This project is connected to GitHub: its repository URL is the connected repository's. Disconnect GitHub in Settings to change it.",
+          );
+        }
+        project.repositoryUrl = next;
       }
 
       await this.projects.save(project);

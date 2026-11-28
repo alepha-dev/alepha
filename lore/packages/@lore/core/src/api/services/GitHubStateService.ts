@@ -36,6 +36,9 @@ export class GitHubStateService {
     purpose: GitHubState["purpose"];
     userId: string;
     projectId?: number;
+    installationId?: number;
+    repositoryIds?: number[];
+    githubUserId?: number;
   }): Promise<string> {
     const now = this.dateTime.nowMillis();
     const row = await this.rows.create({
@@ -43,6 +46,13 @@ export class GitHubStateService {
       purpose: input.purpose,
       userId: input.userId,
       ...(input.projectId !== undefined ? { projectId: input.projectId } : {}),
+      ...(input.installationId !== undefined
+        ? { installationId: input.installationId }
+        : {}),
+      ...(input.repositoryIds ? { repositoryIds: input.repositoryIds } : {}),
+      ...(input.githubUserId !== undefined
+        ? { githubUserId: input.githubUserId }
+        : {}),
       expiresAt: new Date(now + GitHubStateService.TTL_MS).toISOString(),
     });
     // The table only grows by one row per round trip; a stale one goes the

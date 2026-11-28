@@ -39,6 +39,7 @@ import { ProjectChannelController } from "./controllers/ProjectChannelController
 import { ProjectController } from "./controllers/ProjectController.ts";
 import { ProjectDashboardController } from "./controllers/ProjectDashboardController.ts";
 import { ProjectEventController } from "./controllers/ProjectEventController.ts";
+import { ProjectGitHubController } from "./controllers/ProjectGitHubController.ts";
 import { ProjectHostController } from "./controllers/ProjectHostController.ts";
 import { ProjectMergeController } from "./controllers/ProjectMergeController.ts";
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
@@ -148,6 +149,7 @@ import { ProjectMomentumService } from "./services/ProjectMomentumService.ts";
 import { ProjectQualityReportService } from "./services/ProjectQualityReportService.ts";
 import { ProjectRecipients } from "./services/ProjectRecipients.ts";
 import { ProjectReportRegistry } from "./services/ProjectReportRegistry.ts";
+import { ProjectRepositoryService } from "./services/ProjectRepositoryService.ts";
 import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
@@ -406,6 +408,9 @@ export const LoreCoreApi = $module({
     GitHubStateService,
     AdminGitHubController,
     GitHubWebhookController,
+    // A project's repository (#Q4362).
+    ProjectRepositoryService,
+    ProjectGitHubController,
     // Job keys (#Q3995): the credential a host job holds, its pins checked on
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
@@ -561,6 +566,8 @@ export const LoreCoreApi = $module({
 export { AdminGitHubController } from "./controllers/AdminGitHubController.ts";
 export { AdminMcpController } from "./controllers/AdminMcpController.ts";
 export { GitHubWebhookController } from "./controllers/GitHubWebhookController.ts";
+export { ProjectGitHubController } from "./controllers/ProjectGitHubController.ts";
+export { ProjectRepositoryService } from "./services/ProjectRepositoryService.ts";
 export {
   GitHubAppService,
   type GitHubAppCredentials,

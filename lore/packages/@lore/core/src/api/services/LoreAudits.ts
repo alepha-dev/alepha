@@ -393,7 +393,7 @@ export class LoreAudits {
   readonly github = $audit({
     type: "github",
     description: "The GitHub App and the repositories projects connect",
-    actions: ["create", "rotate", "remove"],
+    actions: ["create", "rotate", "remove", "connect", "disconnect"],
     retentionDays: 730,
   });
 

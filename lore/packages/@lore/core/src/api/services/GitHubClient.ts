@@ -31,6 +31,11 @@ export interface GitHubRepository {
   fullName: string;
   defaultBranch: string;
   private: boolean;
+  /**
+   * Whether the caller may push, when a user token listed it: GitHub's
+   * `permissions.push`. Undefined on an installation token's listing.
+   */
+  push?: boolean;
 }
 
 /**
@@ -289,7 +294,9 @@ export class GitHubClient {
         { auth: { as: "token", token } },
       );
       return (
-        this.text(answer.data.role_name ?? answer.data.permission, 20) || "none"
+        // `permission` is the base level (admin, write, read, none) a custom
+        // role maps to; `role_name` would name the custom role itself.
+        this.text(answer.data.permission ?? answer.data.role_name, 20) || "none"
       );
     } catch (error) {
       if (error instanceof HttpError && error.status === 404) return "none";
@@ -488,6 +495,9 @@ export class GitHubClient {
       fullName: `${owner}/${name}`,
       defaultBranch: this.text(data?.default_branch, 255) || "main",
       private: Boolean(data?.private),
+      ...(typeof data?.permissions?.push === "boolean"
+        ? { push: data.permissions.push }
+        : {}),
     };
   }
 

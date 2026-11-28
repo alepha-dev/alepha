@@ -170,6 +170,23 @@ export {
   type GitHubState,
 } from "../api/entities/githubStates.ts";
 export {
+  projectRepositories,
+  type ProjectRepository,
+  PROJECT_REPOSITORY_DISCONNECT_REASONS,
+} from "../api/entities/projectRepositories.ts";
+export {
+  projectGitHubConnectionSchema,
+  type ProjectGitHubConnection,
+} from "../api/schemas/projectGitHubConnectionSchema.ts";
+export {
+  projectGitHubStatusSchema,
+  type ProjectGitHubStatus,
+} from "../api/schemas/projectGitHubStatusSchema.ts";
+export {
+  githubConnectCallbackResultSchema,
+  type GitHubConnectCallbackResult,
+} from "../api/schemas/githubConnectCallbackResultSchema.ts";
+export {
   githubAppStatusSchema,
   type GitHubAppStatus,
 } from "../api/schemas/githubAppStatusSchema.ts";

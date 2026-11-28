@@ -224,7 +224,7 @@ describe("the Lore CLI command surface", () => {
         "resume-all",
       ],
       commits: ["push"],
-      github: ["app"],
+      github: ["status", "install", "connect", "disconnect", "app"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
       requirement: [
         "list",
