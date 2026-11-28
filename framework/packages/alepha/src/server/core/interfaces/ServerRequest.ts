@@ -347,6 +347,23 @@ export interface RequestGeo {
    * Longitude (if available).
    */
   longitude?: string;
+  /**
+   * The network the request came from: its autonomous system number and the
+   * organisation that owns it (`{ number: 13335, name: "Cloudflare, Inc." }`).
+   *
+   * Read from the Workers request's `cf` object (`asn`, `asOrganization`),
+   * so it exists on Cloudflare Workers only; undefined on every runtime that
+   * does not provide it, Node and `alepha dev` included.
+   */
+  network?: RequestNetwork;
+}
+
+/**
+ * An autonomous system: the network a request came from.
+ */
+export interface RequestNetwork {
+  number: number;
+  name?: string;
 }
 
 /**
