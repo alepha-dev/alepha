@@ -27,29 +27,34 @@ export interface ResolvedKanbanColumn {
  * Turns a project's column names plus its per-column settings into the
  * board's frame.
  *
- * **The lifecycle triple remains the source of truth** (quest #1227,
+ * **The quest's lifecycle remains the source of truth** (quest #1227,
  * decided by the owner). A column does not carry a status of its own; it
- * declares which of `todo` / `in_progress` / `completed` a card dropped in it
- * collapses to. Everything downstream — the quest log, releases,
- * reports, MCP, the Discussion feed, `QuestlineLayout.stateOf` — keeps
- * reading the three timestamps and never learns that columns exist.
+ * declares which of `draft` / `todo` / `in_progress` / `completed` a card
+ * dropped in it collapses to. Everything downstream — the quest log,
+ * releases, reports, MCP, the Discussion feed, `QuestlineLayout.stateOf` —
+ * keeps reading the quest's timestamps and never learns that columns exist.
  *
- * What changes is that the frame is no longer hardcoded. Before this, the
+ * What changes is that the frame is no longer hardcoded. Before #1227, the
  * board was always `New | <every configured column> | Completed`. Now:
  *
  * - every configured column takes its status from the config, defaulting
  *   to `in_progress`, which is what a configured column has always meant;
- * - a "To do" column is synthesized ONLY when no configured column carries
- *   `todo`, and likewise for "Completed".
+ * - a lifecycle state that no configured column carries gets a column
+ *   synthesized for it, at its place in the lifecycle: "Draft" FIRST, then
+ *   "To do", both before the configured columns, and "Completed" last.
+ *   Draft follows the rule To do and Completed already did (#E178, review
+ *   item 10): a project that configures its own `draft` column gets it
+ *   where it put it, and none is synthesized.
  *
  * So a project can have two done-ish columns, or replace the synthesized
- * ends with its own, or keep the old frame by configuring nothing. A
- * project with no config at all resolves to exactly the board it had.
+ * ends with its own, or keep the default frame by configuring nothing. A
+ * project with no config at all resolves to Draft, To do, its configured
+ * columns, Completed.
  */
 export class KanbanColumnConfig {
   resolve(
     project: Pick<Project, "kanbanColumns" | "kanbanColumnConfig">,
-    labels: { todo: string; completed: string },
+    labels: { draft: string; todo: string; completed: string },
   ): ResolvedKanbanColumn[] {
     const names = project.kanbanColumns ?? [];
     const config = project.kanbanColumnConfig ?? {};
@@ -68,26 +73,16 @@ export class KanbanColumnConfig {
     const has = (status: ResolvedKanbanColumn["status"]) =>
       configured.some((column) => column.status === status);
 
+    const synthesized = (
+      status: "draft" | "todo" | "completed",
+    ): ResolvedKanbanColumn[] =>
+      has(status) ? [] : [{ name: labels[status], status, synthesized: true }];
+
     return [
-      ...(has("todo")
-        ? []
-        : [
-            {
-              name: labels.todo,
-              status: "todo" as const,
-              synthesized: true,
-            },
-          ]),
+      ...synthesized("draft"),
+      ...synthesized("todo"),
       ...configured,
-      ...(has("completed")
-        ? []
-        : [
-            {
-              name: labels.completed,
-              status: "completed" as const,
-              synthesized: true,
-            },
-          ]),
+      ...synthesized("completed"),
     ];
   }
 

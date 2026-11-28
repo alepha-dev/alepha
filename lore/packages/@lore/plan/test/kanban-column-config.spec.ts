@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { KanbanColumnConfig } from "../src/schemas/index.ts";
 
-const LABELS = { todo: "To do", completed: "Completed" };
+const LABELS = { draft: "Draft", todo: "To do", completed: "Completed" };
 
 const project = (
   kanbanColumns: string[],
@@ -19,12 +19,13 @@ describe("KanbanColumnConfig", () => {
   /**
    * The compatibility claim that let this ship as a bare additive column:
    * a project that has configured nothing must render precisely the board
-   * it rendered before #1227.
+   * it rendered before #1227, with Draft in front of it since #E178.
    */
   describe("a project with no config", () => {
-    it("resolves to the frame the board has always had", () => {
+    it("resolves to Draft, To do, its columns and Completed", () => {
       const columns = config.resolve(project(["In Progress"]), LABELS);
       expect(columns.map((c) => [c.name, c.status, c.synthesized])).toEqual([
+        ["Draft", "draft", true],
         ["To do", "todo", true],
         ["In Progress", "in_progress", false],
         ["Completed", "completed", true],
@@ -34,7 +35,7 @@ describe("KanbanColumnConfig", () => {
     it("treats every configured column as accepted", () => {
       const columns = config.resolve(project(["Doing", "Review"]), LABELS);
       expect(columns.filter((c) => c.status === "in_progress")).toHaveLength(2);
-      expect(columns).toHaveLength(4);
+      expect(columns).toHaveLength(5);
     });
   });
 
@@ -62,8 +63,8 @@ describe("KanbanColumnConfig", () => {
         project(["Backlog", "Doing"], { Backlog: { status: "todo" } }),
         LABELS,
       );
-      expect(columns[0].name).toBe("Backlog");
-      expect(columns[0].synthesized).toBe(false);
+      expect(columns[1].name).toBe("Backlog");
+      expect(columns[1].synthesized).toBe(false);
       expect(columns.some((c) => c.synthesized && c.name === "To do")).toBe(
         false,
       );
@@ -87,11 +88,58 @@ describe("KanbanColumnConfig", () => {
         LABELS,
       );
       expect(columns.map((c) => c.name)).toEqual([
+        "Draft",
         "To do",
         "Doing",
         "Review",
         "Shipped",
       ]);
+    });
+  });
+
+  /**
+   * The rule decided in #E178's review (item 10): Draft is synthesized like
+   * To do and Completed, in first position, only when no configured column
+   * carries `draft`.
+   */
+  describe("the draft lane", () => {
+    it("is synthesized first, before To do, when no column carries draft", () => {
+      const columns = config.resolve(
+        project(["Backlog", "Doing"], { Backlog: { status: "todo" } }),
+        LABELS,
+      );
+      expect(columns.map((c) => [c.name, c.status, c.synthesized])).toEqual([
+        ["Draft", "draft", true],
+        ["Backlog", "todo", false],
+        ["Doing", "in_progress", false],
+        ["Completed", "completed", true],
+      ]);
+    });
+
+    it("is the project's own where it put it, and none is synthesized", () => {
+      const columns = config.resolve(
+        project(["Doing", "Ideas", "Review"], { Ideas: { status: "draft" } }),
+        LABELS,
+      );
+      expect(columns.map((c) => [c.name, c.status, c.synthesized])).toEqual([
+        ["To do", "todo", true],
+        ["Doing", "in_progress", false],
+        ["Ideas", "draft", false],
+        ["Review", "in_progress", false],
+        ["Completed", "completed", true],
+      ]);
+    });
+
+    it("carries the label it was given", () => {
+      const columns = config.resolve(project(["Doing"]), {
+        ...LABELS,
+        draft: "Brouillon",
+      });
+      expect(columns[0]).toEqual({
+        name: "Brouillon",
+        status: "draft",
+        synthesized: true,
+      });
     });
   });
 
@@ -125,6 +173,7 @@ describe("KanbanColumnConfig", () => {
         LABELS,
       );
       expect(columns.map((c) => c.name)).toEqual([
+        "Draft",
         "To do",
         "Doing",
         "Completed",

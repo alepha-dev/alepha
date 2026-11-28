@@ -268,7 +268,7 @@ test.describe("Kanban", () => {
       {},
     );
 
-    // A narrow viewport, so the seven columns cannot possibly fit and the
+    // A narrow viewport, so the eight columns cannot possibly fit and the
     // test does not depend on the runner's window size.
     await page.setViewportSize({ width: 900, height: 800 });
 
@@ -279,8 +279,8 @@ test.describe("Kanban", () => {
     }
 
     await openBoard(page, projectSlug);
-    // New + five sub-columns + Completed.
-    await expect(page.getByTestId("kanban-column")).toHaveCount(7);
+    // Draft + To do + five sub-columns + Completed.
+    await expect(page.getByTestId("kanban-column")).toHaveCount(8);
 
     const row = page.getByTestId("kanban-columns");
     const overflows = await row.evaluate(
@@ -394,8 +394,9 @@ test.describe("Kanban", () => {
     // And the board renders the new order.
     await openBoard(page, projectSlug);
     const columns = page.getByTestId("kanban-column");
-    await expect(columns).toHaveCount(4, { timeout: 10_000 });
-    await expect(columns.nth(1)).toHaveAttribute(
+    // Draft and To do first, then the configured columns (#Q4376).
+    await expect(columns).toHaveCount(5, { timeout: 10_000 });
+    await expect(columns.nth(2)).toHaveAttribute(
       "data-column-key",
       "column:Review",
     );

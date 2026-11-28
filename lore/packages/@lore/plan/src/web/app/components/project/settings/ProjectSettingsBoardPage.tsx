@@ -30,8 +30,8 @@ const MAX_COLUMNS = 5;
  * The status picker's own one-field form.
  *
  * `z.text()` rather than the lifecycle enum, because the rows are handed to
- * the control as `items`: the three labels are localized, so an enum here
- * would restate the triple without being the list that renders. Required, so
+ * the control as `items`: the four labels are localized, so an enum here
+ * would restate the lifecycle without being the list that renders. Required, so
  * a column always maps onto a state.
  */
 const columnStatusSchema = z.object({
@@ -351,6 +351,10 @@ const ColumnRow = (props: ColumnRowProps) => {
         }}
         triggerClassName="h-8 text-xs"
         items={[
+          {
+            value: "draft",
+            label: tr("project.settings.kanban.columns.status.draft"),
+          },
           {
             value: "todo",
             label: tr("project.settings.kanban.columns.status.todo"),

@@ -1,15 +1,25 @@
-import { useToast } from "@alepha/ui";
+import { useDialog, useToast } from "@alepha/ui";
 import type { DragEndEvent } from "@dnd-kit/core";
-import type { I18n } from "@lore/core/web";
-import { useAction, useClient } from "alepha/react";
+import { formatReference, type I18n } from "@lore/core/web";
+import { useAction, useAlepha, useClient, useQueryClient } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import type { Dispatch, SetStateAction } from "react";
 
+import type { EpicController } from "../../../../api/controllers/EpicController.ts";
 import type { KanbanController } from "../../../../api/controllers/KanbanController.ts";
 import type { QuestController } from "../../../../api/controllers/QuestController.ts";
+import type { EpicRefResource } from "../../../../api/schemas/epicRefResourceSchema.ts";
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
+import { currentEpicCountAtom } from "../../atoms/currentEpicCountAtom.ts";
+import { currentEpicsAtom } from "../../atoms/currentEpicsAtom.ts";
 import { useQuestMutations } from "../shared/useQuestMutations.ts";
 import type { ColumnDescriptor, ColumnKind } from "./KanbanColumn.tsx";
+import { KanbanGrouping } from "./kanbanGrouping.ts";
+
+/**
+ * Stateless, so one instance serves every mount.
+ */
+const grouping = new KanbanGrouping();
 
 export interface KanbanMoveInput {
   quests: QuestResource[];
@@ -49,14 +59,32 @@ export interface KanbanMoveInput {
  * `useQuestMutations` keeps rejecting (#E59 rule 2), so a failed `accept`
  * still stops the sub-column move that follows it.
  *
+ * ## Draft (#Q4376)
+ *
+ * The Draft column is a lane like the others, with one door: To do. A loose
+ * card dragged from Draft to To do is marked ready, and from To do to Draft
+ * is marked draft. A draft dropped anywhere else is refused out loud, with
+ * the reason: a draft cannot be taken, so it is marked ready first.
+ *
+ * A draft its epic owns never moves alone, because the epic's status decides
+ * for all of its quests (#E178). Dropped on To do, the board offers to mark
+ * the epic ready, naming how many of its cards go with it; confirmed, the
+ * epic is marked ready (`setEpicStatus`) and every one of its drafts moves.
+ * A to-do card of an epic dropped on Draft is refused, naming the epic,
+ * whose page sends it back to draft.
+ *
  * Extracted from `KanbanBoard` so the drop can be driven without a pointer:
  * dnd-kit resolves a drop from layout rects, which jsdom does not have.
  */
 export const useKanbanMove = (input: KanbanMoveInput) => {
+  const alepha = useAlepha();
   const questApi = useClient<QuestController>();
   const kanbanApi = useClient<KanbanController>();
+  const epicApi = useClient<EpicController>();
+  const queries = useQueryClient();
   const questMutations = useQuestMutations();
   const toaster = useToast();
+  const dialog = useDialog();
   const { tr } = useI18n<I18n, "en">();
 
   return useAction<[event: DragEndEvent], void>(
@@ -123,6 +151,190 @@ export const useKanbanMove = (input: KanbanMoveInput) => {
           return true;
         };
 
+        /**
+         * The epic a card belongs to, as a ref, for the sentences that name
+         * it. Read from the project's snapshot, whose numbers never change,
+         * and fetched only for an epic created after it was taken.
+         */
+        const epicRefOf = async (
+          quest: QuestResource,
+        ): Promise<EpicRefResource | undefined> => {
+          if (quest.epicId == null) return undefined;
+          const known = alepha.store
+            .get(currentEpicsAtom)
+            ?.find((epic) => epic.id === quest.epicId);
+          if (known) return known;
+          const fresh = await epicApi.getEpicRefs({
+            params: { projectId: quest.projectId },
+          });
+          return fresh.find((epic) => epic.id === quest.epicId);
+        };
+
+        /**
+         * Mark the card's epic ready, after asking: it moves every one of the
+         * epic's drafts, on a board other people are looking at too.
+         */
+        const readyEpic = async (
+          quest: QuestResource,
+          epic: EpicRefResource,
+        ): Promise<void> => {
+          const ref = formatReference("epic", epic.number);
+          const drafts = quests.filter(
+            (row) => row.epicId === epic.id && !!row.draftAt,
+          );
+          const count = drafts.length;
+          const ok = await dialog.confirm({
+            title: tr("kanban.draft.epicReady.title", { args: [ref] }),
+            description: tr("kanban.draft.epicReady.description", {
+              args: [ref, epic.title],
+            }),
+            confirmLabel:
+              count === 1
+                ? tr("kanban.draft.epicReady.confirm.one", { args: [ref] })
+                : tr("kanban.draft.epicReady.confirm", {
+                    args: [ref, String(count)],
+                  }),
+            cancelLabel: tr("common.cancel"),
+          });
+          if (!ok) return;
+
+          // Optimistic: every draft of the epic leaves Draft at once, as the
+          // server's one statement releases them. A held one stays held, in
+          // To do, since its hold is untouched.
+          const before = quests;
+          const ids = new Set(drafts.map((row) => row.id));
+          setQuests((prev) =>
+            prev.map((row) =>
+              ids.has(row.id)
+                ? {
+                    ...row,
+                    draftAt: undefined,
+                    metadata: {
+                      ...row.metadata,
+                      status:
+                        row.metadata.status === "draft"
+                          ? "todo"
+                          : row.metadata.status,
+                    },
+                  }
+                : row,
+            ),
+          );
+          try {
+            await epicApi.setEpicStatus({
+              params: { id: epic.id },
+              body: { status: "ready" },
+            });
+          } catch (error) {
+            setQuests(before);
+            throw error;
+          }
+
+          // What the epic pages do after the same write: the snapshot and
+          // the sidebar's draft-epic badge follow, the epic and quest reads
+          // are stale, and the open-quest badge now counts these quests.
+          const snapshot = alepha.store.get(currentEpicsAtom);
+          if (snapshot) {
+            alepha.store.set(
+              currentEpicsAtom,
+              snapshot.map((row) =>
+                row.id === epic.id ? { ...row, status: "ready" } : row,
+              ),
+            );
+          }
+          if (epic.status === "draft") {
+            const badge = alepha.store.get(currentEpicCountAtom)?.count ?? 0;
+            alepha.store.set(currentEpicCountAtom, {
+              count: Math.max(0, badge - 1),
+            });
+          }
+          queries.invalidate(["epics", quest.projectId]);
+          queries.invalidate(["quests", quest.projectId]);
+          await questMutations.refreshCount();
+          await reload();
+        };
+
+        /**
+         * A drop leaving Draft or entering it. To do is its one door; every
+         * other way out is refused with the reason, never swallowed.
+         */
+        const handleDraftDrop = async (
+          quest: QuestResource,
+          toKind: ColumnKind,
+        ): Promise<void> => {
+          const epic = await epicRefOf(quest);
+          const ref = epic ? formatReference("epic", epic.number) : undefined;
+
+          if (grouping.laneOf(quest) === "draft") {
+            if (toKind !== "todo") {
+              toaster.show(
+                ref
+                  ? tr("kanban.draft.error.epicToTodo", { args: [ref] })
+                  : tr("kanban.draft.error.toTodo"),
+                "warning",
+              );
+              return;
+            }
+            if (epic) {
+              await readyEpic(quest, epic);
+              return;
+            }
+          } else {
+            // Only a loose To do card goes to Draft: the refusal names what
+            // stands in the way for this card, never a fix it does not need.
+            if (quest.metadata.status !== "todo") {
+              const status = quest.metadata.status;
+              toaster.show(
+                status === "in_progress"
+                  ? tr("kanban.draft.error.fromTaken")
+                  : status === "on_hold"
+                    ? tr("kanban.draft.error.fromHeld")
+                    : status === "completed"
+                      ? tr("kanban.draft.error.fromCompleted")
+                      : tr("kanban.draft.error.fromTodo"),
+                "warning",
+              );
+              return;
+            }
+            if (ref) {
+              toaster.show(
+                tr("kanban.draft.error.epicOwns", { args: [ref] }),
+                "warning",
+              );
+              return;
+            }
+          }
+
+          // A loose card, one verb each way.
+          const toDraft = toKind === "draft";
+          const before = quests;
+          setQuests((prev) =>
+            prev.map((row) =>
+              row.id === quest.id
+                ? {
+                    ...row,
+                    // The reload brings the server's `draftAt`; the lane
+                    // reads the status meanwhile.
+                    ...(toDraft ? {} : { draftAt: undefined }),
+                    kanbanColumn: undefined,
+                    metadata: {
+                      ...row.metadata,
+                      status: toDraft ? "draft" : "todo",
+                    },
+                  }
+                : row,
+            ),
+          );
+          try {
+            if (toDraft) await questMutations.draft(quest.id);
+            else await questMutations.ready(quest.id);
+          } catch (error) {
+            setQuests(before);
+            throw error;
+          }
+          await reload();
+        };
+
         const { active, over } = event;
         if (!over) return;
 
@@ -146,23 +358,32 @@ export const useKanbanMove = (input: KanbanMoveInput) => {
 
         const quest = questData.quest as QuestResource;
         const fromStatus = quest.metadata.status;
+        // The lane, not the status: a held card reads `on_hold`, which no
+        // column carries, and a held draft sits in Draft.
+        const fromLane = grouping.laneOf(quest);
         // A column droppable names its own lane; a card droppable does not,
         // so read the lane off the card that was landed on.
         const target =
           columnData.type === "card"
             ? (columnData.quest as QuestResource)
             : undefined;
-        const toKind = (
-          target ? target.metadata.status : columnData.kind
-        ) as ColumnKind;
+        const toKind = (target ? grouping.laneOf(target) : columnData.kind) as
+          | ColumnKind
+          | undefined;
+        if (!toKind) return;
         const toSubColumn = (
           target ? target.kanbanColumn : columnData.subColumn
         ) as string | undefined;
 
         // No-op if the card was dropped onto its current column.
-        if (fromStatus === toKind) {
+        if (fromLane === toKind) {
           if (toKind !== "in_progress") return;
           if (quest.kanbanColumn === toSubColumn) return;
+        }
+
+        if (fromLane === "draft" || toKind === "draft") {
+          await handleDraftDrop(quest, toKind);
+          return;
         }
 
         // WIP limits are SOFT (#1228). A hard block on your own board is a
@@ -255,6 +476,17 @@ export const useKanbanMove = (input: KanbanMoveInput) => {
         await reload();
       },
     },
-    [questApi, kanbanApi, questMutations, toaster, tr, input],
+    [
+      alepha,
+      questApi,
+      kanbanApi,
+      epicApi,
+      queries,
+      questMutations,
+      toaster,
+      dialog,
+      tr,
+      input,
+    ],
   );
 };

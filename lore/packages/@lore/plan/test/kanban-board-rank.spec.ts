@@ -195,6 +195,33 @@ describe("board rank", () => {
       expect(await boardIds(owner, projectId)).toEqual([second, third, first]);
     });
 
+    it("ranks a draft among the Draft column only", async () => {
+      // The board shows drafts since #Q4376, in a column of their own: the
+      // first move there ranks that column and leaves To do untouched.
+      const { owner, projectId, ids } = await setupBoard();
+      const [a, b] = ids;
+      for (const id of [a, b]) {
+        await ctx.quests.draftQuest.fetch({ params: { id } }, { user: owner });
+      }
+
+      await ctx.kanban.moveQuestOnBoard.fetch(
+        { params: { id: b }, body: { afterQuestId: a } },
+        { user: owner },
+      );
+
+      const rows = await ctx.repos.quests.findMany({
+        where: { projectId: { eq: projectId } },
+      });
+      const rankOf = (id: number) => rows.find((r) => r.id === id)?.boardRank;
+      expect(rankOf(a)).toBeTruthy();
+      expect(rankOf(b)).toBeTruthy();
+      expect(rankOf(ids[2])).toBeFalsy();
+      const drafts = (await boardIds(owner, projectId)).filter(
+        (id) => id !== ids[2],
+      );
+      expect(drafts).toEqual([b, a]);
+    });
+
     it("survives repeated moves into the same gap", async () => {
       const { owner, projectId } = await setupBoard();
       const [first, second, third] = await boardIds(owner, projectId);

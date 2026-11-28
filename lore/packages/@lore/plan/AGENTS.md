@@ -151,8 +151,10 @@ count and report leaves a draft out with `draftAt IS NULL`, beside the
 `shelvedAt IS NULL` it already had: the quest list with no status or with
 `statusOp: not` (a status list naming `draft` returns them, and an `epic`
 filter keeps its epic's drafts), the `on_hold` filter (a held draft is out),
-the kanban, `OpenQuestScope` and the dashboard tiles, `ProjectReportsService`
-and the tag tally. A completed quest is never a draft, so finished work in a
+`OpenQuestScope` and the dashboard tiles (the Board Columns tile has no Draft
+pill and never counts one in To do), `ProjectReportsService` and the tag
+tally. The kanban is the one surface that shows them, in its Draft column
+(#Q4376, below). A completed quest is never a draft, so finished work in a
 draft epic always counts. `quests_open_idx` names `draft_at` for it. The
 read filter on the draft epics' ids that this replaced is gone (#Q4374): do
 not bring back a filter on `epic.status` for a quest list.
@@ -259,6 +261,8 @@ events, not statuses. Labels go through `QUEST_STATUS_LABEL_KEYS`
 ## Drag & Drop
 
 Uses `@dnd-kit/core`. Cards are `useDraggable`, columns are `useDroppable`. Status transitions: `todo → in_progress → completed` (named `new → accepted → completed` until #Q2269, folio #1290). Completed quests cannot be moved back. A to-do quest must be accepted before completing.
+
+**Draft (#Q4376).** The frame always has a Draft lane: `KanbanColumnConfig.resolve` synthesizes it FIRST when no configured column carries `draft` (core's `kanbanColumnSchema.status`), as it synthesizes To do and Completed. `KanbanGrouping.laneOf` places a card, a held draft (`heldAt` and `draftAt`, no `acceptedAt`) in Draft rather than To do, and `KanbanController.columnOf` ranks by the same lane. Draft's one door is To do (`useKanbanMove`): a loose card goes Draft → To do (`readyQuest`) and To do → Draft (`draftQuest`); any other drop out of Draft, or into it from anything but a loose to-do card, is refused with a toast saying why. An epic's draft dropped on To do asks "Mark #E12 ready (N quests)" and, confirmed, calls `setEpicStatus` ready, so every draft of the epic moves together; it never moves alone.
 
 ## Feedback
 

@@ -210,6 +210,25 @@ describe("dashboard flow tiles", () => {
         (value.rows ?? []).reduce((n, row) => n + (row.value ?? 0), 0),
       ).toBe(2);
     });
+
+    it("never counts a draft in To do, and shows no Draft pill", async ({
+      expect,
+    }) => {
+      // The board has a Draft column since #Q4376; the tile, like every
+      // default view, leaves drafts out.
+      await quest();
+      await quest({ draftAt: dateTime.nowISOString() });
+      await quest({ draftAt: dateTime.nowISOString() });
+
+      const value = await resolve("boardColumns");
+
+      expect(value.value).toBe(1);
+      const rows = value.rows ?? [];
+      expect(
+        Object.fromEntries(rows.map((row) => [row.id ?? row.badge, row.value])),
+      ).toMatchObject({ todo: 1 });
+      expect(rows.some((row) => row.badge === "draft")).toBe(false);
+    });
   });
 
   describe("gates", () => {

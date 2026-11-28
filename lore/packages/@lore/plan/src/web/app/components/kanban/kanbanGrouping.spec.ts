@@ -16,6 +16,8 @@ const quest = (
     status?: Status;
     kanbanColumn?: string;
     updatedAt?: string;
+    acceptedAt?: string;
+    draftAt?: string;
   } = {},
 ): QuestResource =>
   ({
@@ -23,6 +25,8 @@ const quest = (
     shortId: id,
     title: `Quest ${id}`,
     kanbanColumn: options.kanbanColumn,
+    acceptedAt: options.acceptedAt,
+    draftAt: options.draftAt,
     updatedAt: options.updatedAt ?? "2026-08-01T00:00:00.000Z",
     metadata: { status: options.status ?? "todo" },
   }) as unknown as QuestResource;
@@ -42,6 +46,7 @@ const column = (
  * The frame a project with no column config resolves to.
  */
 const defaultFrame = (...accepted: string[]): ColumnDescriptor[] => [
+  column("Draft", "draft"),
   column("To do", "todo"),
   ...accepted.map((name) => column(name, "in_progress")),
   column("Completed", "completed"),
@@ -55,6 +60,7 @@ describe("KanbanGrouping", () => {
       const byKey = grouping.group([], defaultFrame("In progress", "Review"));
 
       expect(Object.keys(byKey)).toEqual([
+        "column:Draft",
         "column:To do",
         "column:In progress",
         "column:Review",
@@ -209,6 +215,95 @@ describe("KanbanGrouping", () => {
       );
 
       expect(byKey["column:Review"]).toEqual([]);
+    });
+  });
+  /**
+   * #Q4376: the board's leftmost lane holds the drafts, and a draft lands
+   * nowhere else.
+   */
+  describe("drafts", () => {
+    const draftAt = "2026-11-20T00:00:00.000Z";
+
+    it("puts a draft in Draft and in no other column", () => {
+      const byKey = grouping.group(
+        [quest(1, { status: "draft", draftAt }), quest(2)],
+        defaultFrame("In progress"),
+      );
+
+      expect(byKey["column:Draft"].map((q) => q.id)).toEqual([1]);
+      expect(byKey["column:To do"].map((q) => q.id)).toEqual([2]);
+      expect(
+        Object.entries(byKey)
+          .filter(([key]) => key !== "column:Draft")
+          .flatMap(([, rows]) => rows.map((q) => q.id)),
+      ).not.toContain(1);
+    });
+
+    it("keeps a draft in Draft even when it still names a column", () => {
+      // A quest unassigned from Review keeps `kanbanColumn`; drafted later,
+      // that name must not pull it into an accepted lane.
+      const byKey = grouping.group(
+        [quest(1, { status: "draft", draftAt, kanbanColumn: "Review" })],
+        defaultFrame("In progress", "Review"),
+      );
+
+      expect(byKey["column:Draft"].map((q) => q.id)).toEqual([1]);
+      expect(byKey["column:Review"]).toEqual([]);
+    });
+
+    it("sends a held draft to Draft, not To do", () => {
+      // A held quest of an epic sent back to draft: `heldAt` and `draftAt`
+      // both set, no `acceptedAt`. It reads `on_hold`, which the old branch
+      // sent to To do.
+      const byKey = grouping.group(
+        [quest(1, { status: "on_hold", draftAt })],
+        defaultFrame("In progress"),
+      );
+
+      expect(byKey["column:Draft"].map((q) => q.id)).toEqual([1]);
+      expect(byKey["column:To do"]).toEqual([]);
+    });
+
+    it("still sends a held to-do quest to To do and a held accepted one to In progress", () => {
+      const byKey = grouping.group(
+        [
+          quest(1, { status: "on_hold" }),
+          quest(2, {
+            status: "on_hold",
+            acceptedAt: "2026-11-01T00:00:00.000Z",
+          }),
+        ],
+        defaultFrame("In progress"),
+      );
+
+      expect(byKey["column:To do"].map((q) => q.id)).toEqual([1]);
+      expect(byKey["column:In progress"].map((q) => q.id)).toEqual([2]);
+      expect(byKey["column:Draft"]).toEqual([]);
+    });
+
+    it("uses a project's own draft column where it put it", () => {
+      const frame = [
+        column("To do", "todo"),
+        column("Doing", "in_progress"),
+        column("Ideas", "draft"),
+        column("Completed", "completed"),
+      ];
+      const byKey = grouping.group(
+        [quest(1, { status: "draft", draftAt })],
+        frame,
+      );
+
+      expect(byKey["column:Ideas"].map((q) => q.id)).toEqual([1]);
+    });
+
+    it("answers the lane of a single card for the drop handler", () => {
+      expect(grouping.laneOf(quest(1, { status: "draft", draftAt }))).toBe(
+        "draft",
+      );
+      expect(grouping.laneOf(quest(2, { status: "on_hold", draftAt }))).toBe(
+        "draft",
+      );
+      expect(grouping.laneOf(quest(3, { status: "shelved" }))).toBeUndefined();
     });
   });
 });

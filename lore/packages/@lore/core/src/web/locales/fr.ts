@@ -2006,6 +2006,7 @@ export default {
   "project.settings.kanban.columns.placeholder": "Nom de la colonne",
   "project.settings.kanban.columns.status": "Correspond à",
   "project.settings.kanban.columns.status.todo": "À faire",
+  "project.settings.kanban.columns.status.draft": "Brouillon",
   "project.settings.kanban.columns.status.inProgress": "En cours",
   "project.settings.kanban.columns.status.completed": "Terminé",
   "project.settings.kanban.columns.wip": "Limite d'en-cours",
@@ -2216,6 +2217,7 @@ export default {
     "Markdown. Affiché dans l'onglet Vue d'ensemble.",
 
   "kanban.column.todo": "À faire",
+  "kanban.column.draft": "Brouillon",
   "kanban.column.completed": "Terminées",
   "kanban.column.collapse": "Réduire la colonne",
   "kanban.column.actions": "Actions de la colonne $1",
@@ -2256,6 +2258,25 @@ export default {
     "Les quêtes terminées ne peuvent pas être déplacées",
   "kanban.error.acceptFirst":
     "Vous devez d'abord accepter la quête avant de la terminer",
+  "kanban.draft.error.toTodo":
+    "Un brouillon ne peut pas encore être pris : déposez-le dans À faire pour le marquer prêt d'abord.",
+  "kanban.draft.error.epicToTodo":
+    "Ce brouillon appartient à $1, dont les quêtes deviennent prêtes ensemble : déposez-le dans À faire pour marquer toute l'épopée prête.",
+  "kanban.draft.error.fromTodo":
+    "Seule une quête encore à faire peut aller en Brouillon.",
+  "kanban.draft.error.fromTaken":
+    "Cette quête est prise : désassignez-la d'abord, puis déposez-la dans Brouillon.",
+  "kanban.draft.error.fromHeld":
+    "Cette quête est en attente : levez l'attente d'abord. Seule une quête encore à faire, prise par personne, peut aller en Brouillon.",
+  "kanban.draft.error.fromCompleted":
+    "Une quête terminée ne peut pas revenir en Brouillon : créez la suite comme une nouvelle quête.",
+  "kanban.draft.error.epicOwns":
+    "Cette quête appartient à $1, dont le statut décide pour toutes ses quêtes : repassez l'épopée en brouillon depuis sa page.",
+  "kanban.draft.epicReady.title": "Marquer $1 prête ?",
+  "kanban.draft.epicReady.description":
+    "Ce brouillon appartient à $1, $2, et les quêtes d'une épopée deviennent prêtes ensemble, jamais une seule. Marquer l'épopée prête envoie tous ses brouillons dans À faire, où chacun sur le projet peut les prendre.",
+  "kanban.draft.epicReady.confirm": "Marquer $1 prête ($2 quêtes)",
+  "kanban.draft.epicReady.confirm.one": "Marquer $1 prête (1 quête)",
 
   "quest.view.unassign.title": "Se désassigner de cette quête",
   "quest.view.unassign.confirm":

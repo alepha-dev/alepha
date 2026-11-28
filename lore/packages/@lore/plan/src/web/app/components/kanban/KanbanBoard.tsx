@@ -328,23 +328,20 @@ const KanbanBoard = (props: KanbanBoardProps) => {
    * column carrying that status — so a board can have two done-ish lanes,
    * or its own backlog lane, or the old frame by configuring nothing.
    *
-   * The lifecycle triple is still the truth. `kind` is the column's mapping
-   * onto it, and everything downstream keeps reading the timestamps.
+   * The quest's lifecycle is still the truth. `kind` is the column's mapping
+   * onto it, and everything downstream keeps reading the timestamps. Draft
+   * is the leftmost lane unless the project placed its own (#Q4376).
    */
   const columns: ColumnDescriptor[] = useMemo(() => {
     const resolved = columnConfig.resolve(project, {
+      draft: tr("kanban.column.draft"),
       todo: tr("kanban.column.todo"),
       completed: tr("kanban.column.completed"),
     });
     // Each untinted in-progress column takes the next derived dot, in order.
     const derivedTint = new Map(
       resolved
-        .filter(
-          (column) =>
-            !column.color &&
-            column.status !== "todo" &&
-            column.status !== "completed",
-        )
+        .filter((column) => !column.color && column.status === "in_progress")
         .map((column, index) => [
           column,
           SUB_COLUMN_DOTS[index % SUB_COLUMN_DOTS.length],
@@ -367,13 +364,17 @@ const KanbanBoard = (props: KanbanBoardProps) => {
       // The operator's token wins; without one the board derives a tint the
       // way it always has. Both go through `AREA_DOT_CLASS`, so a column and
       // an area tinted the same read the same.
+      // Draft is violet, the Draft chip's colour (`questChips`), so a card's
+      // chip and its column say the same thing.
       dotClass: column.color
         ? AREA_DOT_CLASS[column.color]
-        : column.status === "todo"
-          ? "bg-blue-500"
-          : column.status === "completed"
-            ? "bg-green-500"
-            : (derivedTint.get(column) ?? SUB_COLUMN_DOTS[0]),
+        : column.status === "draft"
+          ? "bg-violet-500"
+          : column.status === "todo"
+            ? "bg-blue-500"
+            : column.status === "completed"
+              ? "bg-green-500"
+              : (derivedTint.get(column) ?? SUB_COLUMN_DOTS[0]),
     }));
   }, [project.kanbanColumns, project.kanbanColumnConfig, tr]);
 
@@ -526,10 +527,12 @@ const KanbanBoard = (props: KanbanBoardProps) => {
             area,
             priority: "medium",
             objectives: [],
+            // Composed in Draft, it is born a draft, as Create as draft does.
+            ...(descriptor.kind === "draft" ? { draft: true } : {}),
           },
         });
 
-        // A quest is born `todo`. Landing it in an accepted lane is a second
+        // A quest is born `todo` (or `draft`, above). Landing it in an accepted lane is a second
         // call, the same two-step the drag handler makes.
         if (descriptor.kind === "in_progress") {
           await questMutations.accept(created.id);

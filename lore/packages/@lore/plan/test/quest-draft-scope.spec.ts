@@ -247,9 +247,12 @@ describe("the draft scope, against the backlog gate's fixtures", () => {
       ).toEqual(["Parked Quest", "Unfiled Quest"]);
     });
 
-    it("keeps the Kanban board in agreement with the quest list", async ({
+    it("puts the drafts on the Kanban board, read as draft and never as to do", async ({
       expect,
     }) => {
+      // The board's Draft column holds them (#Q4376), as the list's Draft
+      // filter shows them; To do still holds exactly what the default list
+      // does.
       const c = await setupProject();
 
       const board = await ctx.kanban.getBoard.fetch(
@@ -258,9 +261,18 @@ describe("the draft scope, against the backlog gate's fixtures", () => {
       );
 
       expect(titlesOf(board.data.quests)).toEqual([
+        "Parked Quest",
         "Released Quest",
         "Unfiled Quest",
       ]);
+      expect(
+        titlesOf(board.data.quests.filter((q) => q.metadata.status === "todo")),
+      ).toEqual(titlesOf((await list(c)).content));
+      expect(
+        board.data.quests
+          .filter((q) => q.metadata.status === "draft")
+          .map((q) => q.title),
+      ).toEqual(["Parked Quest"]);
     });
 
     it("leaves nothing out once the epic is marked ready", async ({
@@ -317,6 +329,16 @@ describe("the draft scope, against the backlog gate's fixtures", () => {
       expect(
         (await ctx.open.countByProject([c.projectId])).get(c.projectId),
       ).toBe(3);
+
+      // On the board it is a card, with `draftAt` under its hold, which is
+      // what sends it to the Draft column rather than To do.
+      const board = await ctx.kanban.getBoard.fetch(
+        { params: { projectId: c.projectId } },
+        { user: c.owner },
+      );
+      const card = board.data.quests.find((q) => q.title === "Held Draft");
+      expect(card?.metadata.status).toBe("on_hold");
+      expect(card?.draftAt).toBeDefined();
     });
   });
 
