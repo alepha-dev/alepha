@@ -5474,10 +5474,12 @@ export default {
   "backup.events": "Événements",
   "backup.noEvents": "Aucun événement de sauvegarde pour l'instant.",
   // The in-app assistant (#E120): its header toggle, dock and tool steps.
+  "assistant.activity.running": "Lore répond",
+  "assistant.activity.waiting": "Lore attend votre accord",
+  "assistant.activity.unread": "Lore a répondu",
   "assistant.open": "Parler à Lore",
   "assistant.title": "Lore",
   "assistant.placeholder": "Demandez à Lore",
-  "assistant.help": "Ce que l'assistant sait faire",
   "assistant.suggest.open": "Qu'est-ce qui reste ouvert dans ce projet ?",
   "assistant.suggest.epic": "Que manque-t-il encore à l'epic en cours ?",
   "assistant.suggest.file": "Créer une quête pour ...",

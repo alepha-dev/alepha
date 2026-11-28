@@ -368,6 +368,16 @@ const InvoicePage = (props: InvoicePageProps) => {
 - The header's full screen button, between minimize and close, opens the conversation in a dialog
   that fills the screen but for a small margin; its button again, Escape or the backdrop brings it
   back where it was.
+- Every icon button of the header (history, new conversation, minimize, full screen, close) is
+  named by a tooltip. `<AiChatHeaderButton label="..." />` gives one of your `headerActions` the
+  same look and tooltip.
+- Closing hides the panel and never stops a turn: the answer keeps streaming and is there when the
+  panel opens again. An app whose own header has a button for the chat can drop the minimize
+  button and its pill with `minimizable={false}`, and let that button say what the closed chat is
+  doing: `onActivityChange` reports `idle`, `running`, `waiting` (an action to approve) or `unread`
+  (a turn ended while the panel was closed). `foldTarget={() => element}` folds a closing floating
+  card into that button, so the reader sees where it went; there is no fold under reduced motion or
+  from full screen.
 - A run of consecutive tool calls reads as one line ("Used 3 tools", or the words of the
   `toolSummary` prop) that opens on every step, and names only the call in flight while one runs.
   `<AiChatToolTrace />` is that line, for a thread an app draws itself.

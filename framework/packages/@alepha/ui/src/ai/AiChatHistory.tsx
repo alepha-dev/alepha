@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Button } from "../core/Button.tsx";
 import { Popover, PopoverContent, PopoverTrigger } from "../core/Popover.tsx";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../core/Tooltip.tsx";
 import { cn } from "../core/utils.ts";
 
 export interface AiChatHistoryProps {
@@ -34,21 +35,30 @@ export const AiChatHistory = (props: AiChatHistoryProps) => {
     [api, props.current],
   );
   const list = conversations.data ?? [];
+  const label = tr("ai.chat.history", { default: "History" });
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <Button
-            size="icon-sm"
-            variant="minimal"
-            disabled={props.disabled}
-            aria-label={tr("ai.chat.history", { default: "History" })}
-          />
-        }
-      >
-        <History className="size-4" />
-      </PopoverTrigger>
+      {/* A tooltip names it, as the header's other icon buttons. */}
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="minimal"
+                  disabled={props.disabled}
+                  aria-label={label}
+                />
+              }
+            >
+              <History className="size-4" />
+            </PopoverTrigger>
+          }
+        />
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <PopoverContent
         align="end"
         className="w-80 gap-1 p-1.5"

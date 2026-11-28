@@ -1,4 +1,3 @@
-import { Button } from "@alepha/ui";
 import { AiChat, type AiChatSuggestion } from "@alepha/ui/ai";
 import { useChatToolSummary } from "@lore/chat/web";
 import {
@@ -6,17 +5,19 @@ import {
   currentProjectAtom,
   type I18n,
   LoreLogoAnimated,
-  loreDocsUrl,
   sidePanelAtom,
 } from "@lore/core/web";
 import { useInject, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { useRouterState } from "alepha/react/router";
-import { CircleHelp } from "lucide-react";
 import { useEffect } from "react";
 
 import { assistantConfirmCards } from "./assistantConfirmCards.ts";
-import { assistantOpenAtom } from "./assistantOpenAtom.ts";
+import AssistantHeaderButton from "./AssistantHeaderButton.tsx";
+import {
+  assistantActivityAtom,
+  assistantOpenAtom,
+} from "./assistantOpenAtom.ts";
 import AssistantReplyLink from "./AssistantReplyLink.tsx";
 import { useAssistantInvalidates } from "./useAssistantInvalidates.ts";
 import { useAssistantStatus } from "./useAssistantStatus.ts";
@@ -28,8 +29,10 @@ import { useAssistantToolLabel } from "./useAssistantToolLabel.ts";
  *
  * A card floating over the page's bottom corner (`AiChat`'s `floating`
  * mode, #Q4269, the owner's call over the dock): the page under it stays
- * usable, it moves by its header, and it minimizes into a pill, expands to
- * full screen or closes.
+ * usable, it moves by its header, and it expands to full screen or closes.
+ * No minimize and no pill, no help link (#Q4563): closing folds the card
+ * into the header's chat button and never stops a turn, and that button
+ * says what the closed conversation is doing (`assistantActivityAtom`).
  *
  * It is Lore talking, as `@lore` is in Chat (#Q4562): the header says
  * "Lore" beside her animated portrait, with no model named (the operator
@@ -42,6 +45,7 @@ const AssistantPanel = () => {
   const { tr } = useI18n<I18n, "en">();
   const enabled = useAssistantStatus();
   const [open, setOpen] = useStore(assistantOpenAtom);
+  const [, setActivity] = useStore(assistantActivityAtom);
   const [project] = useStore(currentProjectAtom);
   const toolLabel = useAssistantToolLabel();
   // The rooms' summary, so a run reads the same in the panel (#Q4212).
@@ -83,6 +87,13 @@ const AssistantPanel = () => {
       assistant="lore"
       open={open}
       onOpenChange={setOpen}
+      minimizable={false}
+      foldTarget={() =>
+        document.querySelector(
+          `[data-testid="${AssistantHeaderButton.TEST_ID}"]`,
+        )
+      }
+      onActivityChange={setActivity}
       title={tr("assistant.title")}
       icon={
         // Her portrait's canvas lies over the slot, 1.8 times its side, so
@@ -119,18 +130,6 @@ const AssistantPanel = () => {
           {link.children}
         </AssistantReplyLink>
       )}
-      headerActions={
-        <Button
-          size="icon-sm"
-          variant="minimal"
-          aria-label={tr("assistant.help")}
-          href={loreDocsUrl("agents-assistant")}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <CircleHelp className="size-4" />
-        </Button>
-      }
     />
   );
 };
