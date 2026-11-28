@@ -1,6 +1,7 @@
 import {
   Circle,
   CircleCheck,
+  CircleDashed,
   CircleDotDashed,
   CirclePause,
   CircleSlash,
@@ -21,7 +22,13 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
  * themselves live in `@alepha/ui`'s `Badge`: this file only says which
  * meaning maps to which, which is the part that belongs to Lore.
  */
-export type QuestTone = "neutral" | "info" | "success" | "warning" | "danger";
+export type QuestTone =
+  | "neutral"
+  | "info"
+  | "success"
+  | "warning"
+  | "danger"
+  | "violet";
 
 /**
  * `shelved` is deliberately neutral: it is the absence of a state, and
@@ -32,11 +39,16 @@ export type QuestTone = "neutral" | "info" | "success" | "warning" | "danger";
  * needs nobody, to do and in progress are proceeding, and completed is done.
  * Reading as loud as `high` priority is correct here, because the whole point
  * of the status is that somebody has to go and unblock it.
+ *
+ * `draft` is `violet` (#E178): a hue tone rather than a semantic one, since
+ * a draft claims no progress and no trouble. It must not read as To do,
+ * which it is not yet, nor as Shelved, which it never was.
  */
 export const QUEST_STATUS_TONE: Record<
   QuestResource["metadata"]["status"],
   QuestTone
 > = {
+  draft: "violet",
   todo: "info",
   in_progress: "warning",
   on_hold: "danger",
@@ -47,13 +59,14 @@ export const QUEST_STATUS_TONE: Record<
 /**
  * One glyph per status, so a status chip survives monochrome and readers who
  * do not separate amber from emerald (#Q4195). The circle family the epic
- * statuses use: whole while to do, broken into motion while in progress,
+ * statuses use: dashed while a draft, whole while to do, broken into motion while in progress,
  * paused on hold, ticked when completed, struck through when shelved.
  */
 export const QUEST_STATUS_ICON: Record<
   QuestResource["metadata"]["status"],
   LucideIcon
 > = {
+  draft: CircleDashed,
   todo: Circle,
   in_progress: CircleDotDashed,
   on_hold: CirclePause,
@@ -62,6 +75,7 @@ export const QUEST_STATUS_ICON: Record<
 };
 
 export type QuestStatusLabelKey =
+  | "quest.status.draft"
   | "quest.status.todo"
   | "quest.status.inProgress"
   | "quest.status.onHold"
@@ -79,6 +93,7 @@ export const QUEST_STATUS_LABEL_KEYS: Record<
   QuestResource["metadata"]["status"],
   QuestStatusLabelKey
 > = {
+  draft: "quest.status.draft",
   todo: "quest.status.todo",
   in_progress: "quest.status.inProgress",
   on_hold: "quest.status.onHold",

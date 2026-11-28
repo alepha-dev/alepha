@@ -7,6 +7,7 @@
  * status this map does not know shows no badge.
  */
 export const ERROR_QUEST_STATUS_LABEL_KEYS = {
+  draft: "quest.status.draft",
   todo: "quest.status.todo",
   in_progress: "quest.status.inProgress",
   on_hold: "quest.status.onHold",

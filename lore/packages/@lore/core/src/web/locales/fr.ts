@@ -1133,6 +1133,7 @@ export default {
   "quest.event.change.epicCleared": "a détaché la quête de son épopée",
   "quest.event.change.release": "a mis la quête dans la version $1",
   "quest.event.change.releaseCleared": "a sorti la quête de sa version",
+  "quest.status.draft": "Brouillon",
   "quest.status.todo": "À faire",
   "quest.status.inProgress": "En cours",
   "quest.status.completed": "Terminée",

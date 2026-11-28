@@ -1,0 +1,63 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "fe5a3e79-1298-408e-a9df-aa339f044c4d",
+  "prevIds": ["2ad6b9ed-8029-4e6b-be9c-d329d8f530bb"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "draft_at"],
+      "writes": [
+        "s|col|public.quests.draft_at",
+        "n|col|public.quests.draft_at",
+        "e|col|public.quests.draft_at"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quests", "ready_at"],
+      "writes": [
+        "s|col|public.quests.ready_at",
+        "n|col|public.quests.ready_at",
+        "e|col|public.quests.ready_at"
+      ],
+      "reads": ["n|tbl|public.quests", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "draft_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quests",
+        "name": "ready_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}
