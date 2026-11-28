@@ -770,6 +770,8 @@ describe.skipIf(onPostgres)("EpicWorkflowService without transactions", () => {
     await expect(app.workflow.sweep()).resolves.toEqual({
       started: 0,
       completed: 1,
+      drafted: 0,
+      readied: 0,
     });
 
     expect((await app.repos.epics.getById(epic.id)).status).toBe("completed");
@@ -794,6 +796,8 @@ describe.skipIf(onPostgres)("EpicWorkflowService without transactions", () => {
     await expect(app.workflow.sweep()).resolves.toEqual({
       started: 1,
       completed: 0,
+      drafted: 0,
+      readied: 0,
     });
 
     expect((await app.repos.epics.getById(epic.id)).status).toBe("in_progress");

@@ -93,12 +93,12 @@ import { ReleaseAttachmentService } from "./ReleaseAttachmentService.ts";
  * that edge, exactly as it would through `updateEpic`. One shape for "an epic
  * has a release": the epic's row and its quests' rows both name it.
  *
- * ⚠️ `EpicController.setEpicStatus`'s doc says it must not write to any quest
- * row. That rule is about a quest's STATUS, and it is untouched: activating an
- * epic still releases its quests because `EpicVisibilityService` stops
- * matching them. This writes `releaseId` and nothing else. Without this
- * paragraph the next reader finds an epic activation writing to quests and
- * deletes it to restore a rule whose point they have lost.
+ * ⚠️ An epic's status writes its quests' draft (#Q4373, epic #E178), through
+ * `QuestDraftService` and nothing else: marking it ready clears `draftAt`.
+ * This writes `releaseId` and nothing else, on the start edge, which is a
+ * different write for a different reason. Without this paragraph the next
+ * reader finds two writes to quests around an epic's status and merges
+ * them, losing why each happens when it does.
  *
  * ⚠️ That call passes `previous = null`, which is what makes the follower test
  * select the quests naming nothing and leave a quest given its own release

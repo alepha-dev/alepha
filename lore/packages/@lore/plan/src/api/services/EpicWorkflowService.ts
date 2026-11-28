@@ -12,6 +12,7 @@ import { type Quest, quests } from "../entities/quests.ts";
 import { workRelations } from "../relations/workRelations.ts";
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { DefaultReleaseService } from "./DefaultReleaseService.ts";
+import { QuestDraftService } from "./QuestDraftService.ts";
 import { ReleaseCascadeService } from "./ReleaseCascadeService.ts";
 import { WorkEventSources } from "./WorkEventSources.ts";
 
@@ -77,9 +78,13 @@ export type EpicPlanEdit =
  * `dependsOn` keeps blocking because the gate tests `completed`. Design in
  * folio #1365.
  *
- * ⚠️ **No status is ever written to a quest row.** Moving an epic out of
- * `draft` releases its quests because the backlog gate stops matching them,
- * not because anything about them changed. Two carve-outs: the default
+ * ⚠️ **The epic's status writes its quests' draft, and nothing else of
+ * them** (#Q4373, epic #E178). A `draft` epic's to-do quests carry
+ * `draftAt`, a ready or in-progress epic's carry none, and every write of
+ * it goes through `QuestDraftService`: `WorkEventSources.setEpicStatus` on
+ * the manual edges, `EpicController.attachQuest` / `detachQuest` when a
+ * quest moves, {@link unshelve} back to `draft`, and {@link sweep} when a
+ * split write left the two apart. Two other carve-outs: the default
  * release on {@link startIfReady}, which writes `releaseId` and nothing else,
  * and the epic shelve, whose whole point is to shelve the quests themselves
  * (`EpicController.shelveEpic`, through `QuestShelvingService`).
@@ -92,6 +97,7 @@ export class EpicWorkflowService {
   protected readonly dt = $inject(DateTimeProvider);
   protected readonly audits = $inject(LoreAudits);
   protected readonly cascade = $inject(ReleaseCascadeService);
+  protected readonly drafts = $inject(QuestDraftService);
   /**
    * Where an epic ships when nobody said (#E48). Read when the epic starts,
    * and best effort: starting an epic must never fail over a planning
@@ -652,6 +658,10 @@ export class EpicWorkflowService {
     }
 
     await this.logStatus(epic, to, user, {});
+    // Back to `draft`, its quests are drafts again (#Q4373). After the epic,
+    // as `setEpicStatus` drafts: a failure here leaves a draft epic with
+    // to-do quests, which the sweep re-stamps.
+    if (to === "draft") await this.drafts.draftEpic(epic.id);
 
     if (to === "in_progress" && (await this.finish(updated))) {
       await this.logStatus(updated, "completed", user, {});
@@ -671,13 +681,48 @@ export class EpicWorkflowService {
    * - an `in_progress` epic with no open quest is completed;
    * - a `ready` epic that already holds an accepted or completed quest is
    *   started, its release carried down as `startIfReady` does, so its plan
-   *   freezes as it should have.
+   *   freezes as it should have;
+   * - a `draft` epic with a to-do quest that is not a draft has it drafted,
+   *   and a `ready` or `in_progress` epic with a draft quest has it marked
+   *   to do (#Q4373), both through `QuestDraftService`, so the invariant of
+   *   the class comment holds again. `drafted` and `readied` count quests.
    *
    * Runs from `EpicJobs.sweep`. No user: the audit row names nobody.
    */
-  async sweep(): Promise<{ started: number; completed: number }> {
+  async sweep(): Promise<{
+    started: number;
+    completed: number;
+    drafted: number;
+    readied: number;
+  }> {
     let started = 0;
     let completed = 0;
+    let drafted = 0;
+    let readied = 0;
+
+    const undrafted = await this.epicsWith.findMany({
+      where: {
+        status: { eq: "draft" },
+        quests: {
+          acceptedAt: { isNull: true },
+          completedAt: { isNull: true },
+          draftAt: { isNull: true },
+        },
+      },
+    });
+    for (const epic of undrafted) {
+      drafted += (await this.drafts.draftEpic(epic.id)).length;
+    }
+
+    const stillDraft = await this.epicsWith.findMany({
+      where: {
+        status: { inArray: ["ready", "in_progress"] },
+        quests: { draftAt: { isNotNull: true } },
+      },
+    });
+    for (const epic of stillDraft) {
+      readied += (await this.drafts.releaseEpic(epic.id)).length;
+    }
 
     // A relation filter is an EXISTS over the epic's quests, read through
     // the quests repository, so a soft-deleted quest never matches.
@@ -710,7 +755,7 @@ export class EpicWorkflowService {
       }
     }
 
-    return { started, completed };
+    return { started, completed, drafted, readied };
   }
 
   /**

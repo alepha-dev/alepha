@@ -24,6 +24,7 @@ import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { QUEST_EPIC_NONE } from "../../api/schemas/questEpicFilter.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
 import { PlanLiveQuests } from "../../api/services/PlanLiveQuests.ts";
+import { QuestDraftService } from "../../api/services/QuestDraftService.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
 import {
   pullRequestBodyOf,
@@ -82,6 +83,7 @@ import { EpicRefService } from "../services/EpicRefService.ts";
 export class QuestTools {
   protected readonly questController = $inject(QuestController);
   protected readonly pullRequestStates = $inject(PullRequestStateService);
+  protected readonly drafts = $inject(QuestDraftService);
   protected readonly jobKeys = $inject(JobKeyService);
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
@@ -479,11 +481,21 @@ export class QuestTools {
       // Resolve `epic_number` → global epic id (same project). Read-only
       // lookup, so any project member can resolve it; the attach below is
       // what actually requires ownership.
+      // A draft cannot be accepted, and a quest filed into an epic that is
+      // not a draft cannot be one: both refused before anything is written
+      // (#E178 review, items 7 and 23), since the create and the attach are
+      // two calls and the server's own check would come after the quest
+      // exists.
+      this.drafts.assertCreatable({
+        draft: params.draft,
+        accept: params.accept,
+      });
       let epicId: number | undefined;
       if (params.epic_number != null) {
         const epic = await this.epicController.getEpicByNumber({
           params: { projectId, number: params.epic_number },
         });
+        this.drafts.assertDraftableInto(epic, params.draft);
         epicId = epic.id;
       }
       // Resolve `release_tag` → global release id (same project). The
@@ -507,6 +519,7 @@ export class QuestTools {
           tags: params.tags,
           dependsOn,
           feedbackId,
+          draft: params.draft,
         },
       });
 
