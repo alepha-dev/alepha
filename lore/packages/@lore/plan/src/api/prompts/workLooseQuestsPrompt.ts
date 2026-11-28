@@ -32,12 +32,12 @@ The quests: {{projectUrl}}/quests
 
 Before the first quest, take this run's list. It is read once and never again:
 
-1. Call \`quest_list\` with status "todo" (page through it with \`limit\` and \`offset\` until you have every row) and keep the quests that carry no \`epic\` and no \`${PROMPT_NEEDS_HUMAN_TAG}\` tag: an agent does not build those alone. A quest under an epic is not part of this run: an epic is worked through its own prompt.
+1. Call \`quest_list\` with status "todo" (page through it with \`limit\` and \`offset\` until you have every row) and keep the quests that carry no \`epic\` and no \`${PROMPT_NEEDS_HUMAN_TAG}\` tag: an agent does not build those alone. A quest under an epic is not part of this run: an epic is worked through its own prompt. Only \`todo\` quests are taken: a \`draft\` is never on the list, nor accepted, until its owner marks it ready.
 2. A quest tagged \`${QUEST_NEEDS_ANSWER_TAG}\` is never skipped on its tag alone: \`quest_get\` it, and if its question was answered in the discussion since, remove the tag and keep it, to work with that answer. If not, leave it out and name it in your reply. Read the quests in \`in_progress\` tagged \`${QUEST_NEEDS_ANSWER_TAG}\` the same way (\`quest_list\` with status "in_progress" and that tag, loose ones only): an earlier run may have left one accepted on its question, and once answered it is a candidate too.
 3. Order them by priority, then by what the others depend on, and keep the first ${LOOSE_QUESTS_PER_RUN}. The rest wait for the next run.
 4. \`quest_accept\` every quest on the list now, before the first commit: an accepted quest is this run's, and another run leaves it alone.
 
-That list is the whole run. A quest filed while you work, or one that finishing another reveals, is not part of it: it waits in \`todo\` for the next run. Work the list in its order, one quest at a time.
+That list is the whole run. A quest filed while you work is not part of it: it waits in \`todo\` for the next run. A problem or a follow-up you find in passing is not part of it either: file it as a draft (\`quest_create\` with \`draft: true\`), and the owner marks it ready. Work the list in its order, one quest at a time.
 
 ## Each quest
 

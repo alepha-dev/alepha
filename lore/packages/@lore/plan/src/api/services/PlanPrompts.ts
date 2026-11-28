@@ -401,10 +401,13 @@ export class PlanPrompts {
   /**
    * Whether an event is one `work-loose-quests` hears (#Q4331): an event
    * about a quest only when that quest is one it would take, the rule of
-   * {@link looseQuests}: under no epic, still to do (not accepted, held,
-   * shelved or completed: `quest_create` with `accept` is accepted by the
-   * time its event is delivered), not tagged `needs-human`, and not outside
-   * text nobody confirmed. Any other event, yes.
+   * {@link looseQuests}: under no epic, still to do (not a draft, nor
+   * accepted, held, shelved or completed: `quest_create` with `accept` is
+   * accepted by the time its event is delivered), not tagged `needs-human`,
+   * and not outside text nobody confirmed. Any other event, yes. A draft
+   * plans no run (#Q4381): the run lists `todo` and would find nothing.
+   * ⚠️ Marking it ready emits no event (#E178 adds none), so a ready quest
+   * waits for the next event or scheduled check to plan its run.
    */
   public async looseQuestEvent(event: ProjectEvent): Promise<boolean> {
     if (event.subjectKind !== "quest" || !event.subjectId) return true;
@@ -417,6 +420,7 @@ export class PlanPrompts {
     if (!quest) return false;
     return (
       !quest.epicId &&
+      !quest.draftAt &&
       !quest.acceptedAt &&
       !quest.completedAt &&
       !quest.shelvedAt &&
@@ -428,13 +432,16 @@ export class PlanPrompts {
 
   /**
    * A loose quest to do, not on hold, that a job key can read and an agent
-   * may work alone: what `work-loose-quests` takes.
+   * may work alone: what `work-loose-quests` takes. Never a draft (#Q4381):
+   * the run lists `todo`, which leaves drafts out, so a draft alone must not
+   * start a run that would find nothing.
    */
   public async looseQuests(projectId: number): Promise<boolean> {
     const candidates = await this.quests.findMany({
       where: {
         projectId: { eq: projectId },
         epicId: { isNull: true },
+        draftAt: { isNull: true },
         acceptedAt: { isNull: true },
         completedAt: { isNull: true },
         shelvedAt: { isNull: true },

@@ -172,6 +172,17 @@ predecessor is a draft says so: "Blocked by draft" on its page
 through `QuestDraftService.blockedBySentence`, which names the epic when the
 epic owns the draft.
 
+**The prompts and the draft (#Q4381).** `work-quest`, `work-epic` and
+`work-loose-quests` file what they find in passing and will not take as a
+loose draft (`quest_create` with `draft: true`); `review-epic` says an
+epic's quests are drafts until it is ready. `work-feedback`, `triage` and
+the error hand-back still file to-do quests. A run of loose quests lists
+`todo` only, and a draft plans none: `PlanPrompts.looseQuests` and
+`looseQuestEvent` skip `draftAt`. Marking a draft ready emits no event, so
+its run waits for the next event or scheduled check.
+`apps/lore/test/prompt-drafts.spec.ts` keeps "hidden", `includeDrafts`
+and "backlog gate" out of every built-in and the MCP server instructions.
+
 ⚠️ **`shelved` parks a whole plan (#E78, folio #1365).** `shelveEpic` /
 `unshelveEpic` (`epic_shelve` / `epic_unshelve`, Shelve / Unshelve on the
 epic page and the list row menu) are its only writers; `setEpicStatus`

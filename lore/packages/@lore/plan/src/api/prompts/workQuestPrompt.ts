@@ -22,7 +22,7 @@ The quest: {{quest.url}}
 
 1. Work in a git worktree of your own, on a branch cut from the latest main and named after the quest. Never on main, and never in the primary checkout: other sessions share it.
 2. \`quest_accept\` it.
-3. Do exactly what the quest and its objectives say. Tick each objective with \`quest_objective_set\` as it is met. Anything you discover beyond the quest is a comment (\`quest_comment_add\`), not extra scope.
+3. Do exactly what the quest and its objectives say. Tick each objective with \`quest_objective_set\` as it is met. Anything you discover beyond the quest is not extra scope: a note on this quest is a comment (\`quest_comment_add\`), and a problem or a follow-up found in passing, which this run will not take, is filed as a draft (\`quest_create\` with \`draft: true\`): the owner reads it and marks it ready.
 4. Run the project's local checks (its AGENTS.md or CLAUDE.md names them) and fix everything red. A skipped check is a failure, not a pass. A change the user sees also gets a look ("A look at what the user sees", below).
 5. Commit it as one commit, its message naming {{quest.reference}}. One quest is one commit: the pull request is rebase-merged, so main receives its commits as they are. A later fix goes into that commit (amend it, then push with \`--force-with-lease\`).
 6. Push the branch and open a pull request into main. Its title names {{quest.reference}}, and its description links the quest. Record it on the quest with \`quest_pull_request_add\` (its URL, number and title), rather than posting its link as a comment.
