@@ -1152,6 +1152,13 @@ export default {
   "project.create.name.firstChar": "Start with a letter or a digit.",
   "project.create.name.badChar":
     "The character $1 is not allowed. Use letters, digits, spaces, - and _.",
+  "jobs.field.pullRequest": "Pull request",
+  "pullRequest.review.approved": "Approved",
+  "pullRequest.review.changes": "Changes requested",
+  "pullRequest.review.requested": "Review requested",
+  "pullRequest.behind": "Behind its base",
+  "pullRequest.conflict": "In conflict",
+  "pullRequest.sharedByQuest": "Shared by every job of the quest",
   "pullRequest.state.open": "Open",
   "pullRequest.state.draft": "Draft",
   "pullRequest.state.queued": "In merge queue",

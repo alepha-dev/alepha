@@ -195,6 +195,68 @@ export class PullRequestStateService {
   }
 
   /**
+   * The pull requests of agent jobs (#Q4369), in one read per project: a
+   * job's are those of its project's connected repository whose head is the
+   * branch Lore gave it (`lore/q<n>`, `lore/job-<id>`), or the one whose
+   * number its `pull/<n>/head` ref names. Matched by repository and branch or
+   * number, never by reading the agent's output. A job with no source, or
+   * of a project not connected, has none, and costs no read.
+   */
+  async ofJobs(
+    jobs: ReadonlyArray<{
+      id: string;
+      projectId: number;
+      input: { source?: { mode: string; ref?: string; branch?: string } };
+    }>,
+  ): Promise<Map<string, PullRequestState[]>> {
+    const out = new Map<string, PullRequestState[]>();
+    type Wanted = {
+      job: (typeof jobs)[number];
+      number?: number;
+      branch?: string;
+    };
+    const wanted = jobs.flatMap((job): Wanted[] => {
+      const source = job.input.source;
+      if (!source || source.mode === "none") return [];
+      const pull = /^pull\/(\d+)\/head$/.exec(source.ref ?? "");
+      if (pull) return [{ job, number: Number(pull[1]) }];
+      if (source.branch) return [{ job, branch: source.branch }];
+      return [];
+    });
+    for (const projectId of new Set(wanted.map((it) => it.job.projectId))) {
+      const mine = wanted.filter((it) => it.job.projectId === projectId);
+      const connection = await this.repositories.latestOf(projectId);
+      if (!connection) continue;
+      const numbers = mine.flatMap((it) => (it.number ? [it.number] : []));
+      const branches = mine.flatMap((it) => (it.branch ? [it.branch] : []));
+      const rows = await this.rows.findMany({
+        where: {
+          repositoryId: { eq: connection.repositoryId },
+          or: [
+            ...(numbers.length ? [{ number: { inArray: numbers } }] : []),
+            ...(branches.length ? [{ headRef: { inArray: branches } }] : []),
+          ],
+        },
+        limit: 200,
+      });
+      for (const it of mine) {
+        const found = rows.filter((row) =>
+          it.number !== undefined
+            ? row.number === it.number
+            : row.headRef === it.branch,
+        );
+        if (found.length) {
+          out.set(
+            it.job.id,
+            found.map((row) => this.stateOf(row)),
+          );
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
    * A row as the readers show it.
    */
   stateOf(row: PullRequestRow, url = row.url): PullRequestState {

@@ -29,6 +29,7 @@ import {
 import { $ownsProject } from "../security/$ownsProject.ts";
 import { HostJobService } from "../services/HostJobService.ts";
 import { HostService } from "../services/HostService.ts";
+import { PullRequestStateService } from "../services/PullRequestStateService.ts";
 
 export type { HostJobLogResource, HostJobResource, HostMachineJob };
 
@@ -50,6 +51,7 @@ export class HostJobController {
   protected readonly hostService = $inject(HostService);
   protected readonly owned = $inject(OwnedResourceProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly pullRequests = $inject(PullRequestStateService);
 
   protected ownsJob = (requires: string) =>
     $ownsProject({
@@ -374,8 +376,14 @@ export class HostJobController {
     // The steps of every row in one batch (#Q4433): an ended job's from its
     // row, a running one's read from its quests through the port.
     const steps = await this.service.stepsOf(rows);
+    // Their pull requests, from Lore's rows (#Q4369): no read for a job with
+    // no source or a project not connected.
+    const pullRequests = await this.pullRequests.ofJobs(rows);
     const now = this.dateTime.nowMillis();
     return rows.map((row) => ({
+      ...(pullRequests.has(row.id)
+        ? { pullRequests: pullRequests.get(row.id) }
+        : {}),
       ...(steps.has(row.id) ? { steps: steps.get(row.id) } : {}),
       // The pace of a running job's steps, and its ceiling warning (#Q4436).
       ...this.paceOf(row, steps.get(row.id), now),

@@ -770,3 +770,34 @@ describe("pull request and CI events", () => {
     expect(after).toContain("pull_request.added");
   });
 });
+
+describe("an agent job's pull requests", () => {
+  it("links a job to its pull request by head branch or by the number of its pull ref, and nothing else", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr({ head: { ref: "lore/q5", sha: "a".repeat(40) } }),
+    });
+    const job = (id: string, source: Record<string, unknown> | undefined) => ({
+      id,
+      projectId: ctx.project.id,
+      input: source ? { source: source as never } : {},
+    });
+    const linked = await ctx.states.ofJobs([
+      job("write-1", { mode: "write", branch: "lore/q5" }),
+      job("write-2", { mode: "write", branch: "lore/q5" }),
+      job("review", { mode: "read", ref: "pull/118/head" }),
+      job("other", { mode: "write", branch: "lore/job-12345678" }),
+      job("none", { mode: "none" }),
+      job("bare", undefined),
+    ]);
+    expect([...linked.keys()].sort()).toEqual(["review", "write-1", "write-2"]);
+    expect(linked.get("review")?.[0]).toMatchObject({
+      number: 118,
+      state: "open",
+      headRef: "lore/q5",
+    });
+  });
+});

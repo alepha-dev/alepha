@@ -20,6 +20,7 @@ import { TriangleAlert } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
+import PullRequestStateChip from "./PullRequestStateChip.tsx";
 
 export interface QuestAssigneeProps {
   quest: Pick<QuestResource, "acceptedBy" | "agentJobId" | "agentName"> & {
@@ -187,6 +188,15 @@ const QuestAssignee = (props: QuestAssigneeProps) => {
               </span>
             </div>
           </div>
+          {/* The job's pull request and where it stands (#Q4369). */}
+          {jobQuery.data?.pullRequests?.[0] && (
+            <span className="flex items-center gap-1 text-xs">
+              <span className="text-muted-foreground">
+                #{jobQuery.data.pullRequests[0].number}
+              </span>
+              <PullRequestStateChip state={jobQuery.data.pullRequests[0]} />
+            </span>
+          )}
           {/* The job's steps (#Q4434), the quest this card is opened from
               marked among them. */}
           {jobQuery.data?.steps && (
