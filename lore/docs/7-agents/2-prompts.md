@@ -38,7 +38,7 @@ A prompt's title, or **View** in its row's menu, opens its own page, with
 its args, where its code comes from, its trigger, where it is pinned and its
 last run beside three tabs:
 
-- **Prompt**: its words;
+- **Prompt**: its content;
 - **Jobs**: its runs, newest first, filtered by status and host;
 - **Settings**, for whoever manages prompts: where it is pinned (**Pin**),
   its trigger (**Trigger**) with the switch that turns it on or off, and
@@ -114,8 +114,8 @@ why in a comment, tags the quest **`needs-answer`** and hands it back, so it
 reads **To do** again. Answer in the quest's Discussion: the next run reads
 the thread of every `needs-answer` quest, and works the ones you answered.
 
-A built-in's words cannot be edited. Lore improves them over time, and a
-project that keeps its own copy would stop following. To change the words,
+A built-in's content cannot be edited. Lore improves it over time, and a
+project that keeps its own copy would stop following. To change the content,
 duplicate the prompt and edit the copy.
 
 The prompts are written in English on purpose: their words are the names of
@@ -268,7 +268,7 @@ lore prompt update npm-update --timeout-seconds 7200
 
 **New prompt** opens the editor: a name, a title, a description, up to four
 args, the source, what **A second run** does while one is going, and the
-words. **Duplicate** starts from any prompt, a
+**Content**. **Duplicate** starts from any prompt, a
 built-in included; the copy no longer follows the built-in.
 
 An arg has a name, a type (epic, quest, feedback item, pull request,
@@ -277,10 +277,10 @@ quest, a feedback item or a use case, the statuses it accepts. A **choice**
 takes no item: its list is its options instead, at least two, each lowercase
 letters, digits and dashes (`minor, patch, major`, or
 `--arg bump:choice:minor|patch|major` from the command line). **Copy** and
-**Run** offer them in a list, and the words read the one picked as
+**Run** offer them in a list, and the content reads the one picked as
 `{{bump.value}}`. An event or a schedule cannot pick one, so a triggered run
-takes the first option, unless the trigger stores a value for it. The words
-read an arg through placeholders, which the editor lists:
+takes the first option, unless the trigger stores a value for it. The content
+reads an arg through placeholders, which the editor lists:
 
 | Placeholder           | What it renders                                        |
 | --------------------- | ------------------------------------------------------ |

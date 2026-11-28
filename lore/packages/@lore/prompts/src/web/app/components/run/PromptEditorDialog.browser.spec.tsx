@@ -58,7 +58,7 @@ const prompt = (over: Partial<PromptResource> = {}): PromptResource =>
   }) as PromptResource;
 
 /**
- * The prompt editor in three tabs (#Q4534): General, Args and Words, inside
+ * The prompt editor in three tabs (#Q4534): General, Args and Content, inside
  * one form with one Save, every panel mounted, and a refused field's tab
  * brought forward.
  */
@@ -105,26 +105,26 @@ describe("PromptEditorDialog", () => {
   };
 
   const selected = () =>
-    ["general", "args", "words"].find(
+    ["general", "args", "content"].find(
       (key) =>
         screen
           .getByTestId(`prompt-tab-${key}`)
           .getAttribute("aria-selected") === "true",
     );
 
-  it("splits the fields into General, Args and Words, starting on General", async ({
+  it("splits the fields into General, Args and Content, starting on General", async ({
     expect,
   }) => {
     await show("create");
     expect(
-      ["general", "args", "words"].map(
+      ["general", "args", "content"].map(
         (key) => screen.getByTestId(`prompt-tab-${key}`).textContent,
       ),
-    ).toEqual(["General", "Args", "Words"]);
+    ).toEqual(["General", "Args", "Content"]);
     expect(selected()).toBe("general");
 
-    fireEvent.click(screen.getByTestId("prompt-tab-words"));
-    await waitFor(() => expect(selected()).toBe("words"));
+    fireEvent.click(screen.getByTestId("prompt-tab-content"));
+    await waitFor(() => expect(selected()).toBe("content"));
     expect(screen.getByTestId("prompt-legend")).toBeTruthy();
   });
 

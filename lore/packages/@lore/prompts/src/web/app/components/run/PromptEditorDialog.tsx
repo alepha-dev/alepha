@@ -41,7 +41,7 @@ export interface PromptEditorDialogProps {
   prompt?: PromptResource;
   /**
    * The row the server answered, which the page draws in place or inserts
-   * (#Q4301): the server checks a prompt's name, args and words before
+   * (#Q4301): the server checks a prompt's name, args and content before
    * taking them, so the dialog waits for its answer and keeps a refused
    * value on its field.
    */
@@ -52,13 +52,13 @@ const SLOTS = Array.from({ length: PROMPT_MAX_ARGS }, (_, index) => index);
 
 /**
  * A custom prompt's editor (#Q4280): its name, title, description, args
- * (name, type and the statuses each accepts), its words with a legend of
+ * (name, type and the statuses each accepts), its content with a legend of
  * the placeholders its args give, its source, and what a second run does
  * while one runs (#Q4354). A built-in is never edited here: its text and
  * args are Lore's.
  *
  * Three tabs inside one form and one Save (#Q4534): General (name, title,
- * description, source, a second run), Args (the four slots) and Words (the
+ * description, source, a second run), Args (the four slots) and Content (the
  * text, with the legend of what the args give under it), so no tab scrolls at a laptop's height. Every panel
  * stays mounted, and a field refused in a hidden tab brings that tab
  * forward.
@@ -174,7 +174,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
         if (event.id !== form.id) return;
         const tabs = Object.keys(form.errors).map(TAB_OF);
         if (tabs.length === 0 || tabs.includes(tab)) return;
-        const first = (["general", "args", "words"] as const).find((it) =>
+        const first = (["general", "args", "content"] as const).find((it) =>
           tabs.includes(it),
         );
         if (first) setTab(first);
@@ -218,8 +218,8 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
               <TabsTrigger value="args" data-testid="prompt-tab-args">
                 {tr("prompts.editor.tab.args")}
               </TabsTrigger>
-              <TabsTrigger value="words" data-testid="prompt-tab-words">
-                {tr("prompts.editor.tab.words")}
+              <TabsTrigger value="content" data-testid="prompt-tab-content">
+                {tr("prompts.editor.tab.content")}
               </TabsTrigger>
             </TabsList>
             <TabsContent
@@ -308,7 +308,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
               ))}
             </TabsContent>
             <TabsContent
-              value="words"
+              value="content"
               keepMounted
               className="flex flex-col gap-3"
             >
@@ -345,7 +345,7 @@ const PromptEditorDialog = (props: PromptEditorDialogProps) => {
   );
 };
 
-type EditorTab = "general" | "args" | "words";
+type EditorTab = "general" | "args" | "content";
 
 /**
  * Which tab holds a field, by its JSON pointer (`/arg2_name`), so a refused
@@ -355,7 +355,7 @@ const TAB_OF = (pointer: string): EditorTab =>
   pointer.startsWith("/arg")
     ? "args"
     : pointer === "/text"
-      ? "words"
+      ? "content"
       : "general";
 
 export default PromptEditorDialog;

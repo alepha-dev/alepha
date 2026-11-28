@@ -5537,7 +5537,7 @@ export default {
   "prompts.editor.duplicate": "Dupliquer $1",
   "prompts.editor.edit": "Modifier $1",
   "prompts.editor.description":
-    "Ses propres mots et arguments. Les mots d'une invite intégrée sont ceux de Lore : dupliquez-la pour les changer.",
+    "Son contenu et ses arguments. Le contenu d'une invite intégrée est celui de Lore : dupliquez-la pour le changer.",
   "prompts.editor.name": "Nom",
   "prompts.editor.name.description": "Lettres minuscules, chiffres et tirets.",
   "prompts.editor.title": "Titre",
@@ -5545,11 +5545,11 @@ export default {
   "prompts.editor.argName": "Argument $1",
   "prompts.editor.argType": "Type",
   "prompts.editor.argAccepts": "Accepte (statuts, séparés par des virgules)",
-  "prompts.editor.text": "Mots",
+  "prompts.editor.text": "Contenu",
   "prompts.editor.legend": "Variables : $1",
   "prompts.editor.tab.general": "Général",
   "prompts.editor.tab.args": "Arguments",
-  "prompts.editor.tab.words": "Mots",
+  "prompts.editor.tab.content": "Contenu",
   "prompts.trigger.title": "Déclencheur de $1",
   "prompts.trigger.description":
     "Quand ses exécutions démarrent seules, au nom de son propriétaire. Une exécution à la main fonctionne toujours.",
