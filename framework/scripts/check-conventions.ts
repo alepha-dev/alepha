@@ -1462,6 +1462,85 @@ if (reactViolations.length > 0) {
 }
 
 /**
+ * A `Button` that starts async work in `@alepha/ui` says so with `loading`.
+ *
+ * `Button.loading` is the kit's busy state: one centred spinner, the label
+ * kept in the layout, `aria-busy`, no click. A button only `disabled` while
+ * its work runs looks like a click that was ignored (#Q4552). So a `Button`
+ * that submits (`type="submit"`, or an `onClick` that calls `.run(` or
+ * `submit(`) and whose `disabled` reads a pending flag (`loading`, `pending`,
+ * `submitting`, `saving`, `uploading`, `busy`, `running`) must also carry
+ * `loading`. `disabled` stays for validity (`!dirty`, `!ready`), and a
+ * button that waits on some other work (a Cancel beside a running submit)
+ * is not a submit, so it is not read. Specs and fixtures are excluded.
+ */
+const PENDING_FLAG =
+  /\b(loading|pending|submitting|saving|uploading|busy|running)\b/;
+const loadingViolations: string[] = [];
+for (const file of reactFiles) {
+  const source = readFileSync(file, "utf8");
+  if (!source.includes("<Button")) continue;
+  const ast = parseAst(source, { lang: "tsx" });
+  const visit = (node: unknown): void => {
+    if (!node || typeof node !== "object") return;
+    if (Array.isArray(node)) {
+      for (const child of node) visit(child);
+      return;
+    }
+    const element = node as {
+      type?: string;
+      start?: number;
+      name?: { type?: string; name?: string };
+      attributes?: Array<{
+        type?: string;
+        name?: { name?: string };
+        value?: { type?: string; start?: number; end?: number; value?: string };
+      }>;
+    };
+    if (
+      element.type === "JSXOpeningElement" &&
+      element.name?.type === "JSXIdentifier" &&
+      element.name.name === "Button"
+    ) {
+      const attribute = (name: string) =>
+        element.attributes?.find(
+          (item) => item.type === "JSXAttribute" && item.name?.name === name,
+        );
+      const text = (name: string): string => {
+        const value = attribute(name)?.value;
+        if (!value) return "";
+        if (value.type === "Literal") return String(value.value);
+        return source.slice(value.start ?? 0, value.end ?? 0);
+      };
+      const submits =
+        text("type") === "submit" || /\.run\(|\bsubmit\(/.test(text("onClick"));
+      if (
+        submits &&
+        PENDING_FLAG.test(text("disabled")) &&
+        !attribute("loading")
+      ) {
+        const line = source.slice(0, element.start ?? 0).split("\n").length;
+        loadingViolations.push(
+          `  ${file}:${line}\n    → disabled={${text("disabled").replace(/^\{|\}$/g, "")}} without loading`,
+        );
+      }
+    }
+    for (const value of Object.values(node))
+      if (value && typeof value === "object") visit(value);
+  };
+  visit(ast.body);
+}
+if (loadingViolations.length > 0) {
+  console.error(
+    `\n${loadingViolations.length} @alepha/ui busy button violation(s):\n\n` +
+      `${loadingViolations.join("\n")}\n\n` +
+      "A Button that starts async work takes `loading={pending}`: it shows the\n" +
+      "spinner and disables the button. `disabled` stays for validity only.\n",
+  );
+  process.exit(1);
+}
+
+/**
  * Hook declarations share the runtime's migration vocabulary and naming rule.
  * Parse TypeScript so payload fields, comments and examples are not hook keys.
  */

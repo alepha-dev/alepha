@@ -1,5 +1,5 @@
 import { useI18n } from "alepha/react/i18n";
-import { Loader2, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "../core/Button.tsx";
@@ -100,13 +100,10 @@ export const DataTableBulkBar = <T,>(props: DataTableBulkBarProps<T>) => {
                   : "h-8 text-zinc-100 hover:bg-white/10 hover:text-zinc-100"
               }
               disabled={running !== undefined}
+              loading={running === action.label}
               onClick={() => void run(action)}
             >
-              {running === action.label ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                ActionIcon && <ActionIcon className="size-4" />
-              )}
+              {ActionIcon && <ActionIcon className="size-4" />}
               {action.label}
               {count !== undefined && (
                 // The space keeps the accessible name "Shelve 3", not

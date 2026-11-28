@@ -5,6 +5,7 @@ import type {
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { ArrowRight, Building2, Plus } from "lucide-react";
+import { useState } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { Button } from "../core/Button.tsx";
@@ -75,8 +76,18 @@ export const MyOrganizations = (props: MyOrganizationsProps) => {
     },
     [api, dialog, organizations, props.onOpen, toaster, tr],
   );
+  // Opening may load the organization first: the card it was asked from spins.
+  const [openingId, setOpeningId] = useState<string>();
+  const open = useAction<[OrganizationSummaryResource], void>(
+    {
+      handler: async (_ctx, organization) => {
+        await props.onOpen(organization);
+      },
+    },
+    [props.onOpen],
+  );
   const items = organizations.data ?? [];
-  const busy = organizations.loading || create.loading;
+  const busy = organizations.loading || create.loading || open.loading;
 
   return (
     <section className="flex w-full flex-col gap-4" aria-busy={busy}>
@@ -90,7 +101,11 @@ export const MyOrganizations = (props: MyOrganizationsProps) => {
           })}
         />
         <div className="shrink-0">
-          <Button disabled={busy} onClick={() => void create.run()}>
+          <Button
+            disabled={busy}
+            loading={create.loading}
+            onClick={() => void create.run()}
+          >
             <Plus className="size-4" />
             {tr("organizations.mine.create", {
               default: "Create organization",
@@ -131,11 +146,17 @@ export const MyOrganizations = (props: MyOrganizationsProps) => {
                   className="w-full justify-between"
                   variant="outlined"
                   disabled={busy}
+                  loading={open.loading && openingId === organization.id}
                   aria-label={tr("organizations.mine.openLabel", {
                     default: "Open $1",
                     args: [organization.name],
                   })}
-                  onClick={() => void props.onOpen(organization)}
+                  onClick={() => {
+                    setOpeningId(organization.id);
+                    void open
+                      .run(organization)
+                      .finally(() => setOpeningId(undefined));
+                  }}
                 >
                   {tr("organizations.mine.open", { default: "Open" })}
                   <ArrowRight className="size-4 rtl:-scale-x-100" />

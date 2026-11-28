@@ -185,7 +185,7 @@ Not obvious from the code, so read them before writing any.
 
 ### React components
 
-⚠️ In `packages/@alepha/ui/src`, `check:conventions` enforces the component shape, one component per file and the context rule. Everywhere else, apps included, they are enforced by review.
+⚠️ In `packages/@alepha/ui/src`, `check:conventions` enforces the component shape, one component per file, the context rule and the busy button. Everywhere else, apps included, they are enforced by review.
 
 - **Surfaces, three rules** (the note above `chrome` in `@alepha/ui`'s `styles.css`): content is `bg-card`; chrome (rails, lists that frame content, headers, toolbars, footers) is `chrome`; a selected item is `bg-hover` with `font-medium`, a hovered one `bg-hover-weak`. Never `bg-background`, `bg-accent` or `bg-muted` to mark a state: `accent` equals `muted` in dark, and `background` is a black hole there. Fields stay `bg-background` with a border. Check a change in light AND dark.
 - **One component per file.** An extracted inner `Header` of `ParentComponent.tsx` becomes `ParentComponentHeader.tsx`. The exemption is a compound primitive family (`UI_COMPOUND_FILES` in the script, such as `src/core/DropdownMenu.tsx`).
@@ -194,6 +194,7 @@ Not obvious from the code, so read them before writing any.
 - **No React Context for anything app-wide**: use `$atom` + `useStore`. The exemption is state scoped to a subtree (the parts of one compound component, or what a provider gives its descendants), since an `$atom` holds one value per container. Each such `createContext` carries the marker `Context exemption:` and its reason in the comment directly above it.
 - **Inside `@alepha/ui`, imports are relative and name a concrete file** (`../core/Button.tsx`), never `@alepha/ui` or a module's `index.ts`. Outside it, import from the module subpath (`@alepha/ui/admin`), never a file inside. `check:conventions` refuses both.
 - **Always a `Control*` for a field** (`<Control select>` / `<ControlSelect>`), never a hand-built picker. `Control` binds to a form field, so a picker with local state becomes a one-field `useForm`: `initialValues` for what the server says, `onChange` for a control that saves on change, `useFormValues` where a `useState` was read.
+- **A button that starts async work takes `loading={pending}`**: `Button.loading` shows one centred spinner, keeps the label in the layout, sets `aria-busy` and disables the button. `disabled` stays for validity (`!dirty`, `!ready`). No hand-placed `Loader2` beside the label, and no label that changes to "Saving…" while it runs.
 - **Never `window.confirm()` / `alert()` / `prompt()`**: `const dialog = useDialog()`, then `await dialog.confirm({ title, description?, confirmLabel?, cancelLabel?, destructive? })` (a `Promise<boolean>`), `dialog.alert(...)` or `dialog.prompt(...)`. The shop's `Layout.tsx` mounts `<DialogProvider>`.
 
 ### Calling the API from React

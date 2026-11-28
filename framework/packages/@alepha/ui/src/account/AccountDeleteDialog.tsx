@@ -183,7 +183,8 @@ export const AccountDeleteDialog = (props: AccountDeleteDialogProps) => {
             <Button
               type="submit"
               intent="danger"
-              disabled={submitting || !ready}
+              disabled={!ready}
+              loading={submitting}
             >
               {tr("account.delete.submit", { default: "Delete account" })}
             </Button>

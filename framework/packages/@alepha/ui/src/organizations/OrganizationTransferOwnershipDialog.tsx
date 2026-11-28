@@ -130,7 +130,7 @@ export const OrganizationTransferOwnershipDialog = (
           <Button
             intent="danger"
             data-testid="transfer-submit"
-            disabled={transfer.loading}
+            loading={transfer.loading}
             onClick={() => void transfer.run()}
           >
             {tr("organizations.transfer.action", {

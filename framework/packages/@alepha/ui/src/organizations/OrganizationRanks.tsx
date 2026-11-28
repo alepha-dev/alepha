@@ -377,6 +377,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
           <Button
             variant="outlined"
             size="sm"
+            loading={create.loading}
             aria-label={tr("organizations.ranks.create", {
               default: "Create rank",
             })}
@@ -453,6 +454,7 @@ export const OrganizationRanks = (props: OrganizationRanksProps) => {
           </Button>
           <Button
             disabled={saving}
+            loading={save.loading}
             onClick={() => void save.run()}
             aria-label={tr("organizations.ranks.save", {
               default: "Save ranks",

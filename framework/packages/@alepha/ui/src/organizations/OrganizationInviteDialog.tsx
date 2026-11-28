@@ -101,7 +101,7 @@ export const OrganizationInviteDialog = (
           <Button variant="outlined" onClick={() => props.onOpenChange(false)}>
             {tr("organizations.members.cancel", { default: "Cancel" })}
           </Button>
-          <Button onClick={() => void submit()} disabled={invite.loading}>
+          <Button onClick={() => void submit()} loading={invite.loading}>
             {tr("organizations.invitations.send", {
               default: "Send invitation",
             })}
