@@ -5,13 +5,22 @@ import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsFolds } from "../planner/AnalyticsFolds.ts";
 import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
+import { EventLogPlan } from "../planner/EventLogPlan.ts";
 import {
   $analytics,
   type AnalyticsPrimitive,
 } from "../primitives/$analytics.ts";
+import { $eventLog, type EventLogPrimitive } from "../primitives/$eventLog.ts";
 import type { AdminAnalyticsQuery } from "../schemas/adminAnalyticsQuerySchema.ts";
 import type { AdminDatasetDescriptor } from "../schemas/adminDatasetSchema.ts";
-import type { AnalyticsResult } from "../schemas/analyticsQuerySchema.ts";
+import type {
+  AnalyticsQuery,
+  AnalyticsResult,
+} from "../schemas/analyticsQuerySchema.ts";
+import type {
+  EventLogMeasure,
+  EventLogQuery,
+} from "../schemas/eventLogSchema.ts";
 
 /**
  * Narrows this service to one slice of the data.
@@ -61,6 +70,72 @@ export class AdminAnalyticsService {
 
   public listDatasets(scope?: AdminAnalyticsScope): AdminDatasetDescriptor[] {
     const pinned = Object.keys(scope?.pin ?? {});
+    return [
+      ...this.datasetDescriptors(pinned),
+      ...this.eventLogDescriptors(pinned),
+    ];
+  }
+
+  protected get eventLogs(): EventLogPrimitive[] {
+    return this.alepha.primitives($eventLog);
+  }
+
+  /**
+   * The measure an event log offers for its row count, beside one per
+   * column.
+   */
+  public static readonly EVENTS_MEASURE = "events";
+
+  /**
+   * Every event log, described in the shape a dataset is: its columns as
+   * dimensions, the same columns as measures (`distinct` on every one, and
+   * `sum`, `min` and `max` on a numeric one), `events` for the row count,
+   * and its keep window as its one tier. That shape is what lets the
+   * explorer offer it with no second set of screens.
+   */
+  protected eventLogDescriptors(pinned: string[]): AdminDatasetDescriptor[] {
+    return this.eventLogs
+      .filter((primitive) => {
+        const columns = Object.keys(primitive.eventLog.schema.shape);
+        return pinned.every((key) => columns.includes(key));
+      })
+      .map((primitive) => {
+        const log = primitive.eventLog;
+        const json = z.toJSONSchema(log.schema) as Record<string, any>;
+        const properties = (json.properties ?? {}) as Record<string, any>;
+        const numeric = (name: string) => {
+          const type =
+            properties[name]?.type ?? properties[name]?.anyOf?.[0]?.type;
+          return type === "number" || type === "integer";
+        };
+        const folds: Record<string, AdminDatasetDescriptor["folds"][string]> = {
+          [AdminAnalyticsService.EVENTS_MEASURE]: ["count"],
+        };
+        for (const name of Object.keys(properties)) {
+          folds[name] = numeric(name)
+            ? ["sum", "min", "max", "distinct"]
+            : ["distinct"];
+        }
+        return {
+          kind: "eventLog" as const,
+          name: log.name,
+          index: log.index,
+          dimensions: this.withoutPinned(json, pinned),
+          measures: {
+            ...json,
+            properties: {
+              [AdminAnalyticsService.EVENTS_MEASURE]: { type: "integer" },
+              ...properties,
+            },
+          },
+          folds,
+          resolution: "1h",
+          retention: [{ resolution: "1h", keep: log.keep }],
+        };
+      });
+  }
+
+  protected datasetDescriptors(pinned: string[]): AdminDatasetDescriptor[] {
     return this.primitives
       .filter((primitive) => this.narrowable(primitive, pinned))
       .map((primitive) => {
@@ -79,6 +154,7 @@ export class AdminAnalyticsService {
               AnalyticsFolds.of(dataset, measure),
             ]),
           ),
+          kind: "dataset" as const,
           resolution: AnalyticsBuckets.resolutionOf(dataset),
           retention: AnalyticsTiers.of(dataset),
         };
@@ -92,6 +168,10 @@ export class AdminAnalyticsService {
   ): Promise<AnalyticsResult> {
     const pin = scope?.pin ?? {};
     const pinned = Object.keys(pin);
+    const log = this.eventLogs.find((p) => p.eventLog.name === name);
+    if (log && !this.primitives.some((p) => p.dataset.name === name)) {
+      return this.queryEventLog(log, query, pin);
+    }
     const primitive = this.primitives.find((p) => p.dataset.name === name);
     // A dataset the pin cannot narrow is answered as unknown rather than as
     // forbidden, because `listDatasets` never offered it: from this caller's
@@ -102,19 +182,112 @@ export class AdminAnalyticsService {
     }
     this.assertKeysDeclared(primitive, query, pinned);
     try {
-      AnalyticsWindow.assertValid(query);
+      AnalyticsWindow.assertValid(query as AnalyticsQuery);
     } catch (error) {
       throw new BadRequestError(
         error instanceof Error ? error.message : String(error),
       );
     }
+    // `assertKeysDeclared` refused any fold the dataset does not declare,
+    // so `distinct` and `count` cannot reach a dataset.
+    const checked = query as AnalyticsQuery;
     if (pinned.length === 0) {
-      return primitive.query(query);
+      return primitive.query(checked);
     }
     // The pin goes on last, but nothing it could overwrite survived
     // `assertKeysDeclared`, a caller that named a pinned key was already
     // refused, so this spread can only ever add.
-    return primitive.query({ ...query, where: { ...query.where, ...pin } });
+    return primitive.query({ ...checked, where: { ...checked.where, ...pin } });
+  }
+
+  /**
+   * An admin query against an event log: the descriptor's vocabulary
+   * (`{ measure: fold | fold[] }`) turned into the log's own selections,
+   * under the same key rule a dataset follows (one fold: the measure's name;
+   * several: `<measure>_<fold>`).
+   */
+  protected async queryEventLog(
+    primitive: EventLogPrimitive,
+    query: AdminAnalyticsQuery,
+    pin: Record<string, string | number>,
+  ): Promise<AnalyticsResult> {
+    const log = primitive.eventLog;
+    const pinned = Object.keys(pin);
+    const columns = new Set(
+      Object.keys(log.schema.shape).filter((key) => !pinned.includes(key)),
+    );
+    const descriptor = this.eventLogDescriptors(pinned).find(
+      (it) => it.name === log.name,
+    );
+    if (!descriptor) {
+      throw new NotFoundError(`Unknown analytics dataset '${log.name}'.`);
+    }
+    for (const key of Object.keys(query.where ?? {})) {
+      if (!columns.has(key)) {
+        throw new BadRequestError(
+          pinned.includes(key)
+            ? `'${key}' is pinned by this surface and cannot be set.`
+            : `'${key}' is not a column of '${log.name}'.`,
+        );
+      }
+    }
+    for (const key of query.groupBy ?? []) {
+      if (!columns.has(key) && !EventLogPlan.isGrain(key)) {
+        throw new BadRequestError(`Cannot group by '${key}' on '${log.name}'.`);
+      }
+    }
+    const select: Record<string, EventLogMeasure> = {};
+    for (const [measure, value] of Object.entries(query.select)) {
+      const folds = Array.isArray(value) ? value : [value];
+      const declared = descriptor.folds[measure];
+      if (!declared) {
+        throw new BadRequestError(
+          `'${measure}' is not a measure of '${log.name}'.`,
+        );
+      }
+      for (const fold of folds) {
+        if (!declared.includes(fold)) {
+          throw new BadRequestError(
+            `'${measure}' of '${log.name}' does not fold '${fold}'.`,
+          );
+        }
+        const key = Array.isArray(value) ? `${measure}_${fold}` : measure;
+        select[key] =
+          measure === AdminAnalyticsService.EVENTS_MEASURE
+            ? { count: "*" }
+            : ({ [fold]: measure } as EventLogMeasure);
+      }
+    }
+    const translated: EventLogQuery = {
+      since: query.since,
+      until: query.until,
+      from: query.from,
+      to: query.to,
+      where: { ...query.where, ...pin },
+      groupBy: query.groupBy,
+      select,
+      orderBy: query.orderBy,
+      limit: query.limit,
+    };
+    try {
+      EventLogPlan.selections(log, translated);
+    } catch (error) {
+      throw new BadRequestError(
+        error instanceof Error ? error.message : String(error),
+      );
+    }
+    const result = await primitive.query(translated);
+    return {
+      rows: result.rows.map((row) =>
+        Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [
+            key,
+            typeof value === "boolean" ? String(value) : value,
+          ]),
+        ),
+      ),
+      estimated: false,
+    };
   }
 
   /**
@@ -214,7 +387,7 @@ export class AdminAnalyticsService {
       }
       const declared = AnalyticsFolds.of(primitive.dataset, key);
       for (const fold of Array.isArray(value) ? value : [value]) {
-        if (!declared.includes(fold)) {
+        if (!(declared as string[]).includes(fold)) {
           throw new BadRequestError(
             `'${key}' of '${primitive.dataset.name}' does not fold '${fold}'.`,
           );

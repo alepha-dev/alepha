@@ -55,7 +55,7 @@ export type AnalyticsView = "overview" | "table";
  * The time pseudo-dimensions. `minute` exists only on a dataset whose
  * resolution is under an hour, and returns its stored bucket.
  */
-export type AnalyticsTimeGrain = "minute" | "hour" | "day";
+export type AnalyticsTimeGrain = "minute" | "hour" | "day" | "week" | "month";
 
 /**
  * A window measured in instants rather than whole UTC days: the last N

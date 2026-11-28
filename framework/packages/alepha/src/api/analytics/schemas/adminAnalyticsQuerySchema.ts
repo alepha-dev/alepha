@@ -2,7 +2,7 @@ import type { Infer } from "alepha";
 import { z } from "alepha";
 
 import { AnalyticsWindow } from "../planner/AnalyticsWindow.ts";
-import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
+import { adminFoldSchema } from "./adminFoldSchema.ts";
 
 /**
  * The wire form of `AnalyticsQuery`. Key membership, which dimensions and
@@ -56,7 +56,7 @@ export const adminAnalyticsQuerySchema = z.object({
   groupBy: z.array(z.text()).optional(),
   select: z.record(
     z.text(),
-    z.union([analyticsFoldSchema, z.array(analyticsFoldSchema).min(1)]),
+    z.union([adminFoldSchema, z.array(adminFoldSchema).min(1)]),
   ),
   orderBy: z
     .object({ key: z.text(), direction: z.enum(["asc", "desc"]) })

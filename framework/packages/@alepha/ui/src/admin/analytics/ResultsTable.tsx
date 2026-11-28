@@ -161,7 +161,9 @@ export const ResultsTable = (props: ResultsTableProps) => {
                             : "truncate whitespace-nowrap",
                           (column === "day" ||
                             column === "hour" ||
-                            column === "minute") &&
+                            column === "minute" ||
+                            column === "week" ||
+                            column === "month") &&
                             "text-muted-foreground",
                         )}
                       >

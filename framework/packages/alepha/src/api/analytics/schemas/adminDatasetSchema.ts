@@ -1,7 +1,7 @@
 import type { Infer } from "alepha";
 import { z } from "alepha";
 
-import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
+import { adminFoldSchema } from "./adminFoldSchema.ts";
 
 /**
  * What the admin surface publishes about one declared dataset.
@@ -12,6 +12,13 @@ import { analyticsFoldSchema } from "./analyticsFoldSchema.ts";
  * `jsonSchemaToZod`, the same round-trip `api/parameters` already uses.
  */
 export const adminDatasetSchema = z.object({
+  /**
+   * `dataset` for an `$analytics` dataset, `eventLog` for an `$eventLog`.
+   * An event log offers its columns as dimensions and as measures, folds
+   * `distinct` (and `count` on its `events` measure), groups by `week` and
+   * `month` too, and is never sampled.
+   */
+  kind: z.enum(["dataset", "eventLog"]).optional(),
   name: z.text(),
   index: z.text(),
   dimensions: z.record(z.text(), z.any()),
@@ -20,7 +27,7 @@ export const adminDatasetSchema = z.object({
    * The folds each measure declares, every measure listed (`["sum"]` when it
    * declares none), so the explorer offers exactly what a query may ask.
    */
-  folds: z.record(z.text(), z.array(analyticsFoldSchema)),
+  folds: z.record(z.text(), z.array(adminFoldSchema)),
   /**
    * The finest bucket: `1m`, `5m`, `15m` or `1h`.
    */

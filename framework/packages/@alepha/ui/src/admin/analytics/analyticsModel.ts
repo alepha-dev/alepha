@@ -1,6 +1,7 @@
 import type {
   AdminAnalyticsQuery,
   AdminDatasetDescriptor,
+  AdminFold,
 } from "alepha/api/analytics";
 
 import type {
@@ -120,27 +121,39 @@ export const analyticsWindowMillis = (spec: string): number | null => {
 };
 
 /**
- * The time grains the dataset can group by: `minute` only below an hour.
+ * The time grains the dataset can group by: `minute` only below an hour;
+ * `week` (ISO, keyed by its Monday) and `month` on an event log, which keeps
+ * every row and so can bucket them any way.
  */
 export const analyticsTimeGrains = (
   dataset: AdminDatasetDescriptor,
 ): AnalyticsTimeGrain[] =>
-  analyticsResolutionMinutes(dataset.resolution) < 60
-    ? ["minute", "hour", "day"]
-    : ["hour", "day"];
+  dataset.kind === "eventLog"
+    ? ["hour", "day", "week", "month"]
+    : analyticsResolutionMinutes(dataset.resolution) < 60
+      ? ["minute", "hour", "day"]
+      : ["hour", "day"];
 
 export const analyticsIsTimeGrain = (key: string): key is AnalyticsTimeGrain =>
-  key === "minute" || key === "hour" || key === "day";
+  key === "minute" ||
+  key === "hour" ||
+  key === "day" ||
+  key === "week" ||
+  key === "month";
 
 export const analyticsGrainMillis = (
   dataset: AdminDatasetDescriptor,
   grain: AnalyticsTimeGrain,
 ): number =>
-  grain === "day"
-    ? DAY_MS
-    : grain === "hour"
-      ? 60 * MINUTE_MS
-      : analyticsResolutionMinutes(dataset.resolution) * MINUTE_MS;
+  grain === "month"
+    ? 31 * DAY_MS
+    : grain === "week"
+      ? 7 * DAY_MS
+      : grain === "day"
+        ? DAY_MS
+        : grain === "hour"
+          ? 60 * MINUTE_MS
+          : analyticsResolutionMinutes(dataset.resolution) * MINUTE_MS;
 
 /**
  * The oldest instant at which `grain` is still exact, or `null` when it always
@@ -411,8 +424,7 @@ export const analyticsSelect = (
   dataset: AdminDatasetDescriptor,
   keys: string[],
 ): AdminAnalyticsQuery["select"] => {
-  const select: Record<string, "sum" | Array<"sum" | "min" | "max" | "last">> =
-    {};
+  const select: Record<string, "sum" | AdminFold[]> = {};
   for (const key of keys) {
     const { measure, fold } = analyticsKeyFold(dataset, key);
     if (analyticsSumOnly(dataset, measure)) {
@@ -421,7 +433,7 @@ export const analyticsSelect = (
     }
     const current = select[measure];
     const folds = Array.isArray(current) ? current : [];
-    folds.push(fold as "sum" | "min" | "max" | "last");
+    folds.push(fold as AdminFold);
     select[measure] = folds;
   }
   return select;
@@ -433,7 +445,10 @@ export const analyticsActiveMeasures = (
 ): string[] => {
   const declared = analyticsMeasures(dataset);
   const chosen = state.measures?.filter((name) => declared.includes(name));
-  return chosen?.length ? chosen : declared;
+  if (chosen?.length) return chosen;
+  // An event log offers a measure per column and fold: all of them at once
+  // is a chart nobody reads, so it opens on its row count.
+  return dataset.kind === "eventLog" ? declared.slice(0, 1) : declared;
 };
 
 /**

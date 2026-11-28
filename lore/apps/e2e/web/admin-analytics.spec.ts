@@ -40,4 +40,23 @@ test.describe("admin analytics", () => {
       timeout: 15_000,
     });
   });
+
+  test("offers an event log with a distinct measure and week and month groupings", async ({
+    page,
+  }) => {
+    await signInAsAdmin(page);
+    await page.goto("/admin/analytics");
+    await page.waitForLoadState("domcontentloaded");
+
+    const from = page.getByRole("combobox", { name: /pick a dataset/i });
+    await expect(from).toContainText("project_activity", { timeout: 15_000 });
+    await from.click();
+    await page.getByRole("option", { name: /sigil_pageviews/ }).click();
+    await expect(from).toContainText("sigil_pageviews");
+
+    // An event log groups by week and month too, and counts distinct values.
+    await expect(page.getByTitle("group by week")).toBeVisible();
+    await expect(page.getByTitle("group by month")).toBeVisible();
+    await expect(page.getByText("distinct(sessionId)").first()).toBeVisible();
+  });
 });
