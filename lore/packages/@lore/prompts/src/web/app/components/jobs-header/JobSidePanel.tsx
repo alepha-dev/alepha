@@ -238,7 +238,7 @@ const JobSidePanel = () => {
             variant="outlined"
             intent="danger"
             className="ms-auto"
-            disabled={cancel.loading}
+            loading={cancel.loading}
             onClick={() => void cancel.run()}
             data-testid="job-panel-cancel"
           >

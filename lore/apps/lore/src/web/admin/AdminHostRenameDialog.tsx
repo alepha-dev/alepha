@@ -117,7 +117,8 @@ const AdminHostRenameDialog = (props: AdminHostRenameDialogProps) => {
           </Button>
           <Button
             type="button"
-            disabled={!values.slug?.trim() || rename.loading}
+            disabled={!values.slug?.trim()}
+            loading={rename.loading}
             onClick={() => void rename.run()}
             data-testid="admin-host-rename-submit"
           >

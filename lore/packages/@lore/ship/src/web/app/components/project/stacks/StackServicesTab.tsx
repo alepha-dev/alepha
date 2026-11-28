@@ -91,6 +91,12 @@ const StackServicesTab = (props: StackServicesTabProps) => {
 
   const services = data?.services ?? [];
   const busy = verb.loading || logs.loading;
+  // The service and verb running: that one button spins, the others wait.
+  const [running, setRunning] = useState<string>();
+  const runOn = (key: string, work: () => Promise<unknown>) => {
+    setRunning(key);
+    void work().finally(() => setRunning(undefined));
+  };
   const canWrite = can("deploy:manage");
 
   if (!loading && services.length === 0) {
@@ -177,9 +183,14 @@ const StackServicesTab = (props: StackServicesTabProps) => {
                               size="sm"
                               variant="minimal"
                               disabled={busy}
+                              loading={
+                                busy && running === `${service.name}-${action}`
+                              }
                               data-testid={`stack-service-${service.name}-${action}`}
                               onClick={() =>
-                                void verb.run(service.name, action)
+                                runOn(`${service.name}-${action}`, () =>
+                                  verb.run(service.name, action),
+                                )
                               }
                             >
                               {tr(VERB_LABELS[action])}
@@ -190,8 +201,13 @@ const StackServicesTab = (props: StackServicesTabProps) => {
                           size="sm"
                           variant="minimal"
                           disabled={busy}
+                          loading={busy && running === `${service.name}-logs`}
                           data-testid={`stack-service-${service.name}-logs`}
-                          onClick={() => void logs.run(service.name)}
+                          onClick={() =>
+                            runOn(`${service.name}-logs`, () =>
+                              logs.run(service.name),
+                            )
+                          }
                         >
                           {tr("stacks.services.logs")}
                         </Button>

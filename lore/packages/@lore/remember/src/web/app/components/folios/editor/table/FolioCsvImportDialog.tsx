@@ -343,9 +343,8 @@ const FolioCsvImportDialog = (
           </Button>
           <Button
             onClick={() => void importAction.run()}
-            disabled={
-              !parsed || overCaps || body.length === 0 || importAction.loading
-            }
+            disabled={!parsed || overCaps || body.length === 0}
+            loading={importAction.loading}
           >
             {tr("folios.table.import.submit", {
               args: [String(body.length)],

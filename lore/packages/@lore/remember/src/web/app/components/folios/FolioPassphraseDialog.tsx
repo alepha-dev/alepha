@@ -131,7 +131,8 @@ const FolioPassphraseDialog = (props: FolioPassphraseDialogProps) => {
           <DialogFooter>
             <Button
               type="submit"
-              disabled={state.loading || passphrase.length === 0}
+              disabled={passphrase.length === 0}
+              loading={state.loading}
             >
               {props.submitLabel}
             </Button>

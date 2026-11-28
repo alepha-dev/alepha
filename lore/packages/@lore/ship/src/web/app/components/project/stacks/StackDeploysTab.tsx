@@ -79,7 +79,7 @@ const StackDeploysTab = (props: StackDeploysTabProps) => {
         </CardTitle>
         {can("deploy:manage") && props.latestRevision ? (
           <Button
-            disabled={deploy.loading}
+            loading={deploy.loading}
             onClick={() => void deploy.run()}
             data-testid="stack-deploy"
           >

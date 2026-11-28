@@ -299,7 +299,7 @@ const MonitorFormDialog = (props: MonitorFormDialogProps) => {
               >
                 {tr("uptime.cancel")}
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button type="submit" loading={loading}>
                 {tr(monitor ? "uptime.save" : "uptime.create")}
               </Button>
             </DialogFooter>

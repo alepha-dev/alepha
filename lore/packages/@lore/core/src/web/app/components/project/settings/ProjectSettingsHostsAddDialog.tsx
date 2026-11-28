@@ -282,15 +282,13 @@ const ProjectSettingsHostsAddDialog = (
           </Button>
           <Button
             onClick={() => void submit()}
-            disabled={busy || !target || !projectHostApi.attachHost.can()}
+            disabled={!target || !projectHostApi.attachHost.can()}
+            loading={busy}
             data-testid="host-add-submit"
           >
-            {busy && <Loader2 className="size-4 animate-spin" />}
-            {busy && activeMode === "new" && draft.type === "cloudflare"
-              ? tr("hosts.cloudflare.checking")
-              : activeMode === "existing"
-                ? tr("hosts.add.submit")
-                : tr("hosts.add.submitNew")}
+            {activeMode === "existing"
+              ? tr("hosts.add.submit")
+              : tr("hosts.add.submitNew")}
           </Button>
         </DialogFooter>
       </DialogContent>

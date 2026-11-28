@@ -56,7 +56,10 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
   }));
   const waiversIncomplete = waivers.some((waiver) => !waiver.reason);
 
+  // `submitting` is the caller's: the button pressed is the one that spins.
+  const [withNote, setWithNote] = useState<boolean>();
   const confirm = (withMessage: boolean) => {
+    setWithNote(withMessage);
     const trimmed = message.trim();
     props.onConfirm(
       withMessage && trimmed.length > 0 ? trimmed : undefined,
@@ -147,6 +150,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
             variant="minimal"
             onClick={() => confirm(false)}
             disabled={props.submitting || waiversIncomplete}
+            loading={props.submitting && withNote === false}
           >
             {tr("quest.view.complete.skip")}
           </Button>
@@ -158,6 +162,7 @@ const QuestCompletionDialog = (props: QuestCompletionDialogProps) => {
               message.trim().length === 0 ||
               waiversIncomplete
             }
+            loading={props.submitting && withNote === true}
             className="bg-green-600 text-white hover:bg-green-700"
           >
             <CircleCheck className="size-4" />

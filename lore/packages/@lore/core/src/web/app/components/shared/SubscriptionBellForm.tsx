@@ -145,10 +145,10 @@ const SubscriptionBellForm = (props: SubscriptionBellFormProps) => {
           // With channels, an event at least; with none, Save turns it off,
           // which an off bell has nothing to do.
           disabled={
-            props.busy ||
             (channels.length > 0 && events.length === 0) ||
             (!props.on && channels.length === 0)
           }
+          loading={props.busy}
           data-testid="subscription-bell-confirm"
         >
           {props.on

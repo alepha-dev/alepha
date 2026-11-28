@@ -103,7 +103,7 @@ const AppSettingsDelete = () => {
           <Button
             variant="outlined"
             intent="danger"
-            disabled={busy}
+            loading={busy}
             aria-label={tr("app.settings.delete.action")}
             onClick={() => void removeAction.run()}
           >

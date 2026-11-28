@@ -734,14 +734,11 @@ const ProjectFeedbackRequest = () => {
                       type="button"
                       variant="outlined"
                       size="sm"
-                      disabled={uploading || attachments.length >= maxFiles}
+                      disabled={attachments.length >= maxFiles}
+                      loading={uploading}
                       onClick={() => inputRef.current?.click()}
                     >
-                      {uploading ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <Paperclip className="size-4" />
-                      )}
+                      <Paperclip className="size-4" />
                       {tr("feedback.request.attach")}
                     </Button>
                     <span className="text-muted-foreground text-xs">
@@ -825,8 +822,11 @@ const ProjectFeedbackRequest = () => {
                   >
                     {tr("feedback.request.myFeedbackLink")}
                   </TextLink>
-                  <Button type="submit" disabled={submitting || uploading}>
-                    {submitting && <Loader2 className="size-4 animate-spin" />}
+                  <Button
+                    type="submit"
+                    disabled={uploading}
+                    loading={submitting}
+                  >
                     {tr("feedback.request.submit")}
                   </Button>
                 </div>

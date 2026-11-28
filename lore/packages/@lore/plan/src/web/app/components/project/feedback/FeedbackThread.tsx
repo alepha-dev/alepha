@@ -18,7 +18,7 @@ import {
   useStore,
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Loader2, Paperclip, Trash2 } from "lucide-react";
+import { Paperclip, Trash2 } from "lucide-react";
 import { useRef, useState } from "react";
 
 import type { FeedbackCommentController } from "../../../../../api/controllers/FeedbackCommentController.ts";
@@ -291,6 +291,7 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
         onChange={setDraft}
         onSubmit={() => void submitAction.run()}
         busy={busy}
+        sending={submitAction.loading}
         canSubmit={draft.trim().length > 0 || pending.length > 0}
         placeholder={tr("feedback.thread.placeholder")}
         submitLabel={tr("feedback.thread.submit")}
@@ -326,13 +327,10 @@ const FeedbackThread = (props: FeedbackThreadProps) => {
                 size="sm"
                 variant="outlined"
                 disabled={busy}
+                loading={uploadAction.loading}
                 onClick={() => fileInputRef.current?.click()}
               >
-                {uploadAction.loading ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  <Paperclip className="size-4" />
-                )}
+                <Paperclip className="size-4" />
                 {tr("discussion.attach")}
               </Button>
             </>

@@ -37,7 +37,8 @@ const ReleaseSaveToFolioDialog = (props: ReleaseSaveToFolioDialogProps) => {
           {tr("release.start.cancel")}
         </Button>
         <Button
-          disabled={props.saving || title.trim().length === 0}
+          disabled={title.trim().length === 0}
+          loading={props.saving}
           onClick={() => props.onConfirm(title.trim())}
         >
           <BookMarked className="size-4" />

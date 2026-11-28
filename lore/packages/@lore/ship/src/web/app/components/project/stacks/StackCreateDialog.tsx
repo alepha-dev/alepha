@@ -98,7 +98,7 @@ const StackCreateDialog = (props: StackCreateDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              loading={loading}
               data-testid="stack-create-submit"
             >
               {tr("stacks.create.submit")}

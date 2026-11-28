@@ -160,7 +160,14 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
   );
 
   const busy = action.loading;
-  const run = (body: HostBackupCommandBody) => void action.run(body);
+  // The command running: the button that sent it spins, the others wait.
+  const [running, setRunning] = useState<HostBackupCommandBody>();
+  const run = (body: HostBackupCommandBody) => {
+    setRunning(body);
+    void action.run(body).finally(() => setRunning(undefined));
+  };
+  const spins = (match: (body: HostBackupCommandBody) => boolean) =>
+    busy && running !== undefined && match(running);
   const backup = source.backup;
   const writable = source.canManage && source.online;
   const confirmed = restoreConfirm.trim() === source.appLabel;
@@ -405,6 +412,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
               variant="solid"
               size="sm"
               disabled={!writable || busy}
+              loading={spins((body) => body.kind === "backup")}
               onClick={() =>
                 run({
                   kind: "backup",
@@ -420,6 +428,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
               variant="outlined"
               size="sm"
               disabled={!writable || busy}
+              loading={spins((body) => body.kind === "backups-list")}
               onClick={() => run({ kind: "backups-list" })}
               data-testid="backup-list"
             >
@@ -430,6 +439,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
               variant="outlined"
               size="sm"
               disabled={!writable || busy}
+              loading={spins((body) => body.kind === "backup-verify")}
               onClick={() =>
                 run({
                   kind: "backup-verify",
@@ -445,6 +455,7 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
               variant="outlined"
               size="sm"
               disabled={!writable || busy}
+              loading={spins((body) => body.kind === "target-probe")}
               onClick={() => run({ kind: "target-probe" })}
               data-testid="backup-probe"
             >
@@ -561,6 +572,10 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
                   !source.deployAllowed ||
                   !policyDraft.trim()
                 }
+                loading={spins(
+                  (body) =>
+                    body.kind === "backup-policy" && body.policy !== null,
+                )}
                 onClick={() => applyPolicy(false)}
                 data-testid="backup-policy-apply"
               >
@@ -570,6 +585,10 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
                 variant="outlined"
                 size="sm"
                 disabled={!writable || busy || !source.deployAllowed}
+                loading={spins(
+                  (body) =>
+                    body.kind === "backup-policy" && body.policy === null,
+                )}
                 onClick={() => applyPolicy(true)}
                 data-testid="backup-policy-clear"
               >
@@ -636,6 +655,9 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
                 variant="outlined"
                 size="sm"
                 disabled={!writable || busy}
+                loading={spins(
+                  (body) => body.kind === "restore" && !!body.dryRun,
+                )}
                 onClick={() => restore(true)}
                 data-testid="backup-restore-dry"
               >
@@ -657,6 +679,9 @@ const BackupPanel = ({ source }: BackupPanelProps) => {
                   !confirmed ||
                   dryRunFor !== pointId
                 }
+                loading={spins(
+                  (body) => body.kind === "restore" && !body.dryRun,
+                )}
                 onClick={() => restore(false)}
                 data-testid="backup-restore-run"
               >

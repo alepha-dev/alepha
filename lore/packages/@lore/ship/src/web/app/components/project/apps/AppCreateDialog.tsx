@@ -257,7 +257,8 @@ const AppCreateDialog = (props: AppCreateDialogProps) => {
               </Button>
               <Button
                 type="submit"
-                disabled={submitting || !appApi.createApp.can()}
+                disabled={!appApi.createApp.can()}
+                loading={submitting}
               >
                 {tr("apps.create.submit")}
               </Button>

@@ -2396,7 +2396,6 @@ export default {
   "apps.filter.allVersions": "Toutes les versions",
   "app.deploy": "Déploiement",
   "app.deploy.action": "Déployer",
-  "app.deploy.starting": "Démarrage...",
   "app.deploy.started": "Déploiement de $1",
   "app.deploy.pick": "Ce qui peut être déployé ici",
   "app.deploy.wrongRuntime":
@@ -3158,7 +3157,6 @@ export default {
   "bay.instance.problems": "Rapport de Bay",
   "bay.logs.title": "Journaux",
   "bay.logs.fetch": "Récupérer les journaux",
-  "bay.logs.fetching": "Interrogation de la machine…",
   "bay.logs.offline":
     "La machine n'est pas connectée : ses journaux ne peuvent pas être lus. Un extrait livré des heures plus tard n'aurait aucune valeur.",
   "bay.logs.timeout":
@@ -3251,7 +3249,6 @@ export default {
   "hosts.cloudflare.mint": "En créer un avec les bonnes permissions",
   "hosts.cloudflare.mint.scope":
     "Le formulaire s'ouvre avec les six permissions déjà renseignées. Restreignez Account Resources à un seul compte avant de le créer.",
-  "hosts.cloudflare.checking": "Vérification chez Cloudflare…",
   "hosts.cloudflare.accountLabel": "compte $1",
   "hosts.credential.valid": "identifiant valide",
   "hosts.credential.invalid": "identifiant invalide",

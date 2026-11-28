@@ -13,6 +13,7 @@ import { z } from "alepha";
 import { useAction, useClient, useQueryClient } from "alepha/react";
 import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { useState } from "react";
 
 import type { StackController } from "../../../../../api/controllers/StackController.ts";
 import type { StackEnvironmentResource } from "../../../../../api/schemas/stackEnvironmentResourceSchema.ts";
@@ -63,6 +64,8 @@ const StackRoutesTab = (props: StackRoutesTabProps) => {
   });
   const { loading } = useFormState(form, ["loading"]);
 
+  // The route whose removal runs: its button spins, the others wait.
+  const [removing, setRemoving] = useState<string>();
   const remove = useAction<[domain: string], boolean>(
     {
       handler: async (_ctx, domain) => {
@@ -110,7 +113,13 @@ const StackRoutesTab = (props: StackRoutesTabProps) => {
                   variant="minimal"
                   className="ml-auto"
                   disabled={remove.loading}
-                  onClick={() => void remove.run(route.domain)}
+                  loading={remove.loading && removing === route.domain}
+                  onClick={() => {
+                    setRemoving(route.domain);
+                    void remove
+                      .run(route.domain)
+                      .finally(() => setRemoving(undefined));
+                  }}
                 >
                   {tr("stacks.routes.remove")}
                 </Button>
@@ -178,7 +187,7 @@ const StackRoutesTab = (props: StackRoutesTabProps) => {
               </div>
               <Button
                 type="submit"
-                disabled={loading}
+                loading={loading}
                 data-testid="stack-route-save"
               >
                 {tr("stacks.routes.add")}

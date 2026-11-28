@@ -108,7 +108,7 @@ const NewRoomDialog = (props: NewRoomDialogProps) => {
             >
               {tr("chat.room.new.cancel")}
             </Button>
-            <Button type="submit" disabled={busy}>
+            <Button type="submit" loading={busy}>
               {tr("chat.room.new.create")}
             </Button>
           </DialogFooter>

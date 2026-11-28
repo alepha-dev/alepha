@@ -164,7 +164,7 @@ const QuestHoldDialog = (props: QuestHoldDialogProps) => {
             type="button"
             data-testid="quest-hold-submit"
             onClick={confirm}
-            disabled={props.submitting}
+            loading={props.submitting}
           >
             <PauseCircle className="size-4" />
             {tr("quest.view.hold.submit")}

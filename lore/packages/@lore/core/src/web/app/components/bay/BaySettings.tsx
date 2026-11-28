@@ -187,6 +187,8 @@ const BaySettings = () => {
 
   // Page-wide: every control waits while any write runs, since `run()` drops
   // a call made while its own is in flight.
+  // Which of the two fields saving through `update` asked: its Save spins.
+  const [updating, setUpdating] = useState<"units" | "alerts">();
   const busy =
     updateAction.loading ||
     rotateAction.loading ||
@@ -313,7 +315,13 @@ const BaySettings = () => {
               key={(host.watchUnits ?? []).join(",")}
               units={host.watchUnits ?? []}
               busy={busy}
-              onSave={(watchUnits) => void update({ watchUnits })}
+              saving={updateAction.loading && updating === "units"}
+              onSave={(watchUnits) => {
+                setUpdating("units");
+                void update({ watchUnits }).finally(() =>
+                  setUpdating(undefined),
+                );
+              }}
             />
 
             <BayAlertThresholdsField
@@ -321,12 +329,14 @@ const BaySettings = () => {
               disk={host.alertDiskPercent}
               memory={host.alertMemoryPercent}
               busy={busy}
-              onSave={(limits) =>
+              saving={updateAction.loading && updating === "alerts"}
+              onSave={(limits) => {
+                setUpdating("alerts");
                 void update({
                   alertDiskPercent: limits.disk,
                   alertMemoryPercent: limits.memory,
-                })
-              }
+                }).finally(() => setUpdating(undefined));
+              }}
             />
           </CardContent>
         </Card>
@@ -418,6 +428,7 @@ const BaySettings = () => {
                   variant="outlined"
                   size="sm"
                   disabled={busy}
+                  loading={rotateAction.loading}
                   onClick={() => void rotate()}
                   data-testid="bay-settings-rotate"
                 >
@@ -431,6 +442,7 @@ const BaySettings = () => {
                   intent="danger"
                   size="sm"
                   disabled={busy}
+                  loading={removeAction.loading}
                   onClick={() => void remove()}
                   data-testid="bay-settings-delete"
                 >

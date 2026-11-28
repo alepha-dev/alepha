@@ -106,7 +106,8 @@ const AppSettingsDomains = () => {
         {canManage ? (
           <Button
             variant="outlined"
-            disabled={busy || !changed}
+            disabled={!changed}
+            loading={busy}
             onClick={() => void saveAction.run()}
           >
             {tr("app.settings.domains.save")}

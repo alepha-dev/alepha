@@ -10,9 +10,12 @@ import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { isHttpError } from "alepha/server";
 import { Play, RefreshCw, RotateCw, Save, Square } from "lucide-react";
+import { useState } from "react";
 
 import type { BayInstanceRow } from "./bayInstanceRow.ts";
 import { bayProcessState } from "./bayInstanceRow.ts";
+
+type BayVerb = "restart" | "stop" | "start" | "backup";
 
 export interface BayActionsProps {
   row: BayInstanceRow;
@@ -55,6 +58,8 @@ const BayActions = (props: BayActionsProps) => {
   const hostApi = useClient<HostController>();
   const { host, refetch } = useBayInventory();
   const { command, busy, run } = useBayCommand(host);
+  // The verb queued: its button spins, the others wait.
+  const [running, setRunning] = useState<BayVerb>();
   const row = props.row;
 
   const refreshAction = useAction<[], void>(
@@ -100,12 +105,13 @@ const BayActions = (props: BayActionsProps) => {
     (state === "stopped" || state === "down" || state === "crashed");
   const canBackup = row.reported && row.backups;
 
-  const enqueue = async (kind: "restart" | "stop" | "start" | "backup") => {
+  const enqueue = async (kind: BayVerb) => {
+    setRunning(kind);
     const result = await run({
       kind,
       app: row.app,
       environment: row.env,
-    });
+    }).finally(() => setRunning(undefined));
     // The inventory moved if anything did: a restart changes the uptime, a
     // backup moves lastBackupAt. Bay pushes one after every command, so this
     // only asks Lore for what it already has.
@@ -141,6 +147,7 @@ const BayActions = (props: BayActionsProps) => {
               intent="none"
               size="sm"
               disabled={busy}
+              loading={busy && running === "restart"}
               onClick={() => void enqueue("restart")}
               data-testid="bay-action-restart"
             >
@@ -152,6 +159,7 @@ const BayActions = (props: BayActionsProps) => {
               intent="none"
               size="sm"
               disabled={busy}
+              loading={busy && running === "stop"}
               onClick={() => void confirmStop()}
               data-testid="bay-action-stop"
             >
@@ -166,6 +174,7 @@ const BayActions = (props: BayActionsProps) => {
             intent="none"
             size="sm"
             disabled={busy}
+            loading={busy && running === "start"}
             onClick={() => void enqueue("start")}
             data-testid="bay-action-start"
           >
@@ -179,6 +188,7 @@ const BayActions = (props: BayActionsProps) => {
             intent="none"
             size="sm"
             disabled={busy}
+            loading={busy && running === "backup"}
             onClick={() => void enqueue("backup")}
             data-testid="bay-action-backup"
           >
@@ -191,7 +201,8 @@ const BayActions = (props: BayActionsProps) => {
           size="sm"
           // Refuses offline rather than queueing, so it is disabled and the
           // sentence below says which of the two behaviours this is.
-          disabled={!host.online || refreshAction.loading}
+          disabled={!host.online}
+          loading={refreshAction.loading}
           onClick={() => void refreshAction.run()}
           data-testid="bay-action-refresh"
         >

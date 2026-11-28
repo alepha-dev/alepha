@@ -140,7 +140,7 @@ const AppEnvironmentAdd = (props: AppEnvironmentAddProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              loading={loading}
               data-testid="app-environment-save"
             >
               {tr("app.environment.save")}

@@ -144,6 +144,7 @@ const ProjectErrorHeader = (props: ProjectErrorHeaderProps) => {
               <Button
                 size="sm"
                 disabled={verbs.busy}
+                loading={verbs.resolve.loading}
                 onClick={() => void verbs.resolve.run()}
                 data-testid="error-resolve"
               >

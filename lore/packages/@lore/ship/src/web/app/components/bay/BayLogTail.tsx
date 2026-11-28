@@ -106,13 +106,14 @@ const BayLogTail = (props: BayLogTailProps) => {
             size="sm"
             // Said before the click rather than refused after it. The enqueue
             // refuses too, server-side, which is what actually holds.
-            disabled={busy || !host.online}
+            disabled={!host.online}
+            loading={busy}
             title={host.online ? undefined : tr("bay.logs.offline")}
             onClick={() => void fetchAction.run()}
             data-testid="bay-logs-fetch"
           >
             <ScrollText className="size-4" />
-            {busy ? tr("bay.logs.fetching") : tr("bay.logs.fetch")}
+            {tr("bay.logs.fetch")}
           </Button>
         </div>
 

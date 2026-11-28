@@ -169,7 +169,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
         <Button
           type="button"
           size="lg"
-          disabled={submitting}
+          loading={submitting}
           onClick={() => void changeAction.run("ready")}
         >
           {tr("epic.status.actions.markReady")}
@@ -179,7 +179,7 @@ const EpicStatusControl = (props: EpicStatusControlProps) => {
           type="button"
           size="lg"
           variant="outlined"
-          disabled={submitting}
+          loading={submitting}
           onClick={() => void changeAction.run("draft")}
         >
           {tr("epic.status.actions.backToDraft")}

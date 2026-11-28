@@ -277,6 +277,7 @@ const AppSettingsSigil = () => {
                 <Button
                   variant="outlined"
                   disabled={busy}
+                  loading={rotateAction.loading}
                   aria-label={tr("sigils.action.rotate")}
                   onClick={() => void rotate()}
                 >
@@ -305,6 +306,7 @@ const AppSettingsSigil = () => {
                 <Button
                   variant="outlined"
                   disabled={busy}
+                  loading={removeAction.loading}
                   aria-label={tr("sigils.action.delete")}
                   onClick={() => void remove()}
                 >
@@ -333,6 +335,7 @@ const AppSettingsSigil = () => {
             {canManage ? (
               <Button
                 disabled={busy}
+                loading={createAction.loading}
                 aria-label={tr("app.settings.sigil.create")}
                 onClick={() => void create()}
               >

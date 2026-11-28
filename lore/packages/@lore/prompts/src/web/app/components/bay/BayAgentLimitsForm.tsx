@@ -111,7 +111,7 @@ const BayAgentLimitsForm = (props: BayAgentLimitsFormProps) => {
         <Button
           type="submit"
           size="sm"
-          disabled={loading}
+          loading={loading}
           data-testid="bay-agent-limits-save"
         >
           {tr("hosts.agent.limits.save")}

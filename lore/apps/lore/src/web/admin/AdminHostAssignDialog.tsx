@@ -150,7 +150,8 @@ const AdminHostAssignDialog = (props: AdminHostAssignDialogProps) => {
           </Button>
           <Button
             type="button"
-            disabled={projectId === undefined || assign.loading}
+            disabled={projectId === undefined}
+            loading={assign.loading}
             onClick={() => void assign.run()}
             data-testid="admin-host-assign-submit"
           >

@@ -61,7 +61,7 @@ const ProjectSettingsDataSection = () => {
           </div>
           <div className="flex justify-start sm:justify-end">
             <Button
-              disabled={exportAction.loading}
+              loading={exportAction.loading}
               onClick={() => void exportAction.run()}
             >
               <Download className="size-4" />

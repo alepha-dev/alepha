@@ -119,7 +119,7 @@ const EpicCreate = (props: EpicCreateProps) => {
       </div>
 
       <div className="bg-background flex shrink-0 justify-end gap-2 border-t p-4">
-        <Button type="submit" disabled={submitting || !canSave}>
+        <Button type="submit" disabled={!canSave} loading={submitting}>
           {update ? <Save className="size-4" /> : <Plus className="size-4" />}
           {update ? tr("epic.create.update") : tr("epic.create.submit")}
         </Button>

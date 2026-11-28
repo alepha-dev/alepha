@@ -166,7 +166,7 @@ const ProjectSettingsDangerZoneSection = () => {
                 <Button
                   variant="outlined"
                   data-testid="project-archive-toggle"
-                  disabled={archiveAction.loading}
+                  loading={archiveAction.loading}
                   onClick={() => void archiveAction.run()}
                 >
                   {project.archivedAt

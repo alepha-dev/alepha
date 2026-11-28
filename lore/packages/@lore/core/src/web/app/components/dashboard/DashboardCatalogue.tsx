@@ -88,6 +88,8 @@ export interface DashboardCatalogueProps {
    * 10).
    */
   busy?: boolean;
+  /** The board's add or update runs: Save spins. */
+  saving?: boolean;
 }
 
 /**
@@ -358,6 +360,7 @@ const DashboardCatalogue = (props: DashboardCatalogueProps) => {
               <Button
                 onClick={save}
                 disabled={!canSave || props.busy}
+                loading={props.saving}
                 data-testid="dashboard-catalogue-save"
                 className="h-9 rounded-[9px]"
               >

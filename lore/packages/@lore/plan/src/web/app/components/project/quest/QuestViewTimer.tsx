@@ -122,10 +122,8 @@ const QuestViewTimer = (props: QuestViewTimerProps) => {
               size="sm"
               className="h-6 px-1"
               onClick={() => void toggleAction.run()}
-              disabled={
-                toggleAction.loading ||
-                (!client.startTimer.can() && !client.stopTimer.can())
-              }
+              disabled={!client.startTimer.can() && !client.stopTimer.can()}
+              loading={toggleAction.loading}
             />
           }
         >

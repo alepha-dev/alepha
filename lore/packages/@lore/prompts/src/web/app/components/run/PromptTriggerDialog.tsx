@@ -213,7 +213,7 @@ const PromptTriggerDialog = (props: PromptTriggerDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={busy}
+              loading={busy}
               data-testid="prompt-trigger-save"
             >
               {tr("prompts.save")}

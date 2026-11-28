@@ -127,7 +127,8 @@ const BayVersion = () => {
                 variant="solid"
                 intent="none"
                 size="sm"
-                disabled={busy || Boolean(state.blocked)}
+                disabled={Boolean(state.blocked)}
+                loading={busy}
                 onClick={() => void upgrade(state.from, state.to)}
                 data-testid="bay-version-upgrade"
               >

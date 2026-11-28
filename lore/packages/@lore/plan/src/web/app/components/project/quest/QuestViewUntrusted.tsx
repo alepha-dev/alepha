@@ -50,7 +50,7 @@ const QuestViewUntrusted = (props: QuestViewUntrustedProps) => {
           variant="outlined"
           size="sm"
           onClick={() => void confirm.run()}
-          disabled={confirm.loading}
+          loading={confirm.loading}
           title={tr("quest.untrusted.confirm.description")}
           data-testid="quest-untrusted-confirm"
         >

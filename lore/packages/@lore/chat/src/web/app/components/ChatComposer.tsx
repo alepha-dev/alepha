@@ -366,6 +366,8 @@ const ChatComposer = (props: ChatComposerProps) => {
             size="icon-sm"
             className="my-2 md:hidden"
             aria-label={tr("chat.composer.send")}
+            // Sending is optimistic (the box empties on Enter), so it never
+            // spins; it waits, disabled, while an attachment still uploads.
             disabled={
               uploading > 0 ||
               (value.trim().length === 0 && pending.length === 0)

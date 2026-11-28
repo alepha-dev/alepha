@@ -198,7 +198,8 @@ const StackSettingsTab = (props: StackSettingsTabProps) => {
             <Button
               type="submit"
               variant="outlined"
-              disabled={!canWrite || savingDomain}
+              disabled={!canWrite}
+              loading={savingDomain}
             >
               {tr("stacks.settings.save")}
             </Button>
@@ -214,6 +215,7 @@ const StackSettingsTab = (props: StackSettingsTabProps) => {
             <Button
               intent="danger"
               disabled={busy}
+              loading={remove.loading}
               onClick={() => void remove.run()}
               data-testid="stack-environment-delete"
             >

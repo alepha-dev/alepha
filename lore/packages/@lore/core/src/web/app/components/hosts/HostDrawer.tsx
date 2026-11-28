@@ -17,6 +17,7 @@ import { useAction, useClient, useInject } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import { RefreshCw, Trash2, Unlink } from "lucide-react";
+import { useState } from "react";
 
 import type { HostController } from "../../../../api/controllers/HostController.ts";
 import type { ProjectHostController } from "../../../../api/controllers/ProjectHostController.ts";
@@ -198,6 +199,8 @@ const HostDrawer = (props: HostDrawerProps) => {
   const canUpdate = host?.can.includes("host:update") ?? false;
   const canDelete = host?.can.includes("host:delete") ?? false;
   const canLend = host?.can.includes("host:lend") ?? false;
+  // The loan whose detach runs: its button spins, the others wait.
+  const [detachingId, setDetachingId] = useState<number>();
   const busy =
     updateAction.loading ||
     rotateAction.loading ||
@@ -384,9 +387,13 @@ const HostDrawer = (props: HostDrawerProps) => {
                     variant="minimal"
                     size="sm"
                     disabled={!canLend || busy}
+                    loading={detachAction.loading && detachingId === loan.id}
                     aria-label={tr("hosts.detach.action")}
                     onClick={() => {
-                      void detach(loan);
+                      setDetachingId(loan.id);
+                      void detach(loan).finally(() =>
+                        setDetachingId(undefined),
+                      );
                     }}
                   >
                     <Unlink className="size-4" />
@@ -417,6 +424,7 @@ const HostDrawer = (props: HostDrawerProps) => {
                   variant="outlined"
                   size="sm"
                   disabled={!canUpdate || busy}
+                  loading={rotateAction.loading}
                   onClick={() => {
                     void rotate();
                   }}
@@ -431,6 +439,7 @@ const HostDrawer = (props: HostDrawerProps) => {
                 intent="danger"
                 size="sm"
                 disabled={!canDelete || busy}
+                loading={removeAction.loading}
                 onClick={() => {
                   void remove();
                 }}

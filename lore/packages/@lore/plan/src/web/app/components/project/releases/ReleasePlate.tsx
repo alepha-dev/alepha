@@ -246,6 +246,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
             variant="minimal"
             size="lg"
             disabled={submitting}
+            loading={defaultRelease.busy}
             onClick={() =>
               void (release.defaultSince
                 ? defaultRelease.clear(release)
@@ -275,6 +276,7 @@ const ReleasePlate = (props: ReleasePlateProps) => {
           <Button
             size="lg"
             disabled={submitting}
+            loading={publishAction.loading}
             onClick={() => void publishAction.run()}
           >
             <Send className="size-4" />

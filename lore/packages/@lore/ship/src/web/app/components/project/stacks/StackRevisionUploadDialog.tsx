@@ -86,7 +86,7 @@ const StackRevisionUploadDialog = (props: StackRevisionUploadDialogProps) => {
             </Button>
             <Button
               type="submit"
-              disabled={loading}
+              loading={loading}
               data-testid="stack-revision-upload"
             >
               {tr("stacks.revision.upload")}

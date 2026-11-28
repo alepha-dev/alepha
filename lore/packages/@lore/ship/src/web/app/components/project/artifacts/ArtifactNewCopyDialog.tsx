@@ -224,7 +224,7 @@ const ArtifactNewCopyDialog = (props: ArtifactNewCopyDialogProps) => {
             >
               {tr("common.cancel")}
             </Button>
-            <Button type="submit" disabled={submitting || !hosts.length}>
+            <Button type="submit" disabled={!hosts.length} loading={submitting}>
               {tr("artifact.newCopy.submit")}
             </Button>
           </DialogFooter>

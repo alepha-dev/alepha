@@ -11,7 +11,7 @@ import type { ProjectDashboardController } from "@lore/core/api";
 import { currentProjectAtom, type I18n } from "@lore/core/web";
 import { useAction, useClient, useQuery, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 
 export interface FolioAddToDashboardDialogProps {
   open: boolean;
@@ -48,6 +48,8 @@ const FolioAddToDashboardDialog = (
     [boardApi, projectId, props.open],
   );
 
+  // The dashboard picked: its button spins while the folio is added.
+  const [picked, setPicked] = useState<number | "first">();
   const add = useAction<
     [dashboard: { id?: number; slug?: string; name?: string }],
     void
@@ -104,7 +106,11 @@ const FolioAddToDashboardDialog = (
               variant="outlined"
               className="justify-start"
               disabled={add.loading}
-              onClick={() => void add.run(dashboard)}
+              loading={add.loading && picked === (dashboard.id ?? "first")}
+              onClick={() => {
+                setPicked(dashboard.id ?? "first");
+                void add.run(dashboard).finally(() => setPicked(undefined));
+              }}
             >
               {dashboard.name ?? tr("folios.dashboard.default-name")}
             </Button>

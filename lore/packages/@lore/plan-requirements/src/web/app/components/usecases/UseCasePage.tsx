@@ -107,6 +107,14 @@ const UseCasePage = (props: UseCasePageProps) => {
     },
     [useCaseApi, useCase.id, dialog, tr],
   );
+  // Validate and "Request changes" run the same action: the one picked spins.
+  const [answering, setAnswering] = useState<
+    "validated" | "changes_requested"
+  >();
+  const runAnswer = (decision: "validated" | "changes_requested") => {
+    setAnswering(decision);
+    void answer.run(decision).finally(() => setAnswering(undefined));
+  };
 
   const remove = useAction<[], boolean>(
     {
@@ -190,7 +198,8 @@ const UseCasePage = (props: UseCasePageProps) => {
                 variant="outlined"
                 size="lg"
                 disabled={busy}
-                onClick={() => void answer.run("validated")}
+                loading={answer.loading && answering === "validated"}
+                onClick={() => runAnswer("validated")}
               >
                 <CircleCheck className="size-4" />
                 {tr("requirements.usecase.validation.validate")}
@@ -200,6 +209,7 @@ const UseCasePage = (props: UseCasePageProps) => {
                 variant="outlined"
                 size="lg"
                 disabled={busy}
+                loading={request.loading}
                 onClick={() => void request.run()}
               >
                 <Send className="size-4" />
@@ -226,7 +236,7 @@ const UseCasePage = (props: UseCasePageProps) => {
                         key: "changes",
                         icon: MessageSquareWarning,
                         label: tr("requirements.usecase.validation.changes"),
-                        onSelect: () => void answer.run("changes_requested"),
+                        onSelect: () => runAnswer("changes_requested"),
                       },
                     ]
                   : []),

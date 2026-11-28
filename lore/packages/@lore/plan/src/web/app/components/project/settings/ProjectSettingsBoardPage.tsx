@@ -217,6 +217,7 @@ const ProjectSettingsBoardPage = () => {
           <Button
             variant="outlined"
             size="sm"
+            loading={columnOps.adding}
             disabled={
               columns.length >= MAX_COLUMNS ||
               busy ||

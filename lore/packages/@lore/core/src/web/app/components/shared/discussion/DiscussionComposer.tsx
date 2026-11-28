@@ -15,6 +15,12 @@ export interface DiscussionComposerProps {
    */
   busy: boolean;
   /**
+   * The post the button started is in flight: the button spins. Apart from
+   * `busy`, which also covers the page's other writes (an upload, a delete),
+   * so the button never spins for work it did not start.
+   */
+  sending?: boolean;
+  /**
    * Whether there is something to post. Defaults to a non-blank `value`; a
    * composer that also posts attachments widens it.
    */
@@ -141,7 +147,8 @@ const DiscussionComposer = (props: DiscussionComposerProps) => {
             <Button
               type="button"
               size="sm"
-              disabled={props.busy || !canSubmit}
+              disabled={!canSubmit}
+              loading={props.sending}
               onClick={props.onSubmit}
             >
               <Send className="size-4" />

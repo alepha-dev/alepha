@@ -20,7 +20,7 @@ import {
 } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { RotateCcw, Trash2 } from "lucide-react";
-import type { ReactElement } from "react";
+import { type ReactElement, useState } from "react";
 
 import type { FolioController } from "../../../../../../api/controllers/FolioController.ts";
 
@@ -95,6 +95,12 @@ const FolioRecentlyDeletedDialog = (
 
   const busy = restore.loading || purge.loading;
   const items = deleted.data?.items ?? [];
+  // The folio whose restore or purge runs: that row's button spins.
+  const [pendingId, setPendingId] = useState<(typeof items)[number]["id"]>();
+  const runOn = (action: typeof restore, item: (typeof items)[number]) => {
+    setPendingId(item.id);
+    void action.run(item.id, item.title).finally(() => setPendingId(undefined));
+  };
   const retention = deleted.data?.retentionDays ?? 30;
   const daysLeft = (deletedAt: string) =>
     Math.max(
@@ -146,7 +152,8 @@ const FolioRecentlyDeletedDialog = (
                       size="sm"
                       variant="outlined"
                       disabled={busy}
-                      onClick={() => void restore.run(item.id, item.title)}
+                      loading={restore.loading && pendingId === item.id}
+                      onClick={() => runOn(restore, item)}
                     >
                       <RotateCcw className="size-3.5" />
                       {tr("folios.deleted.restore")}
@@ -155,9 +162,10 @@ const FolioRecentlyDeletedDialog = (
                       size="icon-sm"
                       variant="minimal"
                       disabled={busy}
+                      loading={purge.loading && pendingId === item.id}
                       aria-label={tr("folios.deleted.purge")}
                       title={tr("folios.deleted.purge")}
-                      onClick={() => void purge.run(item.id, item.title)}
+                      onClick={() => runOn(purge, item)}
                     >
                       <Trash2 className="size-3.5" />
                     </Button>

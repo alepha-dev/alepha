@@ -203,6 +203,7 @@ const RequirementDetail = (props: RequirementDetailProps) => {
                   size="sm"
                   variant="outlined"
                   disabled={busy}
+                  loading={resync.loading}
                   onClick={() => void resync.run()}
                 >
                   {tr("requirements.requirement.source.keep")}
@@ -315,6 +316,7 @@ const RequirementDetail = (props: RequirementDetailProps) => {
             variant="outlined"
             intent="danger"
             disabled={busy}
+            loading={remove.loading}
             onClick={() => void remove.run()}
           >
             <Trash2 className="size-4" />

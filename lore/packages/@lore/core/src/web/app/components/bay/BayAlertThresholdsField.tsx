@@ -10,6 +10,8 @@ export interface BayAlertThresholdsFieldProps {
   disk?: number;
   memory?: number;
   busy: boolean;
+  /** This field's own save is running: its button spins. */
+  saving?: boolean;
   /** Saves both limits; `null` turns one off. */
   onSave: (limits: { disk: number | null; memory: number | null }) => void;
 }
@@ -60,6 +62,7 @@ const BayAlertThresholdsField = (props: BayAlertThresholdsFieldProps) => {
           variant="outlined"
           size="sm"
           disabled={props.busy || unchanged}
+          loading={props.saving}
           onClick={() => props.onSave({ disk, memory })}
           data-testid="bay-settings-alerts-save"
         >

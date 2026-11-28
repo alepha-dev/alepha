@@ -280,7 +280,8 @@ export const SubscriptionBell = (props: SubscriptionBellProps) => {
               size="icon"
               aria-label={label}
               aria-pressed={subscribed || partial}
-              disabled={!rows.data || save.loading}
+              disabled={!rows.data}
+              loading={save.loading}
               data-testid={props.testId}
               data-subscribed={subscribed || undefined}
               data-partial={partial || undefined}

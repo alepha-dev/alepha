@@ -15,6 +15,7 @@ import {
 } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
+import { useState } from "react";
 
 import AssistantFolioChange from "./AssistantFolioChange.tsx";
 
@@ -51,6 +52,8 @@ export type AssistantWriteTool =
  */
 const AssistantWriteCard = (props: AssistantWriteCardProps) => {
   const { tr } = useI18n<I18n, "en">();
+  // `loading` is the chat's: the button the member pressed is the one that spins.
+  const [choice, setChoice] = useState<"approve" | "deny">();
   const [project] = useStore(currentProjectAtom);
   const [overview] = useStore(userProjectsAtom);
   const input = props.pending.input;
@@ -132,14 +135,22 @@ const AssistantWriteCard = (props: AssistantWriteCardProps) => {
         <Button
           intent="primary"
           disabled={props.loading}
-          onClick={() => props.onApprove()}
+          loading={props.loading && choice === "approve"}
+          onClick={() => {
+            setChoice("approve");
+            props.onApprove();
+          }}
         >
           {tr("ai.chat.approve", { default: "Approve" })}
         </Button>
         <Button
           variant="outlined"
           disabled={props.loading}
-          onClick={() => props.onDeny()}
+          loading={props.loading && choice === "deny"}
+          onClick={() => {
+            setChoice("deny");
+            props.onDeny();
+          }}
         >
           {tr("ai.chat.deny", { default: "Deny" })}
         </Button>

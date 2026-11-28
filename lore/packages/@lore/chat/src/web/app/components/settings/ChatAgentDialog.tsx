@@ -240,7 +240,7 @@ const AgentForm = (props: {
         <Button type="button" variant="outlined" onClick={props.onClose}>
           {tr("chat.agents.form.cancel")}
         </Button>
-        <Button type="submit" disabled={loading} data-testid="chat-agent-save">
+        <Button type="submit" loading={loading} data-testid="chat-agent-save">
           {tr("chat.agents.form.save")}
         </Button>
       </DialogFooter>

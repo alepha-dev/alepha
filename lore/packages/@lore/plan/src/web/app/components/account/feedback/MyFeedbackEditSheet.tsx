@@ -14,7 +14,7 @@ import { AttachmentLightbox, type I18n } from "@lore/core/web";
 import { useAction, useClient, useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
 import { currentUserAtom } from "alepha/security";
-import { Loader2, Paperclip } from "lucide-react";
+import { Paperclip } from "lucide-react";
 import { useState } from "react";
 
 import type { FeedbackController } from "../../../../../api/controllers/FeedbackController.ts";
@@ -249,8 +249,7 @@ const MyFeedbackEditSheet = (props: MyFeedbackEditSheetProps) => {
             {readOnly ? tr("common.close") : tr("common.cancel")}
           </Button>
           {!readOnly && (
-            <Button onClick={save} disabled={saving}>
-              {saving && <Loader2 className="size-4 animate-spin" />}
+            <Button onClick={save} loading={saving}>
               {tr("common.save")}
             </Button>
           )}

@@ -149,6 +149,7 @@ const CloudflareHostDrawerSection = (props: HostTypeDrawerSectionProps) => {
           variant="outlined"
           size="sm"
           disabled={!props.canUpdate || busy || token.trim().length < 40}
+          loading={replaceAction.loading}
           onClick={() => {
             void replace();
           }}
@@ -161,6 +162,7 @@ const CloudflareHostDrawerSection = (props: HostTypeDrawerSectionProps) => {
           variant="minimal"
           size="sm"
           disabled={!props.canUpdate || busy}
+          loading={recheckAction.loading}
           onClick={() => {
             void recheck();
           }}

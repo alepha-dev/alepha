@@ -200,6 +200,7 @@ export const useKanbanColumnOps = (
   return {
     loading:
       add.loading || rename.loading || remove.loading || setColor.loading,
+    adding: add.loading,
 
     // The four verbs are one permission server-side, so one flag - and it
     // comes off the action rather than a string, which is what stops the
@@ -239,6 +240,11 @@ export interface KanbanColumnOps {
    * (#E59 rule 10).
    */
   loading: boolean;
+  /**
+   * True while a column is being added: the add button's own spinner, while
+   * `loading` keeps every other column control waiting.
+   */
+  adding: boolean;
   /**
    * Whether this reader's rank may edit columns at all. Every caller should
    * gate its own affordances on this rather than on a permission string.

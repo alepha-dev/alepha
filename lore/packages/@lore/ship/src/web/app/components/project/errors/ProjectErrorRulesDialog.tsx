@@ -107,6 +107,9 @@ const ProjectErrorRulesDialog = (props: ProjectErrorRulesDialogProps) => {
 
   // Page-wide: both writes wait while either runs.
   const saving = addAction.loading || removeAction.loading;
+  // The rule whose delete runs: its button spins, the others wait.
+  const [removingId, setRemovingId] =
+    useState<ProjectErrorRuleResource["id"]>();
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -133,6 +136,7 @@ const ProjectErrorRulesDialog = (props: ProjectErrorRulesDialogProps) => {
           <Button
             type="submit"
             disabled={saving || !pattern.trim() || !canManage}
+            loading={addAction.loading}
           >
             <Plus className="size-4" />
             {tr("errors.rules.add")}
@@ -163,7 +167,13 @@ const ProjectErrorRulesDialog = (props: ProjectErrorRulesDialogProps) => {
                   size="icon"
                   className="text-danger-text shrink-0"
                   disabled={saving || !canManage}
-                  onClick={() => void removeAction.run(rule)}
+                  loading={removeAction.loading && removingId === rule.id}
+                  onClick={() => {
+                    setRemovingId(rule.id);
+                    void removeAction
+                      .run(rule)
+                      .finally(() => setRemovingId(undefined));
+                  }}
                   aria-label={tr("errors.rules.remove")}
                 >
                   <Trash2 className="size-4" />

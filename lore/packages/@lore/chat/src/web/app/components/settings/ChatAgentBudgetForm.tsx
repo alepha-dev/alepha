@@ -3,7 +3,7 @@ import { Control } from "@alepha/ui/form";
 import type { I18n } from "@lore/core/web";
 import { z } from "alepha";
 import { useClient, useQueryClient } from "alepha/react";
-import { useForm } from "alepha/react/form";
+import { useForm, useFormState } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 
 import type { ChatAgentController } from "../../../../api/controllers/ChatAgentController.ts";
@@ -36,6 +36,7 @@ const ChatAgentBudgetForm = (props: ChatAgentBudgetFormProps) => {
       queries.invalidate(["chat-agent-budget", props.projectId]);
     },
   });
+  const { loading } = useFormState(form, ["loading"]);
   return (
     <form
       {...form.props}
@@ -52,6 +53,7 @@ const ChatAgentBudgetForm = (props: ChatAgentBudgetFormProps) => {
         <Button
           type="submit"
           variant="outlined"
+          loading={loading}
           data-testid="chat-agent-budget-save"
         >
           {tr("chat.agents.budget.save")}

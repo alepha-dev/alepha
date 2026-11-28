@@ -222,7 +222,7 @@ const ChatMessageRow = (props: ChatMessageRowProps) => {
               className="min-h-9 resize-none text-sm"
             />
             <div className="flex gap-2">
-              <Button size="sm" onClick={() => void save()} disabled={saving}>
+              <Button size="sm" onClick={() => void save()} loading={saving}>
                 {tr("chat.message.edit.save")}
               </Button>
               <Button

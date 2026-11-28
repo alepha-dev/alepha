@@ -14,6 +14,7 @@ import { z } from "alepha";
 import { useAction, useClient, useQuery } from "alepha/react";
 import { useForm, useFormValues } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
+import { useState } from "react";
 
 import type { StackController } from "../../../../../api/controllers/StackController.ts";
 import type { StackDeployController } from "../../../../../api/controllers/StackDeployController.ts";
@@ -68,6 +69,8 @@ const StackRevisionsTab = (props: StackRevisionsTabProps) => {
   const after =
     revisions.find((r) => String(r.number) === values.to) ?? revisions[0];
 
+  // The revision rolled back to: its button spins, the others wait.
+  const [rollingBack, setRollingBack] = useState<number>();
   const rollback = useAction<[revision: number], boolean>(
     {
       handler: async (_ctx, revision) => {
@@ -141,7 +144,13 @@ const StackRevisionsTab = (props: StackRevisionsTabProps) => {
                   variant="minimal"
                   className="ml-auto"
                   disabled={rollback.loading}
-                  onClick={() => void rollback.run(revision.number)}
+                  loading={rollback.loading && rollingBack === revision.number}
+                  onClick={() => {
+                    setRollingBack(revision.number);
+                    void rollback
+                      .run(revision.number)
+                      .finally(() => setRollingBack(undefined));
+                  }}
                 >
                   {tr("stacks.revisions.rollback")}
                 </Button>

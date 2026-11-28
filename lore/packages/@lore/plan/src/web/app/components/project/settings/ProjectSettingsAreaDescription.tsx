@@ -65,10 +65,9 @@ const ProjectSettingsAreaDescription = (
           <Button
             onClick={() => void save()}
             disabled={
-              saving ||
-              value === props.area.description ||
-              !areaApi.updateArea.can()
+              value === props.area.description || !areaApi.updateArea.can()
             }
+            loading={saving}
           >
             {tr("area.detail.description.save")}
           </Button>
