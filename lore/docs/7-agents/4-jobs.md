@@ -89,10 +89,16 @@ sudo -iu bay-agent claude
 sudo -iu bay-agent gemini
 ```
 
-**Install `git` and `gh`, and sign `gh` in as the jobs user.** A job that
-reads or changes the project's code needs the project's repository on GitHub
-and `gh` signed in: Bay fetches the code through it, and a job pushes and opens
-pull requests with it. Install `cf` too if your prompts deploy with
+**Install `git` and `gh`.** A job that reads or changes the project's code
+needs the project's repository on GitHub. When the project is connected to
+GitHub (Settings, GitHub), each job carries its own short-lived token, scoped
+to that one repository: Bay fetches the code with it, the job pushes and opens
+pull requests with it, and its commits are signed by the instance's GitHub App.
+Nothing needs signing in on the host, and the job's page says which credential
+it ran with.
+
+For a project that is not connected, sign `gh` in as the jobs user: Bay and
+the job then use that login. Install `cf` too if your prompts deploy with
 Cloudflare's CLI, and sign it in the same way.
 
 ```bash

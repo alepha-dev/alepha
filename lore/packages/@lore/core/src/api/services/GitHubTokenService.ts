@@ -82,12 +82,18 @@ export class GitHubTokenService {
     installationId: number;
     repositoryId: number;
     permissions: GitHubPermissions;
+    /**
+     * The least a cached token must have left to be handed out, above
+     * {@link MARGIN_MS}: a job's token is renewed at ten minutes left, and
+     * must never get back the one it holds (#Q4365).
+     */
+    minLifetimeMs?: number;
   }): Promise<GitHubInstallationToken> {
     const key = this.key(input);
     const cached = this.cache.get(key);
     if (cached) {
       const token = await cached.catch(() => undefined);
-      if (token && this.fresh(token)) return token;
+      if (token && this.fresh(token, input.minLifetimeMs)) return token;
       this.cache.delete(key);
     }
     const minting = this.client.createInstallationToken(input.installationId, {
@@ -135,11 +141,12 @@ export class GitHubTokenService {
     return await this.bot;
   }
 
-  protected fresh(token: GitHubInstallationToken): boolean {
+  protected fresh(token: GitHubInstallationToken, minLifetimeMs = 0): boolean {
     const expires = Date.parse(token.expiresAt);
     return (
       Number.isFinite(expires) &&
-      expires - GitHubTokenService.MARGIN_MS > this.dateTime.nowMillis()
+      expires - Math.max(GitHubTokenService.MARGIN_MS, minLifetimeMs) >
+        this.dateTime.nowMillis()
     );
   }
 

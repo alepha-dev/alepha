@@ -64,6 +64,13 @@ export const hostJobInputSchema = z.object({
   /** Absent is `none`: a job queued before sources (#E173). */
   source: hostJobSourceSchema.optional(),
   /**
+   * The GitHub credential the job ran with (#Q4365), set when its host
+   * pulled the spec: `app`, an installation token of the instance's App for
+   * the project's repository, or `host`, the jobs user's own gh login.
+   * Lore's record only: never sent to Bay.
+   */
+  credential: z.enum(["app", "host"]).optional(),
+  /**
    * `json` for a chat agent's turn (#Q4250): its answer is read from the
    * CLI's one JSON result when the job ends.
    */

@@ -1,0 +1,1 @@
+ALTER TABLE "hosts" ADD COLUMN "jobs_git_hub_tokens" boolean;

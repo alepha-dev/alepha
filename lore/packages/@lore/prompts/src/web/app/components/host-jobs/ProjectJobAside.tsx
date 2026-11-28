@@ -89,6 +89,15 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
           }[job.input.source.mode]
         : undefined,
     ),
+    // Which GitHub credential it ran with (#Q4365).
+    ...row(
+      tr("jobs.field.github"),
+      job.input.credential === "app"
+        ? tr("jobs.github.app")
+        : job.input.credential === "host"
+          ? tr("jobs.github.host")
+          : undefined,
+    ),
     ...row(tr("jobs.field.ref"), job.input.source?.ref),
     ...row(tr("jobs.field.branch"), job.input.source?.branch),
     ...row(tr("jobs.field.commit"), job.commit?.slice(0, 12)),

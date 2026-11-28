@@ -3435,6 +3435,9 @@ export default {
   "jobs.field.ended": "Ended",
   "jobs.field.exit": "Exit code",
   "jobs.field.source": "Source",
+  "jobs.field.github": "GitHub",
+  "jobs.github.app": "The GitHub App's token",
+  "jobs.github.host": "The host's gh login",
   "jobs.field.ref": "Ref",
   "jobs.field.branch": "Branch",
   "jobs.field.commit": "Commit",
@@ -3462,6 +3465,8 @@ export default {
   "hosts.tools.signedIn": "signed in",
   "hosts.tools.signedInAs": "signed in as $1",
   "hosts.tools.signedOut": "signed out: $1",
+  "hosts.tools.ghOptional":
+    "signed out: only needed for projects not connected to GitHub",
   "hosts.tools.signInUnknown": "sign-in unknown",
   "hosts.tools.loreSignedIn":
     "signed in: a job would reach past its key's pins ($1)",

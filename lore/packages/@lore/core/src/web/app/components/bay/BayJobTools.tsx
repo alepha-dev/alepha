@@ -85,6 +85,7 @@ const BayJobTools = () => {
                       <BayJobToolSignIn
                         tool={tool}
                         user={host.jobsUser ?? ""}
+                        githubTokens={host.jobsGitHubTokens}
                       />
                     </>
                   )}

@@ -53,6 +53,7 @@ export const hostResourceSchema = hosts.schema
     agentError: true,
     jobsTools: true,
     jobsSources: true,
+    jobsGitHubTokens: true,
     jobsResult: true,
     jobsUser: true,
     jobsMaxJobs: true,

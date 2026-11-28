@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "c4ff611f-f9a9-42a0-994e-c405ffc8370c",
+  "prevIds": ["dda6fa80-129a-4a75-b6ce-9b67d93dc9b6"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "hosts", "jobs_git_hub_tokens"],
+      "writes": [
+        "s|col|public.hosts.jobs_git_hub_tokens",
+        "n|col|public.hosts.jobs_git_hub_tokens",
+        "e|col|public.hosts.jobs_git_hub_tokens"
+      ],
+      "reads": ["n|tbl|public.hosts", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "hosts",
+        "name": "jobs_git_hub_tokens",
+        "type": "boolean",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

@@ -226,6 +226,12 @@ export interface AgentHostRef {
    */
   jobsUser?: string;
   ghSignedOut?: boolean;
+  /**
+   * The host's Bay runs a job with the GitHub token its spec carries
+   * (#Q4361, #Q4365): a job of a project connected to GitHub needs no `gh`
+   * sign-in there.
+   */
+  githubTokens?: boolean;
 }
 
 /**

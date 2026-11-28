@@ -233,6 +233,12 @@ export const hosts = $entity({
      */
     jobsResult: z.boolean().optional(),
     /**
+     * Whether the machine's Bay runs a job with the GitHub token its spec
+     * carries (#Q4365), from its inventory: a job of a connected project
+     * gets one only on such a host.
+     */
+    jobsGitHubTokens: z.boolean().optional(),
+    /**
      * The Unix user its jobs run as, from its inventory (#Q4254): empty when
      * the machine reported and named none (no `bay config jobs --user`),
      * absent when it never reported. The Tools section tells those apart.

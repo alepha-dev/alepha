@@ -1,0 +1,1 @@
+ALTER TABLE `hosts` ADD `jobs_git_hub_tokens` integer;

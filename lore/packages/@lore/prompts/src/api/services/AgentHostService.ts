@@ -91,6 +91,7 @@ export class AgentHostService {
             : {}),
           ...(host.jobsSources ? { sources: true } : {}),
           ...(host.jobsUser ? { jobsUser: host.jobsUser } : {}),
+          ...(host.jobsGitHubTokens ? { githubTokens: true } : {}),
           ...(host.jobsTools?.some(
             (tool) => tool.name === "gh" && tool.signedIn === false,
           )
