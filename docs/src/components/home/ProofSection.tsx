@@ -2,9 +2,21 @@ import { IconBrandGithub, IconBrandNpm } from "@tabler/icons-react";
 
 import CopyCommand from "./CopyCommand.tsx";
 
-const ProofSection = () => {
+export interface ProofSectionProps {
+  /**
+   * On the alt band, as the framework's page has it. The front page sets it
+   * off when its latest posts take that band just before.
+   */
+  alt?: boolean;
+}
+
+const ProofSection = (props: ProofSectionProps) => {
+  const alt = props.alt ?? true;
   return (
-    <section id="more" className="home-block home-section home-section-alt">
+    <section
+      id="more"
+      className={`home-block home-section${alt ? " home-section-alt" : ""}`}
+    >
       <div className="proof-cta container">
         <h2 className="section-title">Try it in one command</h2>
 

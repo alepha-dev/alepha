@@ -47,6 +47,11 @@ export const adminHostResourceSchema = z.object({
    */
   credentialStatus: z.enum(["valid", "invalid"]).optional(),
   deployAllowed: z.boolean(),
+  /**
+   * Whether the host runs agent jobs: the Capabilities column shows the
+   * `agent` pill for it (#Q4558).
+   */
+  agentHost: z.boolean(),
   lastSeenAt: z.string().optional(),
   createdAt: z.datetime(),
   /**

@@ -232,6 +232,9 @@ export const AdminHosts = () => {
               <HostCapabilityBadges
                 type={host.type}
                 deployAllowed={host.deployAllowed}
+                // No default Agent host any more (#Q4223): an Agent host
+                // is only ever "available" here.
+                agent={host.agentHost ? "available" : undefined}
               />
             ),
           },

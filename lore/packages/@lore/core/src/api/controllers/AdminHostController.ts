@@ -167,6 +167,7 @@ export class AdminHostController {
             online: this.service.isOnline(host),
             credentialStatus: this.types.credentialStatus(host),
             deployAllowed: host.deployAllowed,
+            agentHost: host.agentHost,
             lastSeenAt: host.lastSeenAt,
             createdAt: String(host.createdAt),
             loans: grants

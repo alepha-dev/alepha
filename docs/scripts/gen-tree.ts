@@ -8,6 +8,7 @@ import hljs from "highlight.js";
 import { Marked, type Tokens } from "marked";
 import { runnerImport } from "vite";
 
+import { BlogPosts } from "./BlogPosts.ts";
 import { DocsMarkdown } from "./DocsMarkdown.ts";
 import type { DocItem, DocNode, DocProduct } from "./interfaces.ts";
 import { LoreChangelog } from "./LoreChangelog.ts";
@@ -997,6 +998,27 @@ export class TreeCommand {
         }
         this.log.debug(`Built ${DOC_PRODUCTS.length} navigation trees`);
 
+        // The blog's posts, newest first (#Q4557): each body is a module of
+        // its own, loaded by its page only, like a doc page's.
+        const blog = await BlogPosts.read();
+        const posts: Array<Record<string, unknown>> = [];
+        for (const post of blog) {
+          const html = (await this.renderContent(post.markdown)) as string;
+          await writeFile(
+            path.join(outputDir, `blog-${post.slug}.ts`),
+            `export default ${JSON.stringify(html)}`,
+          );
+          posts.push({
+            slug: post.slug,
+            date: post.date,
+            title: post.title,
+            description: post.description,
+            product: post.product,
+            content: `${TAG}() => import('./blog-${post.slug}.ts').then(it => it.default)${TAG}`,
+          });
+        }
+        this.log.debug(`Wrote ${posts.length} blog posts`);
+
         // The changelog is the published Lore releases (#Q3638).
         const changelog = await this.loreChangelog.read();
         this.log.debug(`Read ${changelog.length} changelog entries`);
@@ -1015,6 +1037,7 @@ export class TreeCommand {
 				export const trees = ${JSON.stringify(trees, jsonReplacer, 2)};
 				export const snippets = ${JSON.stringify(renderedSnippets, null, 2)};
 				export const changelog = ${JSON.stringify(changelog, null, 2)};
+				export const posts = ${JSON.stringify(posts, null, 2)};
 				`
           .trim()
           .replace(new RegExp(`"?${TAG}"?`, "g"), "");

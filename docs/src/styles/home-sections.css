@@ -2115,3 +2115,178 @@ html:has(.home-snap) {
     max-width: 1240px;
   }
 }
+
+/* -----------------------------------------------------------------------------
+   FRONT PAGE - THE THREE PRODUCTS AND THE LOOP
+   ----------------------------------------------------------------------------- */
+
+.eco-lanes {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(32px, 5vw, 56px);
+}
+
+.eco-lane {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: center;
+}
+
+@media (min-width: 1024px) {
+  /* `minmax(0, …)` so the code pane cannot widen its own track. */
+  .eco-lane {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: var(--space-8);
+  }
+}
+
+.eco-lane-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.eco-lane-name {
+  margin: 0;
+  font-size: clamp(20px, 4vw, 26px);
+  font-weight: var(--font-semibold);
+  color: var(--color-text-bright);
+}
+
+.eco-lane-tagline {
+  margin: 0;
+  color: var(--color-text-muted);
+  line-height: var(--leading-relaxed);
+}
+
+.eco-lane-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.eco-lane-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.eco-lane-link.is-quiet {
+  color: var(--color-text-muted);
+}
+
+.eco-lane-link:hover {
+  color: var(--color-text-bright);
+}
+
+.eco-lane-artifact {
+  min-width: 0;
+}
+
+.eco-shot {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.eco-term-body {
+  margin: 0;
+  padding: var(--space-4) var(--space-5);
+  background: var(--color-bg);
+  color: var(--color-text-bright);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.7;
+  overflow-x: auto;
+}
+
+.eco-loop {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 768px) {
+  .eco-loop {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.eco-loop-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-panel);
+}
+
+.eco-loop-index {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.eco-loop-verb {
+  color: var(--color-text-bright);
+  font-size: 18px;
+  font-weight: var(--font-semibold);
+}
+
+.eco-loop-product {
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.eco-loop-text {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-relaxed);
+}
+
+/* On a phone the product links stay in the header, tighter, and so does
+   the logo, so a 320px screen still fits the whole header. */
+@media (max-width: 767px) {
+  .product-nav-link {
+    padding: 0 6px;
+    font-size: var(--text-xs);
+  }
+
+  .logo-btn.px-4 {
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+  }
+}
+
+.eco-posts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .eco-posts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.eco-posts > li {
+  display: flex;
+}
+
+.eco-posts > li > a {
+  flex: 1;
+}

@@ -5,6 +5,7 @@ import { AlephaError } from "alepha";
 import { $command } from "alepha/command";
 import { $logger } from "alepha/logger";
 
+import { BlogPosts } from "./BlogPosts.ts";
 import { DocsMarkdown } from "./DocsMarkdown.ts";
 import type { DocNode, DocProduct } from "./interfaces.ts";
 import { DocsRoots } from "./roots.ts";
@@ -100,6 +101,8 @@ const BUNDLE_BUDGET = 400 * 1024;
  *   fetch.
  * - `/bay/llms.txt`, `/lore/llms.txt`, each with its `llms-full.txt`: the
  *   products, each at the root of its own URL space.
+ * - `/blog/<slug>.md`: every blog post as markdown, listed in `/llms.txt`,
+ *   and `/blog/rss.xml`, the blog's feed (#Q4557).
  * - `/docs/<slug>.md`, `/bay/docs/<slug>.md`...: every page as markdown, its
  *   doc links absolute and pointed at the `.md` copies, build markers taken
  *   out of its fences. The HTML page links it as `rel="alternate"`.
@@ -169,6 +172,25 @@ export class LlmsCommand {
         }
       });
 
+      const blog: Page[] = [];
+      await run("write blog files", async () => {
+        const posts = await BlogPosts.read();
+        for (const post of posts) {
+          const url = `${DocsMarkdown.SITE}/blog/${post.slug}.md`;
+          const markdown = DocsMarkdown.forAgents(
+            BlogPosts.markdown(post, DocsMarkdown.SITE),
+          );
+          blog.push({
+            title: post.title,
+            description: `${post.date}, ${BlogPosts.label(post.product)}. ${post.description}`,
+            url,
+            markdown,
+          });
+          await write(this.pathOf(url), markdown);
+        }
+        await write("/blog/rss.xml", BlogPosts.rss(posts, DocsMarkdown.SITE));
+      });
+
       await run("write llms.txt", async () => {
         const preamble = await fs.readFile(
           join(publicDir, "llms-index.md"),
@@ -223,6 +245,10 @@ export class LlmsCommand {
             "",
             ...sections,
             this.section("API reference", indexes),
+            this.section(
+              "Blog",
+              blog.map((page) => this.entry(page)),
+            ),
             this.section(
               "Optional",
               products.map(

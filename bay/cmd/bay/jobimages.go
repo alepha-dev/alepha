@@ -27,6 +27,11 @@ an image (MCP's own image content carries `mimeType`):
 the `source` of an image block (`{"type":"base64","media_type":"image/png",
 "data":…}`) and Claude Code's own `file` (`{"base64":…,"type":"image/png"}`).
 A text tool result is never touched, nor a line that is not JSON.
+
+The same pass drops the top-level `tool_use_result` key of a line (#Q4559):
+Claude Code's structured copy of the tool result the line's `message` already
+carries, which the transcript never reads and which made a sixth of a log.
+Only the top level is looked at; a `tool_use_result` nested in a value stays.
 */
 type imageStripper struct {
 	mu   sync.Mutex
@@ -57,7 +62,7 @@ func (s *imageStripper) Write(p []byte) (int, error) {
 		}
 		s.hold(rest[:i+1])
 		if !s.passing {
-			_, _ = s.out.Write(stripImages(s.line))
+			_, _ = s.out.Write(stripImages(dropToolUseResult(s.line)))
 		}
 		s.line, s.passing = s.line[:0], false
 		rest = rest[i+1:]
@@ -84,9 +89,57 @@ func (s *imageStripper) Flush() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if len(s.line) > 0 && !s.passing {
-		_, _ = s.out.Write(stripImages(s.line))
+		_, _ = s.out.Write(stripImages(dropToolUseResult(s.line)))
 	}
 	s.line, s.passing = s.line[:0], false
+}
+
+// toolUseResultKey is the top-level key dropToolUseResult removes.
+var toolUseResultKey = []byte(`"tool_use_result"`)
+
+// dropToolUseResult answers the line without its top-level `tool_use_result`
+// member, or the line itself when it has none or is not a JSON object. The
+// rest of the line stays byte for byte, its newline included.
+func dropToolUseResult(line []byte) []byte {
+	if !bytes.Contains(line, toolUseResultKey) {
+		return line
+	}
+	dec := json.NewDecoder(bytes.NewReader(line))
+	if token, err := dec.Token(); err != nil || token != json.Delim('{') {
+		return line
+	}
+	first := true
+	for dec.More() {
+		// Before a key, the offset is just past the previous value (or the
+		// opening brace): the comma between them is the key's to drop.
+		before := int(dec.InputOffset())
+		token, err := dec.Token()
+		if err != nil {
+			return line
+		}
+		key, _ := token.(string)
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return line
+		}
+		if key != "tool_use_result" {
+			first = false
+			continue
+		}
+		after := int(dec.InputOffset())
+		if first {
+			// The first member: drop the comma after it instead, if any.
+			rest := bytes.TrimLeft(line[after:], " \t\r\n")
+			if len(rest) > 0 && rest[0] == ',' {
+				after = len(line) - len(rest) + 1
+			}
+		}
+		out := make([]byte, 0, len(line)-(after-before))
+		out = append(out, line[:before]...)
+		// A line naming the key twice loses both: walk what is left again.
+		return dropToolUseResult(append(out, line[after:]...))
+	}
+	return line
 }
 
 // stripImages answers the line with its image bodies replaced, or the line

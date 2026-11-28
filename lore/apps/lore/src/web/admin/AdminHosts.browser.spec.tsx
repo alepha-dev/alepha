@@ -83,6 +83,7 @@ const LOOSE: AdminHostResource = {
   project: { id: 2, title: "Ops" },
   online: false,
   deployAllowed: true,
+  agentHost: false,
   createdAt: "2026-09-01T10:00:00.000Z",
   creator: { id: "00000000-0000-4000-8000-0000000000d1", name: "Dan" },
   loans: [
@@ -212,6 +213,8 @@ describe("AdminHosts", () => {
         slug: "watch",
         online: true,
         deployAllowed: false,
+        // An Agent host shows the agent pill (#Q4558).
+        agentHost: true,
       },
       {
         ...LOOSE,
@@ -250,7 +253,7 @@ describe("AdminHosts", () => {
     }
     expect(
       screen.getAllByTestId("host-capabilities").map((it) => it.textContent),
-    ).toEqual(["statsdeploy", "stats", "deploy", "deploy"]);
+    ).toEqual(["statsdeploy", "statsagent", "deploy", "deploy"]);
     // No old badge words left.
     expect(
       screen.queryByText(/credential (in)?valid|stats only|deploys/),

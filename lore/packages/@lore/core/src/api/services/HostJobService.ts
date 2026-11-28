@@ -1228,7 +1228,8 @@ export class HostJobService {
   }
 
   /**
-   * Writes the whole log to the bucket and drops its rows.
+   * Writes the whole log to the bucket, gzipped (#Q4559), and drops its
+   * rows. `logBytes` stays the size of the text, not of the stored file.
    */
   protected async archive(job: HostJob): Promise<void> {
     const jobId = job.id;
@@ -1241,10 +1242,10 @@ export class HostJobService {
       stderr: this.assemble(rows, "stderr", 0).text,
     };
     this.reportTranscript(job, whole.stdout);
-    const bytes = new TextEncoder().encode(JSON.stringify(whole));
     try {
+      const bytes = await this.gzip(JSON.stringify(whole));
       const stored = await this.files.uploadFile(
-        new File([bytes], `job-${jobId}.json`, { type: "application/json" }),
+        new File([bytes], `job-${jobId}.json.gz`, { type: "application/gzip" }),
         {
           bucket: CoreBuckets.JOB_LOG_BUCKET,
           expirationDate: new Date(
@@ -1297,7 +1298,7 @@ export class HostJobService {
       const file = await this.files.streamFile(job.logFileId as string, {
         bucket: CoreBuckets.JOB_LOG_BUCKET,
       });
-      const parsed = JSON.parse(await file.text()) as {
+      const parsed = JSON.parse(await this.unzip(await file.arrayBuffer())) as {
         stdout?: string;
         stderr?: string;
       };
@@ -1305,6 +1306,33 @@ export class HostJobService {
     } catch {
       return { stdout: "", stderr: "" };
     }
+  }
+
+  /**
+   * Gzips a log for the bucket, through the web `CompressionStream` so it
+   * runs the same on Node and on Workers.
+   */
+  protected async gzip(text: string): Promise<ArrayBuffer> {
+    const stream = new Blob([text])
+      .stream()
+      .pipeThrough(new CompressionStream("gzip"));
+    return await new Response(stream).arrayBuffer();
+  }
+
+  /**
+   * The text of a stored log: gunzipped when it starts with gzip's magic
+   * bytes, as every log stored since #Q4559 does, and read as it is when
+   * it does not, as a log stored before is plain JSON.
+   */
+  protected async unzip(bytes: ArrayBuffer): Promise<string> {
+    const head = new Uint8Array(bytes, 0, Math.min(2, bytes.byteLength));
+    if (head[0] !== 0x1f || head[1] !== 0x8b) {
+      return new TextDecoder().decode(bytes);
+    }
+    const stream = new Blob([bytes as BlobPart])
+      .stream()
+      .pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(stream).text();
   }
 
   protected tail(text: string, after: number): string {

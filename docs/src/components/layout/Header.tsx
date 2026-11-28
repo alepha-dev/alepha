@@ -25,7 +25,7 @@ import { getInitialMode, MODE_KEY, type Mode } from "./docsTheme.ts";
  * now and so has no page of its own yet.
  */
 const PRODUCTS = [
-  { href: "/", label: "Framework" },
+  { href: "/framework", label: "Framework" },
   { href: "/lore", label: "Lore" },
   { href: "/bay", label: "Bay" },
 ];
@@ -120,19 +120,19 @@ const Header = (props: HeaderProps) => {
         </Link>
 
         {/* Products. One version number covers all of them, which is why they
-            sit next to it rather than in their own nav. */}
-        <nav className="product-nav hidden-mobile" aria-label="Products">
+            sit next to it rather than in their own nav. Shown on a phone too,
+            tighter: the logo is the front page, and these are the only way
+            to each product's page from there. */}
+        <nav className="product-nav" aria-label="Products">
           {PRODUCTS.map((it) => {
-            // Framework owns TWO spaces, `/` and `/docs/*`, and cannot match
-            // by prefix because `/` is a prefix of everything. It used to
-            // match `/` exactly, which meant no product was highlighted on any
-            // of its doc pages. The others match their prefix, which is
-            // what lights Lore up on `/lore/docs/...` (quest #1603).
+            // Framework owns TWO spaces, `/framework` and `/docs/*`. The
+            // others match their prefix, which is what lights Lore up on
+            // `/lore/docs/...`. `/` is the front page, and lights none.
             const path = routerState.url.pathname;
             const active =
-              it.href === "/"
-                ? path === "/" || path.startsWith("/docs")
-                : path.startsWith(it.href);
+              it.href === "/framework"
+                ? path === "/framework" || path.startsWith("/docs/")
+                : path === it.href || path.startsWith(`${it.href}/`);
 
             return (
               <Link
@@ -145,6 +145,18 @@ const Header = (props: HeaderProps) => {
               </Link>
             );
           })}
+          {/* The blog speaks for all three, so it closes the nav rather than
+              standing for a fourth product. Off on a phone, where the front
+              page lists the latest posts. */}
+          <Link
+            href="/blog"
+            className={`product-nav-link hidden-mobile${routerState.url.pathname.startsWith("/blog") ? " is-active" : ""}`}
+            aria-current={
+              routerState.url.pathname.startsWith("/blog") ? "page" : undefined
+            }
+          >
+            Blog
+          </Link>
         </nav>
 
         {/* Tabs - Only shown on docs pages, hidden on mobile */}
@@ -229,8 +241,11 @@ const SearchButton = () => {
       }}
     >
       <IconSearch size={14} />
+      {/* Off on a phone, which has no shortcut to show, so the product
+          links fit beside it. */}
       <span
         aria-hidden="true"
+        className="hidden-mobile"
         style={{ fontSize: 11, color: "var(--color-text-muted)" }}
       >
         {isMac ? "⌘" : "Ctrl+"}K
