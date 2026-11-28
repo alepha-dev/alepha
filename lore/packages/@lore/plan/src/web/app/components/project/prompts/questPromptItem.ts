@@ -5,12 +5,19 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
 /**
  * A quest as a pinned prompt's item (#Q4284): its number, and its status
  * derived as `QuestResourceMapper.questStatus` derives it, which decides
- * whether a prompt whose arg does not accept it is offered.
+ * whether a prompt whose arg does not accept it is offered. A draft reads
+ * `draft` with the mapper's precedence (#E178), below `shelved` and above
+ * `todo`, so the work prompts the server would refuse on it are not offered.
  */
 export const questPromptItem = (
   quest: Pick<
     QuestResource,
-    "shortId" | "completedAt" | "heldAt" | "acceptedAt" | "shelvedAt"
+    | "shortId"
+    | "completedAt"
+    | "heldAt"
+    | "acceptedAt"
+    | "shelvedAt"
+    | "draftAt"
   >,
 ): PinnedPromptItem => ({
   type: "quest",
@@ -23,5 +30,7 @@ export const questPromptItem = (
         ? "in_progress"
         : quest.shelvedAt
           ? "shelved"
-          : "todo",
+          : quest.draftAt
+            ? "draft"
+            : "todo",
 });

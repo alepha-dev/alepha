@@ -31,7 +31,7 @@ Check the plan against the code as it actually is, not as the spec describes it.
 ## Write back what you find
 
 - \`epic_update\` for the epic's own description.
-- \`quest_create\` with \`epic_number\` {{epic.number}} for work the plan is missing.
+- \`quest_create\` with \`epic_number\` {{epic.number}} for work the plan is missing. The epic's quests are drafts while it is a \`draft\`, and become to do together when the owner marks it ready: nothing is to be done to them one by one, and a quest filed into it while it is a draft is a draft too.
 - \`quest_update\` to sharpen a quest's title, description or objectives, and \`quest_objective_set\` to tick one.
 - A folio, filed under this epic, if the review produces a design note worth keeping (\`folio_create\` with \`epic_number\` {{epic.number}}). Pass \`directory_shortId\` too: browse the tree with \`directory_list\` from the root, and choose the directory that holds the epic's other folios, or else the deepest one its subject belongs to. Create a directory only when none fits. Never leave it at the root, and never file it in a trash directory.
 
