@@ -1,5 +1,6 @@
 import { type Infer, z } from "alepha";
 
+import { sigilNetworkSchema } from "../sigilNetwork.ts";
 import { sigilReportedConfig } from "./sigilReportedConfig.ts";
 
 /**
@@ -297,6 +298,16 @@ export const sigilForwarded = sigilEnvelope.extend({
    * See {@link sigilOsName}.
    */
   os: z.string().max(16).optional(),
+  /**
+   * The visitor's network: its autonomous system number and organisation
+   * name, when the platform the app runs on provides them (Cloudflare
+   * Workers does; Node does not, and then the field is absent).
+   *
+   * Stamped by the proxy beside `country`, from the same request. Carried
+   * and stored, nothing more: it is what lets automated traffic from
+   * hosting networks be seen before anything filters on it.
+   */
+  network: sigilNetworkSchema.optional(),
   /**
    * What this app is configured to collect, resolved.
    *

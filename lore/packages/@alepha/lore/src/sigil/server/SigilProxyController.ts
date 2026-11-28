@@ -14,6 +14,7 @@ import { sigilBrowserName } from "../shared/sigilBrowserName.ts";
 import { sigilClientAtom } from "../shared/sigilClientAtom.ts";
 import { sigilDeviceClass } from "../shared/sigilDeviceClass.ts";
 import { sigilHost } from "../shared/sigilHost.ts";
+import { sigilNetwork } from "../shared/sigilNetwork.ts";
 import { sigilNormalizeIp } from "../shared/sigilNormalizeIp.ts";
 import { sigilOsName } from "../shared/sigilOsName.ts";
 import { sigilTrafficKind } from "../shared/sigilTrafficKind.ts";
@@ -184,6 +185,12 @@ export class SigilProxyController {
       // own doctrine is that redundancy must not be made load-bearing.
       const auth = request.user?.id ? "user" : "anon";
 
+      // The visitor's network, when the platform names it (Cloudflare
+      // Workers puts it on the request; Node does not, and then it is
+      // absent). Read from the framework's `request.geo`, never from a
+      // header a client could send.
+      const network = sigilNetwork(request.geo?.network);
+
       // The kill-switches are applied by the sink provider. Filtering here too
       // would be a second place to keep in sync with the fetched config.
       //
@@ -217,6 +224,7 @@ export class SigilProxyController {
         browser,
         os,
         auth,
+        network,
         host: sigilHost(host),
       });
 

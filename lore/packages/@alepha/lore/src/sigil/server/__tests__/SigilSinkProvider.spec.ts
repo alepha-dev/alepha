@@ -633,6 +633,51 @@ describe("SigilSinkProvider — half-configured", () => {
         new Set(["alepha.dev", "www.alepha.dev"]),
       );
     });
+
+    it("keeps two visitors on two networks apart, each envelope carrying its own", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest(
+        { views: [{ path: "/a" }] },
+        { visitor: "alice", network: { number: 13335, name: "Cloudflare" } },
+      );
+      await sink.ingest(
+        { views: [{ path: "/b" }] },
+        { visitor: "alice", network: { number: 16509, name: "Amazon" } },
+      );
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      expect(sent).toHaveLength(2);
+      expect(sent.map((e) => e.network.number).sort((a, b) => a - b)).toEqual([
+        13335, 16509,
+      ]);
+    });
+
+    it("keeps two periods of one hash apart", async () => {
+      const alepha = withSink();
+      const sink = alepha.inject(SigilSinkProvider);
+      const http = alepha.inject(HttpClient) as RecordingHttpClient;
+      await alepha.start();
+
+      await sink.ingest(
+        { views: [{ path: "/a" }] },
+        { visitor: "alice", visitorPeriod: "2026-11" },
+      );
+      await sink.ingest(
+        { views: [{ path: "/b" }] },
+        { visitor: "alice", visitorPeriod: "2026-12" },
+      );
+      await sink.flush();
+
+      const sent = ingests(http).map((c) => JSON.parse(c.body));
+      expect(new Set(sent.map((e) => e.visitorPeriod))).toEqual(
+        new Set(["2026-11", "2026-12"]),
+      );
+    });
   });
 });
 

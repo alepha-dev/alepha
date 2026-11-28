@@ -28,6 +28,7 @@ export * from "./sigilFingerprint.ts";
 export * from "./sigilGlobMatch.ts";
 export * from "./sigilHost.ts";
 export * from "./sigilKey.ts";
+export * from "./sigilNetwork.ts";
 export * from "./sigilNormalizeIp.ts";
 export * from "./sigilMessages.ts";
 export * from "./sigilOsName.ts";
