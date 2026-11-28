@@ -53,27 +53,6 @@ const Home = () => {
       >
         <StatusBar />
       </div>
-
-      {/* Bounce animation for scroll button */}
-      <style>{`
-        @keyframes bounceDown {
-          0%, 20%, 50%, 80%, 100% {
-            transform: translateY(0);
-          }
-          40% {
-            transform: translateY(8px);
-          }
-          60% {
-            transform: translateY(4px);
-          }
-        }
-        .scroll-down-btn:hover {
-          color: var(--color-accent) !important;
-        }
-        .scroll-down-btn:hover svg {
-          color: var(--color-accent);
-        }
-      `}</style>
     </div>
   );
 };

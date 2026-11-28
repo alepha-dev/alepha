@@ -6,6 +6,7 @@ import { isHttpError, NotFoundError } from "alepha/server";
 
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
+import Ecosystem from "./components/Ecosystem.tsx";
 import Home from "./components/Home.tsx";
 import { DOCS_THEME_BOOT_SCRIPT } from "./components/layout/docsTheme.ts";
 import Layout from "./components/layout/Layout.tsx";
@@ -49,16 +50,16 @@ export class AppRouter {
   });
 
   head = $head(() => {
-    // This string is the one social unfurlers and search results show, so it
-    // is the tagline that has to agree with the README, the npm description
-    // and the repository description.
+    // This string is the one social unfurlers and search results show for
+    // the site, so it speaks for the three products; the framework's own
+    // wording, which has to agree with its npm description, is `/framework`'s.
     const ogTitle =
-      "Alepha | A full-stack TypeScript framework. One schema, everywhere.";
+      "Alepha | The framework, Lore and Bay: build, ship and run full-stack TypeScript.";
     const head: Head = {
       title: "Alepha",
       titleSeparator: " | ",
       description:
-        "Alepha is a full-stack TypeScript framework: a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. One schema, everywhere.",
+        "Alepha is three open-source products on one version: a full-stack TypeScript framework, Lore for planning and shipping with AI agents, and Bay, a self-hosted application server.",
       image: `${this.env.PUBLIC_URL}/og-image.png`,
       siteName: "Alepha",
       locale: "en_US",
@@ -122,6 +123,7 @@ export class AppRouter {
     component: Layout,
     children: () => [
       this.home,
+      this.framework,
       this.lore,
       this.bay,
       this.changelog,
@@ -159,14 +161,40 @@ export class AppRouter {
     }),
   });
 
+  /**
+   * The front page: the three products side by side (#Q4556).
+   */
   home = $page({
     path: "/",
-    component: Home,
+    component: Ecosystem,
     label: "Home",
     static: true,
     head: () => ({
-      title: "A full-stack TypeScript framework. One schema, everywhere.",
+      title: "The framework, Lore and Bay. One version.",
     }),
+  });
+
+  /**
+   * The framework's own page, the front page until the site opened on the
+   * three products. Its guides stay at `/docs/*`.
+   */
+  framework = $page({
+    path: "/framework",
+    component: Home,
+    label: "Framework",
+    static: true,
+    head: () => {
+      // The framework's tagline, the one its npm description carries.
+      const ogTitle =
+        "Alepha | A full-stack TypeScript framework. One schema, everywhere.";
+      return {
+        title: "A full-stack TypeScript framework. One schema, everywhere.",
+        description:
+          "Alepha is a full-stack TypeScript framework: a clean rewrite of server, ORM, auth, queues, and React SSR for Node, Bun, and Cloudflare. One schema, everywhere.",
+        og: { title: ogTitle },
+        twitter: { title: ogTitle },
+      };
+    },
   });
 
   changelog = $page({
