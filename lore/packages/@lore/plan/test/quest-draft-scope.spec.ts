@@ -220,7 +220,7 @@ describe("the draft scope, against the backlog gate's fixtures", () => {
       expect(titlesOf((await list(c, { status: "draft" })).content)).toEqual([
         "Parked Quest",
       ]);
-      // What `includeDrafts: true` returned, as the pickers now ask for it.
+      // Every status still in scope, drafts named: what the pickers ask for.
       expect(
         titlesOf(
           (await list(c, { status: QUEST_STATUSES_WITH_DRAFTS })).content,

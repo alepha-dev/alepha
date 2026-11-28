@@ -21,9 +21,9 @@ import { LorePlanMcp } from "../src/mcp/index.ts";
  * as undifferentiated noise. This guards that both tools carry
  * `{ number, title, status }` for the quest's epic.
  *
- * Since epic #31, `quest_list` hides a draft epic's quests by default,
- * like the UI does; the stamping is asserted through `includeDrafts: true`,
- * which is what brings them back. `quest_get` is direct addressing and
+ * A draft epic's quests are drafts (#E178), which `quest_list` leaves out by
+ * default like the UI does; the stamping is asserted through
+ * `status: "draft"`, which lists them. `quest_get` is direct addressing and
  * always resolves.
  */
 
@@ -91,13 +91,13 @@ describe("Lore MCP — quest_list / quest_get carry the quest's epic", () => {
   it("quest_list stamps a draft-epic quest with its epic and that epic's status", async () => {
     const { questTools, project, draftEpic, quest, call } = await setup();
 
-    // Hidden by default, present once asked for: the default is the UI's.
+    // Left out by default, listed once asked for: the default is the UI's.
     const gated = await call(questTools.quest_list, { project: project.id });
     expect(gated.quests.find((q: any) => q.id === quest.id)).toBeUndefined();
 
     const res = await call(questTools.quest_list, {
       project: project.id,
-      includeDrafts: true,
+      status: "draft",
     });
 
     const listed = res.quests.find((q: any) => q.id === quest.id);

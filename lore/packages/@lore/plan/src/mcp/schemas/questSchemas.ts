@@ -39,6 +39,8 @@ const AREA_DESCRIPTION =
   "NOT the same axis as `epic` (a bounded initiative that spans areas and ends) or `tags` (the nature of the work: bug, feat, chore) — a quest carries all three independently. " +
   "Call `project_context` first and REUSE an existing area with its exact casing: 'Auth' and 'auth' are distinct, and each new value silently registers a new area. " +
   "Only invent a name when the work genuinely lives in a part of the system none of the existing areas covers; prefer the project's own naming convention (an import path, where one exists).";
+const READY_AT_DESCRIPTION =
+  "When this quest last stopped being a draft: marked ready by hand (quest_ready), or released with its epic when the epic was marked ready. Absent for a quest that never left draft; it holds the last time only, so a quest drafted again keeps it.";
 const DESCRIPTION_DESCRIPTION =
   "Quest description in Markdown. Plain text also works. HTML is not supported and any tags will be stripped. " +
   DIAGRAM_CAPABILITY;
@@ -46,11 +48,9 @@ const DESCRIPTION_DESCRIPTION =
 /**
  * The epic a quest is filed under, carried on `quest_list` / `quest_get`
  * results. Includes the epic's own status (not just its identity) because
- * a `quest_list` called with `includeDrafts: true`, and `quest_get`
- * always, can hand back a draft epic's quest next to released ones, and
- * the status is what lets an agent tell them apart instead of reading a
- * flat, undifferentiated list. Absent when the quest is filed under no
- * epic.
+ * the status is the permission on the quest: it says why a `draft` quest
+ * is one, and who makes it ready (#E178). Absent when the quest is filed
+ * under no epic.
  */
 const questEpicRefSchema = z.object({
   number: z
@@ -60,7 +60,7 @@ const questEpicRefSchema = z.object({
     ),
   title: z.string().describe("Epic title."),
   status: epicStatusSchema.describe(
-    "Epic lifecycle status, and the permission on this quest. Under a `ready` or `in_progress` epic it can be accepted, assigned and completed, and accepting the first quest of a `ready` epic moves it to `in_progress`. Under a `draft` epic it is still being specified: readable but not workable, and quest_accept refuses. Under a `completed` epic it is a record, and the way forward is a new epic.",
+    "Epic lifecycle status, and the permission on this quest. Under a `ready` or `in_progress` epic it can be accepted, assigned and completed, and accepting the first quest of a `ready` epic moves it to `in_progress`. Under a `draft` epic it is still being specified: the quest reads `draft` unless somebody already took or finished it, quest_accept refuses, and it becomes `todo` when the epic is marked ready (the owner's call, with epic_set_status). Under a `completed` epic it is a record, and the way forward is a new epic.",
   ),
 });
 
@@ -71,7 +71,7 @@ const questEpicRefSchema = z.object({
 export const questListParamsSchema = projectParamsSchema.extend({
   status: questStatusSchema
     .describe(
-      'Filter by quest status. Omit to list everything still in scope — shelved quests are excluded unless you ask for them explicitly, and HELD quests are not: a held quest is blocked, not out of scope, and it is the one you may be able to unblock. `on_hold` is exclusive with `todo` and `in_progress`, so `status: "in_progress"` never returns a quest that is currently on hold.',
+      'Filter by quest status. Omit to list the quests that can be worked: drafts and shelved quests are left out unless you ask for them by name (`status: "draft"`, `status: "shelved"`), and HELD quests are not: a held quest is blocked, not out of scope, and it is the one you may be able to unblock. `draft` is a quest specified and not ready to be taken: a loose one marked so, or any quest of a `draft` epic nobody took. `on_hold` is exclusive with `todo` and `in_progress`, so `status: "in_progress"` never returns a quest that is currently on hold.',
     )
     .optional(),
   search: z.string().describe("Search quests by title").optional(),
@@ -84,25 +84,19 @@ export const questListParamsSchema = projectParamsSchema.extend({
   epic: z
     .integer()
     .describe(
-      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). An epic-filtered call is never gated: it returns that epic's quests whatever the epic's status, with no need for `includeDrafts`.",
+      "Filter to quests filed under a single epic, by its global id (the `id` field from epic_list / epic_get / epic_create, not the per-project `number`). An epic-filtered call returns that epic's drafts too, whatever the epic's status: it is how a draft epic's quests are read back.",
     )
     .optional(),
   epics: z
     .array(z.integer())
     .describe(
-      "Filter to quests filed under any of several epics, by global id as for `epic`. Ungated like `epic`. With `loose: true` the two OR together: those epics' quests, and the loose ones.",
+      "Filter to quests filed under any of several epics, by global id as for `epic`, their drafts included like `epic`. With `loose: true` the two OR together: those epics' quests, and the loose ones.",
     )
     .optional(),
   loose: z
     .boolean()
     .describe(
-      "Only the quests filed under NO epic: the loose ones. This is the list to read when the task is the work that belongs to no epic, rather than filtering rows by a missing `epic` field.",
-    )
-    .optional(),
-  includeDrafts: z
-    .boolean()
-    .describe(
-      "Also return quests filed under `draft` epics. Defaults to false, so this list matches what a member sees in Lore's own backlog: a draft epic's quests are specified but not released, and are hidden here as they are there. Pass true to see everything, or pass `epic:` to read one draft epic's quests directly. A backlog-organisation switch, not a permission: every caller has already passed the membership gate.",
+      'Only the quests filed under NO epic: the loose ones. This is the list to read when the task is the work that belongs to no epic, rather than filtering rows by a missing `epic` field. Loose drafts stay out of it like any default: add `status: "draft"` to read them.',
     )
     .optional(),
   limit: z
@@ -200,6 +194,7 @@ export const questListResultSchema = z.object({
           "When this quest was put on hold. Present exactly when `status` is `on_hold`; the reason is a comment on the quest, so read the discussion with `quest_get` to find out what it is waiting for.",
         )
         .optional(),
+      readyAt: z.datetime().describe(READY_AT_DESCRIPTION).optional(),
       epic: questEpicRefSchema
         .describe(
           "The epic this quest is filed under, if any. Includes the epic's own status so a quest under a `draft` epic reads as parked rather than as unlabeled noise in this list.",
@@ -393,6 +388,7 @@ export const questGetResultSchema = z.object({
   completedAt: z.datetime().optional(),
   shelvedAt: z.datetime().optional(),
   heldAt: z.datetime().optional(),
+  readyAt: z.datetime().describe(READY_AT_DESCRIPTION).optional(),
   dueAt: z.datetime().optional(),
   completionMessage: z.string().optional(),
   completionMessageUpdatedAt: z.datetime().optional(),
@@ -505,7 +501,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   epic_number: z
     .integer()
     .describe(
-      "Per-project number of an epic to file this quest under (see epic_list / epic_create). The epic must be `draft` or `ready`: an in-progress epic's plan is frozen and a completed one is a record, and either refuses the whole call, so no quest is created. Filing into a `draft` epic keeps the quest out of the human-facing backlog/kanban/reports until the epic is marked ready, and out of `quest_list`'s default view too: read it back with `quest_list`'s `epic:` filter or `includeDrafts: true`. With `accept: true`, the accept is refused while the epic is a draft and the reason lands in `acceptNote`; into a `ready` epic, that accept starts the epic and freezes its quest set. Member-gated, like every other epic mutation.",
+      'Per-project number of an epic to file this quest under (see epic_list / epic_create). The epic must be `draft` or `ready`: an in-progress epic\'s plan is frozen and a completed one is a record, and either refuses the whole call, so no quest is created. Filed into a `draft` epic, the quest is a draft (`status: "draft"`) until the epic is marked ready, so `quest_list`\'s default leaves it out: read it back with `quest_list`\'s `epic:` filter or `status: "draft"`. With `accept: true`, the accept is refused while the epic is a draft and the reason lands in `acceptNote`; into a `ready` epic, that accept starts the epic and freezes its quest set. Member-gated, like every other epic mutation.',
     )
     .optional(),
   release_tag: z
@@ -517,7 +513,7 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
   draft: z
     .boolean()
     .describe(
-      "Create the quest as a draft: specified, not ready to be taken, until somebody marks it ready. Defaults to false: a quest is born to do. Refused with `accept: true`, and with an `epic_number` naming an epic that is not a draft, before anything is written; filed into a draft epic, the quest is a draft whatever this says.",
+      'Create the quest as a draft (`status: "draft"`): specified, not ready to be taken, until somebody marks it ready with quest_ready. Pass it for work you found and do not intend to take now, so nobody accepts it as ready; leave it off for work that can be picked up. Defaults to false: a quest is born to do. Refused with `accept: true`, and with an `epic_number` naming an epic that is not a draft, before anything is written; filed into a draft epic, the quest is a draft whatever this says.',
     )
     .optional(),
   accept: z
@@ -533,6 +529,9 @@ export const questCreateResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   createdAt: z.datetime(),
+  status: questStatusSchema.describe(
+    "The quest's status once the call is done, after the epic filing and the accept: `draft` when it was created as one or filed into a `draft` epic, `in_progress` when the accept landed, `todo` otherwise.",
+  ),
   // Present (and `accept: true` was requested) when the accept landed —
   // the quest is in the 'in_progress' lane, assigned to the caller.
   acceptedAt: z.datetime().optional(),
@@ -572,6 +571,29 @@ export const questShelveResultSchema = z.object({
 export const questUnshelveParamsSchema = entityRefSchema;
 
 export const questUnshelveResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  status: questStatusSchema,
+});
+
+// -----------------------------------------------------------------------------
+// quest_ready / quest_draft
+// -----------------------------------------------------------------------------
+
+export const questReadyParamsSchema = entityRefSchema;
+
+export const questReadyResultSchema = z.object({
+  id: z.integer(),
+  shortId: z.integer(),
+  title: z.string(),
+  status: questStatusSchema,
+  readyAt: z.datetime().describe(READY_AT_DESCRIPTION).optional(),
+});
+
+export const questDraftParamsSchema = entityRefSchema;
+
+export const questDraftResultSchema = z.object({
   id: z.integer(),
   shortId: z.integer(),
   title: z.string(),
@@ -796,6 +818,9 @@ export const questUpdateResultSchema = z.object({
   shortId: z.integer(),
   title: z.string(),
   updatedAt: z.datetime(),
+  status: questStatusSchema.describe(
+    "The status the quest is in after the update. Moving it with `epic_number` can change it: into a `draft` epic a to-do quest becomes `draft`, into a `ready` or `in_progress` one a draft becomes `todo`, and out of a draft epic a draft stays one, now loose (a held one excepted).",
+  ),
   ...diagramWarningsShape,
 });
 
