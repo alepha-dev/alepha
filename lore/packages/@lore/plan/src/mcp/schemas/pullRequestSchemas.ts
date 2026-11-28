@@ -33,6 +33,20 @@ export const pullRequestRefSchema = z.object({
   repo: z.string().optional(),
   title: z.string().optional(),
   at: z.datetime().describe("When it was recorded, not when it was opened."),
+  state: z
+    .enum(["open", "draft", "merged", "closed"])
+    .describe(
+      "Its state on GitHub, for a project connected to GitHub (#Q4367); absent otherwise.",
+    )
+    .optional(),
+  checks: z
+    .enum(["none", "pending", "passing", "failing"])
+    .describe("Its checks on the head commit, rolled up.")
+    .optional(),
+  review: z
+    .enum(["none", "requested", "approved", "changes_requested"])
+    .optional(),
+  queued: z.boolean().describe("In GitHub's merge queue.").optional(),
 });
 
 /**
@@ -63,11 +77,29 @@ export const pullRequestRefsOf = (
         at: string;
       }>
     | undefined,
+  states: ReadonlyArray<{
+    url: string;
+    state: "open" | "draft" | "merged" | "closed";
+    checks: "none" | "pending" | "passing" | "failing";
+    review: "none" | "requested" | "approved" | "changes_requested";
+    queued?: boolean;
+  }> = [],
 ) =>
-  (trail ?? []).map((pr) => ({
-    url: pr.url,
-    number: pr.number,
-    repo: pr.repo,
-    title: pr.title,
-    at: pr.at,
-  }));
+  (trail ?? []).map((pr) => {
+    const state = states.find((it) => it.url === pr.url);
+    return {
+      url: pr.url,
+      number: pr.number,
+      repo: pr.repo,
+      title: pr.title,
+      at: pr.at,
+      ...(state
+        ? {
+            state: state.state,
+            checks: state.checks,
+            review: state.review,
+            ...(state.queued ? { queued: true } : {}),
+          }
+        : {}),
+    };
+  });

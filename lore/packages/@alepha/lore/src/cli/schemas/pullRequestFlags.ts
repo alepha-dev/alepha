@@ -59,7 +59,16 @@ export const pullRequestLineOf = (pr: {
   url: string;
   number?: number;
   title?: string;
+  state?: string;
+  checks?: string;
 }): string =>
-  [pr.number ? `#${pr.number}` : undefined, pr.title, pr.url]
+  [
+    pr.number ? `#${pr.number}` : undefined,
+    pr.state
+      ? `[${pr.state}${pr.checks && pr.checks !== "none" ? `, checks ${pr.checks}` : ""}]`
+      : undefined,
+    pr.title,
+    pr.url,
+  ]
     .filter(Boolean)
     .join("  ");

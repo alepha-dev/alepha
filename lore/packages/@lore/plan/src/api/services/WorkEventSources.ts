@@ -111,12 +111,16 @@ export class WorkEventSources {
     pullRequests: NonNullable<Quest["pullRequests"]>,
     url: string,
     actorId?: string,
+    options: { silent?: boolean } = {},
   ): Promise<Quest | Epic> {
     const { row } = target;
     const already = (row.pullRequests ?? []).some((it) => it.url === url);
     const seen = already || (await this.recorded(row.projectId, url));
     const number = Number(/\/pull\/(\d+)/.exec(url)?.[1] ?? 0);
-    if (seen || !number) {
+    // A backfill at connect attaches with no event (the epic review's answer
+    // to item 26 of #E177): history must not start review-pr on every pull
+    // request a project ever had.
+    if (seen || !number || options.silent) {
       return target.kind === "quest"
         ? this.quests.updateById(row.id, { pullRequests })
         : this.epics.updateById(row.id, { pullRequests });

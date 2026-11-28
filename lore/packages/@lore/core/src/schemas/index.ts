@@ -170,6 +170,17 @@ export {
   type GitHubState,
 } from "../api/entities/githubStates.ts";
 export {
+  pullRequests,
+  type PullRequestRow,
+  PULL_REQUEST_STATES,
+  PULL_REQUEST_CHECKS,
+  PULL_REQUEST_REVIEWS,
+} from "../api/entities/pullRequests.ts";
+export {
+  pullRequestStateSchema,
+  type PullRequestState,
+} from "../api/schemas/pullRequestStateSchema.ts";
+export {
   githubDeliveries,
   type GitHubDelivery,
   GITHUB_DELIVERY_STATUSES,

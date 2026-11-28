@@ -1,3 +1,4 @@
+import type { PullRequestController } from "@lore/core/api";
 import type { EpicController, EpicReviewController } from "@lore/plan/api";
 import { $inject, z } from "alepha";
 import { $command, UsageError } from "alepha/command";
@@ -54,6 +55,9 @@ export class EpicCommand {
    * below it sees `undefined`.
    */
   protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly pullRequestApi = $client<PullRequestController>(
+    this.client.scope(),
+  );
   protected readonly reviewApi = $client<EpicReviewController>(
     this.client.scope(),
   );
@@ -124,9 +128,13 @@ export class EpicCommand {
         // `reviews` is what `epic_get` turns into `review` (#E121): the open
         // questions and the decision log.
         const { reviews } = epic;
+        const pullRequests = await this.withStates(
+          projectId,
+          epic.pullRequests ?? [],
+        );
 
         if (flags.output === "json") {
-          this.render.json(print, epic);
+          this.render.json(print, { ...epic, pullRequests });
           return;
         }
 
@@ -183,11 +191,11 @@ export class EpicCommand {
                   },
                 ]
               : []),
-            ...(epic.pullRequests?.length
+            ...(pullRequests.length
               ? [
                   {
                     title: "Pull requests",
-                    lines: epic.pullRequests.map(pullRequestLineOf),
+                    lines: pullRequests.map(pullRequestLineOf),
                   },
                 ]
               : []),
@@ -738,5 +746,34 @@ export class EpicCommand {
       );
     }
     return parsed;
+  }
+
+  /**
+   * The records with GitHub's state beside them, for a project connected to
+   * GitHub (#Q4367); as they were otherwise.
+   */
+  protected async withStates<T extends { url: string }>(
+    projectId: number,
+    records: T[],
+  ): Promise<Array<T & { state?: string; checks?: string; review?: string }>> {
+    if (records.length === 0) return records;
+    const states = await this.pullRequestApi
+      .getPullRequestStates({
+        params: { projectId },
+        body: { urls: records.slice(0, 50).map((pr) => pr.url) },
+      })
+      .then((answer) => answer.items)
+      .catch(() => []);
+    return records.map((pr) => {
+      const state = states.find((it) => it.url === pr.url);
+      return state
+        ? {
+            ...pr,
+            state: state.state,
+            checks: state.checks,
+            review: state.review,
+          }
+        : pr;
+    });
   }
 }

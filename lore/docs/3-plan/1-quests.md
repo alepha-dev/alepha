@@ -238,7 +238,8 @@ than a search through the git log. They show in the quest's side rail, as links
 once the project's **Repository** is set in **Settings ▸ General**.
 
 Commits are recorded from the command line or by an agent, one by one or as the
-quest is completed. A commit already recorded is not added twice, and one can
+quest is completed. In a project connected to GitHub, a push to the default
+branch records the commits that name the quest by itself. A commit already recorded is not added twice, and one can
 still be added to a completed quest, since the final sha is often known only
 after the merge.
 
@@ -252,8 +253,12 @@ can still be added to a completed quest.
 A quest in an epic usually has none of its own: an epic lands as one pull
 request, recorded once on the epic, and each of its quests shows it in its rail,
 marked **From the epic**. A quest that records its own shows that one instead.
-Lore does not read a pull request's state from your forge: what is recorded is
-what was written, like a commit.
+In a project connected to GitHub, a pull request whose title, description or
+branch names the quest (`#Q12`, or a `lore/q12` branch) is recorded by itself; a
+bare `#12` names nothing. Each pull request of the connected repository then
+shows its state beside its number: **Open**, **Draft**, **In merge queue**,
+**Merged** or **Closed**, and a dot for its checks, kept up to date while one is
+open.
 
 ```bash
 lore quest pull-request add 12 --url https://github.com/acme/crm/pull/118 --pr-number 118

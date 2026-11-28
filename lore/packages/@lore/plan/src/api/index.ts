@@ -44,6 +44,7 @@ import { HeldQuestsMetric } from "./services/HeldQuestsMetric.ts";
 import { OpenQuestScope } from "./services/OpenQuestScope.ts";
 import { PlanCommentSubjects } from "./services/PlanCommentSubjects.ts";
 import { PlanCommitReferences } from "./services/PlanCommitReferences.ts";
+import { PlanGitHubTrail } from "./services/PlanGitHubTrail.ts";
 import { PlanLiveQuestCommits } from "./services/PlanLiveQuestCommits.ts";
 import { PlanLiveQuests } from "./services/PlanLiveQuests.ts";
 import { PlanOutsideText } from "./services/PlanOutsideText.ts";
@@ -116,6 +117,9 @@ export const LorePlanApi = $module({
     FeedbackAgentService,
     // The built-in prompts and their epic, quest and feedback args (#E174).
     PlanPrompts,
+    // Pull requests and commits naming a quest attach themselves, from
+    // GitHub's deliveries (#Q4367); nothing injects it.
+    PlanGitHubTrail,
     // Registers Plan's subjects on core's `comments` (#E185); nothing
     // injects it.
     PlanCommentSubjects,

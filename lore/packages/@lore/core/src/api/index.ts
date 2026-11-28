@@ -45,6 +45,7 @@ import { ProjectMergeController } from "./controllers/ProjectMergeController.ts"
 import { ProjectRankController } from "./controllers/ProjectRankController.ts";
 import { ProjectReportController } from "./controllers/ProjectReportController.ts";
 import { ProjectThresholdController } from "./controllers/ProjectThresholdController.ts";
+import { PullRequestController } from "./controllers/PullRequestController.ts";
 import { QualityController } from "./controllers/QualityController.ts";
 import { QualityReportsController } from "./controllers/QualityReportsController.ts";
 import { ReportsSummaryController } from "./controllers/ReportsSummaryController.ts";
@@ -158,6 +159,7 @@ import { ProjectRoster } from "./services/ProjectRoster.ts";
 import { ProjectSecurityService } from "./services/ProjectSecurityService.ts";
 import { ProjectThresholds } from "./services/ProjectThresholds.ts";
 import { PromptRegistry } from "./services/PromptRegistry.ts";
+import { PullRequestStateService } from "./services/PullRequestStateService.ts";
 import { QualityNumericMetrics } from "./services/QualityNumericMetrics.ts";
 import { QualityProjectEvents } from "./services/QualityProjectEvents.ts";
 import { QualityProjectMerge } from "./services/QualityProjectMerge.ts";
@@ -421,6 +423,10 @@ export const LoreCoreApi = $module({
     GitHubDeliveryService,
     GitHubDeliveryJobs,
     CoreGitHubHandlers,
+    // Pull requests' state from GitHub (#Q4367): rows, the checks rollup,
+    // the listeners Plan fills, and the read beside a quest's records.
+    PullRequestStateService,
+    PullRequestController,
     // Job keys (#Q3995): the credential a host job holds, its pins checked on
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
@@ -578,6 +584,13 @@ export { AdminMcpController } from "./controllers/AdminMcpController.ts";
 export { GitHubWebhookController } from "./controllers/GitHubWebhookController.ts";
 export { ProjectGitHubController } from "./controllers/ProjectGitHubController.ts";
 export { ProjectRepositoryService } from "./services/ProjectRepositoryService.ts";
+export { PullRequestController } from "./controllers/PullRequestController.ts";
+export {
+  PullRequestStateService,
+  type PullRequestChange,
+  type PushChange,
+  type WorkflowRunChange,
+} from "./services/PullRequestStateService.ts";
 export {
   GitHubAppService,
   type GitHubAppCredentials,

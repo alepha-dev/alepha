@@ -1,5 +1,6 @@
 import { $inject, Alepha } from "alepha";
 import { users } from "alepha/api/users";
+import { BackgroundTaskProvider } from "alepha/background";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
 import { $repository } from "alepha/orm";
@@ -22,6 +23,7 @@ import type { GitHubConnectCallbackBody } from "../schemas/githubConnectCallback
 import type { GitHubConnectCallbackResult } from "../schemas/githubConnectCallbackResultSchema.ts";
 import type { ProjectGitHubConnection } from "../schemas/projectGitHubConnectionSchema.ts";
 import type { ProjectGitHubStatus } from "../schemas/projectGitHubStatusSchema.ts";
+import { BestEffort } from "./BestEffort.ts";
 import { GitHubAppService } from "./GitHubAppService.ts";
 import { GitHubClient, type GitHubRepository } from "./GitHubClient.ts";
 import { GitHubStateService } from "./GitHubStateService.ts";
@@ -76,6 +78,19 @@ export class ProjectRepositoryService {
   protected readonly security = $inject(ProjectSecurityService);
   protected readonly audits = $inject(LoreAudits);
   protected readonly dateTime = $inject(DateTimeProvider);
+  protected readonly background = $inject(BackgroundTaskProvider);
+  protected readonly bestEffort = $inject(BestEffort);
+
+  protected readonly connectedListeners: Array<
+    (row: ProjectRepository) => Promise<unknown>
+  > = [];
+
+  /**
+   * Runs after every connect, in the background (#Q4367's backfill).
+   */
+  onConnected(listener: (row: ProjectRepository) => Promise<unknown>): void {
+    this.connectedListeners.push(listener);
+  }
 
   async status(projectId: number): Promise<ProjectGitHubStatus> {
     const available = (await this.apps.credentials()) !== undefined;
@@ -94,6 +109,14 @@ export class ProjectRepositoryService {
   ): Promise<ProjectRepository | undefined> {
     const row = await this.rowOf(projectId);
     return row && !row.disconnectedAt ? row : undefined;
+  }
+
+  /**
+   * The project's row, connected or not: a record made while it was
+   * connected still reads its state after a disconnect.
+   */
+  async latestOf(projectId: number): Promise<ProjectRepository | undefined> {
+    return await this.rowOf(projectId);
   }
 
   /**
@@ -441,6 +464,14 @@ export class ProjectRepositoryService {
     await this.projects.updateById(input.projectId, {
       repositoryUrl: `https://github.com/${repository.fullName}`,
     });
+    // What follows a connect (the backfill of #Q4367), after the answer and
+    // best effort: a listener registers, since the state service reads
+    // connections through this one.
+    for (const listener of this.connectedListeners) {
+      this.background.defer(async () => {
+        await this.bestEffort.run("github connected", () => listener(row));
+      });
+    }
     await this.audits.github.logSuccess("connect", {
       ...this.audits.actor(input.user),
       ...this.audits.scope(input.projectId),
