@@ -120,7 +120,8 @@ test.describe("Reports", () => {
     // The stacked area drew: a chart that throws takes the page with it, and
     // one that silently renders nothing has no surface.
     // Counted rather than `toBeVisible`: an empty band is a zero-height path.
-    await expect(page.locator(".recharts-area-area")).toHaveCount(4);
+    // Five states: done, on hold, in progress, to do and draft (#Q4377).
+    await expect(page.locator(".recharts-area-area")).toHaveCount(5);
   });
 
   /**

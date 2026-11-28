@@ -49,6 +49,11 @@ const ReportsBacklog = (props: ReportsBacklogProps) => {
             value: backlog.open,
           },
           {
+            label: tr("reports.backlog.kpi.drafts"),
+            definition: tr("reports.backlog.kpi.drafts.definition"),
+            value: backlog.drafts,
+          },
+          {
             label: tr("reports.backlog.kpi.overdue"),
             definition: tr("reports.backlog.kpi.overdue.definition"),
             value: backlog.overdue.length,

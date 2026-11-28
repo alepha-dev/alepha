@@ -1657,7 +1657,7 @@ export default {
     "Temps médian entre acceptation et fin, attente exclue.",
   "reports.flow.kpi.lead": "Délai médian",
   "reports.flow.kpi.lead.definition":
-    "Temps médian entre création et fin. L’attente est incluse : c’est ce qu’a attendu le demandeur.",
+    "Temps médian depuis que la quête est prête jusqu’à sa fin : depuis sa sortie du brouillon, ou depuis sa création si elle n’en a jamais été un. L’attente est incluse : c’est ce qu’a attendu le demandeur.",
   "reports.flow.kpi.net": "Croissance nette du backlog",
   "reports.flow.kpi.net.definition":
     "Quêtes créées moins quêtes terminées sur la période.",
@@ -1674,7 +1674,8 @@ export default {
     "Quêtes créées et terminées par intervalle, avec la médiane des quatre derniers points. La croissance nette est créées moins terminées.",
   "reports.flow.cumulative.title": "Flux cumulé",
   "reports.flow.cumulative.definition":
-    "Quêtes dans chaque état à la fin de chaque intervalle. Le passé est reconstruit depuis les horodatages et l’historique ; les relevés nocturnes sont exacts depuis leur début.",
+    "Quêtes dans chaque état à la fin de chaque intervalle. Le passé est reconstruit depuis les horodatages et l’historique ; les relevés nocturnes sont exacts depuis leur début, et ceux d’avant le décompte des brouillons n’en montrent aucun.",
+  "reports.flow.state.draft": "Brouillon",
   "reports.flow.state.todo": "À faire",
   "reports.flow.state.inProgress": "En cours",
   "reports.flow.state.onHold": "En attente",
@@ -1690,7 +1691,7 @@ export default {
     "Quêtes terminées sur la période, par temps entre acceptation et fin.",
   "reports.flow.leadHistogram.title": "Distribution du délai",
   "reports.flow.leadHistogram.definition":
-    "Quêtes terminées sur la période, par temps entre création et fin.",
+    "Quêtes terminées sur la période, par temps depuis que la quête est prête jusqu’à sa fin : depuis sa sortie du brouillon, ou depuis sa création si elle n’en a jamais été un.",
   "reports.flow.bucket.under1h": "< 1 h",
   "reports.flow.bucket.under4h": "< 4 h",
   "reports.flow.bucket.under1d": "< 1 j",
@@ -1739,7 +1740,10 @@ export default {
   "reports.backlog.days": "$1 j",
   "reports.backlog.kpi.open": "Quêtes ouvertes",
   "reports.backlog.kpi.open.definition":
-    "Quêtes non terminées, en attente comprises, hors quêtes mises de côté et quêtes des épopées en brouillon.",
+    "Quêtes non terminées, en attente comprises, hors quêtes mises de côté et brouillons.",
+  "reports.backlog.kpi.drafts": "Brouillons",
+  "reports.backlog.kpi.drafts.definition":
+    "Quêtes pas encore prêtes à être prises, comptées à part : elles ne sont dans aucun des chiffres des quêtes ouvertes.",
   "reports.backlog.kpi.overdue": "En retard",
   "reports.backlog.kpi.overdue.definition":
     "Quêtes ouvertes dont l’échéance est passée.",

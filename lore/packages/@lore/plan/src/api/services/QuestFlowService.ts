@@ -93,6 +93,8 @@ export class QuestFlowService {
             inProgress: row.inProgress,
             onHold: row.onHold,
             done: row.done,
+            // Absent on a row written before drafts were counted (#Q4377).
+            draft: row.draft ?? 0,
             exact: true,
           }
         : { date, ...this.empty(), ...rebuilt.get(date), exact: false };
@@ -165,9 +167,16 @@ export class QuestFlowService {
    * The rows of `day`, replacing any already there: a retried job writes the
    * same night twice, and D1 has no transaction to make that one write.
    *
-   * ⚠️ The project and area rows leave drafts out, as every report does; an
-   * epic's rows do not, since a draft epic's burn-up starts before it opens.
-   * Whether a quest is a draft is read as it stands when the snapshot runs.
+   * Every row counts drafts in `draft` (#Q4377), the project and area rows
+   * included: a draft is its own band, never inside To do. Before, the
+   * project and area rows left drafts out and an epic's rows counted its
+   * draft quests in `todo`; those past rows are not rewritten, so a draft
+   * epic's `todo` drops into `draft` on the night this shipped. A held
+   * quest of a draft epic, which carries `draftAt` too, reads on hold, as
+   * its status does.
+   *
+   * ⚠️ A completed quest is never a draft (`stateAt` reads it done first),
+   * so finished work always counts where it was.
    */
   async snapshot(projectId: number, day: string): Promise<number> {
     const rows = await this.rows({
@@ -191,11 +200,8 @@ export class QuestFlowService {
       if (!state) {
         continue;
       }
-      // A completed quest is never a draft, so finished work always counts.
-      if (!row.draftAt) {
-        add("project", "", state);
-        add("area", row.area, state);
-      }
+      add("project", "", state);
+      add("area", row.area, state);
       if (row.epicId !== undefined) {
         add("epic", String(row.epicId), state);
       }
@@ -244,17 +250,20 @@ export class QuestFlowService {
   }
 
   /**
-   * The report's scope, with shelved quests put back: one shelved today sat
-   * in a state before that, and `stateAt` is what leaves it out.
+   * The report's scope, with shelved quests and drafts put back: one shelved
+   * today sat in a state before that, and `stateAt` is what leaves it out;
+   * a draft is a band of the flow (#Q4377), where every other report leaves
+   * it out.
    */
   protected async flowScope(
     projectId: number,
     query: ReportsQuery,
   ): Promise<PgQueryWhere<typeof quests.schema>> {
-    const { shelvedAt: _shelved, ...scope } = await this.reports.scopeOf(
-      projectId,
-      query,
-    );
+    const {
+      shelvedAt: _shelved,
+      draftAt: _draft,
+      ...scope
+    } = await this.reports.scopeOf(projectId, query);
     return scope;
   }
 
@@ -274,6 +283,7 @@ export class QuestFlowService {
           "heldAt",
           "shelvedAt",
           "draftAt",
+          "readyAt",
           "epicId",
           "releaseId",
           "area",
@@ -312,6 +322,6 @@ export class QuestFlowService {
   }
 
   protected empty(): QuestFlowCounts {
-    return { todo: 0, inProgress: 0, onHold: 0, done: 0 };
+    return { draft: 0, todo: 0, inProgress: 0, onHold: 0, done: 0 };
   }
 }

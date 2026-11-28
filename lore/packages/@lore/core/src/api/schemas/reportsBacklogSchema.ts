@@ -18,7 +18,15 @@ const composition = z.array(
  * The Reports Backlog tab (#Q3002): the open work as it stands.
  */
 export const reportsBacklogSchema = z.object({
+  /**
+   * Quests not completed, drafts left out.
+   */
   open: z.integer(),
+  /**
+   * Drafts in the same scope, counted apart: specified and not ready, so in
+   * none of the open figures below.
+   */
+  drafts: z.integer(),
   /**
    * Every value of each axis, biggest first, stacked by state. A quest counts
    * once per tag it holds, so the tag rows overlap.

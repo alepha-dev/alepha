@@ -1,0 +1,37 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "12c8f767-2226-4073-8f77-a784ceb9a7f1",
+  "prevIds": ["ddcf3649-6fbb-4de1-b59c-e9120bf879cf"],
+  "footprints": [
+    {
+      "statementType": "add_column",
+      "statementTarget": ["column", "public", "quest_flow_daily", "draft"],
+      "writes": [
+        "s|col|public.quest_flow_daily.draft",
+        "n|col|public.quest_flow_daily.draft",
+        "e|col|public.quest_flow_daily.draft"
+      ],
+      "reads": ["n|tbl|public.quest_flow_daily", "n|sch|public"]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "quest_flow_daily",
+        "name": "draft",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    }
+  ]
+}

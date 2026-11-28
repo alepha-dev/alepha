@@ -3,14 +3,20 @@ import { DateTimeProvider } from "alepha/datetime";
 
 import type { Quest } from "../entities/quests.ts";
 
-export type QuestFlowState = "todo" | "inProgress" | "onHold" | "done";
+export type QuestFlowState =
+  | "draft"
+  | "todo"
+  | "inProgress"
+  | "onHold"
+  | "done";
 
 export type QuestFlowRow = Pick<
   Quest,
   "createdAt" | "acceptedAt" | "completedAt" | "heldAt" | "shelvedAt"
-> & {
-  history?: Pick<Quest["history"][number], "at" | "action" | "column">[];
-};
+> &
+  Partial<Pick<Quest, "draftAt" | "readyAt">> & {
+    history?: Pick<Quest["history"][number], "at" | "action" | "column">[];
+  };
 
 /**
  * A quest's state on any past day, rebuilt from its timestamps and `history`
@@ -31,6 +37,15 @@ export type QuestFlowRow = Pick<
  *   `history.changes`, so membership on a past day is not rebuilt here.
  * - **Priority, area and tags on a past day are today's**: a filter reads the
  *   quest as it is now.
+ * - **A quest drafted twice lost its first release** (#Q4377). `readyAt`
+ *   holds the last one, so a quest released, drafted again and released
+ *   again reads as a draft from its creation to its last release, and its
+ *   lead time starts there. While it is a draft the second time, `draftAt`
+ *   says since when, and its first draft still ends at `readyAt`.
+ * - **When a released quest became a draft is not stored**: it reads as a
+ *   draft from its creation to `readyAt`, which is exact for a quest born
+ *   draft or backfilled under a draft epic (`draftAt = createdAt`), and too
+ *   early for a to-do quest drafted later.
  */
 export class QuestFlowHistory {
   protected readonly dt = $inject(DateTimeProvider);
@@ -45,6 +60,11 @@ export class QuestFlowHistory {
   /**
    * The quest's state at `at`, or nothing when it was not on the board: not
    * created yet, or shelved, which leaves every count.
+   *
+   * The precedence of `QuestResourceMapper.questStatus`: done, shelved, on
+   * hold, in progress, then draft, then to do. A draft is a quest whose
+   * `draftAt` was set by then, or whose `readyAt`, the end of its draft, was
+   * still to come.
    */
   stateAt(quest: QuestFlowRow, at: number): QuestFlowState | undefined {
     if (this.dt.of(quest.createdAt).valueOf() > at) {
@@ -61,6 +81,12 @@ export class QuestFlowHistory {
     }
     if (this.within(quest, "assigned", "unassigned", quest.acceptedAt, at)) {
       return "inProgress";
+    }
+    if (
+      (quest.draftAt && this.dt.of(quest.draftAt).valueOf() <= at) ||
+      (quest.readyAt && this.dt.of(quest.readyAt).valueOf() > at)
+    ) {
+      return "draft";
     }
     return "todo";
   }

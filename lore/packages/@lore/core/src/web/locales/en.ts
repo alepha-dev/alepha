@@ -1668,7 +1668,7 @@ export default {
     "Median time from accepted to completed, hold time excluded.",
   "reports.flow.kpi.lead": "Median lead time",
   "reports.flow.kpi.lead.definition":
-    "Median time from created to completed. Hold time is included: it is what the requester waited.",
+    "Median time since ready to completed: since the quest left draft, or since it was created if it never was one. Hold time is included: it is what the requester waited.",
   "reports.flow.kpi.net": "Net backlog growth",
   "reports.flow.kpi.net.definition":
     "Quests created minus quests completed over the period.",
@@ -1685,7 +1685,8 @@ export default {
     "Quests created and completed per grain, with the median of the last four points. Net growth is created minus completed.",
   "reports.flow.cumulative.title": "Cumulative flow",
   "reports.flow.cumulative.definition":
-    "Quests in each state at the end of each grain. Past days are rebuilt from timestamps and history; nightly snapshots are exact from when they started.",
+    "Quests in each state at the end of each grain. Past days are rebuilt from timestamps and history; nightly snapshots are exact from when they started, and those taken before drafts were counted show no draft.",
+  "reports.flow.state.draft": "Draft",
   "reports.flow.state.todo": "To do",
   "reports.flow.state.inProgress": "In progress",
   "reports.flow.state.onHold": "On hold",
@@ -1701,7 +1702,7 @@ export default {
     "Quests completed in the period, by time from accepted to completed.",
   "reports.flow.leadHistogram.title": "Lead time distribution",
   "reports.flow.leadHistogram.definition":
-    "Quests completed in the period, by time from created to completed.",
+    "Quests completed in the period, by time since ready to completed: since the quest left draft, or since it was created if it never was one.",
   "reports.flow.bucket.under1h": "< 1h",
   "reports.flow.bucket.under4h": "< 4h",
   "reports.flow.bucket.under1d": "< 1d",
@@ -1750,7 +1751,10 @@ export default {
   "reports.backlog.days": "$1 d",
   "reports.backlog.kpi.open": "Open quests",
   "reports.backlog.kpi.open.definition":
-    "Quests not completed, held ones included. Shelved quests and quests of draft epics are left out.",
+    "Quests not completed, held ones included. Shelved quests and drafts are left out.",
+  "reports.backlog.kpi.drafts": "Drafts",
+  "reports.backlog.kpi.drafts.definition":
+    "Quests not ready to be taken yet, counted apart: they are in none of the open figures.",
   "reports.backlog.kpi.overdue": "Overdue",
   "reports.backlog.kpi.overdue.definition": "Open quests past their due date.",
   "reports.backlog.kpi.shelved": "Shelved rate",

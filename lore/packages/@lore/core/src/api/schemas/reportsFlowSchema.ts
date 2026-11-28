@@ -41,11 +41,13 @@ export const reportsFlowSchema = z.object({
   ),
   /**
    * Quests in each state, at the end of each grain. `exact` says the point is
-   * a nightly snapshot rather than a reconstruction.
+   * a nightly snapshot rather than a reconstruction. `draft` is 0 on a
+   * snapshot taken before drafts were counted.
    */
   cumulative: z.array(
     z.object({
       date: z.string(),
+      draft: z.integer(),
       todo: z.integer(),
       inProgress: z.integer(),
       onHold: z.integer(),
