@@ -33,4 +33,16 @@ export abstract class EventLogProvider {
     log: AnalyticsEventLog,
     query: EventLogQuery,
   ): Promise<EventLogResult>;
+
+  /**
+   * Deletes at most `limit` rows whose `at` is before `before`, oldest
+   * first, and answers how many it deleted. The hourly sweep calls it with
+   * a cap and resumes on the next run, so a backlog never runs one call
+   * past its timeout.
+   */
+  abstract prune(
+    log: AnalyticsEventLog,
+    before: number,
+    limit: number,
+  ): Promise<number>;
 }

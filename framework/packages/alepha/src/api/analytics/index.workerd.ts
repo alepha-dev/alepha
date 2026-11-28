@@ -10,6 +10,7 @@ import { EventLogProvider } from "./providers/EventLogProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
 import { MemoryEventLogProvider } from "./providers/MemoryEventLogProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
+import { OrmEventLogProvider } from "./providers/OrmEventLogProvider.ts";
 import { WaeAnalyticsProvider } from "./providers/WaeAnalyticsProvider.ts";
 import { AdminAnalyticsService } from "./services/AdminAnalyticsService.ts";
 import { AnalyticsRetentionGuard } from "./services/AnalyticsRetentionGuard.ts";
@@ -85,12 +86,16 @@ export const AlephaApiAnalytics = $module({
     OrmAnalyticsProvider,
     WaeAnalyticsProvider,
     MemoryEventLogProvider,
+    OrmEventLogProvider,
   ],
   register: (alepha) => {
+    // Event logs stay relational whatever backs the datasets: Analytics
+    // Engine samples, and an event log promises exact rows. On an app bound
+    // to it, this is the same database its rolled tier already lives in.
     alepha.with({
       optional: true,
       provide: EventLogProvider,
-      use: MemoryEventLogProvider,
+      use: alepha.isTest() ? MemoryEventLogProvider : OrmEventLogProvider,
     });
     alepha.with({
       optional: true,

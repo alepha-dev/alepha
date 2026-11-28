@@ -11,7 +11,10 @@ import { describe, expect, it } from "vitest";
 // `../index.ts` (where `$module({ ... })` is called) has been evaluated.
 import {
   $analytics,
+  $eventLog,
   AlephaApiAnalyticsRollup,
+  EventLogProvider,
+  MemoryEventLogProvider,
   type AnalyticsDataset,
   AnalyticsProvider,
   AnalyticsRollupJobs,
@@ -505,5 +508,81 @@ describe("AnalyticsRollupJobs", () => {
         entry.message.includes("AlephaApiAnalyticsRollup"),
     );
     expect(warned).toBe(false);
+  });
+
+  describe("event logs", () => {
+    class Logged {
+      public readonly pageviews = $eventLog({
+        index: "app",
+        schema: z.object({ app: z.string(), sessionId: z.string() }),
+        keep: "2d",
+      });
+    }
+
+    it("deletes rows past keep oldest first, capped per run, and a second run finishes the backlog", async () => {
+      const alepha = makeApp();
+      const app = alepha.inject(Logged);
+      const jobs = alepha.inject(AnalyticsRollupJobs);
+      const dateTime = alepha.inject(DateTimeProvider);
+      await alepha.start();
+      dateTime.pause();
+      const memory = alepha.inject(EventLogProvider) as MemoryEventLogProvider;
+      const log = app.pageviews.eventLog;
+
+      const now = dateTime.nowMillis();
+      await app.pageviews.append([
+        { app: "a", sessionId: "old-1", at: now - 47 * 3_600_000 },
+        { app: "a", sessionId: "old-2", at: now - 46 * 3_600_000 },
+        { app: "a", sessionId: "old-3", at: now - 45 * 3_600_000 },
+        { app: "a", sessionId: "fresh", at: now - 3_600_000 },
+      ]);
+      // Three days on, the first three are past the 2 day window.
+      await dateTime.travel(26 * 3_600_000);
+
+      const cap = AnalyticsRollupJobs.MAX_EVENT_ROWS_PER_SWEEP;
+      AnalyticsRollupJobs.MAX_EVENT_ROWS_PER_SWEEP = 2;
+      try {
+        expect(await jobs.expireEventLog(log, dateTime.nowMillis())).toBe(2);
+        expect(memory.all(log).map((row) => row.sessionId)).toEqual([
+          "old-3",
+          "fresh",
+        ]);
+        await jobs.sweepNow();
+        expect(memory.all(log).map((row) => row.sessionId)).toEqual(["fresh"]);
+        expect(await jobs.expireEventLog(log, dateTime.nowMillis())).toBe(0);
+      } finally {
+        AnalyticsRollupJobs.MAX_EVENT_ROWS_PER_SWEEP = cap;
+      }
+    });
+
+    it("warns at boot for an event log whose keep nothing enforces", async () => {
+      const alepha = Alepha.create();
+      alepha.inject(Logged);
+      await alepha.start();
+
+      const destination = alepha.inject(MemoryDestinationProvider);
+      const warned = destination.logs.some(
+        (entry) =>
+          entry.level === "WARN" &&
+          entry.message.includes("pageviews") &&
+          entry.message.includes("AlephaApiAnalyticsRollup"),
+      );
+      expect(warned).toBe(true);
+    });
+
+    it("does not warn about an event log once AlephaApiAnalyticsRollup is imported", async () => {
+      const alepha = makeApp();
+      alepha.inject(Logged);
+      await alepha.start();
+
+      const destination = alepha.inject(MemoryDestinationProvider);
+      expect(
+        destination.logs.some(
+          (entry) =>
+            entry.level === "WARN" &&
+            entry.message.includes("AlephaApiAnalyticsRollup"),
+        ),
+      ).toBe(false);
+    });
   });
 });

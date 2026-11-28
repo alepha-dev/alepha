@@ -202,6 +202,29 @@ export class OrmEventLogProvider extends EventLogProvider {
     return { rows, estimated: false };
   }
 
+  /**
+   * One `DELETE` of the oldest `limit` expired rows, picked by the row's
+   * physical id (`rowid` on SQLite, `ctid` on Postgres) since the table has
+   * no key, through the `(index, event_at)` index's time order.
+   */
+  public async prune(
+    log: AnalyticsEventLog,
+    before: number,
+    limit: number,
+  ): Promise<number> {
+    const repository = this.repository(log);
+    const time = sql.raw(OrmEventLogProvider.TIME_COLUMN);
+    const id = sql.raw(
+      this.database.dialect === "postgresql" ? "ctid" : "rowid",
+    );
+    const count = sql.raw(String(Math.max(1, Math.floor(limit))));
+    const deleted = await this.database.run(
+      sql`DELETE FROM ${repository.table} WHERE ${id} IN (SELECT ${id} FROM ${repository.table} WHERE ${time} < ${before} ORDER BY ${time} LIMIT ${count}) RETURNING 1 AS gone`,
+      z.object({ gone: z.coerce.number() }),
+    );
+    return deleted.length;
+  }
+
   protected repository(log: AnalyticsEventLog): Repository<ZObject> {
     const repository = this.registered.get(log.name);
     if (!repository) {

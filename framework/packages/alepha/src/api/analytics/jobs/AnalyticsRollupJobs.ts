@@ -5,9 +5,13 @@ import { $logger } from "alepha/logger";
 
 import { AnalyticsBuckets } from "../planner/AnalyticsBuckets.ts";
 import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
+import { EventLogPlan } from "../planner/EventLogPlan.ts";
 import { $analytics } from "../primitives/$analytics.ts";
+import { $eventLog } from "../primitives/$eventLog.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
+import { EventLogProvider } from "../providers/EventLogProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
+import type { AnalyticsEventLog } from "../schemas/eventLogSchema.ts";
 
 /**
  * Keeps every declared dataset inside its retention window.
@@ -58,9 +62,17 @@ export class AnalyticsRollupJobs {
    */
   public static readonly MAX_BUCKETS_PER_SWEEP = 36;
 
+  /**
+   * Most expired rows one sweep deletes from one event log. A log past its
+   * window by a day of heavy traffic needs a few sweeps; each stays one
+   * bounded `DELETE`, oldest first, so every sweep makes progress.
+   */
+  public static MAX_EVENT_ROWS_PER_SWEEP = 10_000;
+
   protected readonly log = $logger();
   protected readonly alepha = $inject(Alepha);
   protected readonly provider = $inject(AnalyticsProvider);
+  protected readonly events = $inject(EventLogProvider);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   /**
@@ -106,18 +118,68 @@ export class AnalyticsRollupJobs {
   });
 
   /**
+   * One event log's expiry: deletes its rows older than `keep`, at most
+   * {@link MAX_EVENT_ROWS_PER_SWEEP}, oldest first. The next hour resumes.
+   */
+  public readonly expireOne = $job({
+    name: "system.analytics.expire-event-log",
+    schema: z.object({ log: z.text() }),
+    description:
+      "Deletes one event log's rows older than its keep window, oldest first, capped per run.",
+    timeout: [30, "seconds"],
+    handler: async ({ payload }) => {
+      const primitive = this.alepha
+        .primitives($eventLog)
+        .find((it) => it.eventLog.name === payload.log);
+      if (!primitive) return;
+      await this.expireEventLog(primitive.eventLog, this.dateTime.nowMillis());
+    },
+  });
+
+  /**
    * The hourly cron's work: one queued {@link sweepOne} per dataset that
-   * has anything to keep in a window, in one batched push.
+   * has anything to keep in a window, and one {@link expireOne} per event
+   * log, each in one batched push.
    */
   public async enqueueSweeps(): Promise<void> {
     const names = this.alepha
       .primitives($analytics)
       .filter((primitive) => AnalyticsTiers.of(primitive.dataset)[0].keep)
       .map((primitive) => primitive.dataset.name);
-    if (names.length === 0) return;
-    await this.sweepOne.pushMany(
-      names.map((dataset) => ({ payload: { dataset } })),
+    if (names.length > 0) {
+      await this.sweepOne.pushMany(
+        names.map((dataset) => ({ payload: { dataset } })),
+      );
+    }
+    const logs = this.alepha
+      .primitives($eventLog)
+      .map((primitive) => primitive.eventLog.name);
+    if (logs.length > 0) {
+      await this.expireOne.pushMany(logs.map((log) => ({ payload: { log } })));
+    }
+  }
+
+  /**
+   * Deletes one capped batch of `log`'s rows past its keep window, and
+   * answers how many went. Public so tests run it under a paused clock.
+   */
+  public async expireEventLog(
+    log: AnalyticsEventLog,
+    now: number,
+  ): Promise<number> {
+    const before = now - EventLogPlan.keepMillis(log);
+    const started = this.dateTime.nowMillis();
+    const deleted = await this.events.prune(
+      log,
+      before,
+      AnalyticsRollupJobs.MAX_EVENT_ROWS_PER_SWEEP,
     );
+    this.log.info(`Event log expiry of '${log.name}': ${deleted} rows`, {
+      log: log.name,
+      deleted,
+      ms: this.dateTime.nowMillis() - started,
+    });
+    return deleted;
   }
 
   /**
@@ -150,6 +212,16 @@ export class AnalyticsRollupJobs {
       } catch (error) {
         this.log.error(
           `Sweep failed for dataset '${primitive.dataset.name}'`,
+          error,
+        );
+      }
+    }
+    for (const primitive of this.alepha.primitives($eventLog)) {
+      try {
+        await this.expireEventLog(primitive.eventLog, now);
+      } catch (error) {
+        this.log.error(
+          `Expiry failed for event log '${primitive.eventLog.name}'`,
           error,
         );
       }

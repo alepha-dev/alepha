@@ -77,6 +77,21 @@ export class MemoryEventLogProvider extends EventLogProvider {
     return { rows: AnalyticsOrdering.apply(rows, query), estimated: false };
   }
 
+  public async prune(
+    log: AnalyticsEventLog,
+    before: number,
+    limit: number,
+  ): Promise<number> {
+    const rows = this.all(log);
+    const expired = rows.filter((row) => row.at < before).slice(0, limit);
+    const gone = new Set(expired);
+    this.rows.set(
+      log.name,
+      rows.filter((row) => !gone.has(row)),
+    );
+    return expired.length;
+  }
+
   protected matches(row: EventLogStoredRow, query: EventLogQuery): boolean {
     for (const [name, filter] of Object.entries(query.where ?? {})) {
       const value = row[name];
