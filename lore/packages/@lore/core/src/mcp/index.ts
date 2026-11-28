@@ -8,6 +8,7 @@ import { AttachmentContentService } from "./services/AttachmentContentService.ts
 import { AttachmentPushCommand } from "./services/AttachmentPushCommand.ts";
 import { LoreMcpIdentity } from "./services/LoreMcpIdentity.ts";
 import { DashboardTools } from "./tools/DashboardTools.ts";
+import { GitHubTools } from "./tools/GitHubTools.ts";
 import { HostTools } from "./tools/HostTools.ts";
 import { JobTools } from "./tools/JobTools.ts";
 import { NotificationTools } from "./tools/NotificationTools.ts";
@@ -45,6 +46,8 @@ export const LoreCoreMcp = $module({
     // The alert thresholds (#Q3914), core's since #E162: coverage is Build's,
     // open errors Ship's.
     ThresholdTools,
+    // A project's GitHub repository (#Q4362).
+    GitHubTools,
     // A project's dashboards and their cards (#Q4206).
     DashboardTools,
     ProjectResources,
@@ -69,6 +72,7 @@ export { ProjectTools } from "./tools/ProjectTools.ts";
 
 export { NotificationTools } from "./tools/NotificationTools.ts";
 export { DashboardTools } from "./tools/DashboardTools.ts";
+export { GitHubTools } from "./tools/GitHubTools.ts";
 export { ThresholdTools } from "./tools/ThresholdTools.ts";
 
 // ---- hosts (#E166) ----

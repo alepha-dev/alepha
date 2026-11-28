@@ -1130,6 +1130,28 @@ export default {
   "project.create.name.firstChar": "Commencez par une lettre ou un chiffre.",
   "project.create.name.badChar":
     "Le caractère $1 n'est pas autorisé. Utilisez des lettres, des chiffres, des espaces, - et _.",
+  "project.github.title": "GitHub",
+  "project.github.notConnected": "Non connecté",
+  "project.github.connect": "Connecter GitHub",
+  "project.github.reconnect": "Connecter à nouveau",
+  "project.github.disconnect": "Déconnecter",
+  "project.github.disconnect.confirm": "Déconnecter $1 ?",
+  "project.github.defaultBranch": "Branche par défaut $1",
+  "project.github.connectedBy": "connecté par $1",
+  "project.github.unavailable":
+    "GitHub n'est pas configuré sur cette instance de Lore",
+  "project.github.unavailable.admin": "Configurer l'App GitHub",
+  "project.github.reason.member": "$1 a été déconnecté",
+  "project.github.reason.uninstalled": "L'App GitHub a été désinstallée de $1",
+  "project.github.reason.suspended": "L'App GitHub a été suspendue sur $1",
+  "project.github.reason.removed": "$1 a été retiré de l'App GitHub",
+  "github.connect.title": "Connecter GitHub",
+  "github.connect.working": "Connexion…",
+  "github.connect.requested":
+    "Un propriétaire de l'organisation doit approuver l'installation. Connectez à nouveau une fois que c'est fait.",
+  "github.connect.repository": "Dépôt",
+  "github.connect.submit": "Connecter",
+  "github.connect.back": "Retour aux paramètres du projet",
   "project.update.repositoryUrl.label": "Dépôt",
   "project.update.repositoryUrl.helper":
     "Le dépôt où vivent les commits de ce projet, sur GitHub. Renseignez-le et les commits d'une quête y renvoient, et les tâches d'agent savent où est le code.",

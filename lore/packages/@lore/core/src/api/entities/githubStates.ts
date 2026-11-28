@@ -12,17 +12,25 @@ import { users } from "./users.ts";
  * started it, for what, and until when; `GitHubStateService.claim` sets
  * `usedAt` in the write's WHERE, so a replayed callback finds it used and
  * attaches nothing. The value GitHub carries is the row's id and its HMAC,
- * so a forged one never reaches the table.
+ * so a forged one never reaches the table. A `pick` is the same thing kept
+ * by Lore between the install callback and the member's choice (#Q4362).
  */
 export const githubStates = $entity({
   name: "github_states",
   schema: z.object({
     id: db.primaryKey(z.uuid()),
-    purpose: z.enum(["manifest", "install"]).meta({ mode: "text" }),
+    purpose: z.enum(["manifest", "install", "pick"]).meta({ mode: "text" }),
     userId: db.ref(z.uuid(), () => users.cols.id, { onDelete: "cascade" }),
     projectId: db.ref(z.integer().optional(), () => projects.cols.id, {
       onDelete: "cascade",
     }),
+    /**
+     * A `pick` (#Q4362): the installation and the repositories the member's
+     * GitHub account was shown to reach, the only ones it may connect.
+     */
+    installationId: z.integer().optional(),
+    repositoryIds: z.array(z.integer()).max(200).optional(),
+    githubUserId: z.integer().optional(),
     expiresAt: z.string(),
     usedAt: z.string().optional(),
     createdAt: db.createdAt(),
