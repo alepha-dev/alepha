@@ -5,12 +5,10 @@ import { epics } from "../entities/epics.ts";
 /**
  * Epic + server-computed rollup.
  *
- * `progress` counts EVERY quest in the epic, draft-gated ones included.
- * The backlog gate (`EpicVisibilityService`) is about the project's OWN
- * lists, not about the epic's view of itself: an epic reporting 0/13 is
- * telling the truth, one reporting 0/0 because its own quests are hidden
- * from it is not. `EpicController` never calls `applyBacklogGate` when
- * building this rollup.
+ * `progress` counts EVERY quest in the epic, drafts included. The project's
+ * OWN lists leave a draft out; the epic's view of itself does not: an epic
+ * reporting 0/13 is telling the truth, one reporting 0/0 because its own
+ * quests are hidden from it is not.
  *
  * `questCount` restates `progress.total` as a bare number, for callers
  * that only want a headline count without unpacking the completed/total

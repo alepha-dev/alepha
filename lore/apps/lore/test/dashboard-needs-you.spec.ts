@@ -152,12 +152,19 @@ describe("dashboard needs you", () => {
     expect,
   }) => {
     const { project, user } = await projectOf();
-    // A draft epic makes the backlog gate write its own `or`.
-    await createTestEpic(alepha, project, { status: "draft" });
+    // A held draft beside it is not flagged either: nobody is asked to
+    // unblock what is not ready.
+    const draft = await createTestEpic(alepha, project, { status: "draft" });
     await createTestQuest(alepha, project, { title: "plain" });
     await createTestQuest(alepha, project, {
       title: "parked",
       heldAt: dateTime.nowISOString(),
+    });
+    await createTestQuest(alepha, project, {
+      title: "held draft",
+      epicId: draft.id,
+      heldAt: dateTime.nowISOString(),
+      draftAt: dateTime.nowISOString(),
     });
 
     const value = await resolve(project, user);

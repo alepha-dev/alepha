@@ -164,9 +164,14 @@ describe("Quest reminders", () => {
       );
     });
 
-    it("does not remind a quest of a draft epic", async ({ expect }) => {
+    it("does not remind a draft, whatever else its row carries", async ({
+      expect,
+    }) => {
+      // No write path accepts a draft, so a due reminder on one is a row
+      // only a fixture can make: what it pins is the `draftAt` conjunct.
       const epic = await createTestEpic(alepha, project, { status: "draft" });
-      await due({ epicId: epic.id });
+      await due({ epicId: epic.id, draftAt: time.nowISOString() });
+      await due({ draftAt: time.nowISOString() });
       expect(await reminders().run(time.nowISOString())).toBe(0);
     });
 

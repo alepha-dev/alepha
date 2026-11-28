@@ -14,14 +14,12 @@ import { type Quest, quests } from "../entities/quests.ts";
 import { byPriorityDesc } from "../schemas/questPriority.ts";
 import { questResourceSchema } from "../schemas/questResourceSchema.ts";
 import { BoardRank } from "../services/BoardRank.ts";
-import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { QuestResourceMapper } from "../services/QuestResourceMapper.ts";
 
 export class KanbanController {
   protected projects = $repository(projects);
   protected quests = $repository(quests);
   protected security = $inject(ProjectSecurityService);
-  protected epicVisibility = $inject(EpicVisibilityService);
   protected questMapper = $inject(QuestResourceMapper);
   protected projectMapper = $inject(ProjectResourceMapper);
   protected rank = $inject(BoardRank);
@@ -55,12 +53,12 @@ export class KanbanController {
       // meant to remove. Unshelve from the quest view to get it back.
       where.shelvedAt = { isNull: true };
 
-      // Same gate as `QuestController.getQuests`, and it has to be the same
-      // one: a quest visible on the board but absent from the list (or the
-      // reverse) is precisely the inconsistency this feature exists to
-      // prevent. The board has no opt-out — it is a pure UI surface, unlike
-      // `getQuests`, which MCP `quest_list` also calls.
-      await this.epicVisibility.applyBacklogGate(where, params.projectId);
+      // Drafts are out, as on `QuestController.getQuests` with no status,
+      // and it has to be the same rule: a quest visible on the board but
+      // absent from the list (or the reverse) is precisely the inconsistency
+      // the list's scope exists to prevent. A held draft is out too. The
+      // board's Draft column is #Q4376's.
+      where.draftAt = { isNull: true };
 
       const allQuests = await this.quests.findMany({
         where,
@@ -174,7 +172,7 @@ export class KanbanController {
     const where = this.quests.createQueryWhere();
     where.projectId = { eq: quest.projectId };
     where.shelvedAt = { isNull: true };
-    await this.epicVisibility.applyBacklogGate(where, quest.projectId);
+    where.draftAt = { isNull: true };
 
     const rows = await this.quests.findMany({
       where,

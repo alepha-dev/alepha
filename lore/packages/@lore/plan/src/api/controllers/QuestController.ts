@@ -71,7 +71,6 @@ import {
 import type { ReleaseCascade } from "../schemas/releaseCascadeSchema.ts";
 import { AreaService } from "../services/AreaService.ts";
 import { DefaultReleaseService } from "../services/DefaultReleaseService.ts";
-import { EpicVisibilityService } from "../services/EpicVisibilityService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { OpenQuestScope } from "../services/OpenQuestScope.ts";
 import { PlanCommentSubjects } from "../services/PlanCommentSubjects.ts";
@@ -98,7 +97,6 @@ interface QuestListQuery {
   releaseId?: string;
   epic?: number;
   epicId?: string;
-  includeDrafts?: boolean;
   area?: string;
   tag?: string;
   tagOp?: "any" | "all" | "none";
@@ -219,7 +217,6 @@ export class QuestController {
    * not a gate. Every gate on this class is `$ownsProject`.
    */
   security = $inject(ProjectSecurityService);
-  epicVisibility = $inject(EpicVisibilityService);
   /**
    * The epic phase gate (epic #31): a quest can be worked only while its
    * epic is `ready` or `in_progress`, and deleted only while it is `draft`
@@ -543,9 +540,16 @@ export class QuestController {
         // it: `completeQuest` refuses a held quest, so the pair cannot arise
         // legitimately, and a row that carries both reads as completed
         // everywhere else.
+        //
+        // `draftAt IS NULL` keeps a held draft out (#E178): a held quest of a
+        // `draft` epic carries `draftAt` under its hold and reads On hold,
+        // but it is not ready work, so it stays off the On hold filter as it
+        // stays off the default list. The epic filter and the epic page
+        // still show it.
         return {
           heldAt: { isNotNull: true },
           completedAt: { isNull: true },
+          draftAt: { isNull: true },
         };
       case "completed":
         return { completedAt: { isNotNull: true } };
@@ -1427,15 +1431,44 @@ export class QuestController {
       }
     }
 
+    // Drafts are named or they stay out (#E178): the default scope and "is
+    // not" leave a quest carrying `draftAt` out, as they leave a shelved one
+    // out, and `status=draft` (its own condition) lists them. A held draft
+    // reads On hold and is out too, as a quest of a draft epic always was.
+    //
+    // ⚠️ Except inside a named epic. A caller addressing an epic (`epic`, or
+    // `epicId` naming ids) is looking at that epic's own quests, draft or
+    // not, which is what lets an agent that just filed a quest into a draft
+    // epic read it back with no status. `epicId` naming "no epic" alone is
+    // not an epic: the loose drafts stay out of it.
+    const scopeOutDrafts = () => {
+      if (query.epic) {
+        return;
+      }
+      if (epic.ids.length === 0) {
+        where.draftAt = { isNull: true };
+      } else if (epic.loose) {
+        groups.push({
+          or: [
+            { draftAt: { isNull: true } },
+            epic.ids.length === 1
+              ? { epicId: { eq: epic.ids[0] } }
+              : { epicId: { inArray: epic.ids } },
+          ],
+        });
+      }
+    };
+
     const statuses = this.parseStatusList(query.status);
     if (statuses.length > 0 && query.statusOp === "not") {
       // "Is not" is the negation of the same conditions "is" applies, and
-      // it keeps the no-filter scope: shelved quests stay out unless the
-      // reader asks for them by name. "Everything but completed" is a
-      // question about the work still in scope, not an invitation to bring
-      // back what was set aside - the same reason an absent filter hides
-      // them (see below).
+      // it keeps the no-filter scope: shelved quests and drafts stay out
+      // unless the reader asks for them by name. "Everything but completed"
+      // is a question about the work still in scope, not an invitation to
+      // bring back what was set aside - the same reason an absent filter
+      // hides them (see below).
       where.shelvedAt = { isNull: true };
+      scopeOutDrafts();
       groups.push({
         not:
           statuses.length === 1
@@ -1444,16 +1477,19 @@ export class QuestController {
       });
     } else if (statuses.length === 0) {
       // No status filter means "everything I still care about" — shelved
-      // quests are deliberately out of scope, so they only ever surface
-      // through the explicit `shelved` filter. An empty list and an absent
-      // filter are the same question: selecting nothing cannot mean
-      // "show nothing", and selecting all five means the same as neither.
+      // quests and drafts are deliberately out of scope, so they only ever
+      // surface through the explicit `shelved` and `draft` filters. An empty
+      // list and an absent filter are the same question: selecting nothing
+      // cannot mean "show nothing". Selecting all six is NOT the same as
+      // neither: it names `shelved` and `draft`, so it brings both back.
       //
       // ⚠️ HELD quests are NOT excluded here, and the asymmetry with
       // shelved is the point. Shelved means out of scope; held means
       // blocked and still wanted, so hiding it by default would hide
-      // exactly the rows somebody needs to unblock.
+      // exactly the rows somebody needs to unblock. A held DRAFT is the one
+      // held quest left out, by `scopeOutDrafts` above.
       where.shelvedAt = { isNull: true };
+      scopeOutDrafts();
     } else if (statuses.length === 1) {
       Object.assign(where, this.statusConditions(statuses[0]));
       // A default sort belongs to ONE chosen status. With several selected
@@ -1511,28 +1547,6 @@ export class QuestController {
       where.and = groups;
     }
 
-    // Quests of a `draft` epic are specified but not released into the
-    // backlog. This FILTERS; it never mutates a quest row.
-    //
-    // Two ways past it, and both are deliberate. `includeDrafts` is the
-    // explicit opt-out, set by the pickers that need the whole project
-    // (`EpicQuestPicker`, `QuestDependencyPicker`) and, since epic #31,
-    // offered by MCP `quest_list` as an optional parameter that defaults
-    // OFF, so the tool and the UI list the same backlog unless asked
-    // otherwise. `epic` is the implicit one: a caller addressing one epic
-    // is looking at that epic's own quests, draft or not, which is what
-    // lets an agent that just filed a quest into a draft epic read it
-    // back without any flag. `epicId` names its epics too, and a quest
-    // under no epic was never gated, so it passes the same way.
-    //
-    // `includeDrafts` is client-settable and that is fine — every caller
-    // has already passed the membership gate, so it exposes nothing the
-    // caller could not already read. This is a backlog-organisation
-    // affordance, NOT an authorization control. Do not "harden" it into one.
-    if (!query.includeDrafts && !query.epic && !epicFiltered) {
-      await this.epicVisibility.applyBacklogGate(where, projectId);
-    }
-
     return where;
   }
 
@@ -1573,7 +1587,6 @@ export class QuestController {
          * callers already send; both given, both apply.
          */
         epicId: z.string().optional(),
-        includeDrafts: z.boolean().optional(),
         area: z.string().optional(),
         tag: z.string().optional(),
         /**

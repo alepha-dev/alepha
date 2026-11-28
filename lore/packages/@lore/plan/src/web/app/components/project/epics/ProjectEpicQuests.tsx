@@ -67,10 +67,10 @@ export interface ProjectEpicQuestsProps {
 }
 
 /**
- * The Quests tab of the Epic page: the full quest set — shelved and
- * draft-gated quests included, since `EpicController`'s rollup and the
- * `epic`-filtered `QuestController.getQuests` call that feeds this component
- * both bypass the backlog gate on purpose.
+ * The Quests tab of the Epic page: the full quest set — shelved quests and
+ * drafts included, since `EpicController`'s rollup and the `epic`-filtered
+ * `QuestController.getQuests` call that feeds this component both count
+ * every quest of the epic on purpose.
  *
  * The dependency flow used to hang off the bottom of this card in a fixed
  * 480px band. It is its own tab now (`ProjectEpicFlow`), because a graph

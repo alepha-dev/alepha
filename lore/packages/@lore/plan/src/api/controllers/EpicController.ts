@@ -80,10 +80,9 @@ import { WorkEventSources } from "../services/WorkEventSources.ts";
  * purely to keep `epics` in the migration snapshot before a real consumer
  * existed.
  *
- * Deliberately does NOT inject `EpicVisibilityService`. The backlog gate
- * it owns (`applyBacklogGate`) governs the
- * PROJECT's listing surfaces (quest list, Kanban, Reports denominators) —
- * never an epic's own view of itself. See `computeProgressOf` below.
+ * An epic's own view of itself counts every quest it holds, drafts included:
+ * the PROJECT's listing surfaces (quest list, Kanban, Reports denominators)
+ * leave drafts out, an epic never does. See `computeProgressOf` below.
  */
 export class EpicController {
   epics = $repository(epics);
@@ -286,11 +285,10 @@ export class EpicController {
    * are exactly what neither caller reads.
    *
    * ⚠️ The badge this replaces had its own `countPlannedEpics` action, and
-   * its reasoning survives the swap: the badge counts the GATE rather than
-   * the work behind it. `countOpenQuests` runs `applyBacklogGate`, so every
-   * quest inside a draft epic is absent from the Quests badge by design,
-   * and with no badge here at all that work had no representation in the
-   * sidebar whatsoever. `draft` alone, because the quests of a ready or
+   * its reasoning survives the swap: `countOpenQuests` counts through
+   * `OpenQuestScope`, which leaves drafts out, so every quest of a draft
+   * epic is absent from the Quests badge by design, and with no badge here
+   * at all that work had no representation in the sidebar whatsoever. `draft` alone, because the quests of a ready or
    * in-progress epic are already counted next to Quests and badging them
    * would double-report them. The count is now derived client-side from this
    * list, the same way `ProjectEpics` already derives it.
@@ -1053,12 +1051,10 @@ export class EpicController {
 
   /**
    * Attaches the server-computed rollup to an epic row. Counts EVERY
-   * quest belonging to the epic — deliberately NOT gated through
-   * `EpicVisibilityService`. That gate hides a `draft` epic's quests
-   * from the PROJECT's own listing surfaces; inside the epic's own view
-   * every quest counts, draft-gated ones included. An epic reporting
-   * 0/13 is telling the truth, one reporting 0/0 because its own quests
-   * are hidden from it is not (design §5.3).
+   * quest belonging to the epic, drafts included: the PROJECT's own
+   * listing surfaces leave a draft out, but inside the epic's own view
+   * every quest counts. An epic reporting 0/13 is telling the truth, one
+   * reporting 0/0 because its own quests are hidden from it is not.
    */
   protected async buildEpicResource(epic: Epic): Promise<EpicResource> {
     // One extra read, and only for an epic that HAS a predecessor. Cheap next

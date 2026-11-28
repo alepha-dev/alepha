@@ -8,6 +8,7 @@ import { useClient, useQuery } from "alepha/react";
 import { useMemo } from "react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
+import { QUEST_STATUSES_WITH_DRAFTS } from "../../../../../api/schemas/questStatusesWithDrafts.ts";
 
 /**
  * The quests an element body can reference, registered by `WorkShell` on
@@ -41,13 +42,14 @@ export const useQuestReferences = (
       handler: async () => {
         const page = await questApi.getQuests({
           params: { projectId },
-          // Direct addressing (design §5.3, "never gated"): a link into a
-          // draft epic must still resolve, or the reader sees a literal
-          // `[[…]]` token and the author cannot even create the link.
+          // Drafts named (#E178): the default list leaves them out, and a
+          // link to a draft must still be offered, or the author cannot even
+          // create it. A reference the body already names resolves through
+          // `listQuestRefs` below, whatever its status.
           query: {
             size: 100,
             sort: "-updatedAt",
-            includeDrafts: true,
+            status: QUEST_STATUSES_WITH_DRAFTS,
           },
         });
         return page.content.map((q) => ({

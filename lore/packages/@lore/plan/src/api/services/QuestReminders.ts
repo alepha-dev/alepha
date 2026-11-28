@@ -17,7 +17,6 @@ import {
   sql,
 } from "alepha/orm";
 
-import { epics } from "../entities/epics.ts";
 import {
   type Quest,
   quests,
@@ -44,7 +43,11 @@ import { WorkProjectEvents } from "./WorkProjectEvents.ts";
  *   `quest.reminder_due` is recorded with it, so a channel can subscribe.
  * - The assignee is told directly, in the inbox and by email as their
  *   settings say, after the batch committed.
- * - A quest of a draft epic is not reminded.
+ * - A draft is not reminded (`draftAt IS NULL`, #E178). A reminder needs an
+ *   assignee, and a draft cannot be accepted, so the conjunct is the
+ *   defensive half of that rule rather than a filter anything reaches today;
+ *   it used to read a draft epic's ids, and a quest of a draft epic that
+ *   nobody took carries `draftAt` now.
  */
 export class QuestReminders {
   public static readonly LIMIT = 100;
@@ -60,7 +63,6 @@ export class QuestReminders {
   protected readonly cache = $inject(DbCacheProvider);
   protected readonly notifications = $inject(QuestReminderNotifications);
   protected readonly quests = $inject(BatchRepository.of(quests));
-  protected readonly epics = $repository(epics);
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
 
@@ -85,14 +87,7 @@ export class QuestReminders {
         acceptedBy: { isNotNull: true },
         completedAt: { isNull: true },
         shelvedAt: { isNull: true },
-        or: [
-          { epicId: { isNull: true } },
-          {
-            epicId: {
-              notInArray: this.epics.subquery({ status: "draft" }, "id"),
-            },
-          },
-        ],
+        draftAt: { isNull: true },
       },
       orderBy: [{ column: "reminderNextAt", direction: "asc" }],
       limit: QuestReminders.LIMIT,

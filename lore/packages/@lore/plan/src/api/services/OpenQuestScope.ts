@@ -1,8 +1,6 @@
-import { $inject } from "alepha";
 import { $repository, type PgQueryWhere } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 
 /**
  * What "open quests" means, in one place.
@@ -16,17 +14,22 @@ import { EpicVisibilityService } from "./EpicVisibilityService.ts";
  * The definition:
  *
  * - `completedAt IS NULL` and `shelvedAt IS NULL`. `shelvedAt` means "decided
- *   out of scope", a different fact from a draft epic's "not released yet",
- *   and the two must never be conflated again.
- * - plus the draft-epic backlog gate, whose two traps live in
- *   `EpicVisibilityService`.
+ *   out of scope", a different fact from a draft's "not ready yet", and the
+ *   two must never be conflated again.
+ * - `draftAt IS NULL`: a draft is not open work, whether it is loose or one of
+ *   a `draft` epic's quests, held ones included.
+ *
+ * ⚠️ Every term is a top-level `IS NULL` conjunct, spelled as
+ * `quests_open_idx` spells its `where`: that is what lets SQLite prove this
+ * query implies the partial index's predicate (see the index on `quests`).
  */
 export class OpenQuestScope {
   protected readonly quests = $repository(quests);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
 
   /**
-   * The gated where-object, ready for a `count` or a `findMany`.
+   * The where-object, ready for a `count` or a `findMany`.
+   *
+   * Async for the shape its callers await.
    */
   async where(
     projectIds: number[],
@@ -35,7 +38,7 @@ export class OpenQuestScope {
     where.projectId = { inArray: projectIds };
     where.completedAt = { isNull: true };
     where.shelvedAt = { isNull: true };
-    await this.epicVisibility.applyBacklogGateAcross(where, projectIds);
+    where.draftAt = { isNull: true };
     return where;
   }
 

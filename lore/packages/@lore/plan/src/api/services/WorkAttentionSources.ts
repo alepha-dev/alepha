@@ -10,7 +10,6 @@ import { $repository } from "alepha/orm";
 
 import { feedback } from "../entities/feedback.ts";
 import { type Quest, quests } from "../entities/quests.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 import { ProjectReportsService } from "./ProjectReportsService.ts";
 
 /**
@@ -29,7 +28,6 @@ export class WorkAttentionSources {
   protected readonly quests = $repository(quests);
   protected readonly feedback = $repository(feedback);
   protected readonly reports = $inject(ProjectReportsService);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   constructor() {
@@ -50,16 +48,16 @@ export class WorkAttentionSources {
   protected async questsOf(project: Project): Promise<DashboardAttentionItems> {
     const slug = project.slug ?? "";
     const now = this.dateTime.nowISOString();
-    // Two reads, held and overdue, rather than one `or`: the backlog gate
-    // writes its own `or` (a project with a draft epic), and sharing the key
-    // would silently drop this filter and flag every open quest.
+    // Two reads, held and overdue, rather than one `or`, so neither filter
+    // shares a key with anything else the where-object holds. A draft is out,
+    // a held one included: nobody is asked to unblock what is not ready.
     const open = async (extra: Record<string, unknown>) => {
       const where = this.quests.createQueryWhere();
       where.projectId = { eq: project.id };
       where.shelvedAt = { isNull: true };
       where.completedAt = { isNull: true };
       Object.assign(where, extra);
-      await this.epicVisibility.applyBacklogGate(where, project.id);
+      where.draftAt = { isNull: true };
       return this.quests.findMany({ where, limit: 20 });
     };
 
@@ -77,6 +75,9 @@ export class WorkAttentionSources {
         shelvedAt: { isNull: true },
         completedAt: { isNull: true },
         acceptedAt: { isNull: true },
+        // A draft is not waiting for anybody to take it, and the Reports
+        // `unassigned` count beside these names leaves it out too.
+        draftAt: { isNull: true },
         priority: { eq: "high" },
       },
       limit: 3,

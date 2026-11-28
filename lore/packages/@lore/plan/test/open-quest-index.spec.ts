@@ -40,16 +40,18 @@ const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
  * index's - so a copy that drifts by one parenthesis tests nothing and still
  * passes.
  *
- * ## Both shapes
+ * ## One shape
  *
- * The backlog gate contributes an `epic_id IS NULL OR epic_id NOT IN (...)`
- * term only when the project set has a draft epic in it, so the count has two
- * real shapes in production and each is asserted.
+ * The count used to have two: the read filter on draft epics added an
+ * `epic_id IS NULL OR epic_id NOT IN (...)` term only when the project set held
+ * a draft epic. It filters on `draft_at IS NULL` now (#Q4374), a column of the
+ * quest's own row and one more equality the index binds, so a project set with
+ * a draft epic and one without read the same statement, and both are asserted.
  */
 describe("The open-quest count's index", () => {
   // SQLite only on purpose: it reads EXPLAIN QUERY PLAN.
   it.skipIf(onPostgres)(
-    "is served by the covering partial index, gated and ungated",
+    "is served by the covering partial index, with or without a draft epic",
     async ({ expect }) => {
       const alepha = Alepha.create({
         env: { LOG_LEVEL: "trace", SERVER_PORT: 0, DATABASE_URL: ":memory:" },
@@ -110,10 +112,11 @@ describe("The open-quest count's index", () => {
         }
       }
 
-      // A draft epic in the FIRST project only, so the two counts below are the
-      // gated shape and the ungated one. Written as raw SQL rather than through
-      // `createEpic`, which gates on the Plan capability's `epics` option: what
-      // this spec needs is the row, not the write path.
+      // A draft epic in the FIRST project only, holding a draft, so the first
+      // count below spans a draft epic and the second does not. Written as raw
+      // SQL rather than through `createEpic`, which gates on the Plan
+      // capability's `epics` option: what this spec needs is the rows, not the
+      // write path.
       await database.run(
         sql.raw(
           `INSERT INTO epics (project_id, number, title, description, status, created_at, updated_at)
@@ -136,27 +139,39 @@ describe("The open-quest count's index", () => {
           .map((entry) => String(entry.message));
       };
 
-      const gated = await questStatements(() => scope.countByProject(ids));
-      const ungated = await questStatements(() =>
+      await database.run(
+        sql.raw(
+          `UPDATE quests SET epic_id = (SELECT id FROM epics), draft_at = '2026-01-01T00:00:00.000Z'
+         WHERE id = (SELECT MIN(id) FROM quests WHERE project_id = ${ids[0]})`,
+        ),
+        z.object({}),
+      );
+
+      const withDraft = await questStatements(() => scope.countByProject(ids));
+      const withoutDraft = await questStatements(() =>
         scope.countByProject([ids[1], ids[2]]),
       );
 
-      expect(gated).toHaveLength(1);
-      expect(ungated).toHaveLength(1);
-      // The gate is only in the first one, which is what makes them two shapes.
-      expect(gated[0]).toContain("epic_id");
-      expect(ungated[0]).not.toContain("epic_id");
+      expect(withDraft).toHaveLength(1);
+      expect(withoutDraft).toHaveLength(1);
+      // No term reads the epic any more, and the draft is the quest's column.
+      for (const statement of [withDraft[0], withoutDraft[0]]) {
+        expect(statement).not.toContain("epic_id");
+        expect(statement).toContain("draft_at");
+      }
+      // The draft is out of its project's count.
+      expect((await scope.countByProject(ids)).get(ids[0])).toBe(4);
 
-      for (const statement of [gated[0], ungated[0]]) {
-        // The placeholders stand for project ids and epic ids, so any integer
-        // reads the same to the planner: it binds constraints, not values.
+      for (const statement of [withDraft[0], withoutDraft[0]]) {
+        // The placeholders stand for project ids, so any integer reads the
+        // same to the planner: it binds constraints, not values.
         const plan = await database.run(
           sql.raw(`EXPLAIN QUERY PLAN ${statement.replace(/\?/g, "1")}`),
           z.object({ detail: z.string() }),
         );
         const detail = plan.map((row) => row.detail).join("\n");
         expect(detail).toContain("quests_open_idx");
-        // Covering: neither the gate nor the count reaches the table.
+        // Covering: the count never reaches the table.
         expect(detail).toContain("COVERING INDEX");
       }
 

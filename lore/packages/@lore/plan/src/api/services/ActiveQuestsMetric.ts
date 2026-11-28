@@ -59,12 +59,10 @@ export class ActiveQuestsMetric implements DashboardMetricResolver {
    * card afterwards costs the same one statement whether the reader pinned
    * one tile or six.
    *
-   * ⚠️ The backlog gate survives the union, and that is the load-bearing
-   * detail. `applyBacklogGateAcross` excludes quests whose `epicId` is in
-   * the draft set of the projects it was given; an epic belongs to
-   * exactly one project, so the union's draft set is precisely the union
-   * of each project's own. Intersecting the rows with a card's scope
-   * afterwards therefore gives the same answer as gating that scope alone.
+   * Every term of `OpenQuestScope` (not completed, not shelved, not a draft)
+   * is a property of the quest's own row, so intersecting the union's rows
+   * with a card's scope afterwards gives the same answer as reading that
+   * scope alone.
    */
   async resolveAll(
     cards: DashboardResolvable[],

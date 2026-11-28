@@ -13,7 +13,11 @@ interface FakeQuest {
   id: number;
   shortId: number;
   title: string;
-  epicId?: number;
+  /**
+   * The quest's status, as `QuestController.getQuests` filters on it. Absent
+   * reads as `todo`.
+   */
+  status?: string;
 }
 
 /**
@@ -21,17 +25,15 @@ interface FakeQuest {
  * `LinkProvider.client()` is the documented Alepha service-substitution seam
  * (`AGENTS.md`: never `vi.mock` / `vi.spyOn`).
  *
- * `getQuests` mirrors the real backlog gate
- * (`EpicVisibilityService.applyBacklogGate`, applied by
- * `QuestController.getQuests`): a quest filed under a `draft` epic is
- * dropped UNLESS the caller passes `includeDrafts: true`. Wiki-links are
- * direct addressing and must stay "never gated" (design §5.3) — this fake is
- * what proves the hook actually sets the flag rather than merely compiling.
+ * `getQuests` mirrors the real list's scope (`QuestController.getQuests`,
+ * #E178): with no `status` a draft and a shelved quest are dropped, and a
+ * `status` list returns the statuses it names. A link to a draft must still
+ * be offered — this fake is what proves the hook actually names `draft`
+ * rather than merely compiling.
  */
 class FakeLinkProvider extends LinkProvider {
   quests: FakeQuest[] = [];
   epics: Array<{ id: number; number: number; title: string }> = [];
-  draftEpicIds = new Set<number>();
   /**
    * How many quests `getQuests` answers, like the page size the hook asks
    * for. Only the first `page` of `quests` come back, so a quest past it is
@@ -79,13 +81,14 @@ class FakeLinkProvider extends LinkProvider {
       },
       listAttachments: async () => [],
       getEpicRefs: async () => this.epics,
-      getQuests: async (config: { query?: { includeDrafts?: boolean } }) => {
-        const includeDrafts = config?.query?.includeDrafts === true;
-        const visible = includeDrafts
-          ? this.quests
-          : this.quests.filter(
-              (q) => q.epicId == null || !this.draftEpicIds.has(q.epicId),
-            );
+      getQuests: async (config: { query?: { status?: string } }) => {
+        const named = config?.query?.status?.split(",");
+        const visible = this.quests.filter((q) => {
+          const status = q.status ?? "todo";
+          return named
+            ? named.includes(status)
+            : status !== "draft" && status !== "shelved";
+        });
         return { content: visible.slice(0, this.page) };
       },
     };
@@ -109,16 +112,17 @@ const setup = () => {
 /**
  * Merged from the two hooks this one replaced — `useWikiLinkRewrite` covered
  * the rendered half, `useFolioWikiLinks` the suggestions half, and each
- * pinned the same gate invariant from its own side. One hook now serves
- * both, so one spec asserts both.
+ * pinned the same invariant from its own side. One hook now serves both, so
+ * one spec asserts both.
  */
-describe("useElementLinks — a draft epic's quest is direct addressing", () => {
-  it("resolves [[#Q<n>]] into a real link even when the epic is a draft", async ({
+describe("useElementLinks — a draft is direct addressing", () => {
+  it("resolves [[#Q<n>]] into a real link even when the quest is a draft", async ({
     expect,
   }) => {
     const { fake, wrapper } = setup();
-    fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
-    fake.draftEpicIds = new Set([99]);
+    fake.quests = [
+      { id: 1, shortId: 7, title: "Deploy pipeline", status: "draft" },
+    ];
 
     const { result } = renderHook(
       () =>
@@ -129,8 +133,7 @@ describe("useElementLinks — a draft epic's quest is direct addressing", () => 
       { wrapper },
     );
 
-    // Without `includeDrafts: true` the gate hides the quest, the resolver
-    // cannot find it, and the token is rewritten into a broken-link marker
+    // A draft must resolve, not be rewritten into a broken-link marker
     // instead of an href.
     await waitFor(() => {
       expect(result.current.rendered).toContain("(/acme/quests/7)");
@@ -142,8 +145,9 @@ describe("useElementLinks — a draft epic's quest is direct addressing", () => 
 
   it("resolves the typed [[#Q<n>]] form the same way", async ({ expect }) => {
     const { fake, wrapper } = setup();
-    fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
-    fake.draftEpicIds = new Set([99]);
+    fake.quests = [
+      { id: 1, shortId: 7, title: "Deploy pipeline", status: "draft" },
+    ];
 
     const { result } = renderHook(
       () =>
@@ -161,8 +165,9 @@ describe("useElementLinks — a draft epic's quest is direct addressing", () => 
 
   it("offers that same quest in the [[ picker", async ({ expect }) => {
     const { fake, wrapper } = setup();
-    fake.quests = [{ id: 1, shortId: 7, title: "Deploy pipeline", epicId: 99 }];
-    fake.draftEpicIds = new Set([99]);
+    fake.quests = [
+      { id: 1, shortId: 7, title: "Deploy pipeline", status: "draft" },
+    ];
 
     const { result } = renderHook(
       () =>

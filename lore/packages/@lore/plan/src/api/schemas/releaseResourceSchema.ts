@@ -6,11 +6,10 @@ import { releases } from "../entities/releases.ts";
  * Release + the progress rollup, which is the single number that makes a
  * release worth opening.
  *
- * ⚠️ `progress` counts EVERY quest in the release, including the quests of a
- * `draft` epic that `EpicVisibilityService` keeps out of the project's own
- * backlog. Same reasoning as `epicResourceSchema`: a release reporting 0/23 is
- * telling the truth, one reporting 0/0 because its own work is gated out of a
- * listing surface is not.
+ * ⚠️ `progress` counts EVERY quest in the release, including the drafts the
+ * project's own lists leave out. Same reasoning as `epicResourceSchema`: a
+ * release reporting 0/23 is telling the truth, one reporting 0/0 because its
+ * own work is filtered out of a listing surface is not.
  *
  * For a released release these four numbers come from the frozen columns
  * stamped at publish and are NEVER recomputed - see

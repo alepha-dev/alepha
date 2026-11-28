@@ -13,7 +13,11 @@ interface FakeQuest {
   id: number;
   shortId: number;
   title: string;
-  epicId?: number;
+  /**
+   * The quest's status, as `QuestController.getQuests` filters on it. Absent
+   * reads as `todo`.
+   */
+  status?: string;
 }
 
 /**
@@ -22,37 +26,36 @@ interface FakeQuest {
  * `useFolioActions.browser.spec.tsx` (`AGENTS.md`: never
  * `vi.mock`/`vi.spyOn`).
  *
- * Records the exact query the component sends, and mirrors the real
- * backlog gate (`EpicVisibilityService.applyBacklogGate`): a quest filed
- * under a `draft` epic is dropped UNLESS the caller passes
- * `includeDrafts: true`. `QuestDependencyPicker` is the only surface that
- * sets `dependsOn` from the UI, and it must keep offering a draft epic's
- * quest as a predecessor (design §5.3, direct addressing is never gated).
+ * Records the exact query the component sends, and mirrors the real list's
+ * scope (`QuestController.getQuests`, #E178): with no `status` a draft and a
+ * shelved quest are dropped, and a `status` list returns the statuses it
+ * names. `QuestDependencyPicker` is the only surface that sets `dependsOn`
+ * from the UI, and it must keep offering a draft as a predecessor.
  */
 class FakeLinkProvider extends LinkProvider {
   quests: FakeQuest[] = [];
-  draftEpicIds = new Set<number>();
-  calls: Array<{ query?: { includeDrafts?: boolean } }> = [];
+  calls: Array<{ query?: { status?: string } }> = [];
 
   // matches the real client's own loose virtual-action shape
   override client(): any {
     return {
-      getQuests: async (config: { query?: { includeDrafts?: boolean } }) => {
+      getQuests: async (config: { query?: { status?: string } }) => {
         this.calls.push({ query: config.query });
-        const includeDrafts = config?.query?.includeDrafts === true;
-        const visible = includeDrafts
-          ? this.quests
-          : this.quests.filter(
-              (q) => q.epicId == null || !this.draftEpicIds.has(q.epicId),
-            );
+        const named = config?.query?.status?.split(",");
+        const visible = this.quests.filter((q) => {
+          const status = q.status ?? "todo";
+          return named
+            ? named.includes(status)
+            : status !== "draft" && status !== "shelved";
+        });
         return { content: visible };
       },
     };
   }
 }
 
-describe("QuestDependencyPicker — offers a draft epic's quest as a predecessor", () => {
-  it("fetches with includeDrafts: true so a draft-epic quest is in the candidate list", async ({
+describe("QuestDependencyPicker — offers a draft as a predecessor", () => {
+  it("names draft among the statuses it fetches, so a draft is in the candidate list", async ({
     expect,
   }) => {
     const alepha = Alepha.create()
@@ -65,9 +68,8 @@ describe("QuestDependencyPicker — offers a draft epic's quest as a predecessor
 
     const fakeLinks = alepha.inject(FakeLinkProvider);
     fakeLinks.quests = [
-      { id: 5, shortId: 5, title: "Setup pipeline", epicId: 7 },
+      { id: 5, shortId: 5, title: "Setup pipeline", status: "draft" },
     ];
-    fakeLinks.draftEpicIds = new Set([7]);
 
     render(
       <AlephaContext.Provider value={alepha}>
@@ -76,11 +78,11 @@ describe("QuestDependencyPicker — offers a draft epic's quest as a predecessor
     );
 
     await waitFor(() => expect(fakeLinks.calls.length).toBe(1));
-    // Before the fix, this query omitted `includeDrafts`, so the gate
-    // dropped the draft-epic quest from the candidate list — the
-    // dependency flow was unusable inside a draft epic.
-    expect(fakeLinks.calls[0]?.query).toMatchObject({
-      includeDrafts: true,
-    });
+    // With no status the list leaves drafts out, and the dependency flow
+    // would be unusable inside a draft epic. Shelved quests stay out.
+    const named = fakeLinks.calls[0]?.query?.status?.split(",") ?? [];
+    expect(named).toContain("draft");
+    expect(named).toContain("todo");
+    expect(named).not.toContain("shelved");
   });
 });

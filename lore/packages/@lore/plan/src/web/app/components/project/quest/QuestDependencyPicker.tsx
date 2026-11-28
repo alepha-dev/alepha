@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 
 import type { QuestController } from "../../../../../api/controllers/QuestController.ts";
 import type { QuestResource } from "../../../../../api/schemas/questResourceSchema.ts";
+import { QUEST_STATUSES_WITH_DRAFTS } from "../../../../../api/schemas/questStatusesWithDrafts.ts";
 
 export interface QuestDependencyPickerProps {
   projectId: number;
@@ -45,23 +46,21 @@ const QuestDependencyPicker = (props: QuestDependencyPickerProps) => {
   const questApi = useClient<QuestController>();
   const [open, setOpen] = useState(false);
   // Quiet on failure (#E59, #Q2328): a picker with no suggestions still
-  // clears a dependency. Keyed like `EpicQuestPicker`'s identical read, so the
-  // two share it.
+  // clears a dependency.
   const all = useQuery(
     {
-      key: ["quests", props.projectId, { includeDrafts: true }],
+      key: ["quests", props.projectId, { status: QUEST_STATUSES_WITH_DRAFTS }],
       handler: async () =>
         (
           await questApi.getQuests({
             params: { projectId: props.projectId },
             // `size` is capped at 100 server-side; for larger projects the
             // combobox search narrows the list (a future enhancement could
-            // push the query server-side). `includeDrafts: true` so a quest
-            // filed under a draft epic is still offered as a predecessor -
-            // this is the only surface that sets `dependsOn` from the UI,
-            // and it must work inside a draft epic too (design §5.3, direct
-            // addressing is never gated). Mirrors `EpicQuestPicker`.
-            query: { size: 100, includeDrafts: true },
+            // push the query server-side). The statuses name `draft`, so a
+            // draft, loose or of a draft epic, is still offered as a
+            // predecessor: this is the only surface that sets `dependsOn`
+            // from the UI, and it must work inside a draft epic too (#E178).
+            query: { size: 100, status: QUEST_STATUSES_WITH_DRAFTS },
           })
         ).content,
       onError: () => {},

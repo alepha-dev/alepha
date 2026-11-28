@@ -12,7 +12,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Quest, quests } from "../entities/quests.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 
 /**
  * Open quests due in the next seven days, the overdue first (#Q2655).
@@ -30,7 +29,6 @@ export class DueSoonMetric implements DashboardMetricResolver {
 
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly quests = $repository(quests);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   async resolveAll(
@@ -53,7 +51,7 @@ export class DueSoonMetric implements DashboardMetricResolver {
       where.projectId = { eq: project.id };
       where.shelvedAt = { isNull: true };
       where.completedAt = { isNull: true };
-      await this.epicVisibility.applyBacklogGate(where, project.id);
+      where.draftAt = { isNull: true };
       if (entry.scope.viewerId) {
         where.acceptedBy = { eq: entry.scope.viewerId };
       }

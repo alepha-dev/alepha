@@ -253,7 +253,11 @@ describe("dashboard resolve", () => {
       const active = await createTestEpic(ctx.alepha, project, {
         status: "in_progress",
       });
-      await createTestQuest(ctx.alepha, project, { epicId: draft.id });
+      // A draft epic's quest as the epic writes it: a draft.
+      await createTestQuest(ctx.alepha, project, {
+        epicId: draft.id,
+        draftAt: "2026-01-01T00:00:00.000Z",
+      });
       await createTestQuest(ctx.alepha, project, { epicId: active.id });
       await createTestQuest(ctx.alepha, project);
 
@@ -405,7 +409,7 @@ describe("dashboard resolve", () => {
       expect(value.detail.open).toBe(1);
     });
 
-    it("honours the draft-epic backlog gate, like the card beside it", async ({
+    it("leaves a held draft out, like the card beside it", async ({
       expect,
     }) => {
       const { user, project } = await memberOf(ctx);
@@ -416,6 +420,8 @@ describe("dashboard resolve", () => {
         title: "held inside a draft epic",
         epicId: draft.id,
         heldAt: new Date().toISOString(),
+        // Held and a draft underneath, as the epic writes it.
+        draftAt: "2026-01-01T00:00:00.000Z",
       });
       await createTestQuest(ctx.alepha, project, {
         title: "held in the open backlog",
@@ -424,8 +430,7 @@ describe("dashboard resolve", () => {
 
       const value = await resolveHeld(project, user);
 
-      // A quest parked inside a draft epic is out of the Active Quests
-      // count by design, so counting it here would put a number on the board
+      // A held draft is out of the Active Quests count by design, so counting it here would put a number on the board
       // larger than the card beside it can account for.
       expect(value.value).toBe(1);
       expect(value.detail.open).toBe(1);
@@ -952,6 +957,7 @@ describe("dashboard resolve", () => {
       await createTestQuest(ctx.alepha, project, {
         tags: ["api"],
         epicId: draft.id,
+        draftAt: "2026-01-01T00:00:00.000Z",
       });
       await createTestQuest(ctx.alepha, project, {
         tags: ["api"],
@@ -961,10 +967,9 @@ describe("dashboard resolve", () => {
 
       const value = await resolveTag(project, user, "api");
 
-      // ⚠️ The completed quest is EXEMPT from the backlog gate, exactly as
-      // `ProjectReportsService.questScope` exempts it: a draft epic can
-      // hold completed quests, and gating finished work
-      // would retroactively erase it.
+      // ⚠️ The completed quest is never a draft, exactly as
+      // `ProjectReportsService.questScope` says: a draft epic can hold
+      // completed quests, and nothing stamps `draftAt` on finished work.
       expect(value.detail.total).toBe(1);
       expect(value.detail.completed).toBe(1);
     });
@@ -1797,14 +1802,14 @@ describe("dashboard resolve", () => {
         },
       ]);
 
-      // Two cards or five, the same three statements: one `quests`, one
-      // `feedback`, and the one `epics` read the backlog gate needs.
+      // Two cards or five, the same two statements: one `quests` and one
+      // `feedback`. No `epics` read: a draft is a column of the quest's row.
       //
       // Exact, never `toBeLessThan`: an upper bound stays green if a later
       // change stops reading anything at all.
       expect({ one, many }).toEqual({
-        one: { quests: 1, feedback: 1, epics: 1 },
-        many: { quests: 1, feedback: 1, epics: 1 },
+        one: { quests: 1, feedback: 1, epics: 0 },
+        many: { quests: 1, feedback: 1, epics: 0 },
       });
     });
 
@@ -1842,7 +1847,7 @@ describe("dashboard resolve", () => {
       expect(ids.map(valueOf)).toEqual([4, 1, 3]);
     });
 
-    it("applies each project's own backlog gate through the shared read", async ({
+    it("leaves each project's own drafts out through the shared read", async ({
       expect,
     }) => {
       const { user, project, second } = await threeProjects();
@@ -1852,7 +1857,10 @@ describe("dashboard resolve", () => {
       const activeThere = await createTestEpic(ctx.alepha, second, {
         status: "in_progress",
       });
-      await createTestQuest(ctx.alepha, project, { epicId: plannedHere.id });
+      await createTestQuest(ctx.alepha, project, {
+        epicId: plannedHere.id,
+        draftAt: "2026-01-01T00:00:00.000Z",
+      });
       await createTestQuest(ctx.alepha, project);
       await createTestQuest(ctx.alepha, second, { epicId: activeThere.id });
 
@@ -1874,11 +1882,11 @@ describe("dashboard resolve", () => {
       const valueOf = (id: number) =>
         values.find((v) => v.cardId === id)?.value;
 
-      // The claim the batched read rests on: the gate computed over the
-      // UNION is the same gate each project would have got on its own,
-      // because an epic belongs to exactly one project. The first card
-      // loses its draft-epic quest, the second keeps its active-epic one,
-      // and neither is affected by the other's epics.
+      // The claim the batched read rests on: the scope read over the UNION
+      // gives each project what it would have got on its own, because a
+      // draft is a column of the quest's own row. The first card loses its
+      // draft, the second keeps its active-epic quest, and neither is
+      // affected by the other's epics.
       expect(ids.map(valueOf)).toEqual([1, 1]);
     });
 

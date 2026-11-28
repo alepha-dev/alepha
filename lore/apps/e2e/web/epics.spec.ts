@@ -12,24 +12,25 @@ import {
 } from "./_helpers.ts";
 
 /**
- * The backlog gate, end to end.
+ * A draft epic's quests are drafts, end to end (#E178).
  *
  * This is the behaviour the whole Epics feature exists for: a quest inside a
- * `draft` epic is specified but not released into the backlog, and it is
- * hidden by FILTERING reads rather than by mutating the quest. Unit tests pin
- * the SQL; this pins the thing a person actually sees.
+ * `draft` epic is specified but not released into the backlog. It carries the
+ * draft status (`draftAt`, written by the epic), and every default view leaves
+ * a draft out. Unit tests pin the SQL; this pins the thing a person actually
+ * sees.
  *
- * The last step is the one that matters most. Lore already had a way to hide a
- * quest — `shelvedAt`, meaning "decided out of scope" — and the entire premise
- * of Epics is that "not released yet" is a DIFFERENT fact that was previously
- * being expressed with that same word. So the test finishes by driving both
- * mechanisms at once and asserting they stay independent. If marking an
- * epic ready ever un-shelved a quest, or shelving one ever leaked it back into a
- * draft epic's hidden set, that is the regression that would make the
- * feature pointless, and only this assertion catches it.
+ * The last step is the one that matters most. Lore already had a way to set a
+ * quest aside — `shelvedAt`, meaning "decided out of scope" — and the entire
+ * premise of Epics is that "not released yet" is a DIFFERENT fact that was
+ * previously being expressed with that same word. So the test finishes by
+ * driving both at once and asserting they stay independent. If marking an epic
+ * ready ever un-shelved a quest, or shelving one ever leaked it back into the
+ * drafts, that is the regression that would make the feature pointless, and
+ * only this assertion catches it.
  */
-test.describe("Epics — the backlog gate", () => {
-  test("a draft epic hides its quests, and shelving stays independent", async ({
+test.describe("Epics — a draft epic's quests are drafts", () => {
+  test("a draft epic's quests are drafts, and shelving stays independent", async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -57,12 +58,12 @@ test.describe("Epics — the backlog gate", () => {
       options: { epics: true },
     });
 
-    const gatedTitle = `Gated${t}`;
+    const parkedTitle = `Parked${t}`;
     const releasedTitle = `Released${t}`;
 
     // Seed through the API rather than the UI: this test is about visibility
     // rules, and driving four creation dialogs would only add ways for it to
-    // fail for reasons that are not the gate.
+    // fail for reasons that are not the draft status.
     const epic = await page.evaluate(
       async ({ projectId, title }) => {
         const r = await fetch(`/api/createEpic/${projectId}`, {
@@ -83,11 +84,11 @@ test.describe("Epics — the backlog gate", () => {
     expect(epic.status).toBe("draft");
 
     const questIds: number[] = [];
-    for (const title of [gatedTitle, releasedTitle]) {
+    for (const title of [parkedTitle, releasedTitle]) {
       const { id } = await apiPost<{ id: number }>(page, "createQuest", {
         projectId,
         title,
-        description: "Seeded for the backlog gate",
+        description: "Seeded for the draft status",
         area: "orm",
         priority: "high",
         objectives: [],
@@ -117,19 +118,39 @@ test.describe("Epics — the backlog gate", () => {
       await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
 
-      await expect(page.getByText(gatedTitle)).toHaveCount(0);
+      await expect(page.getByText(parkedTitle)).toHaveCount(0);
       await expect(page.getByText(releasedTitle)).toHaveCount(0);
+
+      // They are drafts, not hidden: the list names them by their status.
+      const drafts = await page.evaluate(
+        async ({ projectId }) => {
+          const r = await fetch(`/api/getQuests/${projectId}?status=draft`, {
+            credentials: "include",
+          });
+          if (!r.ok) throw new Error(`getQuests ${r.status} ${await r.text()}`);
+          return (await r.json()) as {
+            content: Array<{ title: string; metadata: { status: string } }>;
+          };
+        },
+        { projectId },
+      );
+      expect(drafts.content.map((q) => q.title).sort()).toEqual(
+        [parkedTitle, releasedTitle].sort(),
+      );
+      expect(drafts.content.map((q) => q.metadata.status)).toEqual([
+        "draft",
+        "draft",
+      ]);
 
       // The sidebar's open-quest badge must agree with the list it links to.
       // This assertion exists because the first run of this test caught it
-      // disagreeing: the badge counted both gated quests and read "2" beside
-      // a visibly empty list. `countOpenQuests` already excludes shelved
-      // quests for exactly this reason, and a draft epic is the same class
-      // of hidden.
+      // disagreeing: the badge counted both of the epic's quests and read "2"
+      // beside a visibly empty list. `countOpenQuests` leaves shelved quests
+      // and drafts out for exactly this reason.
       //
       // Asserted against the count endpoint rather than the rendered badge:
       // the number is the contract, the badge is one rendering of it, and a
-      // DOM-shape assertion here would fail for reasons that are not the gate.
+      // DOM-shape assertion here would fail for reasons that are not drafts.
       const openCount = await page.evaluate(async (projectId) => {
         const r = await fetch(`/api/projects/${projectId}/quests/count`, {
           credentials: "include",
@@ -152,7 +173,7 @@ test.describe("Epics — the backlog gate", () => {
       // the wrong tool: the visibility assertions carry their own timeouts.
       await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
 
-      await expect(page.getByText(gatedTitle).first()).toBeVisible({
+      await expect(page.getByText(parkedTitle).first()).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText(releasedTitle).first()).toBeVisible();
@@ -287,16 +308,16 @@ test.describe("Epics — the backlog gate", () => {
       await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
 
-      await expect(page.getByText(gatedTitle).first()).toBeVisible({
+      await expect(page.getByText(parkedTitle).first()).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText(releasedTitle).first()).toBeVisible();
     });
 
     await test.step("shelving hides one quest for the other reason, and only that one", async () => {
-      // The two mechanisms must not interfere. `shelvedAt` means "decided out
-      // of scope"; a draft epic means "not released yet". Both hide a quest
-      // from the backlog, and neither may imply the other.
+      // The two must not interfere. `shelvedAt` means "decided out of scope";
+      // a draft means "not released yet". Both keep a quest out of the
+      // backlog, and neither may imply the other.
       // `shelveQuest` has no body schema, so it is GET at the canonical
       // /api/shelveQuest/:id.
       await page.evaluate(async (questId) => {
@@ -314,15 +335,15 @@ test.describe("Epics — the backlog gate", () => {
       await page.goto(`/${slug}/quests`);
       await page.waitForLoadState("networkidle");
 
-      await expect(page.getByText(gatedTitle)).toHaveCount(0);
+      await expect(page.getByText(parkedTitle)).toHaveCount(0);
       await expect(page.getByText(releasedTitle).first()).toBeVisible();
     });
 
-    await test.step("the epic still shows the shelved quest, because hidden is not unreachable", async () => {
+    await test.step("the epic still shows the shelved quest, because out of the backlog is not unreachable", async () => {
       // Again `?tab=quests` — see the note in the step above.
       await page.goto(`/${slug}/epics/${epic.number}?tab=quests`);
 
-      await expect(page.getByText(gatedTitle).first()).toBeVisible({
+      await expect(page.getByText(parkedTitle).first()).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText(releasedTitle).first()).toBeVisible();
@@ -331,7 +352,7 @@ test.describe("Epics — the backlog gate", () => {
 });
 
 /**
- * The Epics LIST, which the gate test above never visits — it goes straight
+ * The Epics LIST, which the draft test above never visits — it goes straight
  * to `/epics/:number`. Since the list moved onto `DataTable` it owns its
  * own fetch (the route loader was removed), so "the page renders rows at
  * all" is now a client-side path with nothing server-rendered behind it to
@@ -340,7 +361,7 @@ test.describe("Epics — the backlog gate", () => {
  * The progress caption is asserted rather than the tick bar: the bar is
  * `aria-hidden` decoration, and the caption is the part that carries the
  * meaning — including "specified, none released", which is the list's only
- * statement of the backlog gate the test above proves.
+ * statement of the draft epic the test above proves.
  */
 test.describe("Epics — the list", () => {
   test("renders, filters by search, and creates from the toolbar", async ({
@@ -427,9 +448,9 @@ test.describe("Epics — the list", () => {
 
     await test.step("the sidebar badges the draft epics", async () => {
       // Both seeded epics are `draft`, and the badge counts exactly that.
-      // It matters because `countOpenQuests` runs the backlog gate: the quest
-      // attached above is inside a draft epic, so it is absent from the
-      // Quests badge on purpose. This number is the sidebar's only trace of
+      // It matters because `countOpenQuests` leaves drafts out: the quest
+      // attached above is inside a draft epic, so it is a draft and absent
+      // from the Quests badge on purpose. This number is the sidebar's only trace of
       // it. Read off the nav link so a stray "2" elsewhere cannot satisfy it.
       await expect(epicsBadge(page)).toHaveText("2", { timeout: 15_000 });
     });
@@ -603,7 +624,7 @@ test.describe("Epics — the questline", () => {
     });
 
     // `createEpic` and `attachQuest` take a path param, which `apiPath` does
-    // not substitute, so they go through a raw fetch the way the gate test
+    // not substitute, so they go through a raw fetch the way the draft test
     // above does. `createQuest` has none and can use the helper.
     const epic = await page.evaluate(
       async ({ projectId, title }) => {
@@ -831,7 +852,7 @@ test.describe("Epics — a member, not just the owner", () => {
       await member.page.waitForLoadState("domcontentloaded");
 
       // `createEpic` and `attachQuest` carry their id in the path, which
-      // `apiPost` cannot fill in — raw `fetch`, same as the gate test above.
+      // `apiPost` cannot fill in — raw `fetch`, same as the draft test above.
       const post = async <T>(path: string, body: unknown): Promise<T> =>
         member.page.evaluate(
           async ({ path, body }) => {
@@ -905,8 +926,8 @@ test.describe("Epics — a member, not just the owner", () => {
  *
  * Two of them are set by hand, from here: Mark as ready and Back to
  * draft. The confirmation on Ready is the point, not decoration: it
- * releases the epic's quests into the project backlog
- * (`EpicVisibilityService`), so it changes what other people see on a page
+ * releases the epic's quests into the project backlog (its drafts become
+ * to do), so it changes what other people see on a page
  * they are not looking at. The test drives the cancel path too, since a
  * confirm that cannot say no is a confirm that is not doing anything.
  *
@@ -1501,7 +1522,7 @@ test.describe("Epics — the release control", () => {
  * that a vanished affordance is a refusal underneath and not a hidden
  * button, and that the predecessor refuses the START rather than `ready`.
  *
- * Seeded through the API like the backlog-gate suite above, for the same
+ * Seeded through the API like the draft suite above, for the same
  * reason: this is about the lifecycle, not about four creation dialogs.
  */
 test.describe("Epics — the lifecycle on the epic page", () => {

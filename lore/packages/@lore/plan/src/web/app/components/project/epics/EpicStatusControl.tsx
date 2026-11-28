@@ -39,15 +39,15 @@ export interface EpicStatusControlProps {
  *
  * ## Mark as ready confirms, Back to draft does not
  *
- * **Ready moves the backlog gate.** A `draft` epic hides its quests from
- * the project's backlog (`EpicVisibilityService`), so marking it ready
+ * **Ready makes the epic's drafts to do.** A `draft` epic's quests are
+ * drafts, which the project's default views leave out, so marking it ready
  * releases them for everybody: it changes what other people see on a page
  * they are not looking at, and the first of them to accept a quest freezes
  * the plan. That is worth a confirmation, and the copy says both. Same copy
  * as the Epics list's row menu, from the same keys.
  *
- * **Back to draft is the safe direction.** It hides quests nobody has
- * started yet (a ready epic with an accepted quest is already in progress),
+ * **Back to draft is the safe direction.** It makes drafts of quests nobody
+ * has started yet (a ready epic with an accepted quest is already in progress),
  * and the next click undoes it.
  *
  * ## Open review questions are named, never a refusal (#E121)

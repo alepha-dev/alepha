@@ -31,7 +31,7 @@ const onPostgres = process.env.DATABASE_TEST_DIALECT === "postgres";
  * `test/quest-epic-workflow.spec.ts`'s job.
  *
  * `WorkTestEntities` is composed rather than extended, for the reason
- * `EpicVisibilityService.spec.ts` gives: the `createTest*` helpers inject
+ * `WorkTestEntities` itself gives: the `createTest*` helpers inject
  * the same cached instance, and every FK target has to be registered before
  * `alepha.start()`.
  */

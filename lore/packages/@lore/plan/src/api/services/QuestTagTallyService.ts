@@ -1,8 +1,6 @@
-import { $inject } from "alepha";
 import { $repository, type PgQueryWhere } from "alepha/orm";
 
 import { quests } from "../entities/quests.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 
 /**
  * Completed versus remaining, per quest tag, in ONE place.
@@ -26,7 +24,6 @@ import { EpicVisibilityService } from "./EpicVisibilityService.ts";
  */
 export class QuestTagTallyService {
   protected readonly quests = $repository(quests);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
 
   /**
    * `quests.tags` as an array, whatever the driver handed back.
@@ -87,13 +84,13 @@ export class QuestTagTallyService {
    *
    * - soft-deleted and shelved quests are out, so a declined quest leaves both
    *   the numerator and the denominator,
-   * - and an OPEN quest inside a `draft` epic is out too, because it is
-   *   specified rather than released.
+   * - and a draft (`draftAt` set) is out too, because it is specified rather
+   *   than ready: every not-taken quest of a `draft` epic is one.
    *
-   * ⚠️ **Completed quests are exempt from the backlog gate**, exactly as
-   * `ProjectReportsService.questScope` exempts them, and for its stated
-   * reason: a `draft` epic can hold completed quests (a finished quest may be
-   * filed into one), and gating finished work would retroactively erase it from the numbers.
+   * ⚠️ **A completed quest is never a draft**, as
+   * `ProjectReportsService.questScope` says: a `draft` epic can hold completed
+   * quests (a finished quest may be filed into one), and nothing stamps
+   * `draftAt` on them, so finished work stays in the numbers.
    */
   async rowsFor(
     projectIds: number[],
@@ -105,24 +102,8 @@ export class QuestTagTallyService {
     const where: PgQueryWhere<typeof quests.schema> = {
       projectId: { inArray: projectIds },
       shelvedAt: { isNull: true },
+      draftAt: { isNull: true },
     };
-
-    const drafts: number[] = [];
-    for (const projectId of projectIds) {
-      drafts.push(...(await this.epicVisibility.draftEpicIds(projectId)));
-    }
-
-    if (drafts.length > 0) {
-      // ⚠️ The `isNull` branch is mandatory, not defensive: `epic_id NOT IN
-      // (…)` is SQL NULL for a quest with no epic, and a NULL predicate
-      // excludes the row - which would hide the entire backlog. The third
-      // branch is the completed exemption above.
-      where.or = [
-        { completedAt: { isNotNull: true } },
-        { epicId: { isNull: true } },
-        { epicId: { notInArray: drafts } },
-      ];
-    }
 
     const rows = await this.quests.findMany({
       where,

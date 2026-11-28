@@ -286,7 +286,8 @@ describe("QuestFlowService", () => {
       description: "",
       status: "draft",
     });
-    await quest({ epicId: draft.id });
+    // A draft epic's quest as the epic writes it: a draft.
+    await quest({ epicId: draft.id, draftAt: "2026-01-01T00:00:00.000Z" });
     const [today] = days(0);
 
     await flow.snapshot(projectId, today!);

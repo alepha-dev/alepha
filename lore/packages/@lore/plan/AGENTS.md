@@ -51,7 +51,7 @@ Live in `src/web/app/atoms/`, filled by this module's `ProjectLoaderRegistry` en
 - `currentReleasesAtom` — release list
 - `currentFeedbackCountAtom` — pending-feedback badge for the project header
 - `currentQuestCountAtom` — open-quests badge for the project header (new: Quests has no feature gate, unlike Errors/Feedback, so this badge is always on)
-- `currentEpicCountAtom` — draft-epics badge. It exists because `countOpenQuests` applies the backlog gate, so quests inside a draft epic are left out of the Quests count and would otherwise be invisible in the sidebar
+- `currentEpicCountAtom` — draft-epics badge. It exists because `countOpenQuests` leaves drafts out, so the quests of a draft epic are left out of the Quests count and would otherwise be invisible in the sidebar
 - `currentAreasAtom` — every area of the project, and the ONLY list the area pickers read. They used to read `project.areas`, a stored JSON array, which left ten production areas visible on the board and yet unselectable
 
 **Per-resource (set by their route loaders)**
@@ -142,6 +142,20 @@ only under `completed`. Folios attach in every status. The refusal strings
 are the interface an agent reads, so they name the epic; a draft epic's
 refusal deliberately does NOT tell the agent to mark it ready, since whether
 a spec is done is the owner's call.
+
+⚠️ **A draft epic's quests are drafts, and no read looks at the epic's status
+(#E178, folio #1552).** `quests.draftAt` is set on a loose quest asked to be a
+draft and on every quest of a `draft` epic nobody took or finished, its held
+and shelved ones included; `QuestDraftService` is its only writer. Every list,
+count and report leaves a draft out with `draftAt IS NULL`, beside the
+`shelvedAt IS NULL` it already had: the quest list with no status or with
+`statusOp: not` (a status list naming `draft` returns them, and an `epic`
+filter keeps its epic's drafts), the `on_hold` filter (a held draft is out),
+the kanban, `OpenQuestScope` and the dashboard tiles, `ProjectReportsService`
+and the tag tally. A completed quest is never a draft, so finished work in a
+draft epic always counts. `quests_open_idx` names `draft_at` for it. The
+read filter on the draft epics' ids that this replaced is gone (#Q4374): do
+not bring back a filter on `epic.status` for a quest list.
 
 ⚠️ **`shelved` parks a whole plan (#E78, folio #1365).** `shelveEpic` /
 `unshelveEpic` (`epic_shelve` / `epic_unshelve`, Shelve / Unshelve on the
@@ -317,8 +331,8 @@ and subscriptions" in `@lore/core`'s AGENTS for the rule for adding one.
 quest's assignee sets an interval (`setQuestReminder`, `reminderNextAt` = now +
 interval). `QuestReminders`, a check of core's hourly job, reads every due quest
 across projects with one indexed query (`quests_reminders_due_idx`, at most 100
-per tick), skips projects with Plan or its `reminder` option off and quests of a
-draft epic, and claims each reminder in a guarded batch whose condition is the
+per tick), skips projects with Plan or its `reminder` option off and drafts,
+and claims each reminder in a guarded batch whose condition is the
 due date it read: `reminderNextAt` advances from the tick, `reminder_sent` is
 written to the history, and `quest.reminder_due` is recorded, all at once. The
 assignee is then told in the inbox and by email (`QuestReminderNotifications`),
