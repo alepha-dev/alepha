@@ -30,6 +30,7 @@ import { MonitorCommand } from "./commands/MonitorCommand.ts";
 import { PersonaCommand } from "./commands/PersonaCommand.ts";
 import { ProjectCommand } from "./commands/ProjectCommand.ts";
 import { PromptCommand } from "./commands/PromptCommand.ts";
+import { PullRequestCommand } from "./commands/PullRequestCommand.ts";
 import { QualityCommand } from "./commands/QualityCommand.ts";
 import { QuestCommand } from "./commands/QuestCommand.ts";
 import { RegistryCommand } from "./commands/RegistryCommand.ts";
@@ -168,6 +169,7 @@ export const AlephaLoreCli = $module({
     CommitsCommand,
     // The GitHub App and a project's repository (epic #E177).
     GitHubCommand,
+    PullRequestCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,

@@ -1,17 +1,20 @@
 import { $hook, $inject } from "alepha";
 import { DateTimeProvider } from "alepha/datetime";
 import { $repository, DbConflictError } from "alepha/orm";
+import { ConflictError } from "alepha/server";
 
 import type { ProjectRepository } from "../entities/projectRepositories.ts";
 import { type PullRequestRow, pullRequests } from "../entities/pullRequests.ts";
 import type { PullRequestState } from "../schemas/pullRequestStateSchema.ts";
 import { GitHubClient } from "./GitHubClient.ts";
 import { GitHubText } from "./GitHubText.ts";
+import { GitHubTokenService } from "./GitHubTokenService.ts";
 import {
   type GitHubWebhookContext,
   GitHubWebhookHandlers,
 } from "./GitHubWebhookHandlers.ts";
 import { ProjectRepositoryService } from "./ProjectRepositoryService.ts";
+import { type SourceEvent, SourceRepository } from "./SourceRepository.ts";
 
 /**
  * What changed on a pull request with one delivery (#Q4367, #Q4368): the row
@@ -34,6 +37,18 @@ export interface PullRequestChange {
    * answer to item 26).
    */
   silent?: boolean;
+}
+
+/**
+ * One pull request transition, for the resolver that turns it into a
+ * project event (#Q4368).
+ */
+export interface PullRequestTransition {
+  before?: PullRequestRow;
+  row: PullRequestRow;
+  connection: ProjectRepository;
+  action?: string;
+  actorId?: string;
 }
 
 /**
@@ -88,11 +103,17 @@ export class PullRequestStateService {
   ];
 
   protected readonly rows = $repository(pullRequests);
+  protected readonly sources = $inject(SourceRepository.of(pullRequests));
   protected readonly handlers = $inject(GitHubWebhookHandlers);
   protected readonly text = $inject(GitHubText);
   protected readonly dateTime = $inject(DateTimeProvider);
   protected readonly repositories = $inject(ProjectRepositoryService);
   protected readonly client = $inject(GitHubClient);
+  protected readonly tokens = $inject(GitHubTokenService);
+  protected readonly permissions = new Map<
+    string,
+    { permission: string; until: number }
+  >();
   protected readonly pullRequestListeners: Array<
     (change: PullRequestChange) => Promise<void>
   > = [];
@@ -204,13 +225,16 @@ export class PullRequestStateService {
   /**
    * From outside the team (#Q4368): Bay's rule, an author without write,
    * maintain or admin on the repository, and no member's trust. The App's
-   * own bot is never outside. An unread permission is not outside yet.
+   * own bot reads as `app`. A permission not read yet (GitHub refused or
+   * failed) is outside: the rule fails closed, and the next delivery reads
+   * it again.
    */
   outside(row: PullRequestRow): boolean {
     if (row.trustedAt) return false;
-    if (row.authorLogin?.endsWith("[bot]")) return false;
-    if (!row.authorPermission) return false;
-    return !["admin", "maintain", "write"].includes(row.authorPermission);
+    if (!row.authorPermission) return true;
+    return !["admin", "maintain", "write", "app"].includes(
+      row.authorPermission,
+    );
   }
 
   /**
@@ -285,11 +309,25 @@ export class PullRequestStateService {
     });
   }
 
+  /**
+   * A member trusts a pull request from outside the team (#Q4368): stored on
+   * the row, with `pull_request.trusted` in the same batch, once.
+   */
   async trust(row: PullRequestRow, userId: string): Promise<PullRequestRow> {
-    return await this.rows.updateById(row.id, {
-      trustedBy: userId,
-      trustedAt: this.dateTime.nowISOString(),
-    });
+    if (row.trustedAt) return row;
+    const connection = await this.repositories.byRepositoryId(row.repositoryId);
+    if (!connection) {
+      return await this.rows.updateById(row.id, {
+        trustedBy: userId,
+        trustedAt: this.dateTime.nowISOString(),
+      });
+    }
+    return await this.write(
+      connection,
+      row,
+      { trustedBy: userId, trustedAt: this.dateTime.nowISOString() },
+      { action: "trusted", actorId: userId },
+    );
   }
 
   async setAuthorPermission(
@@ -345,7 +383,10 @@ export class PullRequestStateService {
       ...(this.text.integer(user?.id) !== undefined
         ? { authorGithubId: this.text.integer(user?.id) }
         : {}),
-      headRef: this.text.text(head?.ref, 255) ?? "",
+      // A fork's branch is `owner:branch`, GitHub's own label for it: a
+      // fork naming its branch `lore/q12` or `lore/job-<id>` must not pass
+      // for the repository's, which attaches quests and jobs by name.
+      headRef: this.headRefOf(connection, head),
       baseRef: this.text.text(base?.ref, 255) ?? "",
       headSha,
       state,
@@ -366,38 +407,42 @@ export class PullRequestStateService {
         ? { githubUpdatedAt: this.text.text(data.updated_at, 40) }
         : {}),
     };
-    let row: PullRequestRow;
-    if (!before) {
-      try {
-        row = await this.rows.create({
-          id: crypto.randomUUID(),
-          ...fields,
-          checks: "pending",
-          review: "none",
-        });
-      } catch (error) {
-        if (!(error instanceof DbConflictError)) throw error;
-        return await this.upsertFrom(connection, data, meta);
-      }
-    } else {
-      row = await this.rows.updateById(before.id, {
-        ...fields,
-        ...(newHead
-          ? {
-              checks: "pending" as const,
-              suites: {},
-              statuses: {},
-              failingChecks: [],
-            }
-          : {}),
-        ...(meta.action === "review_requested" && before.review === "none"
-          ? { review: "requested" as const }
-          : {}),
-      });
-    }
-    if (!before && meta.action === "review_requested") {
-      row = await this.rows.updateById(row.id, { review: "requested" });
-    }
+    // The author's permission, read until it is known (#Q4368): an author
+    // outside the team waits for a member's trust. A backfilled row reads
+    // it too, so an old outside pull request is not taken for the team's.
+    const authorPermission = before?.authorPermission
+      ? undefined
+      : await this.permissionOf(connection, fields.authorLogin);
+    const row = await this.write(
+      connection,
+      before,
+      before
+        ? {
+            ...fields,
+            ...(newHead
+              ? {
+                  checks: "pending" as const,
+                  suites: {},
+                  statuses: {},
+                  failingChecks: [],
+                }
+              : {}),
+            ...(meta.action === "review_requested" && before.review === "none"
+              ? { review: "requested" as const }
+              : {}),
+            ...(authorPermission ? { authorPermission } : {}),
+          }
+        : {
+            ...fields,
+            checks: "pending" as const,
+            review:
+              meta.action === "review_requested"
+                ? ("requested" as const)
+                : ("none" as const),
+            ...(authorPermission ? { authorPermission } : {}),
+          },
+      meta,
+    );
     await this.notify({
       row,
       ...(before ? { before } : {}),
@@ -433,6 +478,140 @@ export class PullRequestStateService {
     return pending ? "pending" : "passing";
   }
 
+  /**
+   * Decides the project event a transition raises (#Q4368): Plan registers
+   * it with its event definitions. Absent, rows are written with no event.
+   */
+  onTransition(
+    resolver: (
+      transition: PullRequestTransition,
+    ) => Promise<SourceEvent | undefined>,
+  ): void {
+    this.transitions = resolver;
+  }
+
+  protected transitions?: (
+    transition: PullRequestTransition,
+  ) => Promise<SourceEvent | undefined>;
+
+  /**
+   * Writes a row, and the event its transition raises in the same guarded
+   * batch (`SourceRepository`): the guard is the state the transition read,
+   * so a redelivered or repeated delivery writes the state and emits
+   * nothing.
+   */
+  protected async write(
+    connection: ProjectRepository,
+    before: PullRequestRow | undefined,
+    data: Partial<PullRequestRow>,
+    meta: { action?: string; silent?: boolean; actorId?: string },
+  ): Promise<PullRequestRow> {
+    const next = { ...before, ...data } as PullRequestRow;
+    const event =
+      !meta.silent && this.transitions
+        ? await this.transitions({
+            before,
+            row: next,
+            connection,
+            ...(meta.action ? { action: meta.action } : {}),
+            ...(meta.actorId ? { actorId: meta.actorId } : {}),
+          })
+        : undefined;
+    if (!before) {
+      const insert = { id: crypto.randomUUID(), ...data } as PullRequestRow;
+      if (!event) {
+        try {
+          return await this.rows.create(insert);
+        } catch (error) {
+          if (!(error instanceof DbConflictError)) throw error;
+          const raced = await this.byNumber(next.repositoryId, next.number);
+          if (!raced) throw error;
+          return await this.rows.updateById(raced.id, data);
+        }
+      }
+      try {
+        return await this.sources.sourceCreate(
+          insert,
+          { repositoryId: next.repositoryId, number: next.number },
+          event,
+        );
+      } catch (error) {
+        if (!(error instanceof ConflictError)) throw error;
+        const raced = await this.byNumber(next.repositoryId, next.number);
+        if (!raced) throw error;
+        return await this.rows.updateById(raced.id, data);
+      }
+    }
+    if (!event) return await this.rows.updateById(before.id, data);
+    try {
+      return await this.sources.sourceUpdate(
+        {
+          id: before.id,
+          state: before.state,
+          checks: before.checks,
+          review: before.review,
+          ...(meta.action === "trusted" ? { trustedAt: { isNull: true } } : {}),
+        },
+        data,
+        event,
+      );
+    } catch (error) {
+      if (!(error instanceof ConflictError)) throw error;
+      // Another delivery recorded this transition already: keep the state,
+      // raise nothing.
+      return await this.rows.updateById(before.id, data);
+    }
+  }
+
+  protected headRefOf(
+    connection: ProjectRepository,
+    head: Record<string, unknown> | undefined,
+  ): string {
+    const ref = this.text.text(head?.ref, 255) ?? "";
+    const repoId = this.text.integer(this.text.object(head?.repo)?.id);
+    if (repoId === undefined || repoId === connection.repositoryId) return ref;
+    return (
+      this.text.text(head?.label, 255) ??
+      `${this.text.text(this.text.object(head?.repo)?.full_name, 200) ?? "fork"}:${ref}`
+    ).slice(0, 255);
+  }
+
+  /**
+   * The author's permission on the repository: `app` for the App's own bot,
+   * or undefined when it cannot be read (no App, a revoked installation, a
+   * rate limit), never a reason to drop the delivery. Remembered ten
+   * minutes per repository and author, so a backfill asks once per author.
+   */
+  protected async permissionOf(
+    connection: ProjectRepository,
+    login: string | undefined,
+  ): Promise<string | undefined> {
+    if (!login) return undefined;
+    try {
+      const bot = await this.tokens.botIdentity();
+      if (login === bot.name) return "app";
+    } catch {
+      // No App: the permission below fails the same way.
+    }
+    const key = `${connection.repositoryId}:${login}`;
+    const now = this.dateTime.nowMillis();
+    const known = this.permissions.get(key);
+    if (known && known.until > now) return known.permission;
+    try {
+      const token = await this.repositories.readToken(connection);
+      const permission = await this.client.getCollaboratorPermission(
+        token,
+        { owner: connection.owner, name: connection.name },
+        login,
+      );
+      if (this.permissions.size > 1_000) this.permissions.clear();
+      this.permissions.set(key, { permission, until: now + 600_000 });
+      return permission;
+    } catch {
+      return undefined;
+    }
+  }
+
   // ---- handlers -----------------------------------------------------------
 
   protected async pullRequest(context: GitHubWebhookContext): Promise<void> {
@@ -454,6 +633,10 @@ export class PullRequestStateService {
       action: context.action,
     });
     if (!row) return;
+    // Only a review by someone with a say on the repository moves the
+    // state: anyone may approve a public pull request on GitHub.
+    const association = this.text.text(review.author_association, 30) ?? "";
+    if (!["OWNER", "MEMBER", "COLLABORATOR"].includes(association)) return;
     const state = (this.text.text(review.state, 30) ?? "").toLowerCase();
     const next =
       state === "approved"
@@ -462,7 +645,12 @@ export class PullRequestStateService {
           ? "changes_requested"
           : undefined;
     if (!next || row.review === next) return;
-    const updated = await this.rows.updateById(row.id, { review: next });
+    const updated = await this.write(
+      context.connection,
+      row,
+      { review: next },
+      { action: "reviewed" },
+    );
     await this.notify({
       row: updated,
       before: row,
@@ -537,6 +725,16 @@ export class PullRequestStateService {
   protected async workflowRun(context: GitHubWebhookContext): Promise<void> {
     const run = this.text.object(context.payload.workflow_run);
     if (!run || !context.connection || context.action !== "completed") return;
+    // A fork's run names its own branch, which may be called `main`.
+    const headRepo = this.text.integer(
+      this.text.object(run.head_repository)?.id,
+    );
+    if (
+      headRepo !== undefined &&
+      headRepo !== context.connection.repositoryId
+    ) {
+      return;
+    }
     const id = this.text.integer(run.id);
     if (id === undefined) return;
     const change: WorkflowRunChange = {
@@ -588,10 +786,12 @@ export class PullRequestStateService {
     for (const row of rows) {
       const next = { ...row, ...patch(row) };
       const checks = this.rollup(next.suites ?? {}, next.statuses ?? {});
-      const updated = await this.rows.updateById(row.id, {
-        ...patch(row),
-        checks,
-      });
+      const updated = await this.write(
+        connection,
+        row,
+        { ...patch(row), checks },
+        context.action ? { action: context.action } : {},
+      );
       await this.notify({
         row: updated,
         before: row,

@@ -128,6 +128,22 @@ export default {
   "notifications.resource.prompts": "Prompts",
   "notifications.event.epic.created": "Épopée créée",
   "notifications.event.epic.ready": "Épopée prête",
+  "notifications.event.pull_request.opened": "Pull request ouverte sur GitHub",
+  "notifications.event.pull_request.ready": "Pull request prête pour la revue",
+  "notifications.event.pull_request.merged": "Pull request fusionnée",
+  "notifications.event.pull_request.closed": "Pull request fermée sans fusion",
+  "notifications.event.pull_request.review_requested":
+    "Revue de pull request demandée",
+  "notifications.event.pull_request.reviewed": "Pull request revue",
+  "notifications.event.pull_request.checks_failed":
+    "Vérifications de pull request en échec",
+  "notifications.event.pull_request.checks_passed":
+    "Vérifications de pull request réussies",
+  "notifications.event.pull_request.trusted": "Pull request approuvée",
+  "notifications.event.workflow_run.failed":
+    "Workflow en échec sur la branche par défaut",
+  "pullRequest.trust": "Faire confiance",
+  "pullRequest.outside": "Hors de l'équipe",
   "notifications.event.pull_request.added": "Pull request ajoutée",
   "notifications.event.agent.job.succeeded": "Tâche d'agent réussie",
   "notifications.event.agent.job.failed": "Tâche d'agent en échec",

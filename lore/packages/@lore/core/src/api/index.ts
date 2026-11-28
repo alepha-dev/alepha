@@ -588,6 +588,7 @@ export { PullRequestController } from "./controllers/PullRequestController.ts";
 export {
   PullRequestStateService,
   type PullRequestChange,
+  type PullRequestTransition,
   type PushChange,
   type WorkflowRunChange,
 } from "./services/PullRequestStateService.ts";
@@ -857,7 +858,10 @@ export { LorePrimaryD1Provider } from "./providers/LorePrimaryD1Provider.ts";
 
 export { GuardedBatch } from "./services/GuardedBatch.ts";
 
-export { SourceRepository } from "./services/SourceRepository.ts";
+export {
+  SourceRepository,
+  type SourceEvent,
+} from "./services/SourceRepository.ts";
 
 export { ProjectChannelService } from "./services/ProjectChannelService.ts";
 export { LoreDiscordNotificationChannel } from "./channels/LoreDiscordNotificationChannel.ts";

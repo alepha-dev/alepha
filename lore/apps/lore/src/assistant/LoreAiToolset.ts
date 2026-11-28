@@ -195,6 +195,7 @@ export class LoreAiToolset {
     prompt_render: LoreAiToolset.LATER,
     prompt_resume_all: LoreAiToolset.AGENTS,
     prompt_update: LoreAiToolset.AGENTS,
+    pull_request_trust: LoreAiToolset.LATER,
     quest_attachment_add: LoreAiToolset.FILES,
     quest_attachment_get: LoreAiToolset.FILES,
     quest_commit_add: LoreAiToolset.LATER,

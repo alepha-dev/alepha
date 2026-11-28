@@ -437,7 +437,23 @@ export class PromptTriggers {
    * One event, for every prompt of its project that listens to it.
    */
   public async receive(event: ProjectEvent): Promise<void> {
-    const listening = await this.listening(event.projectId, event.name);
+    // A pull request from outside the team fires no trigger until a member
+    // trusts it (#Q4368); its subscriptions still notify. The trust then
+    // fires the triggers that waited on its opening.
+    if (event.fields?.outside === true) return;
+    const listening = [
+      ...(await this.listening(event.projectId, event.name)),
+      // Trusted, an outside pull request reaches what it was held from:
+      // the triggers on its opening and on its attachment to a quest.
+      ...(event.name === "pull_request.trusted"
+        ? [
+            ...(await this.listening(event.projectId, "pull_request.opened")),
+            ...(await this.listening(event.projectId, "pull_request.added")),
+          ]
+        : []),
+    ].filter(
+      (row, index, all) => all.findIndex((it) => it.id === row.id) === index,
+    );
     if (!listening.length) return;
     const raisedBy = event.jobId
       ? await this.jobs.findOne({ where: { id: { eq: event.jobId } } })

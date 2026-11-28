@@ -91,6 +91,7 @@ describe("the Lore CLI command surface", () => {
       "persona",
       "project",
       "prompt",
+      "pull-request",
       "quality",
       "quest",
       "registry",
@@ -225,6 +226,7 @@ describe("the Lore CLI command surface", () => {
       ],
       commits: ["push"],
       github: ["status", "install", "connect", "disconnect", "app"],
+      "pull-request": ["trust"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
       requirement: [
         "list",

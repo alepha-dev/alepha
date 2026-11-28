@@ -117,6 +117,13 @@ export interface ProjectEventDefinition {
    */
   needs?: { capability: CapabilityKey; option?: string };
   /**
+   * A condition beside `needs` that no capability can say (#Q4368):
+   * `github` is a project connected to a GitHub repository. An event that
+   * requires it is absent from the catalog of a project that is not, so
+   * from `lore event` and the trigger picker too.
+   */
+  requires?: "github";
+  /**
    * The permission a reader needs, at delivery and in `event_list`.
    */
   permission: string;

@@ -55,6 +55,7 @@ import { ProjectPlanningReportService } from "./services/ProjectPlanningReportSe
 import { ProjectReportsService } from "./services/ProjectReportsService.ts";
 import { ProjectSupportReportService } from "./services/ProjectSupportReportService.ts";
 import { ProjectTeamReportService } from "./services/ProjectTeamReportService.ts";
+import { PullRequestProjectEvents } from "./services/PullRequestProjectEvents.ts";
 import { QuestAgentService } from "./services/QuestAgentService.ts";
 import { QuestBreakdownMetric } from "./services/QuestBreakdownMetric.ts";
 import { QuestCsvFormatter } from "./services/QuestCsvFormatter.ts";
@@ -120,6 +121,8 @@ export const LorePlanApi = $module({
     // Pull requests and commits naming a quest attach themselves, from
     // GitHub's deliveries (#Q4367); nothing injects it.
     PlanGitHubTrail,
+    // Pull request and CI events (#Q4368); nothing injects it.
+    PullRequestProjectEvents,
     // Registers Plan's subjects on core's `comments` (#E185); nothing
     // injects it.
     PlanCommentSubjects,

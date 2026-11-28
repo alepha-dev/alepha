@@ -111,7 +111,7 @@ export class WorkEventSources {
     pullRequests: NonNullable<Quest["pullRequests"]>,
     url: string,
     actorId?: string,
-    options: { silent?: boolean } = {},
+    options: { silent?: boolean; outside?: boolean } = {},
   ): Promise<Quest | Epic> {
     const { row } = target;
     const already = (row.pullRequests ?? []).some((it) => it.url === url);
@@ -142,6 +142,9 @@ export class WorkEventSources {
           ? { quest_shortId: target.row.shortId }
           : { epic_number: target.row.number }),
         ...(actorId ? { actor_id: actorId } : {}),
+        // A pull request from outside the team (#Q4368): no prompt trigger
+        // acts on it until a member trusts it.
+        ...(options.outside ? { outside: true } : {}),
         url:
           target.kind === "quest"
             ? `/${slug}/quests/${target.row.shortId}`

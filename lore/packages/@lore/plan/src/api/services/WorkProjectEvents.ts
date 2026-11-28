@@ -142,6 +142,9 @@ export class WorkProjectEvents {
         quest_shortId: "number",
         epic_number: "number",
         actor_id: "member",
+        // Attached by GitHub from an author outside the team (#Q4368): no
+        // prompt trigger acts on it until a member trusts it.
+        outside: "boolean",
       },
       needs: { capability: "plan" },
       permission: "quest:read",
