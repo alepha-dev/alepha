@@ -18,6 +18,7 @@ import {
 import { quests, type Quest } from "../entities/quests.ts";
 import { releases, type Release } from "../entities/releases.ts";
 import { FeedbackEventFields } from "./FeedbackEventFields.ts";
+import { QuestDraftService } from "./QuestDraftService.ts";
 import { WorkProjectEvents } from "./WorkProjectEvents.ts";
 
 /**
@@ -40,6 +41,7 @@ export class WorkEventSources {
   protected readonly events = $repository(projectEvents);
   protected readonly projectEvents = $inject(ProjectEvents);
   protected readonly database = $inject(LoreDatabase);
+  protected readonly drafts = $inject(QuestDraftService);
 
   /**
    * A new epic, with `epic.created` (#Q4276).
@@ -72,6 +74,21 @@ export class WorkEventSources {
   /**
    * An epic moved to a status by hand, with `epic.ready` when it is marked
    * ready (#Q4276), by the page or a tool.
+   *
+   * The epic's status writes its quests' draft (#Q4373, epic #E178), through
+   * `QuestDraftService`, each side in one statement. With no D1 transaction
+   * a failure between the two writes leaves one of two states, and they do
+   * not heal the same way:
+   *
+   * - Marking draft writes the epic FIRST, so a failure leaves a draft epic
+   *   whose to-do quests are not drafts yet. Only
+   *   `EpicWorkflowService.sweep` finishes it: asking for `draft` again is a
+   *   no-op, since the epic already has that status.
+   * - Marking ready writes the quests FIRST, so a failure leaves a draft
+   *   epic whose quests are already to do (`readyAt` stamped). Marking it
+   *   ready again finishes it; the sweep, which sees a draft epic with to-do
+   *   quests, drafts them back instead, their `readyAt` left as it was, and
+   *   the epic waits for the next "mark ready".
    */
   public async setEpicStatus(
     epic: Epic,
@@ -79,8 +96,11 @@ export class WorkEventSources {
     actorId?: string,
   ): Promise<Epic> {
     if (status !== "ready") {
-      return this.epics.updateById(epic.id, { status });
+      const updated = await this.epics.updateById(epic.id, { status });
+      if (status === "draft") await this.drafts.draftEpic(epic.id);
+      return updated;
     }
+    await this.drafts.releaseEpic(epic.id);
     const project = await this.projects.getById(epic.projectId);
     return this.epics.sourceUpdate(
       { id: epic.id, status: epic.status },

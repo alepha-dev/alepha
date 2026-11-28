@@ -46,6 +46,7 @@ import {
 import { EpicReviewService } from "../services/EpicReviewService.ts";
 import { EpicWorkflowService } from "../services/EpicWorkflowService.ts";
 import { QuestDeletionService } from "../services/QuestDeletionService.ts";
+import { QuestDraftService } from "../services/QuestDraftService.ts";
 import { QuestShelvingService } from "../services/QuestShelvingService.ts";
 import { ReleaseAttachmentService } from "../services/ReleaseAttachmentService.ts";
 import { ReleaseCascadeService } from "../services/ReleaseCascadeService.ts";
@@ -105,6 +106,7 @@ export class EpicController {
   owned = $inject(OwnedResourceProvider);
   questDeletion = $inject(QuestDeletionService);
   shelving = $inject(QuestShelvingService);
+  drafts = $inject(QuestDraftService);
   reviews = $inject(EpicReviewService);
   protected readonly ranks = $inject(RankService);
   protected readonly dt = $inject(DateTimeProvider);
@@ -616,11 +618,12 @@ export class EpicController {
    * Asking for the status the epic already has is a no-op that writes
    * nothing and logs nothing (`epic_set_status` is declared idempotent).
    *
-   * ⚠️ **Status is never written to a quest row.** Marking an epic ready
-   * releases its quests because the backlog gate (`EpicVisibilityService`)
-   * stops matching them, not because anything about them changed, and moving
-   * it back to `draft` hides them the same way. Nothing here touches a
-   * quest, on either edge.
+   * ⚠️ **The epic's status writes its quests' draft** (#Q4373, epic #E178).
+   * Marking it ready makes every draft quest of it to do (`draftAt` cleared,
+   * `readyAt` stamped), and moving it back to `draft` makes every quest
+   * nobody took or finished a draft again, each in one statement through
+   * `QuestDraftService`, inside `WorkEventSources.setEpicStatus`, which says
+   * in which order and why.
    */
   setEpicStatus = $action({
     method: "POST",
@@ -716,7 +719,8 @@ export class EpicController {
    * quest shelved one by one before stays shelved. They are written FIRST and
    * the epic LAST (`EpicWorkflowService.unshelve`), so a failure halfway
    * leaves the epic `shelved` with the rest still marked for a retry. The
-   * epic returns to `in_progress` when it had started, `ready` otherwise.
+   * epic returns to `in_progress` when it had started, `draft` otherwise,
+   * and then its to-do quests are drafts again (#Q4373).
    *
    * Answers the number of quests unshelved, as `movedQuests`.
    */
@@ -908,6 +912,9 @@ export class EpicController {
         }
 
         await this.quests.updateById(quest.id, { epicId: epic.id });
+        // The epic owns its quests' draft (#Q4373): into a draft epic the
+        // quest becomes a draft, into a ready one a draft becomes to do.
+        await this.drafts.onAttach(quest, epic);
 
         // A quest joining an epic that already has a release inherits it
         // (#Q2111). Without this the drift returns the first time somebody
@@ -947,6 +954,9 @@ export class EpicController {
         this.workflow.assertPlanEditable(epic, { kind: "remove", quest });
 
         await this.quests.updateById(quest.id, { epicId: null });
+        // Leaving a draft epic it stays a draft, now loose, unless it is
+        // held (#E178 review, item 21).
+        await this.drafts.onDetach(quest);
         await this.logEpic("detach", epic, user, { quest: quest.shortId });
       }
 

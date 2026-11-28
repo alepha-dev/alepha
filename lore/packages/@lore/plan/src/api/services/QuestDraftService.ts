@@ -137,6 +137,99 @@ export class QuestDraftService {
   }
 
   /**
+   * An epic is marked ready: every quest of it still marked draft becomes
+   * to do, in ONE statement, `readyAt` stamped (#Q4373). Only where
+   * `draft_at IS NOT NULL` (#E178 review, item 4): a completed quest, or one
+   * from before the backfill, never gets a `readyAt` it did not earn.
+   * Answers the ids written.
+   */
+  async releaseEpic(epicId: number): Promise<Array<number | string>> {
+    return await this.quests.updateMany(
+      { epicId: { eq: epicId }, draftAt: { isNotNull: true } },
+      { draftAt: null, readyAt: this.dt.nowISOString() },
+    );
+  }
+
+  /**
+   * An epic is marked draft (or comes back from the shelf as one): every
+   * quest of it nobody has taken or finished becomes a draft, in ONE
+   * statement (#Q4373). "Its to-do quests" are those with no `acceptedAt`
+   * and no `completedAt`, shelved and held ones included (#E178 review,
+   * item 3): they still read `shelved` or `on_hold`, and read `draft` again
+   * once they come back. Answers the ids written.
+   */
+  async draftEpic(epicId: number): Promise<Array<number | string>> {
+    return await this.quests.updateMany(
+      {
+        epicId: { eq: epicId },
+        acceptedAt: { isNull: true },
+        completedAt: { isNull: true },
+        draftAt: { isNull: true },
+      },
+      { draftAt: this.dt.nowISOString() },
+    );
+  }
+
+  /**
+   * A quest entered an epic (`EpicController.attachQuest`, the one choke
+   * point): into a draft epic, a quest nobody took becomes a draft; into a
+   * ready or in-progress one, a draft becomes to do. Written on the row the
+   * caller holds, by one guarded update. Answers whether it wrote.
+   */
+  async onAttach(
+    quest: Pick<Quest, "id" | "draftAt" | "acceptedAt" | "completedAt">,
+    epic: Pick<Epic, "status">,
+  ): Promise<boolean> {
+    if (epic.status === "draft") {
+      if (quest.draftAt || quest.acceptedAt || quest.completedAt) return false;
+      await this.quests.updateById(quest.id, {
+        draftAt: this.dt.nowISOString(),
+      });
+      return true;
+    }
+    if (!quest.draftAt) return false;
+    await this.quests.updateById(quest.id, {
+      draftAt: null,
+      readyAt: this.dt.nowISOString(),
+    });
+    return true;
+  }
+
+  /**
+   * A quest left a draft epic (`EpicController.detachQuest`): it stays a
+   * draft, now loose, except a held one (#E178 review, item 21). A loose
+   * held draft is left out of the default views and of the On hold filter,
+   * and no epic filter reaches it any more, so it loses `draftAt` and comes
+   * back to do when its hold lifts. A shelved draft keeps it, and is found
+   * under Shelved.
+   */
+  async onDetach(
+    quest: Pick<Quest, "id" | "draftAt" | "heldAt">,
+  ): Promise<boolean> {
+    if (!quest.draftAt || !quest.heldAt) return false;
+    await this.quests.updateById(quest.id, { draftAt: null });
+    return true;
+  }
+
+  /**
+   * Refuse `draft: true` for a quest about to be filed into an epic that is
+   * not a draft, before anything is written (#E178 review, items 7 and 23).
+   * Its callers run it before `createQuest`, since the quest is filed by a
+   * second call: `quest_create`, `lore quest create`. Into a draft epic
+   * the quest is a draft whatever was asked, so nothing is refused.
+   */
+  assertDraftableInto(
+    epic: Pick<Epic, "number" | "status"> | undefined,
+    draft: boolean | undefined,
+  ): void {
+    if (!draft || !epic || epic.status === "draft") return;
+    const epicRef = formatReference("epic", epic.number);
+    throw new BadRequestError(
+      `Cannot create a draft quest in Epic ${epicRef}: the epic is "${epic.status}", so its quests are to do, and its status decides. Nothing was written. File it without draft, or as a loose draft.`,
+    );
+  }
+
+  /**
    * The same audit row `QuestController.logQuest` writes.
    */
   protected async log(

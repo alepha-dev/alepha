@@ -95,6 +95,9 @@ const POSITIONAL = new Set([
  * The params that have no flag, each for a reason.
  */
 const NOT_A_FLAG: Record<string, string[]> = {
+  // `lore quest create --draft` lands with the CLI's quest of epic #E178
+  // (#Q4379), in the same pull request; this entry goes with it.
+  quest_create: ["draft"],
   // The tool drops the caller's own events by the session's user; nothing
   // tells a CLI process who it is, so the command keeps them (#F1437).
   project_activity: ["includeOwn"],

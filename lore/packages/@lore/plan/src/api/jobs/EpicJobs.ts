@@ -27,13 +27,19 @@ export class EpicJobs {
   public readonly sweep = $job({
     name: "epics.sweep-transitions",
     description:
-      "Completes in-progress epics with no open quest, and starts ready epics that already hold an accepted quest, hourly.",
+      "Completes in-progress epics with no open quest, starts ready epics that already hold an accepted quest, and puts each epic's quests back in step with its draft status, hourly.",
     cron: "0 * * * *",
     timeout: [2, "minutes"],
     handler: async () => {
-      const { started, completed } = await this.workflow.sweep();
-      if (started + completed > 0) {
-        this.log.info("Epic transitions healed", { started, completed });
+      const { started, completed, drafted, readied } =
+        await this.workflow.sweep();
+      if (started + completed + drafted + readied > 0) {
+        this.log.info("Epic transitions healed", {
+          started,
+          completed,
+          drafted,
+          readied,
+        });
       }
     },
   });

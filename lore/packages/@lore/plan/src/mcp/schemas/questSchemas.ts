@@ -514,6 +514,12 @@ export const questCreateParamsSchema = projectParamsSchema.extend({
       "Tag of the release this quest ships in, e.g. `0.28.0` (see release_list). A release HOLDS the quests assigned to it, so this is what puts the quest in one. ⚠️ Naming it here is not the only way in: if the project has a DEFAULT release (see release_set_default), a quest completed without one, and inheriting none from its epic, lands there. Refused if that release has already been published.",
     )
     .optional(),
+  draft: z
+    .boolean()
+    .describe(
+      "Create the quest as a draft: specified, not ready to be taken, until somebody marks it ready. Defaults to false: a quest is born to do. Refused with `accept: true`, and with an `epic_number` naming an epic that is not a draft, before anything is written; filed into a draft epic, the quest is a draft whatever this says.",
+    )
+    .optional(),
   accept: z
     .boolean()
     .describe(

@@ -143,13 +143,13 @@ describe("EpicController", () => {
     expect(epic.status).toBe("draft");
   });
 
-  it("marks an epic ready and back, and writes to no quest row", async ({
+  it("marks an epic ready and back, writing its quests' draft and nothing else", async ({
     expect,
   }) => {
-    // `ready` releases the quests because the backlog gate stops matching
-    // them, and `draft` hides them the same way: neither edge touches a
-    // quest. The default release moved to the START with #Q2223, where the
-    // first accept carries it down (`quest-epic-workflow.spec.ts`).
+    // The epic's status writes its quests' draft (#Q4373, epic #E178), and
+    // nothing else of them: the default release moved to the START with
+    // #Q2223, where the first accept carries it down
+    // (`quest-epic-workflow.spec.ts`).
     const project = await createTestProject(ctx.alepha);
     const user = ownerToken(project);
     await ctx.repos.releases.create({
@@ -165,8 +165,8 @@ describe("EpicController", () => {
     });
     const quest = await createTestQuest(ctx.alepha, project, {
       epicId: epic.id,
+      draftAt: "2026-11-28T00:00:00.000Z",
     });
-    const before = (await ctx.repos.quests.getById(quest.id)).updatedAt;
 
     const ready = await ctx.controller.setEpicStatus(
       { params: { id: epic.id }, body: { status: "ready" } },
@@ -176,6 +176,9 @@ describe("EpicController", () => {
     // Nothing started, so nothing is stamped and no release is taken.
     expect(ready.startedAt).toBeUndefined();
     expect(ready.releaseId).toBeUndefined();
+    const released = await ctx.repos.quests.getById(quest.id);
+    expect(released.draftAt).toBeUndefined();
+    expect(released.readyAt).toBeDefined();
 
     const back = await ctx.controller.setEpicStatus(
       { params: { id: epic.id }, body: { status: "draft" } },
@@ -184,8 +187,9 @@ describe("EpicController", () => {
     expect(back.status).toBe("draft");
 
     const after = await ctx.repos.quests.getById(quest.id);
-    expect(after.updatedAt).toEqual(before);
+    expect(after.draftAt).toBeDefined();
     expect(after.releaseId).toBeUndefined();
+    expect(after.acceptedAt).toBeUndefined();
   });
 
   it("counts every quest in its progress, draft-gated ones included", async ({
