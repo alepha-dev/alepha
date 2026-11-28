@@ -55,7 +55,8 @@ describe("DetailLayout", () => {
     expect(screen.getByText("identity panel")).toBeTruthy();
     expect(screen.getByText("overview body")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Publish" })).toBeTruthy();
-    expect(screen.getByText("Overview")).toBeTruthy();
+    // Twice: in the strip, and on the phone's tab menu button. CSS shows one.
+    expect(screen.getAllByText("Overview")).toHaveLength(2);
     expect(screen.getByText("Stock")).toBeTruthy();
   });
 
@@ -205,6 +206,40 @@ describe("DetailLayout", () => {
     }).parentElement;
 
     expect(actions?.className).toContain("shrink-0");
+  });
+
+  /**
+   * Below `md` the strip gives way to a menu button naming the open tab
+   * (#Q4550): at 393px an epic's actions left the strip 220px, enough for
+   * `Over` of `Overview`. Each is hidden on the other side of the
+   * breakpoint, so the desktop bar is the strip it was.
+   *
+   * ⚠️ jsdom does no layout: the widths are measured by Lore's e2e
+   * `detail-layout-mobile.spec.ts` at 393x663.
+   */
+  it("swaps the tab strip for a tab menu below md", async () => {
+    const { container } = await mount(
+      <DetailLayout
+        aside={null}
+        tabs={tabs}
+        tab="overview"
+        onTabChange={() => {}}
+        actions={<button type="button">Publish</button>}
+      />,
+    );
+
+    const strip = container.querySelector('[data-slot="segmented"]');
+    const menu = container.querySelector('[data-slot="detail-tab-menu"]');
+
+    expect(strip?.parentElement?.className).toContain("max-md:hidden");
+    expect(menu?.className).toContain("md:hidden");
+    expect(menu?.textContent).toContain("Overview");
+    expect(menu?.textContent).not.toContain("Stock");
+    // The bar wraps only below the breakpoint.
+    const bar = strip?.parentElement?.parentElement;
+    expect(bar?.className).toContain("flex-wrap");
+    expect(bar?.className).toContain("md:flex-nowrap");
+    expect(bar?.className).toContain("md:h-14");
   });
 
   /**
