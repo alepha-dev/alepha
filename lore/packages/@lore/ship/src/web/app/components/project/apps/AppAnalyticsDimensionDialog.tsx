@@ -35,10 +35,14 @@ const TITLE: Record<
   | "insights.topBrowsers"
   | "insights.topSystems"
   | "insights.topAudience"
+  | "insights.topExitPaths"
+  | "insights.topNetworks"
 > = {
   country: "insights.topCountries",
   path: "insights.topPaths",
-  entryPath: "insights.topEntryPaths",
+  entry: "insights.topEntryPaths",
+  exit: "insights.topExitPaths",
+  network: "insights.topNetworks",
   campaign: "insights.topCampaigns",
   device: "insights.topDevices",
   referrer: "insights.topReferrers",
@@ -152,7 +156,7 @@ const AppAnalyticsDimensionDialog = (
                   label: tr("insights.dimension.count"),
                   cell: (row) => (
                     <span className="tabular-nums">
-                      {row.count.toLocaleString()}
+                      {row.views.toLocaleString()}
                     </span>
                   ),
                 },

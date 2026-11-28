@@ -994,15 +994,16 @@ test.describe("Apps", () => {
       // violation the moment another card agrees with this one.
       const topPaths = page.getByTestId("insights-top-paths");
       await expect(topPaths).toBeVisible({ timeout: 15_000 });
-      await expect(page.getByText("Unique visitors")).toBeVisible();
+      await expect(
+        page.getByTestId("insights-unique-visitors").getByText("Visitors"),
+      ).toBeVisible();
       await expect(topPaths.getByText("/checkout")).toBeVisible();
       // The only page reported, so its two views are 100% of the total.
       await expect(topPaths.getByText(/2\s*·\s*100%/)).toBeVisible();
 
-      // One of those two views was the arrival, which is the whole point of
-      // `entries` being a separate measure from `count`.
+      // Both views are one visit: they arrived in one batch.
       await expect(
-        page.getByTestId("insights-entries").getByText("1", { exact: true }),
+        page.getByTestId("insights-visits").getByText("1", { exact: true }),
       ).toBeVisible();
 
       // Entry pages share a card with pages now: six leaderboards in four
@@ -1010,23 +1011,22 @@ test.describe("Apps", () => {
       await topPaths
         .getByRole("radio", { name: "Landing pages", exact: true })
         .click();
-      await expect(topPaths.getByText(/1\s*·\s*100%/)).toBeVisible();
+      // The visit entered on /checkout, and its two views count there.
+      await expect(topPaths.getByText(/2\s*·\s*100%/)).toBeVisible();
       await topPaths
         .getByRole("radio", { name: "Top pages", exact: true })
         .click();
 
-      // One engagement against two views, so half of them showed no reader.
+      // A bounce is a visit of one view; this one had two.
       await expect(
-        page.getByTestId("insights-bounce").getByText("50%"),
+        page.getByTestId("insights-bounce").getByText("0%"),
       ).toBeVisible();
 
-      // The arrival's referrer, and the second view which had none.
+      // The visit's referrer, on both of its views: a source is the visit's,
+      // so its second view does not fall into Direct.
       const referrers = page.getByTestId("insights-referrers");
       await expect(referrers.getByText("news.ycombinator.com")).toBeVisible();
-      // `exact`, because the card's own note also says "Direct".
-      await expect(
-        referrers.getByText("Direct", { exact: true }),
-      ).toBeVisible();
+      await expect(referrers.getByText(/2\s*·\s*100%/)).toBeVisible();
 
       // Campaigns share the referrers card, for the same reason entry pages
       // share the pages one: they answer the neighbouring question.
@@ -1092,17 +1092,19 @@ test.describe("Apps", () => {
       const visitors = page.getByTestId("insights-unique-visitors");
       await expect(topPaths).toBeVisible({ timeout: 15_000 });
 
-      // `all` is the default, and both populations are in it. Two visitors:
-      // the reader from the batch above and the crawler from this one.
+      // `all` is the default, and both populations' views are in it. One
+      // visitor: a declared bot has no visit, so visitors are the people's,
+      // which the tile says.
       await expect(topPaths.getByText("/crawled")).toBeVisible();
       await expect(topPaths.getByText("/checkout")).toBeVisible();
-      await expect(visitors.getByText("2", { exact: true })).toBeVisible();
+      await expect(visitors.getByText("1", { exact: true })).toBeVisible();
+      await expect(visitors.getByText(/People only/)).toBeVisible();
 
       await traffic.getByRole("radio", { name: "Bots", exact: true }).click();
       await expect(topPaths.getByText("/crawled")).toBeVisible();
       await expect(topPaths.getByText("/checkout")).toHaveCount(0);
-      // The headline moves with the rest. It did not, until it did.
-      await expect(visitors.getByText("1", { exact: true })).toBeVisible();
+      // Bots have views and no visitors.
+      await expect(visitors.getByText("-", { exact: true })).toBeVisible();
 
       await traffic.getByRole("radio", { name: "Humans", exact: true }).click();
       await expect(topPaths.getByText("/checkout")).toBeVisible();

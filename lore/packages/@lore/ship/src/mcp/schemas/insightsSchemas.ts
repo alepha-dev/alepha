@@ -109,61 +109,61 @@ export const insightsReadResultSchema = z.object({
   analytics: z
     .object({
       /**
-       * Trustworthy headline. Nothing throttles what an app reports, so this
-       * is the number to quote — see `totalViews`.
+       * Distinct visitors: one per person per period (a calendar month by
+       * default) per app. A sum when `visitorsSpanPeriods` or
+       * `visitorsSpanApps` says so. Null under `bots`, and where nothing
+       * counts them (before analytics v2, or a page older than the log).
        */
-      uniqueVisitors: z.integer(),
+      visitors: z.integer().nullable(),
       /**
-       * Raw hits. INFLATABLE: whoever holds a sigil token can report any
-       * number of views, so treat it as an upper bound and never as evidence
-       * on its own.
+       * Runs of views closed by 30 minutes without one.
        */
-      totalViews: z.integer(),
+      visits: z.integer().nullable(),
       /**
-       * Page loads only, unlike `totalViews` which also counts every
-       * client-side navigation.
+       * Raw views. INFLATABLE: whoever holds a sigil token can report any
+       * number of them; treat it as an upper bound.
        */
-      entries: z.integer(),
+      views: z.integer().nullable(),
       /**
-       * Views the visitor scrolled, clicked, typed on, or stayed ten seconds
-       * on. The one number a scraper does not inflate by accident: an
-       * automated fetch reports the view and then does none of those things.
-       * Read `engagementRate` before believing a spike is people.
+       * Shares in [0, 1]: visits with exactly one view, and engaged visits.
        */
-      engagedViews: z.integer(),
+      bounceRate: z.number().nullable(),
+      engagedRate: z.number().nullable(),
+      avgVisitSeconds: z.number().nullable(),
+      pagesPerVisit: z.number().nullable(),
+      visitorsSpanPeriods: z.boolean(),
+      visitorsSpanApps: z.boolean(),
       /**
-       * `engagedViews / totalViews` as a whole percent.
+       * The day visitors are counted from, when later than the window's
+       * start.
        */
-      engagementRate: z.number(),
-      topPaths: z.array(z.object({ path: z.string(), count: z.number() })),
+      visitorsFrom: z.string().nullable(),
       /**
-       * Where visits started, by page loads rather than total views.
+       * Under `all`: visitors and visits are people's, views count bots too.
        */
-      topEntryPaths: z.array(z.object({ path: z.string(), count: z.number() })),
-      /**
-       * `utm_campaign` / `utm_source` on arrivals; `none` is untagged.
-       */
-      topCampaigns: z.array(
-        z.object({ campaign: z.string(), count: z.number() }),
-      ),
-      topDevices: z.array(z.object({ device: z.string(), count: z.number() })),
-      topCountries: z.array(
-        z.object({ country: z.string(), count: z.number() }),
-      ),
-      /**
-       * Where visits came from, by host. `direct` is the catch-all and is
-       * normally the largest row by far — only a page load's own view carries
-       * a referrer, so every in-app navigation lands there next to genuine
-       * bookmark and typed-URL arrivals. Read the named hosts; treat `direct`
-       * as the denominator rather than as a source.
-       */
-      topReferrers: z.array(
-        z.object({ referrer: z.string(), count: z.number() }),
+      peopleOnly: z.boolean(),
+      timeline: z.array(
+        z.object({
+          bucket: z.string(),
+          visitors: z.integer().nullable(),
+          visits: z.integer().nullable(),
+          views: z.integer(),
+        }),
       ),
       /**
-       * Daily views across the window, zero-filled so gaps are visible.
+       * Visitors and views per value: pages, entry and exit pages, sources,
+       * campaigns, countries, devices, browsers, systems, sign-in, networks.
        */
-      timeline: z.array(z.object({ date: z.string(), views: z.number() })),
+      leaderboards: z.record(
+        z.string(),
+        z.array(
+          z.object({
+            value: z.string(),
+            visitors: z.integer().nullable(),
+            views: z.integer(),
+          }),
+        ),
+      ),
     })
     .optional(),
 });

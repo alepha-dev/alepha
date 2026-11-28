@@ -29,8 +29,8 @@ class Links extends LinkProvider {
       this.queries.push({ dimension: args.params.dimension, ...args.query });
       return {
         rows: [
-          { value: "/checkout", count: 12, percentage: 60 },
-          { value: "/", count: 8, percentage: 40 },
+          { value: "/checkout", visitors: 9, views: 12, percentage: 60 },
+          { value: "/", visitors: 5, views: 8, percentage: 40 },
         ],
         hasMore: false,
       };

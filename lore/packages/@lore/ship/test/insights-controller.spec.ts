@@ -1,4 +1,5 @@
 import { VITALS_BUCKETS } from "@alepha/lore/sigil";
+import type { SigilForwarded } from "@alepha/lore/sigil";
 import { ProjectController } from "@lore/core/api";
 import { $inject, Alepha, z } from "alepha";
 import { organizationMembers as members } from "alepha/api/organizations";
@@ -16,14 +17,10 @@ import {
   InsightsController,
   SigilController,
   DeployAnalytics,
-  LoreAnalyticsStore,
+  SigilIngestService,
 } from "../src/api/index.ts";
 import { LoreShipApi } from "../src/api/index.ts";
-import {
-  sigilErrorGroups,
-  sigils,
-  sigilUniquesDaily,
-} from "../src/schemas/index.ts";
+import { type Sigil, sigilErrorGroups, sigils } from "../src/schemas/index.ts";
 import { createTestMemberByProjectId } from "../src/testing/index.ts";
 
 const adminUser = { id: crypto.randomUUID(), roles: ["admin"] };
@@ -49,7 +46,6 @@ const userDataSchema = z.object({
  */
 class Probe {
   members = $repository(members);
-  uniques = $repository(sigilUniquesDaily);
   errorGroups = $repository(sigilErrorGroups);
   /**
    * Enrolled apps, written straight to the table.
@@ -325,656 +321,203 @@ describe("InsightsController", () => {
     await ctx.alepha.stop();
   });
 
-  it("totals views and unique visitors over the window", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+  describe("v2: visitors, visits and views over any window", () => {
+    /**
+     * Three visits through the real ingest: two visitors, one of whom comes
+     * back, one visit entering on /pricing and leaving on /docs.
+     */
+    const seed = async () => {
+      const owner = await createTestUser(ctx);
+      const projectId = await createProject(ctx, owner);
+      const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
+      const sigil = (await ctx.probe.sigils.findById(sigilId)) as Sigil;
+      const ingest = ctx.alepha.inject(SigilIngestService);
+      const send = (
+        visitor: string,
+        views: Array<[string, number]>,
+        extra = {},
+      ) =>
+        ingest.absorb(sigil, {
+          visitor,
+          visitorPeriod: new Date(ctx.nowMs).toISOString().slice(0, 7),
+          country: "FR",
+          traffic: "human",
+          views: views.map(([path, minutesAgo], index) => ({
+            path,
+            ts: ctx.nowMs - minutesAgo * 60_000,
+            entry: index === 0,
+          })),
+          ...extra,
+        } as SigilForwarded);
+      await send(
+        "alice",
+        [
+          ["/pricing", 50],
+          ["/docs", 49],
+        ],
+        {
+          network: { number: 64512, name: "Example Net" },
+        },
+      );
+      await send("alice", [["/", 5]]);
+      await send("bob", [["/docs", 3]]);
+      return { owner, projectId, sigilId };
+    };
 
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 9),
-      path: "/",
-      country: "FR",
-      count: 10,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 2, 13),
-      path: "/about",
-      country: "US",
-      count: 5,
-    });
-    for (const visitorHash of ["h1", "h2"]) {
-      await ctx.probe.uniques.create({
-        sigilId,
-        day: dayUtc(ctx, 0),
-        visitorHash,
+    it("answers the v2 totals, timeline and flags over a preset, with every leaderboard", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await seed();
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d", traffic: "humans" } },
+        { user: owner },
+      );
+      expect(res.data.totals).toMatchObject({
+        visitors: 2,
+        visits: 3,
+        views: 4,
       });
-    }
-    await ctx.probe.uniques.create({
-      sigilId,
-      day: dayUtc(ctx, 2),
-      visitorHash: "h3",
+      expect(res.data.totals.bounceRate).toBeCloseTo(2 / 3);
+      expect(res.data.grain).toBe("day");
+      expect(res.data.timeline).toHaveLength(7);
+      expect(res.data.visitorsSpanApps).toBe(false);
+      expect(res.data.peopleOnly).toBe(false);
+      expect(res.data.leaderboards.exit.map((row) => row.value)).toEqual([
+        "/docs",
+        "/",
+      ]);
+      expect(res.data.leaderboards.network).toEqual([
+        { value: "AS64512 Example Net", visitors: 1, views: 2 },
+      ]);
+      expect("uniqueVisitorsIgnores" in res.data).toBe(false);
     });
 
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "7d" } },
-      { user: owner },
-    );
+    it("takes a custom window and a grain, and the 90d, 12mo and calendar presets", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await seed();
+      const today = new Date(ctx.nowMs).toISOString().slice(0, 10);
+      const custom = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { from: today, to: today, grain: "hour" },
+        },
+        { user: owner },
+      );
+      expect(custom.data.range).toBe("custom");
+      expect(custom.data.grain).toBe("hour");
+      expect(custom.data.timeline).toHaveLength(24);
+      expect(custom.data.totals.views).toBe(4);
 
-    expect(res.data.totalViews).toBe(15);
-    expect(res.data.uniqueVisitors).toBe(3);
-  });
+      // An end past today stops at the end of today.
+      const ahead = await ctx.insightsController.getInsights.fetch(
+        {
+          params: { projectId },
+          query: { from: today, to: "2999-12-31", grain: "day" },
+        },
+        { user: owner },
+      );
+      expect(ahead.data.until).toBe(today);
+      expect(ahead.data.timeline).toHaveLength(1);
 
-  it("stops reading a deleted sigil's raw rows, which the backend keeps", async ({
-    expect,
-  }) => {
-    // The memory provider behaves like Analytics Engine here: neither has a
-    // delete, and neither follows the `db.ref` cascade only a relational
-    // backend gets.
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 9),
-      path: "/",
-      country: "FR",
-      count: 10,
+      for (const range of [
+        "90d",
+        "12mo",
+        "thisMonth",
+        "lastMonth",
+        "thisYear",
+      ] as const) {
+        const res = await ctx.insightsController.getInsights.fetch(
+          { params: { projectId }, query: { range } },
+          { user: owner },
+        );
+        expect(res.data.range).toBe(range);
+        expect(Date.parse(res.data.from)).toBeLessThan(Date.parse(res.data.to));
+      }
+      const year = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "12mo" } },
+        { user: owner },
+      );
+      expect(year.data.grain).toBe("month");
+
+      await expect(
+        ctx.insightsController.getInsights.fetch(
+          { params: { projectId }, query: { range: "30d", grain: "hour" } },
+          { user: owner },
+        ),
+      ).rejects.toThrow(/7 days/);
     });
 
-    await ctx.sigilController.deleteSigil.fetch(
-      { params: { projectId, sigilId } },
-      { user: owner },
-    );
-
-    const raw = await ctx.alepha.inject(DeployAnalytics).views.query({
-      since: "2000-01-01",
-      where: { sigilId: { inArray: [sigilId] } },
-      groupBy: ["path"],
-      select: { count: "sum" },
-    });
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "7d" } },
-      { user: owner },
-    );
-    expect(raw.rows).toHaveLength(1);
-    expect(res.data.totalViews).toBe(0);
-  });
-
-  it("excludes rows outside the window", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 1),
-      path: "/",
-      country: "FR",
-      count: 4,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 20, 1),
-      path: "/old",
-      country: "FR",
-      count: 99,
-    });
-    await ctx.probe.uniques.create({
-      sigilId,
-      day: dayUtc(ctx, 0),
-      visitorHash: "h1",
-    });
-    await ctx.probe.uniques.create({
-      sigilId,
-      day: dayUtc(ctx, 20),
-      visitorHash: "old",
+    it("narrows visitors and visits, not only views, under a path filter", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await seed();
+      const res = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d", path: "/docs" } },
+        { user: owner },
+      );
+      expect(res.data.totals).toMatchObject({
+        visitors: 2,
+        visits: 2,
+        views: 2,
+      });
     });
 
-    const week = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "7d" } },
-      { user: owner },
-    );
-    expect(week.data.totalViews).toBe(4);
-    expect(week.data.uniqueVisitors).toBe(1);
-
-    const month = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-    expect(month.data.totalViews).toBe(103);
-    expect(month.data.uniqueVisitors).toBe(2);
-  });
-
-  it("orders top countries by views, descending", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      count: 3,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "US",
-      count: 12,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 1, 8),
-      path: "/x",
-      country: "FR",
-      count: 4,
+    it("returns visitors and views per value from the dimension endpoint, exit pages and networks too", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await seed();
+      const exit = await ctx.insightsController.getInsightsDimension.fetch(
+        { params: { projectId, dimension: "exit" }, query: { range: "7d" } },
+        { user: owner },
+      );
+      expect(exit.data.rows[0]).toMatchObject({ value: "/docs", visitors: 2 });
+      const network = await ctx.insightsController.getInsightsDimension.fetch(
+        { params: { projectId, dimension: "network" }, query: { range: "7d" } },
+        { user: owner },
+      );
+      expect(network.data.rows).toEqual([
+        {
+          value: "AS64512 Example Net",
+          visitors: 1,
+          views: 2,
+          percentage: 50,
+        },
+      ]);
     });
 
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
+    it("compares with the window before, and answers null where it is older than the data kept", async ({
+      expect,
+    }) => {
+      const { owner, projectId } = await seed();
+      const recent = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { range: "7d", compare: true } },
+        { user: owner },
+      );
+      // The week before holds no session: views only, visitors not counted.
+      expect(recent.data.previous?.totals).toMatchObject({
+        visitors: null,
+        views: 0,
+      });
+      expect(recent.data.previous?.to).toBe(recent.data.from);
 
-    expect(res.data.topCountries[0]).toEqual({ country: "US", count: 12 });
-    expect(res.data.topCountries[1]).toEqual({ country: "FR", count: 7 });
-  });
-
-  it("gives each top path a count and a share of the total", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      count: 30,
+      const from = new Date(ctx.nowMs - 300 * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const old = await ctx.insightsController.getInsights.fetch(
+        { params: { projectId }, query: { from, compare: true } },
+        { user: owner },
+      );
+      expect(old.data.previous?.totals).toEqual({
+        visitors: null,
+        visits: null,
+        views: null,
+        bounceRate: null,
+        engagedRate: null,
+        avgVisitSeconds: null,
+        pagesPerVisit: null,
+      });
     });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/about",
-      country: "US",
-      count: 10,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-
-    expect(res.data.topPaths[0]).toEqual({
-      path: "/",
-      count: 30,
-      percentage: 75,
-    });
-    expect(res.data.topPaths[1].percentage).toBe(25);
-  });
-
-  it("ranks referrer hosts and keeps `direct` on the same leaderboard", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      referrer: "direct",
-      count: 60,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "US",
-      referrer: "news.ycombinator.com",
-      count: 30,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "US",
-      referrer: "www.google.com",
-      count: 10,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-
-    // `direct` stays in, and stays first. It is the denominator: dropping it
-    // would make Hacker News read as 75% of traffic instead of 30%.
-    expect(res.data.topReferrers).toEqual([
-      { referrer: "direct", count: 60, percentage: 60 },
-      { referrer: "news.ycombinator.com", count: 30, percentage: 30 },
-      { referrer: "www.google.com", count: 10, percentage: 10 },
-    ]);
-  });
-
-  it("separates arrivals from total views, and ranks landing pages", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      count: 30,
-      entries: 8,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/docs",
-      country: "FR",
-      count: 20,
-      entries: 2,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-
-    expect(res.data.totalViews).toBe(50);
-    expect(res.data.entries).toBe(10);
-    // `/docs` is 40% of views but only 20% of arrivals — the distinction
-    // `topPaths` alone cannot make.
-    expect(res.data.topEntryPaths).toEqual([
-      { path: "/", count: 8, percentage: 80 },
-      { path: "/docs", count: 2, percentage: 20 },
-    ]);
-  });
-
-  it("reports engagement as a share of views", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      count: 200,
-      entries: 200,
-    });
-    // Engagement arrives on its own row with `count: 0` — append-only.
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 9),
-      path: "/",
-      country: "FR",
-      count: 0,
-      engaged: 20,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-
-    // The engagement row must not be counted as traffic.
-    expect(res.data.totalViews).toBe(200);
-    expect(res.data.engagedViews).toBe(20);
-    expect(res.data.engagementRate).toBe(10);
-  });
-
-  it("ranks campaigns by arrivals, not by how much each visitor read", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    // One visitor from HN who read ten pages, five who arrived untagged and
-    // bounced. Summing `count` would rank HN first and say nothing true.
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      campaign: "hn",
-      count: 10,
-      entries: 1,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      campaign: "none",
-      count: 5,
-      entries: 5,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-
-    expect(res.data.topCampaigns).toEqual([
-      { campaign: "none", count: 5 },
-      { campaign: "hn", count: 1 },
-    ]);
-  });
-
-  it("breaks views down by device", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      device: "desktop",
-      count: 12,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      device: "mobile",
-      count: 7,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d" } },
-      { user: owner },
-    );
-
-    expect(res.data.topDevices).toEqual([
-      { device: "desktop", count: 12 },
-      { device: "mobile", count: 7 },
-    ]);
-  });
-
-  it("narrows every view number to one traffic population", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/guides",
-      country: "FR",
-      traffic: "human",
-      count: 3,
-      entries: 1,
-      engaged: 2,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/reference",
-      country: "US",
-      traffic: "bot",
-      count: 7,
-      entries: 7,
-      engaged: 0,
-    });
-
-    const query = { range: "30d" } as const;
-    const all = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query },
-      { user: owner },
-    );
-    const humans = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { ...query, traffic: "humans" } },
-      { user: owner },
-    );
-    const bots = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { ...query, traffic: "bots" } },
-      { user: owner },
-    );
-
-    expect(all.data.totalViews).toBe(10);
-    expect(humans.data.totalViews).toBe(3);
-    expect(bots.data.totalViews).toBe(7);
-
-    // Not just the headline: the filter rides on the shared `where`, so the
-    // leaderboards and the derived rates move with it. A page that filtered
-    // the total and not the top-pages list would be worse than no filter.
-    expect(humans.data.topPaths.map((p) => p.path)).toEqual(["/guides"]);
-    expect(bots.data.topPaths.map((p) => p.path)).toEqual(["/reference"]);
-    expect(humans.data.entries).toBe(1);
-    expect(bots.data.engagementRate).toBe(0);
-
-    // Echoed back, because the page renders the caveat from the payload.
-    expect(all.data.traffic).toBe("all");
-    expect(humans.data.traffic).toBe("humans");
-  });
-
-  it("counts a view recorded before the dimension existed as human", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-    // What a row written before `traffic` shipped actually holds. The
-    // dimension's default fills a column on write; it does not reach back.
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 8),
-      path: "/",
-      country: "FR",
-      traffic: "",
-      count: 5,
-    });
-
-    const humans = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d", traffic: "humans" } },
-      { user: owner },
-    );
-    const bots = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d", traffic: "bots" } },
-      { user: owner },
-    );
-
-    // Dropping history out of the humans view would read as the traffic
-    // collapsing on the deploy date.
-    expect(humans.data.totalViews).toBe(5);
-    expect(bots.data.totalViews).toBe(0);
-  });
-
-  it("narrows the unique-visitor count too", async ({ expect }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-    const day = dayUtc(ctx, 0);
-    await ctx.probe.uniques.create({
-      sigilId,
-      day,
-      visitorHash: "hash-reader",
-      traffic: "human",
-    });
-    await ctx.probe.uniques.create({
-      sigilId,
-      day,
-      visitorHash: "hash-crawler",
-      traffic: "bot",
-    });
-
-    const query = { range: "30d" } as const;
-    const all = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query },
-      { user: owner },
-    );
-    const humans = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { ...query, traffic: "humans" } },
-      { user: owner },
-    );
-    const bots = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { ...query, traffic: "bots" } },
-      { user: owner },
-    );
-
-    // The headline the page leads with. Leaving it unfiltered while every
-    // number beside it moved was the whole reason this was worth doing: two
-    // populations rendered side by side look comparable and are not.
-    expect(all.data.uniqueVisitors).toBe(2);
-    expect(humans.data.uniqueVisitors).toBe(1);
-    expect(bots.data.uniqueVisitors).toBe(1);
-  });
-
-  it("counts a visitor recorded before the column existed as human", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-    // The column default is what every pre-existing row was backfilled to, so
-    // this is what production's 219 rows look like the moment the migration
-    // lands. Written without a `traffic` to prove the default carries it.
-    await ctx.probe.uniques.create({
-      sigilId,
-      day: dayUtc(ctx, 0),
-      visitorHash: "hash-legacy",
-    });
-
-    const humans = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d", traffic: "humans" } },
-      { user: owner },
-    );
-    const bots = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "30d", traffic: "bots" } },
-      { user: owner },
-    );
-
-    expect(humans.data.uniqueVisitors).toBe(1);
-    expect(bots.data.uniqueVisitors).toBe(0);
-  });
-
-  it("folds hour buckets into a zero-filled daily timeline", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const sigilId = await createSigil(ctx, projectId, "lore-prod", owner);
-
-    // Two hours of the same day — the day point is their sum, which is the one
-    // thing a `substr(hour, 1, 10)` group has to get right.
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 9),
-      path: "/",
-      country: "FR",
-      count: 6,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 0, 17),
-      path: "/",
-      country: "FR",
-      count: 4,
-    });
-    await ctx.probe.views.create({
-      sigilId,
-      hour: hourUtc(ctx, 3, 12),
-      path: "/",
-      country: "US",
-      count: 2,
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "7d" } },
-      { user: owner },
-    );
-
-    expect(res.data.timeline).toHaveLength(7);
-    const byDate = new Map(res.data.timeline.map((p) => [p.date, p.views]));
-    expect(byDate.get(dayUtc(ctx, 0))).toBe(10);
-    expect(byDate.get(dayUtc(ctx, 3))).toBe(2);
-    expect(byDate.get(dayUtc(ctx, 1))).toBe(0);
-  });
-
-  it("counts a visitor seen in two apps on one day once", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-    const prod = await createSigil(ctx, projectId, "lore-prod", owner);
-    const staging = await createSigil(ctx, projectId, "lore-staging", owner);
-
-    await ctx.probe.uniques.create({
-      sigilId: prod,
-      day: dayUtc(ctx, 0),
-      visitorHash: "shared",
-    });
-    await ctx.probe.uniques.create({
-      sigilId: staging,
-      day: dayUtc(ctx, 0),
-      visitorHash: "shared",
-    });
-    await ctx.probe.uniques.create({
-      sigilId: staging,
-      day: dayUtc(ctx, 0),
-      visitorHash: "other",
-    });
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "7d" } },
-      { user: owner },
-    );
-
-    expect(res.data.uniqueVisitors).toBe(2);
-  });
-
-  it("returns an empty snapshot for a project with no sigils", async ({
-    expect,
-  }) => {
-    const owner = await createTestUser(ctx);
-    const projectId = await createProject(ctx, owner);
-
-    const res = await ctx.insightsController.getInsights.fetch(
-      { params: { projectId }, query: { range: "7d" } },
-      { user: owner },
-    );
-
-    expect(res.data.totalViews).toBe(0);
-    expect(res.data.topPaths).toEqual([]);
-    expect(res.data.topReferrers).toEqual([]);
-    expect(res.data.entries).toBe(0);
-    expect(res.data.engagedViews).toBe(0);
-    expect(res.data.engagementRate).toBe(0);
-    expect(res.data.topEntryPaths).toEqual([]);
-    expect(res.data.topCampaigns).toEqual([]);
-    expect(res.data.topDevices).toEqual([]);
-    expect(res.data.timeline).toHaveLength(7);
-    // Present with zero samples rather than absent: "no apps" and "no samples
-    // yet" render the same, so the tab does not branch on which nothing it got.
-    expect(res.data.vitals.lcp.samples).toBe(0);
-    expect(res.data.vitals.lcp.p75Bucket).toBeNull();
-    expect(res.data.vitals.lcp.buckets).toHaveLength(
-      VITALS_BUCKETS.lcp.length + 1,
-    );
-    expect(res.data.errorGroups).toEqual([]);
   });
 
   describe("error budget", () => {
@@ -1327,69 +870,6 @@ describe("InsightsController", () => {
       project-wide answer is built from, so the two cannot disagree — and it is
       the one place a caller-supplied id reaches the query, which is why the
       cross-project case is pinned as hard as the happy path.
-    */
-    it("narrows every segment to the app asked for", async ({ expect }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const prod = await createSigil(ctx, projectId, "lore-prod", owner);
-      const staging = await createSigil(ctx, projectId, "lore-staging", owner);
-
-      await ctx.probe.views.create({
-        sigilId: prod,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/",
-        country: "FR",
-        count: 10,
-      });
-      await ctx.probe.views.create({
-        sigilId: staging,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/staging",
-        country: "FR",
-        count: 3,
-      });
-      await ctx.probe.uniques.create({
-        sigilId: prod,
-        day: dayUtc(ctx, 0),
-        visitorHash: "h1",
-      });
-      await ctx.probe.uniques.create({
-        sigilId: staging,
-        day: dayUtc(ctx, 0),
-        visitorHash: "h2",
-      });
-      await ctx.probe.errorGroups.create({
-        sigilId: staging,
-        fingerprint: "fp-staging",
-        name: "TypeError",
-        message: "boom",
-        stackSample: "TypeError: boom",
-        sourceUrl: "",
-        firstSeenAt: instantUtc(ctx, 1),
-        lastSeenAt: instantUtc(ctx, 0),
-        count: 2,
-      });
-
-      const scoped = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "7d", sigilId: prod } },
-        { user: owner },
-      );
-
-      expect(scoped.data.totalViews).toBe(10);
-      expect(scoped.data.uniqueVisitors).toBe(1);
-      expect(scoped.data.topPaths.map((p) => p.path)).toEqual(["/"]);
-      expect(scoped.data.errorGroups).toEqual([]);
-
-      // Omitted, the same call still answers for the whole project — the
-      // per-app page must not have changed what everything else reads.
-      const whole = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "7d" } },
-        { user: owner },
-      );
-      expect(whole.data.totalViews).toBe(13);
-      expect(whole.data.uniqueVisitors).toBe(2);
-      expect(whole.data.errorGroups).toHaveLength(1);
-    });
 
     it("merges vitals for one app only", async ({ expect }) => {
       const owner = await createTestUser(ctx);
@@ -1690,268 +1170,12 @@ describe("InsightsController", () => {
     ).rejects.toThrow();
   });
 
-  describe("complete-day window and comparison", () => {
-    /**
-     * The reason this mode exists. `range: "1d"` means today-so-far, so
-     * measuring it against a full day reads as a collapse every morning and
-     * recovers by dinner — the number moves because the clock moved.
-     */
-    it("means yesterday, not today-so-far", async ({ expect }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 2),
-        path: "/",
-        country: "FR",
-        count: 3,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 1, 23),
-        path: "/",
-        country: "FR",
-        count: 40,
-      });
-      await ctx.probe.uniques.create({
-        sigilId,
-        day: dayUtc(ctx, 0),
-        visitorHash: "today",
-      });
-      for (const visitorHash of ["y1", "y2"]) {
-        await ctx.probe.uniques.create({
-          sigilId,
-          day: dayUtc(ctx, 1),
-          visitorHash,
-        });
-      }
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "1d", until: "lastCompleteDay" },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.since).toBe(dayUtc(ctx, 1));
-      expect(res.data.until).toBe(dayUtc(ctx, 1));
-      // The 23:00 row is the point: `until` names a DAY, and every hour of it
-      // is inside the window.
-      expect(res.data.totalViews).toBe(40);
-      expect(res.data.uniqueVisitors).toBe(2);
-    });
-
-    it("returns the preceding window alongside, measured the same way", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs", owner);
-
-      for (const visitorHash of ["a", "b", "c", "d", "e"]) {
-        await ctx.probe.uniques.create({
-          sigilId,
-          day: dayUtc(ctx, 1),
-          visitorHash,
-        });
-      }
-      for (const visitorHash of ["p", "q", "r", "s"]) {
-        await ctx.probe.uniques.create({
-          sigilId,
-          day: dayUtc(ctx, 2),
-          visitorHash,
-        });
-      }
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "1d", until: "lastCompleteDay", compare: true },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.uniqueVisitors).toBe(5);
-      expect(res.data.previous).toMatchObject({
-        since: dayUtc(ctx, 2),
-        until: dayUtc(ctx, 2),
-        uniqueVisitors: 4,
-      });
-      expect(res.data.uniqueVisitorsDelta).toBe(25);
-    });
-
-    it("puts the previous window immediately before this one, without overlap", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs", owner);
-
-      // One visitor on the boundary day of the CURRENT window. If the two
-      // windows overlapped, this hash would be counted in both.
-      await ctx.probe.uniques.create({
-        sigilId,
-        day: dayUtc(ctx, 7),
-        visitorHash: "edge",
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "7d", until: "lastCompleteDay", compare: true },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.since).toBe(dayUtc(ctx, 7));
-      expect(res.data.until).toBe(dayUtc(ctx, 1));
-      expect(res.data.previous?.since).toBe(dayUtc(ctx, 14));
-      expect(res.data.previous?.until).toBe(dayUtc(ctx, 8));
-      expect(res.data.uniqueVisitors).toBe(1);
-      expect(res.data.previous?.uniqueVisitors).toBe(0);
-    });
-
-    it("says nothing rather than +100% when the previous window was empty", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs", owner);
-
-      await ctx.probe.uniques.create({
-        sigilId,
-        day: dayUtc(ctx, 1),
-        visitorHash: "first-ever",
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "1d", until: "lastCompleteDay", compare: true },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.previous?.uniqueVisitors).toBe(0);
-      expect(res.data.uniqueVisitorsDelta).toBeUndefined();
-    });
-
-    it("leaves existing 1d / 7d / 30d callers on today-anchored windows with no comparison", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 2),
-        path: "/",
-        country: "FR",
-        count: 3,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "1d" } },
-        { user: owner },
-      );
-
-      expect(res.data.since).toBe(dayUtc(ctx, 0));
-      expect(res.data.until).toBe(dayUtc(ctx, 0));
-      expect(res.data.totalViews).toBe(3);
-      expect(res.data.previous).toBeUndefined();
-      expect(res.data.uniqueVisitorsDelta).toBeUndefined();
-    });
-
-    it("bounds the timeline and the error budget by the same day", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 5),
-        path: "/",
-        country: "FR",
-        count: 7,
-      });
-      await ctx.probe.errorGroups.create({
-        sigilId,
-        fingerprint: "fp-today",
-        name: "TypeError",
-        message: "only seen today",
-        stackSample: "",
-        sourceUrl: "",
-        firstSeenAt: instantUtc(ctx, 0),
-        lastSeenAt: instantUtc(ctx, 0),
-        count: 1,
-      });
-      await ctx.probe.errorGroups.create({
-        sigilId,
-        fingerprint: "fp-yesterday",
-        name: "TypeError",
-        message: "last seen yesterday",
-        stackSample: "",
-        sourceUrl: "",
-        firstSeenAt: instantUtc(ctx, 1),
-        lastSeenAt: instantUtc(ctx, 1),
-        count: 1,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "7d", until: "lastCompleteDay" },
-        },
-        { user: owner },
-      );
-
-      // Every field in the payload describes the same window — a response that
-      // claimed `since..until` while some of its numbers ran through today
-      // would be a silent lie.
-      expect(res.data.timeline.at(-1)?.date).toBe(dayUtc(ctx, 1));
-      expect(res.data.timeline.some((point) => point.views === 7)).toBe(false);
-      expect(res.data.errorGroups.map((group) => group.fingerprint)).toEqual([
-        "fp-yesterday",
-      ]);
-    });
-
-    it("answers the comparison even for a project with no apps", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "1d", until: "lastCompleteDay", compare: true },
-        },
-        { user: owner },
-      );
-
-      // "Not compared" and "compared, and it was zero" are different answers.
-      expect(res.data.previous).toEqual({
-        since: dayUtc(ctx, 2),
-        until: dayUtc(ctx, 2),
-        uniqueVisitors: 0,
-        totalViews: 0,
-      });
-      expect(res.data.until).toBe(dayUtc(ctx, 1));
-    });
-  });
-
   describe("insights sampling disclosure", () => {
     /*
       `estimated` / `sampleInterval` exist so a UI can label a number as a
       sample rather than a measurement. The relational backend this suite
       runs against never samples, so `false` is the only value it can ever
-      pin — but the field has to reach the wire before Task 13's UI can read
+      pin, but the field has to reach the wire before Task 13's UI can read
       it at all, and a field absent from `schema.response` is silently
       dropped no matter what the handler returns.
     */
@@ -1966,440 +1190,6 @@ describe("InsightsController", () => {
       );
 
       expect(res.data.estimated).toBe(false);
-    });
-  });
-
-  describe("dimension filters", () => {
-    /**
-     * Four views over two countries and two devices, so every assertion below
-     * can tell "filtered" apart from "happened to be the only row".
-     */
-    const seed = async (projectId: number, sigilId: string) => {
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/pricing",
-        country: "FR",
-        device: "mobile",
-        referrer: "news.ycombinator.com",
-        campaign: "launch",
-        count: 3,
-        entries: 3,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/pricing",
-        country: "US",
-        device: "desktop",
-        referrer: "direct",
-        campaign: "none",
-        count: 5,
-        entries: 5,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 1, 9),
-        path: "/docs",
-        country: "FR",
-        device: "desktop",
-        referrer: "direct",
-        campaign: "none",
-        count: 7,
-        entries: 7,
-      });
-      return { projectId, sigilId };
-    };
-
-    it("narrows every view number to one value of one dimension", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "shop-prod", owner);
-      await seed(projectId, sigilId);
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d", country: "FR" } },
-        { user: owner },
-      );
-
-      expect(res.data.totalViews).toBe(10);
-      expect(res.data.topPaths.map((p) => p.path).sort()).toEqual([
-        "/docs",
-        "/pricing",
-      ]);
-      expect(res.data.topCountries).toEqual([{ country: "FR", count: 10 }]);
-    });
-
-    it("composes two filters into one where, not two answers", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "shop-prod", owner);
-      await seed(projectId, sigilId);
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "30d", country: "FR", device: "desktop" },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.totalViews).toBe(7);
-      expect(res.data.topPaths.map((p) => p.path)).toEqual(["/docs"]);
-    });
-
-    /**
-     * The Vitals tab is the thing this can break. `sigil_vitals` declares
-     * `sigilId`, `metric`, `path` and `bucket`, so `path` is legal against it
-     * and `country` is not, and a filter naming a dimension a dataset does not
-     * declare is a rejected query rather than a wider answer. This exact
-     * failure already happened once, when `traffic` was added to views only
-     * and one `where` was shared by both datasets.
-     */
-    it("does not send a views-only filter to the vitals dataset", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "shop-prod", owner);
-      await seed(projectId, sigilId);
-      // Four samples in bucket 2, whose upper boundary is 2500.
-      await ctx.probe.vitals.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        metric: "lcp",
-        path: "/pricing",
-        b2: 4,
-      });
-
-      // Every filter at once, including the four vitals cannot answer.
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: {
-            range: "30d",
-            country: "FR",
-            device: "mobile",
-            referrer: "news.ycombinator.com",
-            campaign: "launch",
-            path: "/pricing",
-          },
-        },
-        { user: owner },
-      );
-
-      // Answered rather than 500, and the one filter vitals DOES declare was
-      // applied: the sample sits on /pricing.
-      expect(res.data.vitals.lcp.p75Upper).toBe(2500);
-      expect(res.data.totalViews).toBe(3);
-    });
-
-    it("filters the comparison window identically", async ({ expect }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "shop-prod", owner);
-
-      // Two days back is inside a 1d window's PREVIOUS window when the
-      // window ends yesterday.
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 1, 8),
-        path: "/a",
-        country: "FR",
-        count: 4,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 2, 8),
-        path: "/a",
-        country: "FR",
-        count: 6,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 2, 9),
-        path: "/a",
-        country: "US",
-        count: 100,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: {
-            range: "1d",
-            until: "lastCompleteDay",
-            compare: true,
-            country: "FR",
-          },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.totalViews).toBe(4);
-      // 6, not 106. A delta between two windows measured on different
-      // populations is not a delta.
-      expect(res.data.previous?.totalViews).toBe(6);
-    });
-
-    it("matches legacy rows when filtering on a dimension's default", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "shop-prod", owner);
-
-      // What a row written before `device` existed actually holds: the empty
-      // string, not the default. A default fills a column on write.
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/old",
-        country: "FR",
-        device: "",
-        count: 9,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/new",
-        country: "FR",
-        device: "desktop",
-        count: 2,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 10),
-        path: "/phone",
-        country: "FR",
-        device: "mobile",
-        count: 100,
-      });
-
-      const desktop = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d", device: "desktop" } },
-        { user: owner },
-      );
-      const mobile = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d", device: "mobile" } },
-        { user: owner },
-      );
-
-      // The unclassified row joins the default bucket, so a 30-day window
-      // straddling the deploy does not read as traffic collapsing that day.
-      expect(desktop.data.totalViews).toBe(11);
-      // But only the default bucket: nothing ever said those rows were mobile.
-      expect(mobile.data.totalViews).toBe(100);
-    });
-
-    it("names the filters the visitor count could not honour", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "shop-prod", owner);
-      await seed(projectId, sigilId);
-      await ctx.probe.uniques.create({
-        sigilId,
-        day: dayUtc(ctx, 0),
-        visitorHash: "h1",
-      });
-
-      const plain = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d" } },
-        { user: owner },
-      );
-      const filtered = await ctx.insightsController.getInsights.fetch(
-        {
-          params: { projectId },
-          query: { range: "30d", country: "FR", device: "mobile" },
-        },
-        { user: owner },
-      );
-
-      // `sigilId` and `traffic` are the two the uniques table can narrow by,
-      // so an unfiltered read has nothing to declare.
-      expect(plain.data.uniqueVisitorsIgnores).toEqual([]);
-      // The count is unchanged under the filter, which is exactly the danger:
-      // without this list a page would show it beside filtered views with
-      // nothing on screen saying it is wider.
-      expect(filtered.data.uniqueVisitors).toBe(plain.data.uniqueVisitors);
-      expect(filtered.data.uniqueVisitorsIgnores.sort()).toEqual([
-        "country",
-        "device",
-      ]);
-    });
-  });
-
-  describe("browser and system leaderboards", () => {
-    it("ranks browsers and systems by views", async ({ expect }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/",
-        country: "FR",
-        browser: "chrome",
-        os: "windows",
-        count: 7,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/",
-        country: "FR",
-        browser: "safari",
-        os: "macos",
-        count: 3,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d" } },
-        { user: owner },
-      );
-
-      expect(res.data.topBrowsers).toEqual([
-        { browser: "chrome", count: 7 },
-        { browser: "safari", count: 3 },
-      ]);
-      expect(res.data.topSystems).toEqual([
-        { os: "windows", count: 7 },
-        { os: "macos", count: 3 },
-      ]);
-    });
-
-    /**
-     * A row written before either dimension existed carries `""` - a default
-     * fills a column on write, it does not rewrite stored rows. Left alone
-     * that is a nameless bucket in a leaderboard; excluded, the shares would
-     * describe less traffic than the page around them claims. Both readings
-     * are "we cannot name it", so they merge.
-     */
-    it("folds a legacy empty bucket into other rather than showing it", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/",
-        country: "FR",
-        browser: "",
-        os: "",
-        count: 4,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/",
-        country: "FR",
-        browser: "other",
-        os: "other",
-        count: 2,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d" } },
-        { user: owner },
-      );
-
-      // One row, not two, and the whole six views: the totals stay describing
-      // the traffic the rest of the page describes.
-      expect(res.data.topBrowsers).toEqual([{ browser: "other", count: 6 }]);
-      expect(res.data.topSystems).toEqual([{ os: "other", count: 6 }]);
-    });
-
-    it("ranks the audience, and folds a legacy empty bucket into anon", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/",
-        country: "FR",
-        auth: "user",
-        count: 3,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/",
-        country: "FR",
-        auth: "anon",
-        count: 5,
-      });
-      // ⚠️ Written before the dimension existed. It folds into `anon`, NOT
-      // into `other` the way every other dimension's empty string does - and
-      // that difference is the point of this case. `other` means "we cannot
-      // name this"; here we can. A row from a proxy that stamped nothing is a
-      // visit with no session, and anonymous is the true reading. An `other`
-      // bucket beside `user` and `anon` would be a third audience that does
-      // not exist.
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 10),
-        path: "/",
-        country: "FR",
-        auth: "",
-        count: 2,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d" } },
-        { user: owner },
-      );
-
-      expect(res.data.topAudience).toEqual([
-        { auth: "anon", count: 7 },
-        { auth: "user", count: 3 },
-      ]);
-    });
-
-    it("narrows the page by browser like any other dimension", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/chrome-only",
-        country: "FR",
-        browser: "chrome",
-        count: 5,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/safari-only",
-        country: "FR",
-        browser: "safari",
-        count: 9,
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d", browser: "chrome" } },
-        { user: owner },
-      );
-
-      expect(res.data.totalViews).toBe(5);
-      expect(res.data.topPaths.map((p) => p.path)).toEqual(["/chrome-only"]);
     });
   });
 
@@ -2437,309 +1227,6 @@ describe("InsightsController", () => {
       expect(res.data.rows[0]?.samples).toBe(40);
       expect(res.data.rows[0]?.metrics.lcp?.p75Upper).toBeNull();
       expect(res.data.rows[1]?.metrics.lcp?.p75Upper).toBe(1000);
-    });
-
-    /**
-     * The ranking key is the tail share and not the p75, and this is the case
-     * that separates them: both paths land in the same bucket, so their p75s
-     * are identical and any p75-based order between them is arbitrary. The one
-     * with more of its traffic in a poor bucket is the problem page.
-     */
-    it("ranks by the share of samples in poor buckets, not by the p75", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      // Both p75s land in bucket 0 (75% of samples are there), so the two
-      // pages are indistinguishable by p75. `/tail` has a quarter of its
-      // traffic in the overflow bucket; `/clean` has a tenth.
-      await ctx.probe.vitals.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 10),
-        metric: "lcp",
-        path: "/tail",
-        b0: 75,
-        b6: 25,
-      });
-      await ctx.probe.vitals.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 10),
-        metric: "lcp",
-        path: "/clean",
-        b0: 90,
-        b6: 10,
-      });
-
-      const res = await ctx.insightsController.getVitalsPaths.fetch(
-        { params: { projectId }, query: { range: "7d" } },
-        { user: owner },
-      );
-
-      expect(res.data.rows[0]?.metrics.lcp?.p75Upper).toBe(
-        res.data.rows[1]?.metrics.lcp?.p75Upper,
-      );
-      expect(res.data.rows.map((row) => row.path)).toEqual(["/tail", "/clean"]);
-      expect(res.data.rows[0]?.tailShare).toBe(25);
-      expect(res.data.rows[1]?.tailShare).toBe(10);
-    });
-
-    it("never lets a path under the sample floor top the list", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      // Three samples, all terrible. Without a floor this would be the worst
-      // page on the site on the strength of three measurements.
-      await ctx.probe.vitals.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 10),
-        metric: "lcp",
-        path: "/rare",
-        b6: 3,
-      });
-      await ctx.probe.vitals.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 10),
-        metric: "lcp",
-        path: "/busy",
-        b0: 90,
-        b6: 10,
-      });
-
-      const res = await ctx.insightsController.getVitalsPaths.fetch(
-        { params: { projectId }, query: { range: "7d" } },
-        { user: owner },
-      );
-
-      // Ranked below, and still on the list: "not enough data about this page"
-      // is an answer, and dropping it silently is not.
-      expect(res.data.rows.map((row) => row.path)).toEqual(["/busy", "/rare"]);
-      expect(res.data.rows[1]?.confident).toBe(false);
-      expect(res.data.rows[0]?.confident).toBe(true);
-      expect(res.data.minSamples).toBe(30);
-    });
-
-    it("narrows to one page, the only view filter vitals declares", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-
-      for (const path of ["/a", "/b"]) {
-        await ctx.probe.vitals.create({
-          sigilId,
-          hour: hourUtc(ctx, 0, 10),
-          metric: "lcp",
-          path,
-          b0: 40,
-        });
-      }
-
-      const res = await ctx.insightsController.getVitalsPaths.fetch(
-        { params: { projectId }, query: { range: "7d", path: "/a" } },
-        { user: owner },
-      );
-
-      expect(res.data.rows.map((row) => row.path)).toEqual(["/a"]);
-    });
-
-    it("returns an empty answer for a project with no apps", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-
-      const res = await ctx.insightsController.getVitalsPaths.fetch(
-        { params: { projectId }, query: { range: "7d" } },
-        { user: owner },
-      );
-
-      expect(res.data.rows).toEqual([]);
-      // The boundaries travel even when nothing does, so a table can label its
-      // columns before it has a row to put in them.
-      expect(res.data.boundaries.lcp).toEqual(VITALS_BUCKETS.lcp);
-    });
-  });
-
-  describe("single-dimension listing", () => {
-    const seedPaths = async (sigilId: string, count: number) => {
-      for (let i = 0; i < count; i++) {
-        await ctx.probe.views.create({
-          sigilId,
-          hour: hourUtc(ctx, 0, 8),
-          path: `/p${String(i).padStart(3, "0")}`,
-          country: "FR",
-          // Descending rank matches ascending index, so a page can be
-          // asserted by name rather than by shape.
-          count: count - i,
-          entries: count - i,
-        });
-      }
-    };
-
-    it("pages a leaderboard past the overview's top ten", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-      await seedPaths(sigilId, 25);
-
-      const overview = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "30d" } },
-        { user: owner },
-      );
-      // The overview does not widen: the long list is a separate question.
-      expect(overview.data.topPaths).toHaveLength(10);
-
-      const first = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "path" },
-          query: { range: "30d", limit: 10 },
-        },
-        { user: owner },
-      );
-      const second = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "path" },
-          query: { range: "30d", limit: 10, offset: 10 },
-        },
-        { user: owner },
-      );
-      const last = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "path" },
-          query: { range: "30d", limit: 10, offset: 20 },
-        },
-        { user: owner },
-      );
-
-      expect(first.data.rows[0]?.value).toBe("/p000");
-      expect(first.data.hasMore).toBe(true);
-      expect(second.data.rows[0]?.value).toBe("/p010");
-      expect(second.data.hasMore).toBe(true);
-      expect(last.data.rows).toHaveLength(5);
-      expect(last.data.hasMore).toBe(false);
-    });
-
-    it("shares each row out of the whole window, not out of the page", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/a",
-        country: "FR",
-        count: 25,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/b",
-        country: "FR",
-        count: 75,
-      });
-
-      const res = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "path" },
-          query: { range: "30d", limit: 1 },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.total).toBe(100);
-      // 75 of 100, not 75 of 75.
-      expect(res.data.rows).toEqual([
-        { value: "/b", count: 75, percentage: 75 },
-      ]);
-    });
-
-    it("ranks entry paths by arrivals and says which measure it used", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-      // Read a lot, arrived at once.
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/home",
-        country: "FR",
-        count: 40,
-        entries: 1,
-      });
-      // Read once, arrived at often. A landing page.
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/launch",
-        country: "FR",
-        count: 5,
-        entries: 5,
-      });
-
-      const byViews = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "path" },
-          query: { range: "30d" },
-        },
-        { user: owner },
-      );
-      const byEntries = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "entryPath" },
-          query: { range: "30d" },
-        },
-        { user: owner },
-      );
-
-      expect(byViews.data.measure).toBe("count");
-      expect(byViews.data.rows[0]?.value).toBe("/home");
-      expect(byEntries.data.measure).toBe("entries");
-      expect(byEntries.data.rows[0]?.value).toBe("/launch");
-    });
-
-    it("carries the same dimension filters as the overview", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const sigilId = await createSigil(ctx, projectId, "docs-prod", owner);
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 8),
-        path: "/fr",
-        country: "FR",
-        count: 4,
-      });
-      await ctx.probe.views.create({
-        sigilId,
-        hour: hourUtc(ctx, 0, 9),
-        path: "/us",
-        country: "US",
-        count: 9,
-      });
-
-      const res = await ctx.insightsController.getInsightsDimension.fetch(
-        {
-          params: { projectId, dimension: "path" },
-          query: { range: "30d", country: "FR" },
-        },
-        { user: owner },
-      );
-
-      expect(res.data.total).toBe(4);
-      expect(res.data.rows.map((r) => r.value)).toEqual(["/fr"]);
     });
 
     it("refuses a page past the depth cap rather than clamping it", async ({
@@ -2821,41 +1308,6 @@ describe("InsightsController", () => {
       return rows.map((row) => row.id);
     };
 
-    it("counts one visitor across 120 apps once, not 120 times", async ({
-      expect,
-    }) => {
-      const owner = await createTestUser(ctx);
-      const projectId = await createProject(ctx, owner);
-      const appIds = await enrolApps(projectId, 120);
-
-      // The same person, on the same day, on every one of the 120 apps. This
-      // is the case a chunked read cannot answer: per-chunk counts sum to two
-      // (or 120, on a naive per-row count), and the truth is one. It is why
-      // `LoreAnalyticsStore.scope` bounds itself with `json_each` and a single
-      // parameter rather than by cutting the list up.
-      await ctx.probe.uniques.createMany(
-        appIds.map((sigilId) => ({
-          sigilId,
-          day: dayUtc(ctx, 0),
-          visitorHash: "one-person",
-        })),
-      );
-      // Somebody else, on one app, so a passing count of 1 cannot be a read
-      // that returned nothing.
-      await ctx.probe.uniques.create({
-        sigilId: appIds[0]!,
-        day: dayUtc(ctx, 0),
-        visitorHash: "somebody-else",
-      });
-
-      const res = await ctx.insightsController.getInsights.fetch(
-        { params: { projectId }, query: { range: "7d" } },
-        { user: owner },
-      );
-
-      expect(res.data.uniqueVisitors).toBe(2);
-    });
-
     it("returns the worst error groups in the project, not the worst of one chunk", async ({
       expect,
     }) => {
@@ -2863,7 +1315,7 @@ describe("InsightsController", () => {
       const projectId = await createProject(ctx, owner);
       const appIds = await enrolApps(projectId, 200);
 
-      // One group per app, `count` rising with the index — so at a chunk size
+      // One group per app, `count` rising with the index, so at a chunk size
       // of 90 every one of the twenty worst sits in the LAST chunk. A read
       // that concatenates the chunks and slices without re-sorting answers
       // with the first chunk's twenty, which are the mildest failures in the
@@ -2919,50 +1371,6 @@ describe("InsightsController", () => {
       // throws an `AlephaError` on an empty `inArray`, so a chunk of nothing
       // is a failure and not an empty answer.
       expect(controller.chunked([])).toEqual([]);
-    });
-
-    it("binds the app set as one parameter, whatever its length", async ({
-      expect,
-    }) => {
-      // The uniques half of the same ceiling, and the reason it is a different
-      // shape: `uniqueVisitors` counts DISTINCT `(day, visitorHash)` across
-      // the whole set, so chunk-and-merge would count a person once per chunk
-      // they appear in. The ids ride in one JSON parameter instead, unpacked
-      // by `json_each`.
-      //
-      // Cast for the same reason as `chunked` above: `scope` is protected,
-      // which is a compile-time claim about who calls it.
-      const store = ctx.alepha.inject(LoreAnalyticsStore) as unknown as {
-        scope(window: { sigilIds: string[] }): {
-          queryChunks: unknown[];
-        };
-      };
-
-      for (const size of [1, 250]) {
-        const chunk = store.scope({
-          sigilIds: Array.from({ length: size }, () => crypto.randomUUID()),
-        });
-        // Drizzle's own literal fragments carry a `string` value (a
-        // `string[]` before 1.0.0-rc.5); every other chunk is a value on its
-        // way to becoming a bound parameter.
-        const literals = chunk.queryChunks.filter(
-          (part): part is { value: string | string[] } =>
-            typeof part === "object" &&
-            part !== null &&
-            (typeof (part as { value?: unknown }).value === "string" ||
-              Array.isArray((part as { value?: unknown }).value)),
-        );
-        const bound = chunk.queryChunks.length - literals.length;
-
-        expect(bound).toBe(1);
-        // One parameter on both dialects, unpacked by each one's JSON
-        // function.
-        expect(literals.flatMap((part) => part.value).join("")).toContain(
-          process.env.DATABASE_TEST_DIALECT === "postgres"
-            ? "jsonb_array_elements_text"
-            : "json_each",
-        );
-      }
     });
   });
 });

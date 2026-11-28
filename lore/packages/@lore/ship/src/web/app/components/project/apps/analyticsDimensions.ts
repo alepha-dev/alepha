@@ -12,7 +12,9 @@
 export const ANALYTICS_DIMENSIONS = new Set([
   "country",
   "path",
-  "entryPath",
+  "entry",
+  "exit",
+  "network",
   "campaign",
   "device",
   "referrer",
