@@ -4,8 +4,11 @@ import { AlephaApiJobs } from "alepha/api/jobs";
 import { AdminAnalyticsController } from "./controllers/AdminAnalyticsController.ts";
 import { AnalyticsRollupJobs } from "./jobs/AnalyticsRollupJobs.ts";
 import { $analytics } from "./primitives/$analytics.ts";
+import { $eventLog } from "./primitives/$eventLog.ts";
 import { AnalyticsProvider } from "./providers/AnalyticsProvider.ts";
+import { EventLogProvider } from "./providers/EventLogProvider.ts";
 import { MemoryAnalyticsProvider } from "./providers/MemoryAnalyticsProvider.ts";
+import { MemoryEventLogProvider } from "./providers/MemoryEventLogProvider.ts";
 import { OrmAnalyticsProvider } from "./providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "./providers/WaeAnalyticsProvider.ts";
 import { AdminAnalyticsService } from "./services/AdminAnalyticsService.ts";
@@ -20,9 +23,13 @@ export * from "./planner/AnalyticsRowFolder.ts";
 export * from "./planner/AnalyticsSlotMap.ts";
 export * from "./planner/AnalyticsTiers.ts";
 export * from "./planner/AnalyticsWindow.ts";
+export * from "./planner/EventLogPlan.ts";
 export * from "./primitives/$analytics.ts";
+export * from "./primitives/$eventLog.ts";
 export * from "./providers/AnalyticsProvider.ts";
+export * from "./providers/EventLogProvider.ts";
 export * from "./providers/MemoryAnalyticsProvider.ts";
+export * from "./providers/MemoryEventLogProvider.ts";
 export * from "./providers/OrmAnalyticsProvider.ts";
 export * from "./providers/WaeAnalyticsProvider.ts";
 export * from "./schemas/adminAnalyticsQuerySchema.ts";
@@ -31,6 +38,7 @@ export * from "./schemas/adminDatasetSchema.ts";
 export * from "./schemas/analyticsDatasetSchema.ts";
 export * from "./schemas/analyticsFoldSchema.ts";
 export * from "./schemas/analyticsQuerySchema.ts";
+export * from "./schemas/eventLogSchema.ts";
 export * from "./services/AdminAnalyticsService.ts";
 export * from "./services/AnalyticsBuffer.ts";
 export * from "./services/AnalyticsEngineSql.ts";
@@ -64,19 +72,25 @@ export * from "./services/AnalyticsRetentionGuard.ts";
  */
 export const AlephaApiAnalytics = $module({
   name: "alepha.api.analytics",
-  primitives: [$analytics],
+  primitives: [$analytics, $eventLog],
   // AnalyticsProvider is the abstract seam and is always auto-injected; the
   // concrete implementations are `variants` (module-tagged, not
   // auto-injected) so only the one `register()` selects below is ever
   // instantiated, see `index.ts` for why `OrmAnalyticsProvider` is never
   // eagerly imported here either.
-  services: [AnalyticsProvider, AnalyticsRetentionGuard],
+  services: [AnalyticsProvider, EventLogProvider, AnalyticsRetentionGuard],
   variants: [
     MemoryAnalyticsProvider,
     OrmAnalyticsProvider,
     WaeAnalyticsProvider,
+    MemoryEventLogProvider,
   ],
   register: (alepha) => {
+    alepha.with({
+      optional: true,
+      provide: EventLogProvider,
+      use: MemoryEventLogProvider,
+    });
     alepha.with({
       optional: true,
       provide: AnalyticsProvider,
