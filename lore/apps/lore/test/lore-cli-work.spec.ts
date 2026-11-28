@@ -509,6 +509,209 @@ describe("lore project, quest and folio, against Lore", () => {
   });
 
   /**
+   * The draft status from the shell (#Q4379, epic #E178): `--draft` files
+   * one, `--status draft` lists it, `ready` and `draft` move a loose quest,
+   * and what a draft refuses is the server's sentence, naming the command.
+   */
+  it("files a draft, lists it by status, and marks it ready and back", async () => {
+    const { project, owner, lore } = await ownProject("Drafts");
+    const flagsOf = (title: string) => [
+      "--title",
+      title,
+      "--area",
+      "core",
+      "--priority",
+      "low",
+    ];
+
+    // Refused before any request, in the "Nothing written" voice.
+    const both = await lore.fail("quest create", [
+      ...flagsOf("Both"),
+      "--draft",
+      "--accept",
+    ]);
+    expect(both.error?.name).toBe("USAGE");
+    expect(both.error?.message).toContain("Nothing written");
+    expect(both.stdout).toBe("");
+
+    const created = JSON.parse(
+      await lore.run("quest create", [
+        ...flagsOf("Found in passing"),
+        "--draft",
+        "--output",
+        "json",
+      ]),
+    );
+    expect(created.metadata.status).toBe("draft");
+    const ref = `Q${created.shortId}`;
+    expect(
+      await lore.run("quest create", [...flagsOf("Later"), "--draft"]),
+    ).toContain(", as a draft");
+
+    // Left out by default, listed by name, and shown as what it is.
+    expect(await lore.run("quest list", [])).not.toContain(ref);
+    const drafts = await lore.run("quest list", ["--status", "draft"]);
+    expect(drafts).toContain(`${ref}  Found in passing`);
+    expect(drafts).toContain("draft");
+    const listed = JSON.parse(
+      await lore.run("quest list", ["--status", "draft", "--output", "json"]),
+    );
+    expect(listed.content.map((it: any) => it.metadata.status)).toEqual([
+      "draft",
+      "draft",
+    ]);
+    expect(await lore.run("quest get", [ref])).toMatch(/Status:\s+draft/);
+
+    // Accept and hold print the server's sentence, which names the command.
+    const accept = await lore.fail("quest accept", [ref]);
+    expect(accept.error?.data.exitCode).toBe(1);
+    expect(accept.error?.message).toContain(
+      "it is a draft, not ready to be taken. Mark it ready first (quest_ready, lore quest ready",
+    );
+    const hold = await lore.fail("quest hold", [ref, "--reason", "Waiting"]);
+    expect(hold.error?.message).toContain("lore quest ready");
+
+    expect(await lore.run("quest ready", [ref])).toBe(
+      `Marked ready ${ref} Found in passing`,
+    );
+    const ready = JSON.parse(
+      await lore.run("quest get", [ref, "--output", "json"]),
+    );
+    expect(ready.metadata.status).toBe("todo");
+    expect(ready.readyAt).toBeTruthy();
+    expect(await lore.run("quest get", [ref])).toContain("Ready:");
+    expect(await lore.run("quest list", [])).toContain(ref);
+
+    expect(await lore.run("quest draft", [ref])).toBe(
+      `Marked draft ${ref} Found in passing`,
+    );
+    const back = JSON.parse(
+      await lore.run("quest draft", [ref, "--output", "json"]),
+    );
+    expect(back.metadata.status).toBe("draft");
+
+    // An accepted quest cannot go back to draft: the server says why.
+    const taken = JSON.parse(
+      await lore.run("quest create", [
+        ...flagsOf("Taken"),
+        "--accept",
+        "--output",
+        "json",
+      ]),
+    );
+    const refused = await lore.fail("quest draft", [`Q${taken.shortId}`]);
+    expect(refused.error?.data.exitCode).toBe(1);
+    expect(refused.error?.message).toContain('it is "in_progress"');
+
+    const stored = await ctx.questController.getQuestByShortId.fetch(
+      { params: { projectId: project.id, shortId: created.shortId } },
+      { user: owner },
+    );
+    expect(stored.data.draftAt).toBeTruthy();
+  });
+
+  it("leaves an epic's drafts to the epic, and refuses --draft into a ready one before writing", async () => {
+    const { owner, project, lore } = await ownProject("Epic drafts");
+    const epic = async (title: string) =>
+      (
+        await ctx.epicController.createEpic.fetch(
+          { params: { projectId: project.id }, body: { title } },
+          { user: owner },
+        )
+      ).data;
+    const draftEpic = await epic("Still specified");
+    const readyEpic = await epic("Specified");
+    await ctx.epicController.setEpicStatus.fetch(
+      { params: { id: readyEpic.id }, body: { status: "ready" } },
+      { user: owner },
+    );
+    const flagsOf = (title: string) => [
+      "--title",
+      title,
+      "--area",
+      "core",
+      "--priority",
+      "low",
+    ];
+
+    const filed = JSON.parse(
+      await lore.run("quest create", [
+        ...flagsOf("Filed"),
+        "--epic",
+        `E${draftEpic.number}`,
+        "--output",
+        "json",
+      ]),
+    );
+    const ref = `Q${filed.shortId}`;
+    // `--epic` returns the epic's drafts with no status.
+    const inEpic = JSON.parse(
+      await lore.run("quest list", [
+        "--epic",
+        `E${draftEpic.number}`,
+        "--output",
+        "json",
+      ]),
+    );
+    expect(inEpic.content.map((it: any) => it.metadata.status)).toEqual([
+      "draft",
+    ]);
+
+    // The server's refusal, as it is: it names the epic and the command.
+    for (const verb of ["quest ready", "quest draft"]) {
+      const refused = await lore.fail(verb, [ref]);
+      expect(refused.error?.data.exitCode).toBe(1);
+      expect(refused.error?.message).toContain(
+        `it belongs to Epic #E${draftEpic.number}`,
+      );
+      expect(refused.error?.message).toContain("lore epic set status");
+    }
+    const accept = await lore.fail("quest accept", [ref]);
+    expect(accept.error?.message).toContain(`#E${draftEpic.number}`);
+
+    // `--draft` into a ready epic: nothing written.
+    const refused = await lore.fail("quest create", [
+      ...flagsOf("Too ready"),
+      "--epic",
+      `E${readyEpic.number}`,
+      "--draft",
+    ]);
+    expect(refused.error?.data.exitCode).toBe(1);
+    expect(refused.error?.message).toContain(
+      `Nothing written: E${readyEpic.number} is ready`,
+    );
+    // Into a draft epic it is welcome, and a draft either way.
+    const welcome = JSON.parse(
+      await lore.run("quest create", [
+        ...flagsOf("Welcome"),
+        "--epic",
+        `E${draftEpic.number}`,
+        "--draft",
+        "--output",
+        "json",
+      ]),
+    );
+    expect(welcome.metadata.status).toBe("draft");
+
+    // Moved into the ready epic, the quest says what it became.
+    expect(
+      await lore.run("quest update", [ref, "--epic", `E${readyEpic.number}`]),
+    ).toBe(`Updated ${ref}: epic; now todo`);
+
+    const quests = await ctx.questController.getQuests.fetch(
+      {
+        params: { projectId: project.id },
+        query: { status: QUEST_STATUSES_WITH_DRAFTS },
+      },
+      { user: owner },
+    );
+    expect(quests.data.content.map((it) => it.title).sort()).toEqual([
+      "Filed",
+      "Welcome",
+    ]);
+  });
+
+  /**
    * The partial write a status read cannot see: the epic is ready, so the
    * attach goes through, but its predecessor is not completed, so the accept
    * is refused. The quest exists, stdout carries it, and the exit is 1.

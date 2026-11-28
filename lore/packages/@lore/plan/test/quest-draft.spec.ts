@@ -271,7 +271,7 @@ describe("a loose draft quest", () => {
       await expect(
         ctx.controller.acceptQuest({ params: { id: quest.id } }, { user }),
       ).rejects.toThrow(
-        `Cannot accept quest #Q${quest.shortId}: it is a shelved draft. Unshelve it (quest_unshelve), mark it ready (quest_ready), then accept it.`,
+        `Cannot accept quest #Q${quest.shortId}: it is a shelved draft. Unshelve it (quest_unshelve, or lore quest unshelve), mark it ready (quest_ready, or lore quest ready), then accept it.`,
       );
       const after = await row(quest);
       expect(after.acceptedAt).toBeUndefined();
