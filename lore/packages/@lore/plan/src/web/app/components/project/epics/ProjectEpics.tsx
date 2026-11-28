@@ -1,4 +1,4 @@
-import { TimeAgo, Badge, useDialog } from "@alepha/ui";
+import { TimeAgo, Badge, cn, useDialog } from "@alepha/ui";
 import {
   DataTable,
   type DataTableFilterFields,
@@ -26,7 +26,7 @@ import {
   useQueryClient,
   useStore,
 } from "alepha/react";
-import { useI18n } from "alepha/react/i18n";
+import { useI18n, type I18nProvider } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 import {
   Archive,
@@ -925,26 +925,46 @@ const ProjectEpics = () => {
                   {(epic.status === "draft" || epic.status === "ready") &&
                   (epic.openBlockers ?? 0) > 0 ? (
                     <span
-                      className="text-danger-text ml-auto inline-flex shrink-0 items-center gap-1 text-xs"
+                      className={cn(REVIEW_BADGE_CLASS, "text-danger-text")}
                       data-testid={`epic-open-blockers-${epic.number}`}
+                      data-count={epic.openBlockers}
+                      title={reviewBadgeText(
+                        tr,
+                        "openBlockers",
+                        epic.openBlockers!,
+                      )}
                     >
                       <OctagonAlert aria-hidden="true" className="size-3" />
-                      {tr("epic.list.openBlockers", {
-                        args: [String(epic.openBlockers)],
-                      })}
+                      <span className="max-md:sr-only">
+                        {reviewBadgeText(
+                          tr,
+                          "openBlockers",
+                          epic.openBlockers!,
+                        )}
+                      </span>
                     </span>
                   ) : (epic.status === "draft" || epic.status === "ready") &&
                     (epic.openQuestions ?? 0) > 0 ? (
                     <span
-                      className="text-warning-text ml-auto inline-flex shrink-0 items-center gap-1 text-xs"
+                      className={cn(REVIEW_BADGE_CLASS, "text-warning-text")}
                       data-testid={`epic-open-questions-${epic.number}`}
+                      data-count={epic.openQuestions}
+                      title={reviewBadgeText(
+                        tr,
+                        "openQuestions",
+                        epic.openQuestions!,
+                      )}
                     >
                       {/* Sized to the line (`size-3` on `text-xs`), so the
                           row keeps its height (#Q3532). */}
                       <TriangleAlert aria-hidden="true" className="size-3" />
-                      {tr("epic.list.openQuestions", {
-                        args: [String(epic.openQuestions)],
-                      })}
+                      <span className="max-md:sr-only">
+                        {reviewBadgeText(
+                          tr,
+                          "openQuestions",
+                          epic.openQuestions!,
+                        )}
+                      </span>
                     </span>
                   ) : null}
                 </div>
@@ -1424,3 +1444,39 @@ const epicPresetCounts = (epics: EpicResource[]): EpicPresetCounts => ({
   shelved: epics.filter((epic) => epic.status === "shelved").length,
   reviews: epics.filter((epic) => (epic.openQuestions ?? 0) > 0).length,
 });
+
+/**
+ * The open review blockers or questions on an epic row's title line.
+ *
+ * Below `md` the sentence ("3 review questions open") is read to a screen
+ * reader only, and the eye gets the icon and the count, drawn from
+ * `data-count` by a pseudo-element whose alternative text is empty, so a
+ * screen reader does not read the count after the sentence (#Q4551): at 393px the full sentence took
+ * almost all of the title column's `min-w-48`, and the title, which
+ * truncates first, was cut to `#…`. The sentence stays the element's whole
+ * text and its `title`, so a hover still reads it.
+ */
+const REVIEW_BADGE_CLASS =
+  "ml-auto inline-flex shrink-0 items-center gap-1 text-xs max-md:tabular-nums max-md:after:content-[attr(data-count)_/_'']";
+
+/**
+ * The badge's sentence, singular for one ("1 review blocker open").
+ */
+const reviewBadgeText = (
+  tr: I18nProvider<any, any>["tr"],
+  kind: "openBlockers" | "openQuestions",
+  count: number,
+): string =>
+  kind === "openBlockers"
+    ? tr(
+        count === 1
+          ? "epic.list.openBlockers.one"
+          : "epic.list.openBlockers.other",
+        { args: [String(count)] },
+      )
+    : tr(
+        count === 1
+          ? "epic.list.openQuestions.one"
+          : "epic.list.openQuestions.other",
+        { args: [String(count)] },
+      );
