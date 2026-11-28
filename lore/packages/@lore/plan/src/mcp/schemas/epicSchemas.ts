@@ -234,7 +234,7 @@ export const epicUpdateResultSchema = z.object({
 
 export const epicSetStatusParamsSchema = epicRefSchema.extend({
   status: epicManualStatusSchema.describe(
-    "`ready` (the spec is done: the quests join the backlog and can be accepted) or `draft` (back to specifying: the quests leave the backlog again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. `shelved` has its own tools, epic_shelve and epic_unshelve. The same status again is a no-op.",
+    "`ready` (the spec is done: its draft quests become `todo` and can be accepted) or `draft` (back to specifying: its quests nobody took or finished become drafts again). Only those two, and only between each other. `in_progress` and `completed` are never set by hand: the first quest accepted or assigned starts the epic, and the last open quest completed or shelved completes it. `shelved` has its own tools, epic_shelve and epic_unshelve. The same status again is a no-op.",
   ),
 });
 

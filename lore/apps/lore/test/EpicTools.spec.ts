@@ -73,11 +73,10 @@ class FailingAttachEpicController extends EpicController {
  * `quest_list` and a draft epic's quests have a history here. This file used
  * to pin that MCP `quest_list` listed them all, so an agent filing a quest
  * into a draft epic would see it on its next call; epic #31 reversed that (the
- * default matches the UI's backlog, `includeDrafts: true` and `epic:` are the
- * two ways past it) and the cases below pin that contract, read through the
- * draft status since #E178: `includeDrafts` maps onto a status list naming
- * `draft`, and a fixture quest of a draft epic carries `draftAt` as the epic
- * writes it.
+ * default matches the UI's quest list) and the cases below pin that
+ * contract, read through the draft status since #E178: a draft epic's quests
+ * are drafts, `status: "draft"` and `epic:` are the two ways to them, and a
+ * fixture quest of a draft epic carries `draftAt` as the epic writes it.
  *
  * Pinned, like every other lore spec: the ROOT vitest config — the one CI
  * runs — sets `DATABASE_URL` to a Postgres URL, which this app's SQLite
@@ -255,7 +254,7 @@ describe("Lore MCP — epics", () => {
     expect(listed).not.toContain(parked.shortId);
   });
 
-  it("quest_list shows them again with includeDrafts: true", async ({
+  it('quest_list lists them, as drafts, with status: "draft"', async ({
     expect,
   }) => {
     const { alepha, project, questTools, call } = await setup();
@@ -268,10 +267,12 @@ describe("Lore MCP — epics", () => {
 
     const result = await call(questTools.quest_list, {
       project: project.id,
-      includeDrafts: true,
+      status: "draft",
     });
 
-    expect(result.quests.map((q: any) => q.shortId)).toContain(parked.shortId);
+    expect(
+      result.quests.map((q: any) => [q.shortId, q.status, q.epic?.status]),
+    ).toEqual([[parked.shortId, "draft", "draft"]]);
   });
 
   it("quest_list filtered on an epic returns its drafts, with no flag", async ({

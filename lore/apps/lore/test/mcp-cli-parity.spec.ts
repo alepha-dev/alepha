@@ -56,7 +56,12 @@ const ALIASES: Record<string, string> = {
   pull_request_trust: "pull-request trust",
 };
 
-const GAPS: string[] = [];
+const GAPS: string[] = [
+  // `lore quest ready` and `lore quest draft` land with the CLI's quest of
+  // epic #E178 (#Q4379), in the same pull request; these two go with them.
+  "quest_ready",
+  "quest_draft",
+];
 
 /**
  * The params a command takes as its positional argument: the reference it
@@ -209,6 +214,8 @@ describe("MCP and the CLI", () => {
 
     for (const tool of tools()) {
       if (ALIASES[tool.name]?.startsWith("attachments")) continue;
+      // A gap has no command to hold flags; the first case names it.
+      if (GAPS.includes(tool.name)) continue;
       const command = commandOf(tool.name, all);
       const flags = new Set(Object.keys(command?.flags.shape ?? {}).map(stem));
       const takesArg = !!command?.options.args;

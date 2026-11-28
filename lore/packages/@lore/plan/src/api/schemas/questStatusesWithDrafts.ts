@@ -5,7 +5,7 @@
  * The default list leaves drafts out, as it leaves shelved quests out (#E178),
  * so a reader that needs them names `draft` beside the statuses it wants. The
  * pickers that offer any quest of the project (`QuestDependencyPicker`, the
- * `#Q` autocomplete) send this, as does MCP `quest_list`'s `includeDrafts`.
+ * `#Q` autocomplete) send this.
  * A held draft is not in it: `on_hold` leaves a held draft out.
  */
 export const QUEST_STATUSES_WITH_DRAFTS =

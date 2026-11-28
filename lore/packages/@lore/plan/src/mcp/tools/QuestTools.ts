@@ -23,7 +23,6 @@ import { QuestController } from "../../api/controllers/QuestController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { QUEST_EPIC_NONE } from "../../api/schemas/questEpicFilter.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
-import { QUEST_STATUSES_WITH_DRAFTS } from "../../api/schemas/questStatusesWithDrafts.ts";
 import { PlanLiveQuests } from "../../api/services/PlanLiveQuests.ts";
 import { QuestDraftService } from "../../api/services/QuestDraftService.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
@@ -53,6 +52,8 @@ import {
   questCreateResultSchema,
   questDeleteParamsSchema,
   questDeleteResultSchema,
+  questDraftParamsSchema,
+  questDraftResultSchema,
   questGetParamsSchema,
   questGetResultSchema,
   questListParamsSchema,
@@ -63,6 +64,8 @@ import {
   questShelveResultSchema,
   questTagsParamsSchema,
   questTagsResultSchema,
+  questReadyParamsSchema,
+  questReadyResultSchema,
   questReminderSetParamsSchema,
   questReminderSetResultSchema,
   questUnassignParamsSchema,
@@ -245,6 +248,7 @@ export class QuestTools {
     completedAt?: string;
     shelvedAt?: string;
     heldAt?: string;
+    draftAt?: string;
   }): QuestStatus {
     return this.questMapper.questStatus(quest);
   }
@@ -340,8 +344,8 @@ export class QuestTools {
    */
   quest_list = $tool({
     description:
-      'List quests for the project. Can filter by status (new, accepted, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). Shelved quests — deliberately set aside as out of scope — are hidden unless you pass `status: "shelved"`. ' +
-      "Quests filed under a `draft` epic are hidden too by default, exactly as they are in Lore's own backlog: pass `includeDrafts: true` to see them, or `epic:` (an epic's global id) to read one epic's quests whatever its status; `epics:` takes several, and `loose: true` keeps only the quests under no epic. Without any of them, this list is the set of quests that can be accepted: loose ones, and those of ready and in-progress epics. " +
+      "List quests for the project. Can filter by status (draft, todo, in_progress, on_hold, completed, shelved), search by title, or filter by a single tag (use `quest_tags` to discover existing tag values). " +
+      'With no status this list is the set of quests that can be worked: drafts (specified, not ready to be taken: a loose quest marked draft, or a quest of a `draft` epic) and shelved quests (set aside as out of scope) are left out, and `status: "draft"` or `status: "shelved"` lists them. `epic:` (an epic\'s global id) reads one epic\'s quests, its drafts included, whatever its status; `epics:` takes several, and `loose: true` keeps only the quests under no epic. ' +
       "Rows carry `updatedAt`, `commentCount` and `lastCommentAt`, and the default order is newest-updated first: keep the timestamp of your last call, and any row whose `lastCommentAt` is later than it means someone spoke since. Read that quest with `quest_get` before writing back to it, or you will answer a conversation you have not seen. " +
       'Descriptions and objectives are NOT inlined by default; pass `detail: "full"` only when you mean to read them all, and `quest_get` when you want one quest in depth.',
     title: "List quests",
@@ -366,13 +370,9 @@ export class QuestTools {
         this.questController.getQuests({
           params: { projectId },
           query: {
-            // `includeDrafts` reads as a status list naming `draft` (#Q4374):
-            // the list has no flag any more, and drafts are named or they
-            // stay out. Only with no status, as before: a status given
-            // answers for itself. This tool's own draft filter is #Q4378's.
-            status:
-              params.status ??
-              (params.includeDrafts ? QUEST_STATUSES_WITH_DRAFTS : undefined),
+            // Drafts are named or they stay out (#E178): `status: "draft"`
+            // lists them, and an epic filter keeps its epic's own.
+            status: params.status,
             search: params.search,
             tag: params.tag,
             epic: params.epic,
@@ -434,6 +434,7 @@ export class QuestTools {
           completedAt: quest.completedAt,
           shelvedAt: quest.shelvedAt,
           heldAt: quest.heldAt,
+          readyAt: quest.readyAt,
           epic: quest.epicId != null ? epicRefs.get(quest.epicId) : undefined,
         })),
         total: result.page.totalElements ?? 0,
@@ -448,6 +449,7 @@ export class QuestTools {
   quest_create = $tool({
     description:
       "Create a new quest in the project. Pass `accept: true` to also accept it (assign it to yourself) in the same call — skips a separate quest_accept round-trip. " +
+      "Pass `draft: true` for work you found and do not intend to take now: the quest is filed as a draft, left out of `quest_list`'s default, and nobody can accept it until it is marked ready (quest_ready). " +
       "⚠️ `epic_number` alone puts the quest in that epic's release. `epic_number` WITH `release_tag` keeps the tag you named: a quest may deliberately ship later than its epic, so an explicit release is never overruled.",
     title: "Create quest",
     annotations: { readOnlyHint: false, destructiveHint: false },
@@ -561,12 +563,19 @@ export class QuestTools {
       // words; nothing here rewrites them.
       let acceptedAt: string | undefined;
       let acceptNote: string | undefined;
+      // The status the quest ends with (#Q4378): filed into a draft epic it
+      // is a draft, and the result says so. The create's own answer is true
+      // until the attach or the accept writes, the accept's own answer once
+      // it landed, and after an attach with no accept landing the quest is
+      // read back, once.
+      let status = quest.metadata.status;
       if (params.accept) {
         try {
           const accepted = await this.questController.acceptQuest({
             params: { id: quest.id },
           });
           acceptedAt = accepted.acceptedAt;
+          status = accepted.metadata.status;
         } catch (error) {
           acceptNote =
             error instanceof Error
@@ -574,12 +583,18 @@ export class QuestTools {
               : "Quest created, but it could not be accepted.";
         }
       }
+      if (epicId != null && !acceptedAt) {
+        status = (
+          await this.questController.getQuestById({ params: { id: quest.id } })
+        ).metadata.status;
+      }
 
       return {
         id: quest.id,
         shortId: quest.shortId,
         title: quest.title,
         createdAt: quest.createdAt,
+        status,
         acceptedAt,
         acceptNote,
         ...this.diagrams.warn(params.description),
@@ -592,7 +607,7 @@ export class QuestTools {
    */
   quest_accept = $tool({
     description:
-      "Accept a quest to start working on it. This assigns the quest to you. A quest filed under an epic can be accepted only while that epic is 'ready' or 'in_progress'. Accepting the first quest of a 'ready' epic STARTS the epic: it moves to 'in_progress' and its quest set freezes, so anything discovered from then on is an objective on a quest already in it, or a new epic. It is refused while the epic's predecessor (dependsOn_number) is not completed. Under a 'draft' epic the answer is that it is not ready for development: that is the owner's call, so report it rather than marking the epic ready yourself. Under a 'completed' epic the answer is 'File this in a new epic'. A loose quest, which is most of them, is unaffected.",
+      "Accept a quest to start working on it. This assigns the quest to you. A quest filed under an epic can be accepted only while that epic is 'ready' or 'in_progress'. Accepting the first quest of a 'ready' epic STARTS the epic: it moves to 'in_progress' and its quest set freezes, so anything discovered from then on is an objective on a quest already in it, or a new epic. It is refused while the epic's predecessor (dependsOn_number) is not completed. Under a 'draft' epic the answer is that it is not ready for development: that is the owner's call, so report it rather than marking the epic ready yourself. Under a 'completed' epic the answer is 'File this in a new epic'. A loose quest, which is most of them, is unaffected by its epic, and refused only while it is a draft: the refusal says to mark it ready first (quest_ready), which is yours to do when the work is in fact ready to be taken.",
     title: "Accept quest",
     annotations: { readOnlyHint: false, idempotentHint: true },
     schema: {
@@ -650,7 +665,7 @@ export class QuestTools {
    */
   quest_unshelve = $tool({
     description:
-      "Bring a shelved quest back into the backlog as 'todo'. Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a completed epic, where nothing reopens; allowed while the epic is draft or ready (that edits an open plan) or in progress.",
+      "Bring a shelved quest back as 'todo', or as 'draft' when it was a draft before it was shelved (read `status` in the result). Use `quest_list` with `status: \"shelved\"` to see what is currently on the shelf. Refused inside a completed epic, where nothing reopens; allowed while the epic is draft or ready (that edits an open plan) or in progress.",
     title: "Unshelve quest",
     annotations: {
       readOnlyHint: false,
@@ -685,7 +700,7 @@ export class QuestTools {
       "A held quest keeps everything it had (its assignee, its objectives, its kanban column) and reads as `on_hold` rather than as `todo` or `in_progress`; `quest_unhold` gives the previous status back with nothing to restore by hand. While held, `quest_accept` and `quest_complete` are both refused and say so. " +
       "`reason` is REQUIRED and is posted as a comment on the quest's discussion, so an `@handle` in it reaches that project member's inbox: mention whoever you are waiting on rather than hoping they look, the owner of the API key you are working as included. " +
       "Pass `until` to hold it until a date: within the hour after it the hold lifts on its own and the quest goes back to `todo`, unassigned, with a line in its discussion and no notification. " +
-      "Reachable from 'todo' and 'in_progress' only, and NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
+      "Reachable from 'todo' and 'in_progress' only: a draft is refused, since it is not ready rather than blocked, and the refusal says what makes it ready (quest_ready for a loose one, the epic marked ready for an epic's). NOT idempotent: holding an already-held quest is refused rather than silently discarding the new reason, because a reason is what this call is for. To change why a quest is held, add a comment; to replace the hold, unhold and hold again.",
     title: "Hold quest",
     annotations: {
       readOnlyHint: false,
@@ -739,6 +754,68 @@ export class QuestTools {
       const quest = await this.questController.unholdQuest({
         params: { id },
       });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        status: this.getQuestStatus(quest),
+      };
+    },
+  });
+
+  /**
+   * Mark a loose draft ready (#E178): it becomes `todo`.
+   */
+  quest_ready = $tool({
+    description:
+      "Mark a loose draft ready: it becomes 'todo', can be accepted, and joins `quest_list`'s default view; `readyAt` is stamped. Use it when the work a draft describes is ready to be taken, by you or anybody. " +
+      "Only on a quest filed under no epic: an epic's quests are drafts while their epic is, and become 'todo' together when the epic is marked ready with epic_set_status, so on one of them this is refused with a sentence naming the epic. Whether an epic's spec is done is the owner's call: report that refusal rather than marking the epic ready yourself. " +
+      "Refused on a quest that is not a draft, except a to-do one, which it leaves as it is: a retry is safe. A shelved draft is unshelved first (quest_unshelve).",
+    title: "Mark quest ready",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questReadyParamsSchema,
+      result: questReadyResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.readyQuest({ params: { id } });
+
+      return {
+        id: quest.id,
+        shortId: quest.shortId,
+        title: quest.title,
+        status: this.getQuestStatus(quest),
+        readyAt: quest.readyAt,
+      };
+    },
+  });
+
+  /**
+   * Mark a loose to-do quest draft (#E178).
+   */
+  quest_draft = $tool({
+    description:
+      "Mark a loose to-do quest as a draft: specified, not ready to be taken. It leaves `quest_list`'s default view (`status: \"draft\"` lists it), and quest_accept refuses it until somebody marks it ready with quest_ready. Use it for a quest nobody should pick up yet, typically work you found and do not intend to take now; `quest_create`'s `draft: true` files one that way from the start. " +
+      "Only from 'todo': an accepted, held, shelved or completed quest is refused, and so is a quest filed under an epic, whose status decides for all its quests (epic_set_status 'draft'; the refusal names the epic). A draft stays as it is: a retry is safe.",
+    title: "Mark quest draft",
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+    },
+    schema: {
+      params: questDraftParamsSchema,
+      result: questDraftResultSchema,
+    },
+    handler: async ({ params }) => {
+      const id = await this.resolveQuestId(params);
+      const quest = await this.questController.draftQuest({ params: { id } });
 
       return {
         id: quest.id,
@@ -1042,6 +1119,7 @@ export class QuestTools {
         completedAt: quest.completedAt,
         shelvedAt: quest.shelvedAt,
         heldAt: quest.heldAt,
+        readyAt: quest.readyAt,
         dueAt: quest.dueAt,
         completionMessage: quest.completionMessage,
         completionMessageUpdatedAt: quest.completionMessageUpdatedAt,
@@ -1384,6 +1462,9 @@ export class QuestTools {
         shortId: quest.shortId,
         title: quest.title,
         updatedAt: quest.updatedAt,
+        // An epic move can change it (#E178): into a draft epic a to-do
+        // quest becomes a draft, into a ready one a draft becomes to do.
+        status: this.getQuestStatus(quest),
         // Both markdown fields this tool can write. `completionMessage` is
         // the one an agent uses for a summary diagram, and it is the field
         // most likely to carry one.

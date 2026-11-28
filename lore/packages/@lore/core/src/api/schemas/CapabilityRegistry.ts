@@ -280,6 +280,8 @@ export class CapabilityRegistry {
         "quest_shelve",
         "quest_unshelve",
         "quest_unassign",
+        "quest_ready",
+        "quest_draft",
         "quest_objective_set",
         "quest_tags",
         "area_delete",
