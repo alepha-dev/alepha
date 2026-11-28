@@ -30,7 +30,7 @@ import { useAppInsights } from "./useAppInsights.ts";
  */
 const AppVitals = () => {
   const { tr } = useI18n<I18n, "en">();
-  const { data, loading, error, range, traffic, setFilters } = useAppInsights();
+  const { data, loading, error } = useAppInsights();
 
   return (
     <div className="flex flex-col gap-4 p-4">
@@ -40,12 +40,7 @@ const AppVitals = () => {
           <span>{tr("insights.vitals.title")}</span>
           <span className="text-xs">· {tr("insights.vitals.subtitle")}</span>
         </div>
-        <AppInsightsControls
-          range={range}
-          traffic={traffic}
-          loading={loading}
-          onChange={setFilters}
-        />
+        <AppInsightsControls loading={loading} />
       </div>
 
       {/*

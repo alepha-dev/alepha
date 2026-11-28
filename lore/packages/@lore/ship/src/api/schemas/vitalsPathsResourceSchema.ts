@@ -1,5 +1,7 @@
 import { type Infer, z } from "alepha";
 
+import { insightsRangeSchema } from "./insightsRangeSchema.ts";
+
 /**
  * Web vitals broken down by page: the half of the Vitals tab that is
  * actionable.
@@ -14,7 +16,7 @@ import { type Infer, z } from "alepha";
  * table it never renders.
  */
 export const vitalsPathsResourceSchema = z.object({
-  range: z.enum(["1d", "7d", "30d"]),
+  range: z.union([insightsRangeSchema, z.literal("custom")]),
   since: z.string(),
   until: z.string(),
   /**

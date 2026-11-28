@@ -29,7 +29,8 @@ const AppVitalsPaths = () => {
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
   const sigil = instance?.sigil;
-  const { range, filters } = useAppInsightsFilters();
+  const { period, filters } = useAppInsightsFilters();
+  const periodKey = `${period.range ?? ""}|${period.from ?? ""}|${period.to ?? ""}`;
 
   // The same range control the tab already has, and no second one. `path` is
   // the one view filter `sigil_vitals` declares, so it is the only one of the
@@ -40,7 +41,7 @@ const AppVitalsPaths = () => {
   const { data } = useQuery(
     {
       enabled,
-      key: ["app-vitals-paths", sigil?.id, range, path ?? ""],
+      key: ["app-vitals-paths", sigil?.id, periodKey, path ?? ""],
       keepPreviousData: true,
       handler: async () => {
         if (!project || !sigil) {
@@ -48,11 +49,11 @@ const AppVitalsPaths = () => {
         }
         return await insightsApi.getVitalsPaths({
           params: { projectId: project.id },
-          query: { range, sigilId: sigil.id, ...(path ? { path } : {}) },
+          query: { ...period, sigilId: sigil.id, ...(path ? { path } : {}) },
         });
       },
     },
-    [project?.id, sigil?.id, range, path, enabled],
+    [project?.id, sigil?.id, periodKey, path, enabled],
   );
 
   if (!data) {

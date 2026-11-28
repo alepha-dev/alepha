@@ -22,7 +22,15 @@ export interface AppAnalyticsLeaderboardRow {
    * reader should not have to decode.
    */
   label: string;
-  count: number;
+  /**
+   * Distinct visitors with this value, or `null` where nobody counts them
+   * (bots, or a window before visitors were counted).
+   */
+  visitors: number | null;
+  views: number;
+  /**
+   * The row's share of the window's views, whole percent: the bar's length.
+   */
   percentage: number;
 }
 
@@ -53,6 +61,11 @@ export interface AppAnalyticsLeaderboardProps {
    */
   segments: AppAnalyticsLeaderboardSegment[];
   /**
+   * Whether the Visitors column is drawn. Off under Bots, which has views
+   * only.
+   */
+  showVisitors: boolean;
+  /**
    * Narrow the whole page to one value of this segment's dimension. The rows
    * are how a filter is reached; the page is where it means something.
    */
@@ -73,7 +86,7 @@ export interface AppAnalyticsLeaderboardProps {
  */
 const AppAnalyticsLeaderboard = (props: AppAnalyticsLeaderboardProps) => {
   const { tr } = useI18n<I18n, "en">();
-  const { testId, segments, onPick } = props;
+  const { testId, segments, onPick, showVisitors } = props;
   const [active, setActive] = useState<string>(segments[0]?.dimension ?? "");
 
   const note = (segment: AppAnalyticsLeaderboardSegment) =>
@@ -81,32 +94,53 @@ const AppAnalyticsLeaderboard = (props: AppAnalyticsLeaderboardProps) => {
       <p className="text-muted-foreground mb-3 text-xs">{segment.note}</p>
     ) : null;
 
+  // Label, then the numbers in fixed columns so they line up down the card.
+  const grid = showVisitors
+    ? "grid grid-cols-[minmax(0,1fr)_4.5rem_4.5rem] items-center gap-2"
+    : "grid grid-cols-[minmax(0,1fr)_4.5rem] items-center gap-2";
+
   const body = (segment: AppAnalyticsLeaderboardSegment) =>
     segment.rows.length > 0 ? (
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1">
+        <div
+          className={`${grid} text-muted-foreground px-2 text-[0.6875rem] font-medium tracking-wide uppercase`}
+        >
+          <span />
+          {showVisitors && (
+            <span className="text-right">{tr("insights.column.visitors")}</span>
+          )}
+          <span className="text-right">{tr("insights.column.views")}</span>
+        </div>
         {segment.rows.map((row) => (
           <button
             key={row.value}
             type="button"
-            className="hover:bg-hover -mx-2 flex flex-col gap-1 rounded px-2 py-1 text-left transition-colors"
+            data-testid="insights-row"
+            className={`${grid} hover:bg-hover rounded px-2 py-1 text-left text-sm transition-colors`}
             onClick={() => onPick(segment.dimension, row.value)}
           >
-            <div className="flex items-center justify-between gap-2 text-sm">
-              <span className="truncate">{row.label}</span>
-              <span className="text-muted-foreground shrink-0 tabular-nums">
-                {row.count.toLocaleString()} · {row.percentage}%
-              </span>
-            </div>
             {/*
-              The bar is the reason a row is legible without reading its
-              number: a share is a length before it is a percentage.
+              The bar sits behind the label: a share is a length before it is
+              a number, and it costs the row no height.
             */}
-            <div className="bg-muted h-1.5 w-full overflow-hidden rounded">
-              <div
-                className="bg-primary h-full rounded"
-                style={{ width: `${row.percentage}%` }}
+            <span className="relative min-w-0">
+              <span
+                aria-hidden
+                className="bg-primary/10 absolute inset-y-[-0.125rem] left-[-0.25rem] rounded"
+                style={{ width: `calc(${row.percentage}% + 0.5rem)` }}
               />
-            </div>
+              <span className="relative block truncate" title={row.value}>
+                {row.label}
+              </span>
+            </span>
+            {showVisitors && (
+              <span className="text-right tabular-nums">
+                {row.visitors === null ? "-" : row.visitors.toLocaleString()}
+              </span>
+            )}
+            <span className="text-muted-foreground text-right tabular-nums">
+              {row.views.toLocaleString()}
+            </span>
           </button>
         ))}
       </div>

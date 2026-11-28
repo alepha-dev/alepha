@@ -988,18 +988,19 @@ test.describe("Apps", () => {
       // just the headings — a page that renders zeros proves only that it does
       // not throw.
       //
-      // Every count is scoped to its own card. A page-wide `2 · 100%` used to
-      // be unique and is not any more: several leaderboards render the same
-      // `count · percentage` markup, so an unscoped match is a strict-mode
-      // violation the moment another card agrees with this one.
+      // Every count is scoped to its own card and row: several leaderboards
+      // render the same visitors and views columns, so an unscoped match is a
+      // strict-mode violation the moment another card agrees with this one.
       const topPaths = page.getByTestId("insights-top-paths");
       await expect(topPaths).toBeVisible({ timeout: 15_000 });
       await expect(
-        page.getByTestId("insights-unique-visitors").getByText("Visitors"),
+        page.getByTestId("insights-visitors").getByText("Visitors"),
       ).toBeVisible();
       await expect(topPaths.getByText("/checkout")).toBeVisible();
-      // The only page reported, so its two views are 100% of the total.
-      await expect(topPaths.getByText(/2\s*·\s*100%/)).toBeVisible();
+      // The only page reported: one visitor, two views.
+      await expect(
+        topPaths.getByTestId("insights-row").filter({ hasText: "/checkout" }),
+      ).toContainText(/1\s*2$/);
 
       // Both views are one visit: they arrived in one batch.
       await expect(
@@ -1008,14 +1009,12 @@ test.describe("Apps", () => {
 
       // Entry pages share a card with pages now: six leaderboards in four
       // cards is what buys the overview its density.
-      await topPaths
-        .getByRole("radio", { name: "Landing pages", exact: true })
-        .click();
+      await topPaths.getByRole("radio", { name: "Entry", exact: true }).click();
       // The visit entered on /checkout, and its two views count there.
-      await expect(topPaths.getByText(/2\s*·\s*100%/)).toBeVisible();
-      await topPaths
-        .getByRole("radio", { name: "Top pages", exact: true })
-        .click();
+      await expect(
+        topPaths.getByTestId("insights-row").filter({ hasText: "/checkout" }),
+      ).toContainText(/1\s*2$/);
+      await topPaths.getByRole("radio", { name: "Pages", exact: true }).click();
 
       // A bounce is a visit of one view; this one had two.
       await expect(
@@ -1026,7 +1025,11 @@ test.describe("Apps", () => {
       // so its second view does not fall into Direct.
       const referrers = page.getByTestId("insights-referrers");
       await expect(referrers.getByText("news.ycombinator.com")).toBeVisible();
-      await expect(referrers.getByText(/2\s*·\s*100%/)).toBeVisible();
+      await expect(
+        referrers
+          .getByTestId("insights-row")
+          .filter({ hasText: "news.ycombinator.com" }),
+      ).toContainText(/1\s*2$/);
 
       // Campaigns share the referrers card, for the same reason entry pages
       // share the pages one: they answer the neighbouring question.
@@ -1035,7 +1038,7 @@ test.describe("Apps", () => {
         .click();
       await expect(referrers.getByText("hn", { exact: true })).toBeVisible();
       await referrers
-        .getByRole("radio", { name: "Top referrers", exact: true })
+        .getByRole("radio", { name: "Sources", exact: true })
         .click();
 
       const devices = page.getByTestId("insights-devices");
@@ -1089,7 +1092,7 @@ test.describe("Apps", () => {
 
       const traffic = page.getByTestId("app-traffic");
       const topPaths = page.getByTestId("insights-top-paths");
-      const visitors = page.getByTestId("insights-unique-visitors");
+      const visitors = page.getByTestId("insights-visitors");
       await expect(topPaths).toBeVisible({ timeout: 15_000 });
 
       // `all` is the default, and both populations' views are in it. One
@@ -1445,7 +1448,7 @@ test.describe("Apps", () => {
       // blank. Analytics fetching on its own mount is what removed the whole
       // class — assert the tab renders content, not just that the link exists.
       await tabs.getByRole("link", { name: "Analytics", exact: true }).click();
-      await expect(page.getByText("Top pages")).toBeVisible({
+      await expect(page.getByTestId("insights-top-paths")).toBeVisible({
         timeout: 15_000,
       });
       await expect(page.getByText("/checkout").first()).toBeVisible();

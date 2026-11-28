@@ -125,7 +125,7 @@ describe("AppAnalyticsDimensionDialog", () => {
     await waitFor(() => expect(screen.getByText("/checkout")).toBeTruthy());
     expect(links.queries[0]).toMatchObject({
       dimension: "path",
-      range: "7d",
+      range: "thisMonth",
       traffic: "all",
       sigilId: instance.sigil?.id,
     });

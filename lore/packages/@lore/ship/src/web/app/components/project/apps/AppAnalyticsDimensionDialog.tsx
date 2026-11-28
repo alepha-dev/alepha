@@ -69,7 +69,7 @@ const AppAnalyticsDimensionDialog = (
   const insightsApi = useClient<InsightsController>();
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
-  const { filters, range, traffic } = useAppInsightsFilters();
+  const { filters, period, traffic } = useAppInsightsFilters();
   const dimension = props.dimension;
   const sigilId = instance?.sigil?.id;
 
@@ -109,7 +109,7 @@ const AppAnalyticsDimensionDialog = (
                   params: { projectId: project.id, dimension },
                   query: {
                     ...filters,
-                    range,
+                    ...period,
                     traffic,
                     sigilId,
                     limit: size,
@@ -152,8 +152,25 @@ const AppAnalyticsDimensionDialog = (
                     </span>
                   ),
                 },
-                count: {
-                  label: tr("insights.dimension.count"),
+                // Bots have no visitors: views only, as on the tab.
+                ...(traffic === "bots"
+                  ? {}
+                  : {
+                      visitors: {
+                        label: tr("insights.column.visitors"),
+                        cell: (
+                          row: InsightsDimensionResource["rows"][number],
+                        ) => (
+                          <span className="tabular-nums">
+                            {row.visitors === null
+                              ? "-"
+                              : row.visitors.toLocaleString()}
+                          </span>
+                        ),
+                      },
+                    }),
+                views: {
+                  label: tr("insights.column.views"),
                   cell: (row) => (
                     <span className="tabular-nums">
                       {row.views.toLocaleString()}
