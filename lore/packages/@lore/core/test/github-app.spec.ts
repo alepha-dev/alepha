@@ -170,6 +170,50 @@ describe("the instance GitHub App", () => {
     );
   });
 
+  it("makes the App public by default, and private when asked (#Q4561)", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const open = await create(ctx);
+    expect(JSON.parse(open.manifest).public).toBe(true);
+
+    const closed = await ctx.api.startGitHubAppManifest.fetch(
+      { body: { name: "Lore acme", public: false } },
+      { user: ctx.admin },
+    );
+    expect(JSON.parse(closed.data.manifest).public).toBe(false);
+  });
+
+  it("links to the App's settings on GitHub, under its owner's kind (#Q4561)", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const start = await create(ctx);
+    await ctx.api.completeGitHubAppManifest.fetch(
+      { body: { code: "good-code", state: start.state } },
+      { user: ctx.admin },
+    );
+    const status = async () =>
+      (await ctx.api.getGitHubApp.fetch({}, { user: ctx.admin })).data;
+
+    // GitHub out of reach: no link, and the page still reads.
+    expect((await status()).settingsUrl).toBeUndefined();
+
+    ctx.github.on("GET", /^\/app$/, {
+      json: { owner: { login: "acme", type: "Organization" } },
+    });
+    expect((await status()).settingsUrl).toBe(
+      "https://github.com/organizations/acme/settings/apps/lore-acme",
+    );
+
+    ctx.github.on("GET", /^\/app$/, {
+      json: { owner: { login: "jane", type: "User" } },
+    });
+    expect((await status()).settingsUrl).toBe(
+      "https://github.com/settings/apps/lore-acme",
+    );
+  });
+
   it("refuses a manifest while PUBLIC_URL is not set", async ({ expect }) => {
     const ctx = await setup({ PUBLIC_URL: "" });
     await expect(create(ctx)).rejects.toThrow(/PUBLIC_URL/);

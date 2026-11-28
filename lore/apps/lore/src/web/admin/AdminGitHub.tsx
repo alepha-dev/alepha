@@ -42,7 +42,7 @@ const AdminGitHub = () => {
 
   const form = useForm({
     schema: adminGitHubManifestFormSchema,
-    initialValues: { name: "", organization: "" },
+    initialValues: { name: "", organization: "", public: true },
     handler: () => undefined,
   });
   const values = useFormValues(form);
@@ -56,6 +56,7 @@ const AdminGitHub = () => {
             ...(values.organization?.trim()
               ? { organization: values.organization.trim() }
               : {}),
+            public: values.public !== false,
           },
         });
         const post = document.createElement("form");
@@ -70,7 +71,7 @@ const AdminGitHub = () => {
         post.submit();
       },
     },
-    [client, values.name, values.organization],
+    [client, values.name, values.organization, values.public],
   );
 
   const complete = useAction<[code: string, state: string], void>(
@@ -152,8 +153,16 @@ const AdminGitHub = () => {
               <Control
                 input={form.input.organization}
                 label="Organization"
+                description="Who owns the App on GitHub: who can open its settings, rotate its keys or delete it. Empty for your own account. It does not limit which repositories projects connect."
                 disabled={busy}
                 inputProps={{ "data-testid": "admin-github-organization" }}
+              />
+              <Control
+                input={form.input.public}
+                label="Anyone can install it"
+                description="Off, GitHub lets only the owner above install the App, so projects connect only the owner's repositories. On, the App has a public page on GitHub showing its name and this Lore's address."
+                disabled={busy}
+                inputProps={{ "data-testid": "admin-github-public" }}
               />
               <div>
                 <Button

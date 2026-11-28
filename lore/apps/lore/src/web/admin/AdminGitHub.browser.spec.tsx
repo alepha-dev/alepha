@@ -1,5 +1,12 @@
 import { DialogProvider } from "@alepha/ui";
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { Alepha } from "alepha";
 import { AlephaDateTime } from "alepha/datetime";
 import { AlephaLogger } from "alepha/logger";
@@ -23,6 +30,7 @@ const STORED = {
   installUrl: "https://github.com/apps/lore-acme/installations/new",
   webhookUrl: "https://lore.example.app/api/github/webhook",
   webhookPingAt: "2026-11-28T10:00:00.000Z",
+  settingsUrl: "https://github.com/organizations/acme/settings/apps/lore-acme",
 };
 
 /**
@@ -113,6 +121,55 @@ describe("AdminGitHub", () => {
       "Reached",
     );
     expect(screen.getByText("Forget this App")).toBeTruthy();
+  });
+
+  it("links to the App's settings on GitHub for its logo, and offers Lore's (#Q4561)", async ({
+    expect,
+  }) => {
+    GitHubLinkProvider.status = STORED;
+    await show();
+
+    await waitFor(() =>
+      expect(screen.getByTestId("admin-github-settings")).toBeTruthy(),
+    );
+    expect(
+      screen.getByTestId("admin-github-settings").getAttribute("href"),
+    ).toBe("https://github.com/organizations/acme/settings/apps/lore-acme");
+    const logo = screen.getByTestId("admin-github-logo-download");
+    expect(logo.getAttribute("href")).toBe("/logo-512x512.png");
+    expect(logo.hasAttribute("download")).toBe(true);
+  });
+
+  it("creates the App public by default, and private once unticked (#Q4561)", async ({
+    expect,
+  }) => {
+    GitHubLinkProvider.status = {
+      configured: false,
+      webhookUrl: "https://lore.example.app/api/github/webhook",
+    };
+    const links = await show();
+    const starts = () =>
+      links.calls.filter((call) => call.name === "startGitHubAppManifest");
+
+    await waitFor(() =>
+      expect(screen.getByTestId("admin-github-create")).toBeTruthy(),
+    );
+    const toggle = screen.getByRole("switch", {
+      name: "Anyone can install it",
+    });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+
+    fireEvent.click(screen.getByTestId("admin-github-create"));
+    await waitFor(() => expect(starts()).toHaveLength(1));
+    expect(starts()[0].request).toEqual({ body: { public: true } });
+
+    fireEvent.click(toggle);
+    await waitFor(() =>
+      expect(toggle.getAttribute("aria-checked")).toBe("false"),
+    );
+    fireEvent.click(screen.getByTestId("admin-github-create"));
+    await waitFor(() => expect(starts()).toHaveLength(2));
+    expect(starts()[1].request).toEqual({ body: { public: false } });
   });
 
   it("says GitHub has not reached the webhook yet", async ({ expect }) => {

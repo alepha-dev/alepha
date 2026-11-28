@@ -8,7 +8,8 @@ import {
   TimeAgo,
 } from "@alepha/ui";
 import type { GitHubAppStatus } from "@lore/core/schemas";
-import { ExternalLink, GitPullRequest } from "lucide-react";
+import { Download, ExternalLink, GitPullRequest } from "lucide-react";
+
 export interface AdminGitHubAppProps {
   app: GitHubAppStatus;
   onRemove: () => void;
@@ -69,6 +70,36 @@ const AdminGitHubApp = (props: AdminGitHubAppProps) => {
                 {app.installUrl}
               </a>
             )}
+          </dd>
+          <dt className="text-muted-foreground">Logo</dt>
+          <dd className="flex flex-col gap-1" data-testid="admin-github-logo">
+            <span>
+              GitHub takes an App's logo in its settings, under Display
+              information: Lore cannot set it.
+            </span>
+            <span className="flex flex-wrap gap-x-4 gap-y-1">
+              {app.settingsUrl && (
+                <a
+                  href={app.settingsUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 underline"
+                  data-testid="admin-github-settings"
+                >
+                  The App's settings on GitHub
+                  <ExternalLink className="size-3" />
+                </a>
+              )}
+              <a
+                href="/logo-512x512.png"
+                download="lore-logo.png"
+                className="inline-flex items-center gap-1 underline"
+                data-testid="admin-github-logo-download"
+              >
+                Lore's logo
+                <Download className="size-3" />
+              </a>
+            </span>
           </dd>
           <dt className="text-muted-foreground">Webhook URL</dt>
           <dd className="break-all">

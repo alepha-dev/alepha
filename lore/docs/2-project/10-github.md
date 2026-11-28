@@ -154,13 +154,34 @@ that address reachable from GitHub: GitHub posts its events to
 1. Open **Admin ▸ GitHub**. Give the App a name (it must be unique on GitHub),
    and an **Organization** to own it, or leave that empty for your own
    account.
-2. Press **Create the GitHub App**. GitHub shows the App it is about to
+2. Leave **Anyone can install it** on, unless you mean to connect only the
+   owner's repositories (see below).
+3. Press **Create the GitHub App**. GitHub shows the App it is about to
    create, with its permissions and events; confirm.
-3. GitHub sends you back to Lore, which stores the App's id, keys and secrets,
+4. GitHub sends you back to Lore, which stores the App's id, keys and secrets,
    encrypted.
 
 The page then shows the App: where it comes from, its slug, the install link,
 the webhook URL and when the webhook was last reached.
+
+**Organization** only says who owns the App on GitHub: who can open its
+settings, rotate its keys or delete it. It does not decide which repositories
+projects can connect.
+
+**Anyone can install it** decides that. GitHub lets only its owner install a
+private App, so with the option off, projects can connect only the owner's
+repositories. With it on, any account can install the App, and connecting a
+repository still checks that the member's own GitHub account reaches it. The
+one cost is a public page for the App on GitHub, showing its name and your
+Lore's address. An App created private can be made public later on GitHub, in
+its settings under **Advanced**.
+
+### Setting the App's logo
+
+GitHub takes an App's logo in its settings, under **Display information**, and
+gives Lore no way to set it. **Admin ▸ GitHub** links to **The App's settings
+on GitHub** and offers **Lore's logo** to download, which you then upload
+there.
 
 ### Registering it by hand
 
