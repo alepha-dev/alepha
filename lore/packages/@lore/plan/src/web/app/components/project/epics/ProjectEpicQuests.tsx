@@ -30,6 +30,7 @@ import {
   QUEST_PRIORITY_ICONS,
   QUEST_PRIORITY_RANK,
   QUEST_PRIORITY_TONE,
+  QUEST_STATUS_ICON,
   QUEST_STATUS_LABEL_KEYS,
   QUEST_STATUS_TONE,
 } from "../quest/questChips.ts";
@@ -219,6 +220,15 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
                       variant="tint"
                       tone={QUEST_STATUS_TONE[quest.metadata.status]}
                     >
+                      {(() => {
+                        const Icon = QUEST_STATUS_ICON[quest.metadata.status];
+                        return (
+                          <Icon
+                            className="size-3 shrink-0"
+                            aria-hidden="true"
+                          />
+                        );
+                      })()}
                       {tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status])}
                     </Badge>
                   ),
@@ -327,6 +337,7 @@ const ProjectEpicQuests = (props: ProjectEpicQuestsProps) => {
             {creating ? (
               <QuestCreate
                 project={project}
+                intoEpic
                 onSubmit={() => setCreating(false)}
                 onCreated={(quest) => void props.onCreated(quest)}
               />

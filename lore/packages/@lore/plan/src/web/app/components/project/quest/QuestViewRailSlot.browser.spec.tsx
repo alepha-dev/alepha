@@ -125,6 +125,8 @@ describe("QuestViewRail registered rows", () => {
           onHold={() => {}}
           onUnhold={() => {}}
           onUnassign={() => {}}
+          onReady={() => {}}
+          onDraft={() => {}}
         />
       </AlephaContext.Provider>,
     );

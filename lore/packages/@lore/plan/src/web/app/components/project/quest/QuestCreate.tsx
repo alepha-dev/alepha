@@ -27,6 +27,7 @@ import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import {
   ChevronDown,
+  CircleDashed,
   FileText,
   Flag,
   CalendarClock,
@@ -61,6 +62,13 @@ export interface QuestCreateProps {
   onCreated?: (quest: QuestResource) => void;
   quest?: Partial<QuestResource>;
   project: ProjectResource;
+  /**
+   * The quest is filed into an epic as it is created (the epic page's
+   * create). "Create as draft" is then not offered: the epic decides its
+   * quests' draft (#E178), so under a draft epic the quest is one anyway,
+   * and under a ready epic the server refuses `draft: true`.
+   */
+  intoEpic?: boolean;
 }
 
 const QuestCreate = (props: QuestCreateProps) => {
@@ -81,6 +89,10 @@ const QuestCreate = (props: QuestCreateProps) => {
 
   const update = !!props.quest?.id;
   const acceptAfterCreate = useRef(false);
+  // Read by the handler like `acceptAfterCreate`: the menu item sets it and
+  // submits, since `draft` is a choice of how to create, not a field.
+  const createAsDraft = useRef(false);
+  const offerDraft = !props.intoEpic;
 
   // `dependsOn` is a numeric quest id; managing it as local state (rather than
   // a form field) keeps the picker's value coercion explicit and out of the
@@ -116,7 +128,7 @@ const QuestCreate = (props: QuestCreateProps) => {
   const form = useForm({
     id: "quest-create",
     schema: questCreateSchema
-      .omit({ projectId: true, dependsOn: true })
+      .omit({ projectId: true, dependsOn: true, draft: true })
       // Size is optional on the wire (Lore's own programmatic creators have
       // no basis for a value) but mandatory here, where a human is looking
       // straight at the control. `initialValues` seeds M, so it is never
@@ -184,8 +196,10 @@ const QuestCreate = (props: QuestCreateProps) => {
           ...data,
           projectId: props.project.id,
           dependsOn: dependsOnRef.current ?? undefined,
+          ...(createAsDraft.current ? { draft: true } : {}),
         },
       });
+      createAsDraft.current = false;
 
       // A brand-new area declared right here isn't in `currentAreasAtom`
       // yet — that atom is filled only by the `project` route loader, and
@@ -492,6 +506,13 @@ const QuestCreate = (props: QuestCreateProps) => {
               disabled={!questApi.createQuest.can()}
               loading={submitting}
               className="rounded-r-none"
+              // A menu item sets its ref and submits; a validation error or
+              // a refusal leaves the ref set, so the plain button clears
+              // both (Enter submits through this button too).
+              onClick={() => {
+                acceptAfterCreate.current = false;
+                createAsDraft.current = false;
+              }}
             >
               <Plus className="size-4" />
               {tr("quest.create.submit")}
@@ -507,7 +528,7 @@ const QuestCreate = (props: QuestCreateProps) => {
                     disabled={
                       submitting ||
                       !questApi.createQuest.can() ||
-                      !questApi.acceptQuest.can()
+                      (!questApi.acceptQuest.can() && !offerDraft)
                     }
                     aria-label={tr("quest.create.moreOptions")}
                     className="border-primary-foreground/20 -ml-px rounded-l-none border-l px-2"
@@ -517,15 +538,30 @@ const QuestCreate = (props: QuestCreateProps) => {
                 <ChevronDown className="size-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => {
-                    acceptAfterCreate.current = true;
-                    void form.submit();
-                  }}
-                >
-                  <Signature className="size-4" />
-                  {tr("quest.create.submitAndAccept")}
-                </DropdownMenuItem>
+                {questApi.acceptQuest.can() && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      acceptAfterCreate.current = true;
+                      createAsDraft.current = false;
+                      void form.submit();
+                    }}
+                  >
+                    <Signature className="size-4" />
+                    {tr("quest.create.submitAndAccept")}
+                  </DropdownMenuItem>
+                )}
+                {offerDraft && (
+                  <DropdownMenuItem
+                    onClick={() => {
+                      createAsDraft.current = true;
+                      acceptAfterCreate.current = false;
+                      void form.submit();
+                    }}
+                  >
+                    <CircleDashed className="size-4" />
+                    {tr("quest.create.submitAsDraft")}
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

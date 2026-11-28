@@ -45,6 +45,7 @@ import type { QuestResource } from "../../../../../api/schemas/questResourceSche
 import { currentEpicAtom } from "../../../atoms/currentEpicAtom.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { isRefresh, liveRefresh } from "../../shared/liveRefresh.ts";
+import { useQuestMutations } from "../../shared/useQuestMutations.ts";
 import EpicBlockedIcon from "./EpicBlockedIcon.tsx";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
 import EpicMoreMenu from "./EpicMoreMenu.tsx";
@@ -109,6 +110,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
   const [tab, setTab] = useDetailTab<TabKey>("overview");
   const alepha = useAlepha();
   const queries = useQueryClient();
+  const questMutations = useQuestMutations();
 
   const [epic, setEpic] = useState<EpicResource>(props.epic);
   const [editOpen, setEditOpen] = useState(false);
@@ -138,6 +140,13 @@ const ProjectEpic = (props: ProjectEpicProps) => {
    * leaving it, plus one entering it, and nothing otherwise. Kept as a
    * comparison rather than a literal so a response that echoes the same
    * status moves the badge by nothing.
+   *
+   * The same crossing moves the epic's quests' draft (#Q4373): marked
+   * ready, its drafts become to do, and back to draft, its to-do quests
+   * drafts. So every quest read of the project is stale, this page's
+   * included, and the sidebar's open-quest badge is recounted, as the
+   * board does after its own "mark the epic ready". `refreshCount`
+   * swallows its failure, so nothing is left to await.
    */
   const applyStatusChange = (updated: EpicResource) => {
     const wasDraft = epic.status === "draft";
@@ -147,6 +156,8 @@ const ProjectEpic = (props: ProjectEpicProps) => {
       alepha.store.set(currentEpicCountAtom, {
         count: Math.max(0, current + (isDraft ? 1 : -1)),
       });
+      queries.invalidate(["quests", epic.projectId]);
+      void questMutations.refreshCount();
     }
     setEpic(updated);
   };

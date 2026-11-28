@@ -58,6 +58,7 @@ import { QUEST_RELEASE_NONE } from "../../../../../api/schemas/questReleaseFilte
 import type { ReleaseResource } from "../../../../../api/schemas/releaseResourceSchema.ts";
 import { currentEpicCountAtom } from "../../../atoms/currentEpicCountAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
+import { useQuestMutations } from "../../shared/useQuestMutations.ts";
 import { releaseRowMenu } from "../releaseRowMenu.ts";
 import { useReleaseCascadeToast } from "../releases/useReleaseCascadeToast.ts";
 import EpicCreateSheet from "./EpicCreateSheet.tsx";
@@ -118,6 +119,7 @@ const ProjectEpics = () => {
   const optimistic = useOptimisticWrite();
   const confirmDelete = useConfirmEpicDelete();
   const queries = useQueryClient();
+  const questMutations = useQuestMutations();
   const router = useRouter();
   const epicApi = useClient<EpicController>();
   const [project] = useStore(currentProjectAtom);
@@ -180,6 +182,17 @@ const ProjectEpics = () => {
   const ref = (epic: EpicResource) => `#E${epic.number}`;
 
   /**
+   * An epic marked ready or draft moves its quests' draft with it (#Q4373):
+   * the quest reads are stale, and the sidebar's open-quest badge counts
+   * them differently, as after the board's own "mark the epic ready".
+   * `refreshCount` swallows its failure, so nothing is left to await.
+   */
+  const refreshQuests = () => {
+    queries.invalidate(["quests", project?.id]);
+    void questMutations.refreshCount();
+  };
+
+  /**
    * The lifecycle writes below are optimistic. The row changes in the
    * click's own frame and the request leaves at once; a refusal puts the row
    * back. They are plain functions, not `useAction`s, for the frame:
@@ -200,6 +213,7 @@ const ProjectEpics = () => {
       apply: () => ctx.optimistic.patch(epic, { ...epic, status }),
       commit: () =>
         epicApi.setEpicStatus({ params: { id: epic.id }, body: { status } }),
+      onCommitted: refreshQuests,
     });
 
   // The quests moved too: the quest list, the board and the agent prompt
@@ -320,6 +334,7 @@ const ProjectEpics = () => {
         // A refused row comes back on its own with the settle's reload.
         if (outcome.failed.length > 0) reportBulk(outcome, "");
       },
+      onCommitted: refreshQuests,
     });
   };
 

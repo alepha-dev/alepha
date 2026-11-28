@@ -814,8 +814,10 @@ const ProjectQuestsTable = () => {
     bulkActions.push({
       icon: UserPlus,
       label: tr("board.bulk.assign"),
+      // Not on a selection holding a draft either (#E178): the server
+      // refuses to assign one, as the row menu's Accept is hidden on it.
       visible: (selected) =>
-        !busy && selected.every((quest) => !quest.acceptedBy),
+        !busy && selected.every((quest) => !quest.acceptedBy && !quest.draftAt),
       items: () =>
         users
           .filter((user) => user.assignable !== false)
@@ -986,15 +988,25 @@ const ProjectQuestsTable = () => {
             label: tr("board.table.status"),
             className: "pl-4",
             cell: (quest: QuestResource) => {
-              const colors: Record<string, string> = {
+              // A draft is a dashed ring rather than a dot (#E178): the
+              // dashed circle its chip wears, so it does not read as a
+              // to-do quest in monochrome. Its label is a hover title only:
+              // the row's accessible name starts at the reference, and the
+              // Status filter already says the status in words.
+              const colors: Record<QuestStatus, string> = {
+                draft: "border-2 border-dashed border-violet-500",
                 todo: "bg-blue-500",
                 in_progress: "bg-orange-500",
+                on_hold: "bg-danger",
                 completed: "bg-green-500",
                 shelved: "bg-muted-foreground/50",
               };
+              const label = tr(QUEST_STATUS_LABEL_KEYS[quest.metadata.status]);
               return (
                 <span
-                  className={`inline-block size-2.5 rounded-full ${colors[quest.metadata.status] ?? "bg-muted"}`}
+                  title={label}
+                  data-testid={`quest-status-dot-${quest.shortId}`}
+                  className={`inline-block size-2.5 rounded-full ${colors[quest.metadata.status]}`}
                 />
               );
             },
@@ -1405,7 +1417,9 @@ const ProjectQuestsTable = () => {
                 },
               ]
             : []),
-          ...(!quest.acceptedAt && questApi.acceptQuest.can()
+          // Not on a draft (#E178), which the server refuses to accept: the
+          // quest's page marks a loose one ready first, and says so.
+          ...(!quest.acceptedAt && !quest.draftAt && questApi.acceptQuest.can()
             ? [
                 {
                   icon: Signature,

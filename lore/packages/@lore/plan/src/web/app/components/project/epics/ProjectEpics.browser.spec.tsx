@@ -19,6 +19,7 @@ import { LinkProvider } from "alepha/server/links";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import type { EpicResource } from "../../../../../api/schemas/epicResourceSchema.ts";
+import { currentQuestCountAtom } from "../../../atoms/currentQuestCountAtom.ts";
 import { currentReleasesAtom } from "../../../atoms/currentReleasesAtom.ts";
 import { WorkShell } from "../../../shell/WorkShell.ts";
 import ProjectEpics from "./ProjectEpics.tsx";
@@ -91,6 +92,12 @@ class FakeLinkProvider extends LinkProvider {
   unshelveCalls: number[] = [];
   releaseCalls: Array<{ id: number; releaseId: number | null }> = [];
 
+  /**
+   * How many times the sidebar's open-quest badge was recounted, which a
+   * status change does since it moves the epic's quests' draft (#Q4375).
+   */
+  countCalls = 0;
+
   // matches the real client's own loose virtual-action shape
   override client(): any {
     const action = <T extends (...args: any[]) => Promise<unknown>>(fn: T) =>
@@ -133,6 +140,10 @@ class FakeLinkProvider extends LinkProvider {
             return {};
           },
         ),
+        countOpenQuests: action(async () => {
+          this.countCalls += 1;
+          return { count: 3 };
+        }),
         setEpicStatus: action(
           async (request: {
             params: { id: number };
@@ -847,6 +858,8 @@ describe("ProjectEpics - the status filter", () => {
           ]),
         );
         await toastSaying("2 epic(s) ready");
+        // Their drafts became to do: the open-quest badge is recounted once.
+        await waitFor(() => expect(fake.countCalls).toBe(1));
         // Cleared: nothing is selected for the bar to act on.
         await waitFor(() => expect(markReady()).toBeNull());
         expect(
@@ -1155,6 +1168,22 @@ describe("ProjectEpics - the status filter", () => {
       );
       expect(ready[0]).toBe("Back to draft");
       expect(separators()).toHaveLength(2);
+    });
+
+    it("recounts the open-quest badge once the row's Mark as ready is accepted (#Q4375)", async () => {
+      await mount([], fixture());
+      const fake = alepha!.inject(FakeLinkProvider);
+
+      const ready = (await menuOf("#E1 - Draft epic")).find(
+        (item) => item.textContent === "Mark as ready",
+      );
+      fireEvent.click(ready!);
+
+      await waitFor(() =>
+        expect(fake.statusCalls).toEqual([{ id: 1, status: "ready" }]),
+      );
+      await waitFor(() => expect(fake.countCalls).toBe(1));
+      expect(alepha!.store.get(currentQuestCountAtom)?.count).toBe(3);
     });
 
     it("draws no leading separator for an epic with no status action", async () => {

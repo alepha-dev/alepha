@@ -149,4 +149,23 @@ describe("buildQuestDiscussionEntries", () => {
 
     expect(entries[1]).toMatchObject({ kind: "comment", by: undefined });
   });
+
+  it("keeps a draft and a ready as events of their own, with their actor (#E178)", ({
+    expect,
+  }) => {
+    const entries = buildQuestDiscussionEntries(
+      quest({
+        history: [
+          { at: "2026-08-01T11:00:00.000Z", by: ALICE, action: "drafted" },
+          { at: "2026-08-01T12:00:00.000Z", by: BOB, action: "readied" },
+        ],
+      } as Partial<QuestResource>),
+      [],
+    );
+
+    expect(entries.slice(1)).toMatchObject([
+      { kind: "event", action: "drafted", by: ALICE },
+      { kind: "event", action: "readied", by: BOB },
+    ]);
+  });
 });

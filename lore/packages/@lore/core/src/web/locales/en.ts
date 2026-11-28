@@ -1043,6 +1043,7 @@ export default {
 
   "quest.create.submit": "Create quest",
   "quest.create.submitAndAccept": "Create and accept",
+  "quest.create.submitAsDraft": "Create as draft",
   "quest.create.moreOptions": "More create options",
   "quest.create.update": "Update quest",
   "quest.create.priority": "Priority",
@@ -1122,6 +1123,8 @@ export default {
   "quest.event.unshelved": "put the quest back in play",
   "quest.event.held": "put the quest on hold",
   "quest.event.unheld": "lifted the hold",
+  "quest.event.drafted": "marked the quest as a draft",
+  "quest.event.readied": "marked the quest ready",
   "quest.event.updated": "updated the quest",
   "quest.event.change.priority": "changed the priority from $1 to $2",
   "quest.event.change.priorityTo": "set the priority to $1",
@@ -1250,6 +1253,15 @@ export default {
   "quest.view.actions.unshelve": "Unshelve",
   "quest.view.actions.hold": "Put on hold",
   "quest.view.actions.unhold": "Lift hold",
+  "quest.view.actions.markReady": "Mark as ready",
+  "quest.view.actions.markDraft": "Mark as draft",
+  // A quest of a draft epic: a draft the epic owns, so no per-quest verb.
+  "quest.view.draft.epic": "Draft until Epic $1 is ready",
+  // Accept on a loose draft: the draft is marked ready first (#E178).
+  "quest.view.acceptDraft.title": "Mark this quest as ready?",
+  "quest.view.acceptDraft.confirm":
+    "$1 is a draft. Accepting it marks it ready first.",
+  "quest.view.acceptDraft.confirmButton": "Mark as ready and accept",
   "quest.view.complete.title": "Complete this quest",
   "quest.view.complete.description":
     "Leave a short summary of what was done: what changed, decisions made, what a future reader (human or AI) would need to know.",

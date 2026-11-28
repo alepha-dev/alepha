@@ -14,7 +14,7 @@ import { currentAssignedQuestsAtom } from "../../atoms/currentAssignedQuestsAtom
 import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
 
 /**
- * The five quest transitions, plus the bookkeeping the two sidebar atoms
+ * The quest transitions, plus the bookkeeping the two sidebar atoms
  * need, in one place.
  *
  * Three surfaces run these - the table, the detail view and the kanban
@@ -35,8 +35,8 @@ import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
  * next navigation fetches.
  *
  * `currentQuestCountAtom` is `OpenQuestScope`: not completed, not shelved,
- * and not a draft. So complete, shelve, unshelve and delete move it, and
- * accept and unassign do not.
+ * and not a draft. So complete, shelve, unshelve, ready, draft and delete
+ * move it, and accept and unassign do not.
  *
  * ## Why the count is refetched rather than adjusted
  *
@@ -132,6 +132,8 @@ export const useQuestMutations = (): QuestMutations => {
       unshelve: questApi.unshelveQuest.can(),
       hold: questApi.holdQuest.can(),
       unhold: questApi.unholdQuest.can(),
+      ready: questApi.readyQuest.can(),
+      draft: questApi.draftQuest.can(),
       remove: questApi.deleteQuest.can(),
       update: questApi.updateQuestById.can(),
     },
@@ -184,6 +186,20 @@ export const useQuestMutations = (): QuestMutations => {
     },
     unhold: async (id) => {
       return await questApi.unholdQuest({ params: { id } });
+    },
+    // Both move the open count (#E178): `OpenQuestScope` leaves a draft out,
+    // so a draft marked ready joins it and a to-do quest marked draft
+    // leaves it. Neither touches the assigned list: a draft is never
+    // accepted, and only an unaccepted quest can become one.
+    ready: async (id) => {
+      const quest = await questApi.readyQuest({ params: { id } });
+      await refreshCount();
+      return quest;
+    },
+    draft: async (id) => {
+      const quest = await questApi.draftQuest({ params: { id } });
+      await refreshCount();
+      return quest;
     },
     remove: async (id) => {
       await questApi.deleteQuest({ params: { id } });
@@ -253,6 +269,8 @@ export interface QuestMutations {
     unshelve: boolean;
     hold: boolean;
     unhold: boolean;
+    ready: boolean;
+    draft: boolean;
     remove: boolean;
     update: boolean;
   };
@@ -268,6 +286,12 @@ export interface QuestMutations {
    */
   hold: (id: number, reason: string, until?: string) => Promise<QuestResource>;
   unhold: (id: number) => Promise<QuestResource>;
+  /**
+   * Mark a loose draft ready, or a loose to-do quest draft (#E178). Refused
+   * server-side on a quest filed under an epic, whose status decides.
+   */
+  ready: (id: number) => Promise<QuestResource>;
+  draft: (id: number) => Promise<QuestResource>;
   remove: (id: number) => Promise<void>;
   /**
    * The bulk forms of shelve, unshelve and delete: one call per id, all at

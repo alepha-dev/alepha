@@ -576,6 +576,59 @@ describe("ProjectQuestsTable - toolbar create action and bulk bar", () => {
   });
 
   /**
+   * Draft (#E178): a choice of the Status filter, which the default view
+   * leaves out on the server, and a row of its own look.
+   */
+  describe("drafts", () => {
+    it("offers Draft first in the Status filter, and sends it", async () => {
+      const { view, links } = await mount();
+
+      fireEvent.keyDown(await view.findByRole("combobox", { name: "Status" }), {
+        key: "ArrowDown",
+      });
+      const options = await waitFor(() => {
+        const found = view.baseElement.querySelectorAll('[role="option"]');
+        if (found.length === 0) throw new Error("not open yet");
+        return [...found] as HTMLElement[];
+      });
+
+      expect(options[0]?.textContent).toContain("Draft");
+      fireEvent.click(options[0] as HTMLElement);
+      await waitFor(() => expect(links.queries.at(-1)?.status).toBe("draft"));
+    });
+
+    it("names a draft row's status, which To do does not share", async () => {
+      const draft = {
+        ...questOf(2, "Sketch"),
+        draftAt: "2026-09-02T10:00:00.000Z",
+        metadata: { ...questOf(2, "Sketch").metadata, status: "draft" },
+      } as QuestResource;
+      const { view } = await mount([questOf(1, "Existing quest"), draft]);
+
+      const dot = await view.findByTestId("quest-status-dot-2");
+      expect(dot.getAttribute("title")).toBe("Draft");
+      expect(view.getByTestId("quest-status-dot-1").getAttribute("title")).toBe(
+        "To do",
+      );
+    });
+
+    it("offers Assign only while no selected quest is a draft", async () => {
+      const draft = {
+        ...questOf(2, "Sketch"),
+        draftAt: "2026-09-02T10:00:00.000Z",
+        metadata: { ...questOf(2, "Sketch").metadata, status: "draft" },
+      } as QuestResource;
+      await mount([questOf(1, "Ready"), draft]);
+      const assign = () => screen.queryByRole("button", { name: /^Assign/ });
+
+      selectRow(1);
+      await waitFor(() => expect(assign()).not.toBeNull());
+      selectRow(2);
+      await waitFor(() => expect(assign()).toBeNull());
+    });
+  });
+
+  /**
    * The Epic filter (#Q3270): optional, led by "None" (#Q3415), several at once.
    */
   describe("the Epic filter", () => {
