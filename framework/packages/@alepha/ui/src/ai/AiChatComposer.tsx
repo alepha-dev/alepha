@@ -1,6 +1,6 @@
 import { useI18n } from "alepha/react/i18n";
 import { ArrowUp, Square } from "lucide-react";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { Button } from "../core/Button.tsx";
 import { cn } from "../core/utils.ts";
@@ -17,6 +17,15 @@ export interface AiChatComposerProps {
   waiting?: boolean;
   onSend: (message: string) => void;
   onStop?: () => void;
+  /**
+   * The field's placeholder. Defaults to "Ask the assistant".
+   */
+  placeholder?: string;
+  /**
+   * Focus the field on mount, on a device with a fine pointer: the panel
+   * mounts it each time it opens, or comes back from the pill.
+   */
+  focusOnOpen?: boolean;
 }
 
 /**
@@ -29,6 +38,19 @@ export interface AiChatComposerProps {
 export const AiChatComposer = (props: AiChatComposerProps) => {
   const { tr } = useI18n();
   const [value, setValue] = useState("");
+  const field = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    // Not on a touch screen, where a focused field opens the keyboard over
+    // half the conversation before the reader asked to type.
+    if (
+      props.focusOnOpen &&
+      !window.matchMedia?.("(pointer: coarse)").matches
+    ) {
+      // Without scrolling: a drawer sliding in would jump to the field.
+      field.current?.focus({ preventScroll: true });
+    }
+  }, []);
   const blocked = Boolean(props.waiting);
   const canSend = !props.busy && !blocked && value.trim().length > 0;
 
@@ -68,6 +90,7 @@ export const AiChatComposer = (props: AiChatComposerProps) => {
         )}
       >
         <textarea
+          ref={field}
           aria-label={tr("ai.chat.message", { default: "Message" })}
           rows={1}
           value={value}
@@ -77,7 +100,8 @@ export const AiChatComposer = (props: AiChatComposerProps) => {
               ? tr("ai.chat.waiting", {
                   default: "Confirm or cancel the card to go on",
                 })
-              : tr("ai.chat.placeholder", { default: "Ask the assistant" })
+              : (props.placeholder ??
+                tr("ai.chat.placeholder", { default: "Ask the assistant" }))
           }
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={onKeyDown}

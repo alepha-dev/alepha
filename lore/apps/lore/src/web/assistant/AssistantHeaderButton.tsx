@@ -2,7 +2,7 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger } from "@alepha/ui";
 import { currentProjectAtom, type I18n, sidePanelAtom } from "@lore/core/web";
 import { useStore } from "alepha/react";
 import { useI18n } from "alepha/react/i18n";
-import { Sparkles } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 
 import { assistantOpenAtom } from "./assistantOpenAtom.ts";
 import { useAssistantStatus } from "./useAssistantStatus.ts";
@@ -45,7 +45,9 @@ const AssistantHeaderButton = () => {
               setOpen(!open);
             }}
           >
-            <Sparkles className="size-4" />
+            {/* A chat bubble (#Q4562): the jobs button beside it is a
+                robot, and a sparkle read as a gadget. */}
+            <MessageCircle className="size-4" />
           </Button>
         }
       />

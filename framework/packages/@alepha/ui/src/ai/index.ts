@@ -24,4 +24,5 @@ export * from "./aiChatMessageFormSchema.ts";
 export * from "./aiContextAtom.ts";
 export * from "./AiFormRegistry.ts";
 export * from "./useAiChat.ts";
+export * from "./useAiChatFloatDrag.ts";
 export * from "./useAiContext.ts";

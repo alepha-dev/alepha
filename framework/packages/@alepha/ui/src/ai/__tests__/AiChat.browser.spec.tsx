@@ -885,6 +885,140 @@ describe("AiChat", () => {
     expect(view.queryByTestId("ai-chat-launcher")).toBeNull();
   });
 
+  it("shows the app's own mark, empty-state hero and placeholder in place of the defaults (#Q4562)", async () => {
+    const { view } = await mount(
+      () => {},
+      {
+        title: "Lore",
+        icon: <span data-testid="app-mark" />,
+        emptyHero: <span data-testid="app-hero" />,
+        placeholder: "Ask Lore",
+        suggestions: [{ label: "What is open?" }],
+      },
+      FloatLayout,
+    );
+
+    const header = await view.findByTestId("ai-chat-header");
+    expect(within(header).getByTestId("app-mark")).toBeTruthy();
+    // The card is named after the title it shows.
+    expect(view.getByTestId("ai-chat-float").getAttribute("aria-label")).toBe(
+      "Lore",
+    );
+    expect(header.querySelector(".lucide-sparkles")).toBeNull();
+    expect(view.queryByTestId("ai-chat-subtitle")).toBeNull();
+    const empty = view.getByTestId("ai-chat-empty");
+    expect(within(empty).getByTestId("app-hero")).toBeTruthy();
+    expect(empty.textContent).not.toContain("What do you want to do?");
+    expect(empty.querySelector(".lucide-sparkles")).toBeNull();
+    // The suggestions stay.
+    expect(view.getByRole("button", { name: "What is open?" })).toBeTruthy();
+    expect(
+      (view.getByRole("textbox", { name: "Message" }) as HTMLTextAreaElement)
+        .placeholder,
+    ).toBe("Ask Lore");
+
+    // The pill wears the same mark.
+    fireEvent.click(view.getByRole("button", { name: "Minimize" }));
+    const pill = view.getByTestId("ai-chat-launcher");
+    expect(within(pill).getByTestId("app-mark")).toBeTruthy();
+  });
+
+  it("keeps the generic sparkle, sentences and placeholder for an app that passes none", async () => {
+    const { view } = await mount(() => {}, {}, FloatLayout);
+
+    const header = await view.findByTestId("ai-chat-header");
+    expect(header.querySelector(".lucide-sparkles")).toBeTruthy();
+    const empty = view.getByTestId("ai-chat-empty");
+    expect(empty.textContent).toContain("What do you want to do?");
+    expect(empty.textContent).toContain("Ask anything about this page.");
+    expect(
+      (view.getByRole("textbox", { name: "Message" }) as HTMLTextAreaElement)
+        .placeholder,
+    ).toBe("Ask the assistant");
+  });
+
+  it("focuses the composer when it opens and when it comes back from the pill (#Q4562)", async () => {
+    const { view } = await mount(() => {}, {}, FloatLayout);
+
+    const box = await view.findByRole("textbox", { name: "Message" });
+    await waitFor(() => expect(document.activeElement).toBe(box));
+
+    fireEvent.click(view.getByRole("button", { name: "Minimize" }));
+    fireEvent.click(view.getByTestId("ai-chat-launcher"));
+    const again = await view.findByRole("textbox", { name: "Message" });
+    await waitFor(() => expect(document.activeElement).toBe(again));
+  });
+
+  it("leaves the focus alone when focusOnOpen is off", async () => {
+    const { view } = await mount(() => {}, { focusOnOpen: false }, FloatLayout);
+
+    const box = await view.findByRole("textbox", { name: "Message" });
+    expect(document.activeElement).not.toBe(box);
+  });
+
+  it("drags the floating card by its header, kept on screen, and not by its buttons (#Q4562)", async () => {
+    const { view } = await mount(() => {}, {}, FloatLayout);
+
+    const card = await view.findByTestId("ai-chat-float");
+    // jsdom lays nothing out: the card's box is given.
+    card.getBoundingClientRect = () =>
+      ({ left: 500, top: 300, width: 400, height: 400 }) as DOMRect;
+    const header = view.getByTestId("ai-chat-header");
+
+    fireEvent.pointerDown(header, { button: 0, clientX: 600, clientY: 320 });
+    fireEvent.pointerMove(header, { buttons: 1, clientX: 500, clientY: 270 });
+    fireEvent.pointerUp(header, { clientX: 500, clientY: 270 });
+    expect(view.getByTestId("ai-chat-float").style.transform).toBe(
+      "translate(-100px, -50px)",
+    );
+
+    // Pulled far off the top left corner, it stops 8px from the edges.
+    card.getBoundingClientRect = () =>
+      ({ left: 400, top: 250, width: 400, height: 400 }) as DOMRect;
+    fireEvent.pointerDown(header, { button: 0, clientX: 450, clientY: 260 });
+    fireEvent.pointerMove(header, {
+      buttons: 1,
+      clientX: -2000,
+      clientY: -2000,
+    });
+    fireEvent.pointerUp(header);
+    expect(view.getByTestId("ai-chat-float").style.transform).toBe(
+      "translate(-492px, -292px)",
+    );
+
+    // A move with no button down ends a drag whose `pointerup` was lost.
+    fireEvent.pointerDown(header, { button: 0, clientX: 450, clientY: 260 });
+    fireEvent.pointerMove(header, { buttons: 0, clientX: 300, clientY: 300 });
+    fireEvent.pointerMove(header, { buttons: 1, clientX: 300, clientY: 300 });
+    expect(view.getByTestId("ai-chat-float").style.transform).toBe(
+      "translate(-492px, -292px)",
+    );
+
+    // A press on a header button is that button's, not a drag.
+    const close = view.getByRole("button", { name: "Minimize" });
+    fireEvent.pointerDown(close, { button: 0, clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(header, { buttons: 1, clientX: 300, clientY: 300 });
+    expect(view.getByTestId("ai-chat-float").style.transform).toBe(
+      "translate(-492px, -292px)",
+    );
+
+    // Minimized and restored, it is where it was put; a double click on the
+    // header brings it back to its corner.
+    fireEvent.click(view.getByRole("button", { name: "Minimize" }));
+    fireEvent.click(view.getByTestId("ai-chat-launcher"));
+    const restored = await view.findByTestId("ai-chat-float");
+    expect(restored.style.transform).toBe("translate(-492px, -292px)");
+    fireEvent.doubleClick(view.getByTestId("ai-chat-header"));
+    expect(view.getByTestId("ai-chat-float").style.transform).toBe("");
+  });
+
+  it("does not drag a docked panel", async () => {
+    const { view } = await mount(() => {}, {}, DockLayout);
+
+    const header = await view.findByTestId("ai-chat-header");
+    expect(header.className).not.toContain("cursor-grab");
+  });
+
   it("keeps a long code line inside its own block: the thread never scrolls sideways, and the float is wider (#Q4546)", async () => {
     const long = `lore host update my-vps --stats-history --stats-interval 60 ${"--flag ".repeat(40)}`;
     const { view, say } = await mount(

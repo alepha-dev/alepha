@@ -11,11 +11,12 @@ It is off unless the operator of your Lore turns it on (see
 
 ## Opening it
 
-Click the sparkle button, **Assistant**, in a project's header. On a wide
-screen (1024 pixels and up) the chat docks beside the page, which stays in
-view and usable, so a link in a reply opens the page next to the conversation.
-On a narrower screen it slides in as a drawer. Fold it into a pill to keep the
-conversation for later, and reopen an earlier one from its history menu.
+Click the chat button, **Talk to Lore**, in a project's header. Lore opens in
+a card over the page's bottom corner, and the page under it stays usable, so a
+link in a reply opens the page beside the conversation. Drag the card by its
+header to move it out of the way (a double click puts it back in its corner),
+expand it to full screen, or fold it into a pill to keep the conversation for
+later. Reopen an earlier conversation from its history menu.
 
 **It knows the page you are on.** On a quest, an epic, a folio or a use case,
 "this quest", "this epic" or "this use case" means the one in front of you:
@@ -107,7 +108,7 @@ The assistant is off on every instance until the environment variable
 The model comes from one of two vendors, picked by the environment:
 
 - **`AI_API_KEY` set:** Anthropic, on any runtime. `AI_MODEL` names the model,
-  for example `claude-sonnet-5-5`, and is required. `AI_BASE_URL` sends the
+  for example `claude-opus-5-5`, and is required. `AI_BASE_URL` sends the
   calls through another endpoint, such as Cloudflare AI Gateway.
 - **No key, on Cloudflare Workers:** Cloudflare Workers AI, through the
   Worker's `ai` binding. No key is needed, and `AI_MODEL` replaces the default
@@ -118,8 +119,7 @@ The model comes from one of two vendors, picked by the environment:
 The model, the budget, the rate and the retention are the `api.ai` parameter,
 which an administrator edits at runtime from the admin console's parameters.
 A `model` saved there replaces the one the environment names, without a
-redeploy, and the assistant's panel names it; a chat agent with a model of its
-own keeps it. Clear it to go back to the environment's. `AI_MODEL` is still
+redeploy; a chat agent with a model of its own keeps it. Clear it to go back to the environment's. `AI_MODEL` is still
 needed with Anthropic, for Lore to start.
 
 ## Next

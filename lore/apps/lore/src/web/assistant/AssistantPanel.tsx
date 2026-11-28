@@ -5,6 +5,7 @@ import {
   AssistantSuggestionRegistry,
   currentProjectAtom,
   type I18n,
+  LoreLogoAnimated,
   loreDocsUrl,
   sidePanelAtom,
 } from "@lore/core/web";
@@ -18,7 +19,7 @@ import { assistantConfirmCards } from "./assistantConfirmCards.ts";
 import { assistantOpenAtom } from "./assistantOpenAtom.ts";
 import AssistantReplyLink from "./AssistantReplyLink.tsx";
 import { useAssistantInvalidates } from "./useAssistantInvalidates.ts";
-import { useAssistantModel, useAssistantStatus } from "./useAssistantStatus.ts";
+import { useAssistantStatus } from "./useAssistantStatus.ts";
 import { useAssistantToolLabel } from "./useAssistantToolLabel.ts";
 
 /**
@@ -27,15 +28,19 @@ import { useAssistantToolLabel } from "./useAssistantToolLabel.ts";
  *
  * A card floating over the page's bottom corner (`AiChat`'s `floating`
  * mode, #Q4269, the owner's call over the dock): the page under it stays
- * usable, the header names the agent and the model that answers, and it
- * minimizes into a pill, expands to full screen or closes. Nothing renders
+ * usable, it moves by its header, and it minimizes into a pill, expands to
+ * full screen or closes.
+ *
+ * It is Lore talking, as `@lore` is in Chat (#Q4562): the header says
+ * "Lore" beside her animated portrait, with no model named (the operator
+ * picks it, the reader need not know), and a new conversation opens on her
+ * `listening` mood above the page's prompts. Nothing renders
  * until the server says the assistant answers, nor outside a project
  * (#Q3235): project pages only, for now.
  */
 const AssistantPanel = () => {
   const { tr } = useI18n<I18n, "en">();
   const enabled = useAssistantStatus();
-  const model = useAssistantModel();
   const [open, setOpen] = useStore(assistantOpenAtom);
   const [project] = useStore(currentProjectAtom);
   const toolLabel = useAssistantToolLabel();
@@ -79,7 +84,30 @@ const AssistantPanel = () => {
       open={open}
       onOpenChange={setOpen}
       title={tr("assistant.title")}
-      subtitle={model}
+      icon={
+        // Her portrait's canvas lies over the slot, 1.8 times its side, so
+        // her wings are drawn whole past it, as `ChatAgentAvatar` lays it.
+        <span
+          aria-hidden
+          className="relative inline-block size-6 shrink-0"
+          data-testid="assistant-portrait"
+        >
+          <LoreLogoAnimated
+            portrait
+            className="pointer-events-none absolute -inset-[40%] size-[180%]"
+          />
+        </span>
+      }
+      emptyHero={
+        <div
+          aria-hidden
+          className="flex justify-center pb-2"
+          data-testid="assistant-listening"
+        >
+          <LoreLogoAnimated mood="listening" className="size-44" />
+        </div>
+      }
+      placeholder={tr("assistant.placeholder")}
       suggestions={suggestions}
       toolLabel={toolLabel}
       toolSummary={toolSummary}

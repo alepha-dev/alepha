@@ -1,5 +1,6 @@
 import { useI18n } from "alepha/react/i18n";
 import { Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Badge } from "../core/Badge.tsx";
 import { Spinner } from "../core/Spinner.tsx";
@@ -12,6 +13,10 @@ export interface AiChatLauncherProps {
    */
   chat: UseAiChat;
   title?: string;
+  /**
+   * The mark beside the title. Defaults to a sparkle.
+   */
+  icon?: ReactNode;
   onRestore: () => void;
   className?: string;
 }
@@ -45,7 +50,7 @@ export const AiChatLauncher = (props: AiChatLauncherProps) => {
       {busy ? (
         <Spinner className="size-4" />
       ) : (
-        <Sparkles className="text-primary size-4" />
+        (props.icon ?? <Sparkles className="text-primary size-4" />)
       )}
       {title}
       {waiting && (

@@ -103,10 +103,15 @@ test.describe("the assistant", () => {
 
     const dock = page.getByTestId("ai-chat-float");
     await expect(dock).toBeVisible();
-    // The header names the model that answers (#Q4269).
-    await expect(dock.getByTestId("ai-chat-subtitle")).toHaveText(
-      "claude-sonnet-5-5",
-    );
+    // It is Lore talking (#Q4562): her name and portrait, no model named,
+    // her listening mood over the prompts, and the composer ready to type.
+    await expect(dock.getByRole("heading", { name: "Lore" })).toBeVisible();
+    await expect(dock.getByTestId("assistant-portrait")).toBeVisible();
+    await expect(dock.getByTestId("ai-chat-subtitle")).toHaveCount(0);
+    await expect(dock.getByTestId("assistant-listening")).toBeVisible();
+    await expect(
+      dock.getByTestId("ai-chat-composer").locator("textarea"),
+    ).toBeFocused();
 
     await dock
       .getByTestId("ai-chat-composer")

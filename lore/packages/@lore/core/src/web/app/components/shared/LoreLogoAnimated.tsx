@@ -16,8 +16,8 @@ export interface LoreLogoAnimatedProps {
    */
   follow?: boolean;
   /**
-   * The state she is in: `calm`, `asleep`, `seeking` or `glitch`
-   * (`LoreSpriteMoods`). Absent, the companion of the Home page.
+   * The state she is in: `calm`, `asleep`, `seeking`, `glitch` or
+   * `listening` (`LoreSpriteMoods`). Absent, the companion of the Home page.
    */
   mood?: LoreSpriteMood;
   /**
