@@ -1,5 +1,5 @@
 import { z } from "alepha";
-import { $analytics } from "alepha/api/analytics";
+import { $analytics, $eventLog } from "alepha/api/analytics";
 import { db } from "alepha/orm";
 
 import { monitors } from "./monitors.ts";
@@ -413,5 +413,42 @@ export class DeployAnalytics {
       measures: ["count"],
     },
     retention: { hot: "30d", rollup: "day", cold: "400d" },
+  });
+
+  /**
+   * One row per page view and one per engagement, kept 90 days: what
+   * visitors and visits are counted from, exactly, under any filter.
+   *
+   * Written by `SigilIngestService.absorbViews` beside `sigil_views`, which
+   * stays the long-term record of view counts and the only record of bot
+   * views: a declared bot has no session or visit, so it gets no row here.
+   * Every row carries its visit's dimensions, referrer and campaign
+   * included (in `sigil_views` only a landing view has them), so a source
+   * filter narrows every view of the visits it came from.
+   *
+   * `views` is 1 on a view row and `engaged` 1 on an engagement row, so a
+   * sum reads either.
+   */
+  public readonly pageviews = $eventLog({
+    name: "sigil_pageviews",
+    index: "sigilId",
+    schema: z.object({
+      sigilId: db.ref(z.uuid(), () => sigils.cols.id, { onDelete: "cascade" }),
+      sessionId: z.uuid(),
+      visitId: z.uuid(),
+      path: z.string().max(512),
+      country: z.string().max(8),
+      device: z.string().max(16),
+      browser: z.string().max(16),
+      os: z.string().max(16),
+      referrer: z.string().max(253),
+      campaign: z.string().max(64),
+      traffic: z.string().max(16),
+      auth: z.string().max(8),
+      network: z.string().max(128).nullable().optional(),
+      views: z.integer().min(0),
+      engaged: z.integer().min(0),
+    }),
+    keep: "90d",
   });
 }

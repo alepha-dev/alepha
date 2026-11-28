@@ -1,5 +1,6 @@
 import type { SigilForwarded } from "@alepha/lore/sigil";
 import { Alepha } from "alepha";
+import { EventLogProvider, OrmEventLogProvider } from "alepha/api/analytics";
 import { AlephaApiUsers } from "alepha/api/users";
 import { DateTimeProvider } from "alepha/datetime";
 import { AlephaEmail } from "alepha/email";
@@ -34,10 +35,18 @@ const MIN = 60_000;
  * The ingest service itself, on SQLite, with a paused clock: every test
  * sets "now" and sends events relative to it.
  */
-const setup = async (at = "2026-11-10T12:00:00.000Z") => {
+const setup = async (
+  at = "2026-11-10T12:00:00.000Z",
+  options: { relationalLog?: boolean } = {},
+) => {
   const alepha = Alepha.create({
     env: { LOG_LEVEL: "error", DATABASE_URL: ":memory:" },
   });
+  // The page view log on SQLite, as production keeps it, rather than the
+  // memory provider tests bind by default.
+  if (options.relationalLog) {
+    alepha.with({ provide: EventLogProvider, use: OrmEventLogProvider });
+  }
   alepha.with(AlephaOrm);
   alepha.with(AlephaServer);
   alepha.with(AlephaSecurity);
@@ -240,9 +249,82 @@ describe("visits", () => {
   });
 });
 
+describe("the page view log", () => {
+  it("appends one row per view and per engagement, each with its session, its visit and the visit's referrer", async () => {
+    const { analytics, repos, sigil, send, now } = await setup();
+    const start = now() - 60 * MIN;
+    await send({
+      views: [{ path: "/", ts: start, entry: true, referrer: "news.example" }],
+    });
+    await send({
+      views: [{ path: "/a", ts: start + 5 * MIN }],
+      engagements: [{ path: "/a", ts: start + 6 * MIN }],
+    });
+
+    const [visit] = await repos.visits.findMany({});
+    const result = await analytics.pageviews.query({
+      since: "2026-11-01",
+      where: { sigilId: sigil.id },
+      groupBy: ["visitId", "sessionId", "referrer"],
+      select: {
+        rows: { count: "*" },
+        views: { sum: "views" },
+        engaged: { sum: "engaged" },
+      },
+    });
+    expect(result.rows).toEqual([
+      {
+        visitId: visit.id,
+        sessionId: visit.sessionId,
+        referrer: "news.example",
+        rows: 3,
+        views: 2,
+        engaged: 1,
+      },
+    ]);
+  });
+
+  it("appends no row for a batch stamped traffic bot, whose views still reach sigil_views", async () => {
+    const { analytics, sigil, send, now } = await setup();
+    await send({ traffic: "bot", views: [{ path: "/", ts: now() }] });
+    const log = await analytics.pageviews.query({
+      since: "2026-11-01",
+      where: { sigilId: sigil.id },
+      select: { rows: { count: "*" } },
+    });
+    expect(log.rows).toEqual([]);
+    const views = await analytics.views.query({
+      since: "2026-11-01",
+      where: { sigilId: sigil.id },
+      select: { count: "sum" },
+    });
+    expect(views.rows).toEqual([{ count: 1 }]);
+  });
+
+  it("is a table of its own on SQLite, analytics_sigil_pageviews_events, written in one statement", async () => {
+    const { analytics, sigil, send, now } = await setup(undefined, {
+      relationalLog: true,
+    });
+    await send({
+      views: Array.from({ length: 40 }, (_, i) => ({
+        path: `/p${i}`,
+        ts: now() - i * 1000,
+      })),
+    });
+    const result = await analytics.pageviews.query({
+      since: "2026-11-01",
+      where: { sigilId: sigil.id },
+      select: { views: { sum: "views" }, visits: { distinct: "visitId" } },
+    });
+    expect(result.rows).toEqual([{ views: 40, visits: 1 }]);
+  });
+});
+
 describe("the cost of a batch", () => {
-  it("is three statements more than a bot's, the session upsert, the visit read and the visit write, in that order", async () => {
-    const { alepha, send, now } = await setup();
+  it("is four statements more than a bot's: the session upsert, the visit read, then the visit write beside the log append", async () => {
+    const { alepha, send, now } = await setup(undefined, {
+      relationalLog: true,
+    });
     const database = alepha.inject(DatabaseProvider);
     const statement = database.statement.bind(database);
     let count = 0;
@@ -250,6 +332,13 @@ describe("the cost of a batch", () => {
       count++;
       return statement(...args);
     }) as typeof database.statement;
+    // A raw statement (the log's `INSERT ... SELECT FROM json_each`) does
+    // not pass through `statement()`.
+    const execute = database.execute.bind(database);
+    database.execute = ((...args: Parameters<typeof execute>) => {
+      count++;
+      return execute(...args);
+    }) as typeof database.execute;
 
     const measure = async (envelope: Partial<SigilForwarded>) => {
       count = 0;
@@ -265,8 +354,8 @@ describe("the cost of a batch", () => {
     });
     const opening = await measure({ views: [{ path: "/", ts: now() }] });
     const joining = await measure({ views: [{ path: "/a", ts: now() }] });
-    expect(opening - bot).toBe(3);
-    expect(joining - bot).toBe(3);
+    expect(opening - bot).toBe(4);
+    expect(joining - bot).toBe(4);
   });
 });
 
