@@ -10,7 +10,6 @@ import {
 } from "../entities/questFlowDaily.ts";
 import { quests } from "../entities/quests.ts";
 import { DashboardFlowSeries } from "./DashboardFlowSeries.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 import { ProjectReportsService } from "./ProjectReportsService.ts";
 import {
   QuestFlowHistory,
@@ -41,7 +40,6 @@ export class QuestFlowService {
   protected readonly capabilities = $repository(projectCapabilities);
   protected readonly history = $inject(QuestFlowHistory);
   protected readonly reports = $inject(ProjectReportsService);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   protected readonly stats = $inject(ReportStatistics);
   protected readonly series = $inject(DashboardFlowSeries);
   protected readonly dt = $inject(DateTimeProvider);
@@ -167,14 +165,14 @@ export class QuestFlowService {
    * The rows of `day`, replacing any already there: a retried job writes the
    * same night twice, and D1 has no transaction to make that one write.
    *
-   * ⚠️ The project and area rows apply the backlog gate, as every report does;
-   * an epic's rows do not, since a draft epic's burn-up starts before it opens.
+   * ⚠️ The project and area rows leave drafts out, as every report does; an
+   * epic's rows do not, since a draft epic's burn-up starts before it opens.
+   * Whether a quest is a draft is read as it stands when the snapshot runs.
    */
   async snapshot(projectId: number, day: string): Promise<number> {
     const rows = await this.rows({
       projectId: { eq: projectId },
     });
-    const drafts = new Set(await this.epicVisibility.draftEpicIds(projectId));
     const at = this.history.endOf(day);
     const groups = new Map<string, QuestFlowCounts>();
     const add = (
@@ -193,9 +191,8 @@ export class QuestFlowService {
       if (!state) {
         continue;
       }
-      const gated =
-        state !== "done" && row.epicId !== undefined && drafts.has(row.epicId);
-      if (!gated) {
+      // A completed quest is never a draft, so finished work always counts.
+      if (!row.draftAt) {
         add("project", "", state);
         add("area", row.area, state);
       }
@@ -276,6 +273,7 @@ export class QuestFlowService {
           "completedAt",
           "heldAt",
           "shelvedAt",
+          "draftAt",
           "epicId",
           "releaseId",
           "area",

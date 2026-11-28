@@ -204,11 +204,17 @@ export class QuestCommand {
           query: {
             size: flags.limit,
             offset: flags.offset,
-            ...(flags.status?.length ? { status: flags.status.join(",") } : {}),
+            // `--include-drafts` reads as a status list naming `draft`: the
+            // list has no flag for it any more, and drafts are named or they
+            // stay out. Only with no `--status`, which answers for itself.
+            ...(flags.status?.length
+              ? { status: flags.status.join(",") }
+              : flags["include-drafts"]
+                ? { status: "todo,draft,in_progress,on_hold,completed" }
+                : {}),
             ...(flags.tag?.length ? { tag: flags.tag.join(",") } : {}),
             ...(epicId ? { epicId } : {}),
             ...(flags.search ? { search: flags.search } : {}),
-            ...(flags["include-drafts"] ? { includeDrafts: true } : {}),
           },
         });
 

@@ -35,14 +35,14 @@ import { currentQuestCountAtom } from "../../atoms/currentQuestCountAtom.ts";
  * next navigation fetches.
  *
  * `currentQuestCountAtom` is `OpenQuestScope`: not completed, not shelved,
- * and past the draft-epic backlog gate. So complete, shelve, unshelve and
- * delete move it, and accept and unassign do not.
+ * and not a draft. So complete, shelve, unshelve and delete move it, and
+ * accept and unassign do not.
  *
  * ## Why the count is refetched rather than adjusted
  *
- * A local `count - 1` would be wrong for any quest behind the backlog gate,
- * which is not counted in the first place - the caller cannot know whether
- * the quest it just closed was in the number without re-deriving the gate.
+ * A local `count - 1` would be wrong for a draft, which is not counted in the
+ * first place (a shelved draft unshelves as a draft) - the caller cannot know
+ * whether the quest it just moved was in the number without re-deriving it.
  * One request, on the transitions that actually move it. The table already
  * paid it; the other two now do too.
  *

@@ -12,7 +12,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Quest, quests } from "../entities/quests.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 
 /**
  * The last completed quests, with their completion message (#Q2655). Also
@@ -29,7 +28,6 @@ export class RecentlyShippedMetric implements DashboardMetricResolver {
 
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly quests = $repository(quests);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   async resolveAll(

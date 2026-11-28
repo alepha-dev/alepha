@@ -205,10 +205,10 @@ const ProjectEpic = (props: ProjectEpicProps) => {
 
   const questsKey = ["quests", project?.id, { epicId: epic.id }];
 
-  // The epic's own quest set: shelved and draft-gated quests included.
-  // `epic: epic.id` on `getQuests` both scopes to this epic AND bypasses
-  // the backlog gate (see `QuestController.getQuests`) — the default
-  // status filter still excludes shelved quests, so a second call with
+  // The epic's own quest set: shelved quests and drafts included.
+  // `epic: epic.id` on `getQuests` scopes to this epic AND keeps its drafts
+  // (see `QuestController.questListWhere`) — the default status filter
+  // still excludes shelved quests, so a second call with
   // `status: "shelved"` fills the rest.
   //
   // ⚠️ The answer carries the epic it was read for. `keepPreviousData` keeps
@@ -515,7 +515,7 @@ const ProjectEpic = (props: ProjectEpicProps) => {
             )}
           {/* Waiting on its predecessor (#Q4509): a lock whose card says
               why and links to the epic that blocks it. Only before the
-              start, which is the one thing the gate holds back. */}
+              start, which is the one thing the predecessor holds back. */}
           {blockedBy !== undefined &&
             (epic.status === "draft" || epic.status === "ready") && (
               <EpicBlockedIcon

@@ -13,9 +13,8 @@ import { type Release, releases } from "../entities/releases.ts";
  * `EpicController.updateEpic`, `QuestController.updateQuestById` and
  * `src/mcp/tools/QuestTools.ts`. (It was four until epic #E48 deleted quest
  * import, which was the fourth.) A refusal copied into each of them is the
- * shape of the 13-endpoint precondition bug `EpicVisibilityService` exists to
- * prevent: the copies drift, and the one that was forgotten is the one nobody
- * looks at.
+ * shape of the 13-endpoint precondition bug (folio #20): the copies drift, and
+ * the one that was forgotten is the one nobody looks at.
  *
  * ⚠️ **One write path deliberately does not come through here**, and it is
  * not an oversight: `QuestController.attachToDefaultRelease` (#E48) puts a

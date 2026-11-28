@@ -21,7 +21,7 @@ import { preloadQuestView } from "./quest/LazyQuestView.tsx";
  *
  * The board is still fetched here rather than in a route loader. `getBoard`
  * returns a different shape than the `project` layout's quest fetch (it is
- * backlog-gated and drops shelved rows server-side), and keeping the fetch
+ * drops shelved quests and drafts server-side), and keeping the fetch
  * in the component is what lets `KanbanBoard` own its own reload — the
  * header's create button bumps `kanbanReloadAtom` and the board refetches
  * without a navigation.

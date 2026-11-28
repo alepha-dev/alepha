@@ -21,8 +21,8 @@ import { type Quest, quests } from "../entities/quests.ts";
  * refused with a sentence naming the epic.
  *
  * Nothing else writes either column. A write path that changed a quest's
- * draft state on its own would be the drift the gate it replaced never had,
- * so every one of them comes here.
+ * draft state on its own would let it drift from its epic's status, so
+ * every one of them comes here.
  *
  * Who may, and whether the quest's status allows it, is the caller's to
  * check first, as for `QuestShelvingService`. Each per-quest method saves

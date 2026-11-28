@@ -118,7 +118,7 @@ export class EpicTools {
    */
   epic_get = $tool({
     description:
-      "Fetch a single epic by its per-project number, including its description, status, progress rollup (completed/total quest counts; every quest in the epic counts, draft-gated ones included), the folios filed under it (shortId, title, summary; read a body with `folio_get`), and `review`: the review blockers and questions still open (the owner's to resolve, blockers first) and the decision log, one line per answered blocker or question or standing decision, binding on whoever reviews or works the epic. Use quest_list with the `epic` filter to fetch the quests themselves.",
+      "Fetch a single epic by its per-project number, including its description, status, progress rollup (completed/total quest counts; every quest in the epic counts, drafts included), the folios filed under it (shortId, title, summary; read a body with `folio_get`), and `review`: the review blockers and questions still open (the owner's to resolve, blockers first) and the decision log, one line per answered blocker or question or standing decision, binding on whoever reviews or works the epic. Use quest_list with the `epic` filter to fetch the quests themselves.",
     title: "Get epic",
     annotations: { readOnlyHint: true, idempotentHint: true },
     schema: {

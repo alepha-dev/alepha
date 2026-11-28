@@ -1,0 +1,76 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "ddcf3649-6fbb-4de1-b59c-e9120bf879cf",
+  "prevIds": ["d0579854-418c-4f41-9e1b-9dfa1d42a91c"],
+  "footprints": [
+    {
+      "statementType": "recreate_index",
+      "statementTarget": ["index", "public", "quests", "quests_open_idx"],
+      "writes": [
+        "s|idx|public.quests_open_idx",
+        "n|idx|public.quests_open_idx",
+        "e|idx|public.quests_open_idx",
+        "n|rel|public.quests_open_idx"
+      ],
+      "reads": [
+        "n|tbl|public.quests",
+        "n|sch|public",
+        "n|col|public.quests.project_id",
+        "n|col|public.quests.deleted_at",
+        "n|col|public.quests.completed_at",
+        "n|col|public.quests.shelved_at",
+        "n|col|public.quests.draft_at"
+      ],
+      "sharedWrites": [],
+      "sqlHash": "48da3c5d77bf0e12"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "indexes\u0000[\"public\",\"quests_open_idx\"]",
+      "set": {
+        "columns": [
+          {
+            "value": "project_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "deleted_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "completed_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "shelved_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "draft_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "where": "(((\"deleted_at\" is null)) and ((\"completed_at\" is null)) and ((\"shelved_at\" is null)) and ((\"draft_at\" is null)))"
+      }
+    }
+  ]
+}

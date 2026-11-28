@@ -40,8 +40,8 @@ export interface EpicQuestPickerProps {
 
 /**
  * Searchable popover that attaches a project quest to the epic. Lists every
- * project quest, `includeDrafts: true` so a quest filed under a different
- * (possibly draft) epic still shows up — attaching moves it here, mirroring
+ * project quest, drafts named among the statuses so a draft, loose or filed
+ * under a different draft epic, still shows up — attaching moves it here, mirroring
  * `EpicController.attachQuest`, which reassigns `epicId` unconditionally
  * rather than refusing an already-attached quest.
  *
@@ -61,7 +61,7 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
   const quests =
     useQuery(
       {
-        key: ["quests", props.projectId, { includeDrafts: true, picker: true }],
+        key: ["quests", props.projectId, { picker: true }],
         enabled: open,
         handler: async () => {
           // ⚠️ Two reads, each with its own 100 rows (`size` is capped at 100
@@ -73,10 +73,12 @@ const EpicQuestPicker = (props: EpicQuestPickerProps) => {
           const page = (status: string) =>
             questApi.getQuests({
               params: { projectId: props.projectId },
-              query: { size: 100, includeDrafts: true, status },
+              query: { size: 100, status },
             });
+          // `draft` beside `todo`: the list leaves drafts out unless they
+          // are named (#E178). A held draft stays out, through `on_hold`.
           const [open, closed] = await Promise.all([
-            page("todo,in_progress,on_hold"),
+            page("todo,draft,in_progress,on_hold"),
             page("completed,shelved"),
           ]);
           return [...open.content, ...closed.content];

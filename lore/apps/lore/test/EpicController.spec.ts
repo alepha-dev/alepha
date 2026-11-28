@@ -192,7 +192,7 @@ describe("EpicController", () => {
     expect(after.acceptedAt).toBeUndefined();
   });
 
-  it("counts every quest in its progress, draft-gated ones included", async ({
+  it("counts every quest in its progress, drafts included", async ({
     expect,
   }) => {
     const project = await createTestProject(ctx.alepha);

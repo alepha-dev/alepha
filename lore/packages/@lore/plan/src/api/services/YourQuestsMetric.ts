@@ -12,7 +12,6 @@ import { DateTimeProvider } from "alepha/datetime";
 import { $repository } from "alepha/orm";
 
 import { type Quest, quests } from "../entities/quests.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 
 /**
  * The reader's own open quests (#Q2655), on a board every member shares.
@@ -31,7 +30,6 @@ export class YourQuestsMetric implements DashboardMetricResolver {
 
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly quests = $repository(quests);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   protected readonly dateTime = $inject(DateTimeProvider);
 
   async resolveAll(
@@ -54,7 +52,7 @@ export class YourQuestsMetric implements DashboardMetricResolver {
       where.projectId = { eq: project.id };
       where.shelvedAt = { isNull: true };
       where.completedAt = { isNull: true };
-      await this.epicVisibility.applyBacklogGate(where, project.id);
+      where.draftAt = { isNull: true };
       if (!entry.scope.viewerId) {
         out.set(entry.card.id, { empty: "noQuests", detail: {} });
         continue;

@@ -23,6 +23,7 @@ import { QuestController } from "../../api/controllers/QuestController.ts";
 import { ReleaseController } from "../../api/controllers/ReleaseController.ts";
 import { QUEST_EPIC_NONE } from "../../api/schemas/questEpicFilter.ts";
 import type { QuestStatus } from "../../api/schemas/questResourceSchema.ts";
+import { QUEST_STATUSES_WITH_DRAFTS } from "../../api/schemas/questStatusesWithDrafts.ts";
 import { PlanLiveQuests } from "../../api/services/PlanLiveQuests.ts";
 import { QuestDraftService } from "../../api/services/QuestDraftService.ts";
 import { QuestResourceMapper } from "../../api/services/QuestResourceMapper.ts";
@@ -365,7 +366,13 @@ export class QuestTools {
         this.questController.getQuests({
           params: { projectId },
           query: {
-            status: params.status,
+            // `includeDrafts` reads as a status list naming `draft` (#Q4374):
+            // the list has no flag any more, and drafts are named or they
+            // stay out. Only with no status, as before: a status given
+            // answers for itself. This tool's own draft filter is #Q4378's.
+            status:
+              params.status ??
+              (params.includeDrafts ? QUEST_STATUSES_WITH_DRAFTS : undefined),
             search: params.search,
             tag: params.tag,
             epic: params.epic,
@@ -375,14 +382,6 @@ export class QuestTools {
             // `offset: 25, limit: 20` returned rows 20-39 while the tool doc
             // promised 25-44.
             offset: params.offset,
-            // Passed through, default off. This used to be a literal `true`,
-            // on the reasoning that an agent filing a quest into a draft
-            // epic must see it in its own next call. That reasoning is served
-            // by the `epic:` filter, which the controller never gates; what
-            // the literal actually did was make this list disagree with the
-            // backlog a member is looking at, with no parameter to reconcile
-            // the two (84 rows here against 5 in the UI, epic #31).
-            includeDrafts: params.includeDrafts,
           },
         }),
         this.epicRefs.mapFor(projectId),

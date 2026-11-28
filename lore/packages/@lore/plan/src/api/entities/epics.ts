@@ -16,15 +16,15 @@ import { releases } from "./releases.ts";
  * `draft` is the reason this entity exists. It means "this work is
  * being specified and is not released into the backlog yet" — a fact Lore
  * previously had no word for, so `quests.shelvedAt` ("deliberately out of
- * scope") was misused for it. Nothing about a quest row changes when its
- * epic is a draft; the backlog gate is a read filter. See
- * `EpicVisibilityService`.
+ * scope") was misused for it. A draft epic's to-do quests are drafts
+ * (`quests.draftAt`, #E178): the epic's status writes them through
+ * `QuestDraftService`, and every default view leaves a draft out.
  *
  * ## Four statuses, and only the first two are set by hand (#Q2223)
  *
  * | status        | meaning                                   | reached by                           |
  * | ------------- | ----------------------------------------- | ------------------------------------ |
- * | `draft`     | being specified, quests hidden, no work   | creation; `ready` can move back      |
+ * | `draft`     | being specified, quests draft, no work    | creation; `ready` can move back      |
  * | `ready`       | specified, quests in the backlog, editable | `setEpicStatus`, by hand             |
  * | `in_progress` | the plan is frozen, quests are worked      | the first quest accepted or assigned |
  * | `completed`   | the record, terminal                       | the last open quest resolved         |

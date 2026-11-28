@@ -131,8 +131,8 @@ export const epicGetResultSchema = z.object({
   status: epicStatusSchema,
   projectId: z.integer(),
   questCount: z.integer(),
-  // Counts EVERY quest in the epic, draft-gated ones included — an epic's
-  // own view of itself is never gated (design §5.3).
+  // Counts EVERY quest in the epic, drafts included — an epic's
+  // own view of itself never leaves a draft out (design §5.3).
   progress: epicProgressSchema,
   createdAt: z.datetime(),
   startedAt: z.datetime().optional(),

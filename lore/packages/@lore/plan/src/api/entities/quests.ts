@@ -588,47 +588,54 @@ export const quests = $entity({
      * open here": the sidebar badge, the dashboard's Active Quests tile, its
      * rail, and Home's Open column. `(projectId, deletedAt)` above gets the
      * planner to "not deleted, in this project" and stops, so
-     * `completed_at IS NULL`, `shelved_at IS NULL` and the backlog gate's
-     * `epic_id NOT IN (...)` are each evaluated against every non-deleted
-     * quest in the project: 2,685 rows read on production to produce a
-     * number about 354 of them.
+     * `completed_at IS NULL`, `shelved_at IS NULL` and `draft_at IS NULL` are
+     * each evaluated against every non-deleted quest in the project: 2,685
+     * rows read on production to produce a number about 354 of them.
      *
      * This index holds only the open rows, so the count seeks into something
      * containing nothing else, and every column the statement names is in
-     * it, so the backlog gate and the count never reach the table at all.
+     * it, so the count never reaches the table at all.
      *
      * ⚠️ **The 7.6x today is not the point.** A partial index on the open
      * predicate does not grow as work is completed, so the count stops
      * tracking everything ever done and starts tracking what is still open,
      * which is what the number means.
      *
-     * ⚠️ **The three null columns are in the column list AND in the `where`,
+     * ⚠️ **The four null columns are in the column list AND in the `where`,
      * and the redundancy is what makes the planner pick this index.** They
      * are constant in every entry it holds, so as columns they carry no
      * information - but SQLite scores a candidate index by how many equality
-     * constraints it can bind, an `IS NULL` counts as one, and
-     * `(project_id, epic_id)` alone binds exactly one while
-     * `quests_project_id_deleted_at_idx` binds two. `EXPLAIN QUERY PLAN`
-     * chose that older index every time, and the partial index sat unused.
-     * Spelling the three out binds four, and the index becomes covering,
-     * which is what the plan now says. `epic_id` goes last because it is the
-     * one term that is not an equality (`IS NULL OR NOT IN (...)`).
+     * constraints it can bind, an `IS NULL` counts as one, and a
+     * `(project_id, epic_id)` index with the null columns in its `where`
+     * alone bound exactly one while `quests_project_id_deleted_at_idx` binds
+     * two. `EXPLAIN QUERY PLAN` chose that older index every time, and the
+     * partial index sat unused. Spelling the four out binds five, and the
+     * index is covering, which is what the plan says
+     * (`test/open-quest-index.spec.ts`).
      *
-     * ⚠️ The three terms in `where` are spelled exactly as `OpenQuestScope`
+     * ⚠️ The four terms in `where` are spelled exactly as `OpenQuestScope`
      * spells them, as top-level conjuncts, and as a where-object (#Q2674) so
-     * they compile the way that scope's own where-object does. SQLite uses a partial index only
-     * when it can prove the query's `WHERE` implies the index's, and an
-     * identical conjunct is the case it supports. A fourth term added to
-     * that scope without being added here is harmless; changing one of these
-     * three without changing the scope silently retires the index.
+     * they compile the way that scope's own where-object does. SQLite uses a
+     * partial index only when it can prove the query's `WHERE` implies the
+     * index's, and an identical conjunct is the case it supports. A fifth
+     * term added to that scope without being added here is harmless;
+     * changing one of these four without changing the scope silently retires
+     * the index.
      */
     {
-      columns: ["projectId", "deletedAt", "completedAt", "shelvedAt", "epicId"],
+      columns: [
+        "projectId",
+        "deletedAt",
+        "completedAt",
+        "shelvedAt",
+        "draftAt",
+      ],
       name: "quests_open_idx",
       where: {
         deletedAt: { isNull: true },
         completedAt: { isNull: true },
         shelvedAt: { isNull: true },
+        draftAt: { isNull: true },
       },
     },
   ],

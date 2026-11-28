@@ -13,7 +13,6 @@ import { $repository } from "alepha/orm";
 import { quests } from "../entities/quests.ts";
 import { KanbanColumnConfig } from "../schemas/KanbanColumnConfig.ts";
 import { DashboardFlowSeries } from "./DashboardFlowSeries.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 import { ProjectReportsService } from "./ProjectReportsService.ts";
 
 /**
@@ -37,7 +36,6 @@ export class BoardColumnsMetric implements DashboardMetricResolver {
   protected readonly catalog = $inject(DashboardMetricCatalog);
   protected readonly quests = $repository(quests);
   protected readonly columns = $inject(KanbanColumnConfig);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   protected readonly reports = $inject(ProjectReportsService);
   protected readonly series = $inject(DashboardFlowSeries);
 
@@ -60,7 +58,7 @@ export class BoardColumnsMetric implements DashboardMetricResolver {
       where.projectId = { eq: project.id };
       where.shelvedAt = { isNull: true };
       where.completedAt = { isNull: true };
-      await this.epicVisibility.applyBacklogGate(where, project.id);
+      where.draftAt = { isNull: true };
       const open = await this.quests.findMany({
         where,
         columns: ["acceptedAt", "kanbanColumn"],

@@ -30,14 +30,16 @@ import { bootLore } from "./fixtures/bootLore.ts";
  * query passes through, raw `database.run` SQL included.
  */
 const BUDGET = {
-  // Projects; areas; open quests (epic gate + quests); capabilities;
+  // Projects; areas; open quests; capabilities;
   // ownership (members + projects); last activity. The last one was 7 -> 8:
   // the list is ordered by last activity, and reading it only on the board
   // painted the first frame in `updatedAt` order and reshuffled it a second
   // later. One seek per project inside ONE statement, the board's own read.
   // 8 -> 9 for the dock (#E139): its row is read with the overview. Creating
   // a project already seeded it (#Q3435), so no insert is counted here.
-  getHomeOverview: 9,
+  // 9 -> 8 when the open count stopped reading the draft epics first
+  // (#Q4374): a draft is a column of the quest's own row.
+  getHomeOverview: 8,
   // Projects; last activity; open epics, errors and feedback in one
   // statement. It was 5 while the Recent activity panel existed - its own
   // read, plus one more for actor names whenever that feed had any - and the

@@ -13,9 +13,8 @@ export interface ProjectEpicsProgressProps {
  *
  * The prose is status-dependent because "3 of 13 done" answers a different
  * question depending on the status. A `draft` epic reports how much is
- * *specified* and that none of it is released — the backlog gate
- * (`EpicVisibilityService`) is exactly what "not released" means, and quest
- * counts alone never say it. A `completed` epic reports when it completed,
+ * *specified* and that none of it is released — its quests are drafts until
+ * the epic is marked ready, and quest counts alone never say it. A `completed` epic reports when it completed,
  * because by then the ratio is settled and the date is the only part still
  * worth reading. A `ready` or `in_progress` epic gets the bucket breakdown,
  * since its quests are released and the buckets are what moves.

@@ -19,7 +19,6 @@ import {
 import { type Quest, quests } from "../entities/quests.ts";
 import { byPriorityDesc } from "../schemas/questPriority.ts";
 import { DashboardFlowSeries } from "./DashboardFlowSeries.ts";
-import { EpicVisibilityService } from "./EpicVisibilityService.ts";
 import { PlanCommentSubjects } from "./PlanCommentSubjects.ts";
 import { QuestHoldTime } from "./QuestHoldTime.ts";
 import { QuestTagTallyService } from "./QuestTagTallyService.ts";
@@ -39,7 +38,6 @@ export class ProjectReportsService {
   protected readonly projects = $repository(projects);
   protected readonly users = $repository(users);
   protected readonly sqlx = $inject(SqlExpressionProvider);
-  protected readonly epicVisibility = $inject(EpicVisibilityService);
   /**
    * The fold that turns `quests.tags` into a per-tag tally.
    *
@@ -70,31 +68,29 @@ export class ProjectReportsService {
    * quests left over. Completed-based metrics are unaffected by construction,
    * since only a "todo" quest can be shelved.
    *
-   * An **open** quest inside a `draft` epic is specified and not released yet,
-   * so it leaves both sides the way a shelved one does.
+   * A draft (`draftAt` set) is specified and not ready yet, so it leaves both
+   * sides the way a shelved one does. A quest of a `draft` epic carries
+   * `draftAt` while nobody has taken it, held and shelved ones included, so
+   * one column answers for loose drafts and an epic's alike.
    *
-   * ⚠️ **Completed quests are exempt from that gate, and the exemption is the
-   * point.** A completed quest can sit in a `draft` epic and keeps its `epicId`
-   * there. Gating those would retroactively erase real work from member
-   * credit, the burn-up and the weekly contribution series. Completed work is
-   * history; the gate answers "is this open to work on", which is not a
+   * ⚠️ **A completed quest is never a draft**, and that is the point. A
+   * completed quest can sit in a `draft` epic and keeps its
+   * `epicId` there, but nothing stamps `draftAt` on finished work, so it stays
+   * in member credit, the burn-up and the weekly contribution series. Completed
+   * work is history; draft answers "is this ready to work on", which is not a
    * question a finished quest has.
    *
-   * Two traps: the `isNull` branch keeps a quest with no epic (`epic_id NOT IN
-   * (…)` is NULL for it), and an empty draft set adds no clause at all.
-   * `QuestTagTallyService.rowsFor` spells the same rule for several projects.
-   *
-   * The Work filters of `query` narrow it. ⚠️ `memberId` goes through `and`,
-   * since the gate owns the top-level `or`.
+   * The Work filters of `query` narrow it. `memberId` goes through `and`, so
+   * its `or` never shares the top-level key with another filter.
    */
   protected questScope(
     projectId: number,
-    draftEpicIds: number[],
     query: ReportsQuery = {},
   ): PgQueryWhere<typeof quests.schema> {
     const where: PgQueryWhere<typeof quests.schema> = {
       projectId: { eq: projectId },
       shelvedAt: { isNull: true },
+      draftAt: { isNull: true },
     };
     if (query.area !== undefined) where.area = { eq: query.area };
     if (query.priority !== undefined) where.priority = { eq: query.priority };
@@ -117,29 +113,17 @@ export class ProjectReportsService {
         },
       ];
     }
-    if (draftEpicIds.length > 0) {
-      where.or = [
-        { completedAt: { isNotNull: true } },
-        { epicId: { isNull: true } },
-        { epicId: { notInArray: draftEpicIds } },
-      ];
-    }
     return where;
   }
 
   /**
-   * {@link questScope} for a reader outside this service, with the project's
-   * draft epics looked up.
+   * {@link questScope} for a reader outside this service.
    */
   async scopeOf(
     projectId: number,
     query: ReportsQuery,
   ): Promise<PgQueryWhere<typeof quests.schema>> {
-    return this.questScope(
-      projectId,
-      await this.epicVisibility.draftEpicIds(projectId),
-      query,
-    );
+    return this.questScope(projectId, query);
   }
 
   /**
@@ -192,13 +176,7 @@ export class ProjectReportsService {
     projectId: number,
     query: ReportsQuery,
   ): Promise<Array<{ date: string; count: number }>> {
-    return this.createdDaily(
-      this.questScope(
-        projectId,
-        await this.epicVisibility.draftEpicIds(projectId),
-        query,
-      ),
-    );
+    return this.createdDaily(this.questScope(projectId, query));
   }
 
   protected async createdDaily(
@@ -226,13 +204,7 @@ export class ProjectReportsService {
     projectId: number,
     query: ReportsQuery,
   ): Promise<Array<{ date: string; count: number }>> {
-    return this.completedDaily(
-      this.questScope(
-        projectId,
-        await this.epicVisibility.draftEpicIds(projectId),
-        query,
-      ),
-    );
+    return this.completedDaily(this.questScope(projectId, query));
   }
 
   /**
@@ -412,11 +384,7 @@ export class ProjectReportsService {
     query: ReportsQuery,
     priority?: Quest["priority"],
   ): Promise<number> {
-    const scope = this.questScope(
-      projectId,
-      await this.epicVisibility.draftEpicIds(projectId),
-      query,
-    );
+    const scope = this.questScope(projectId, query);
     const samples = await this.cycleSamples(scope, {
       from: query.from,
       to: query.to,
@@ -438,11 +406,7 @@ export class ProjectReportsService {
    * through the same helpers, so the three cannot disagree.
    */
   async questAttention(projectId: number, query: ReportsQuery) {
-    const scope = this.questScope(
-      projectId,
-      await this.epicVisibility.draftEpicIds(projectId),
-      query,
-    );
+    const scope = this.questScope(projectId, query);
     const staleSince = this.dt
       .now()
       .subtract(query.staleDays ?? 14, "day")
@@ -604,11 +568,7 @@ export class ProjectReportsService {
     const organizationId = (
       await this.projects.getOne({ where: { id: { eq: params.id } } })
     ).organizationId!;
-    const scope = this.questScope(
-      params.id,
-      await this.epicVisibility.draftEpicIds(params.id),
-      query,
-    );
+    const scope = this.questScope(params.id, query);
     const window: ReportWindow = { from: query.from, to: query.to };
 
     // Week windows bound on the app clock (`DateTimeProvider`), not the
@@ -747,8 +707,7 @@ export class ProjectReportsService {
     query: ReportsQuery,
   ): Promise<Infer<typeof reportsQuestsSchema>> {
     const params = { id: projectId };
-    const draftEpicIds = await this.epicVisibility.draftEpicIds(params.id);
-    const scope = this.questScope(params.id, draftEpicIds, query);
+    const scope = this.questScope(params.id, query);
     const window: ReportWindow = { from: query.from, to: query.to };
     const top = query.top ?? 8;
 

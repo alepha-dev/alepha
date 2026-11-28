@@ -8,7 +8,7 @@ import { describe, it } from "vitest";
  * The migration that makes a draft epic's to-do quests drafts (#Q4373, epic
  * #E178): no `accepted_at` and no `completed_at`, shelved and held ones
  * included, `draft_at` taken from `created_at`. The count it touches is the
- * open quests the backlog gate hid (draft epics, not completed, not shelved)
+ * open quests of draft epics (not completed, not shelved)
  * plus the shelved quests of draft epics nobody accepted.
  */
 describe("quest draft backfill migration", () => {

@@ -18,6 +18,7 @@ import {
   ProjectReportsController,
   ProjectReportsService,
   QuestController,
+  QuestDraftService,
 } from "../src/api/index.ts";
 import { LorePlanApi } from "../src/api/index.ts";
 import { WorkTestEntities } from "../src/testing/index.ts";
@@ -57,8 +58,8 @@ const setup = async (): Promise<TestContext> => {
   alepha.with(AlephaFake);
   alepha.with(LorePlanApi);
 
-  // Registered before `start()` so the backlog-gate tests below can write
-  // `epics` rows directly — there is no EpicController yet.
+  // Registered before `start()` so the draft tests below can write `epics`
+  // rows directly, without the Plan capability's `epics` option.
   const repos = alepha.inject(WorkTestEntities);
 
   await alepha.start();
@@ -1298,7 +1299,7 @@ describe("ProjectReportsController", () => {
       expect(await fetch({ memberId: crypto.randomUUID() })).toBe(0);
     });
 
-    it("keeps the filters beside the backlog gate", async ({ expect }) => {
+    it("keeps the filters beside the draft scope", async ({ expect }) => {
       const { owner, projectId } = await seed();
       const parked = await createTestQuest(ctx, owner, projectId);
       const draft = await ctx.repos.epics.create({
@@ -1312,6 +1313,7 @@ describe("ProjectReportsController", () => {
         epicId: draft.id,
         acceptedBy: owner.id,
       });
+      await ctx.alepha.inject(QuestDraftService).draftEpic(draft.id);
 
       const res = await overviewOf(
         { params: { id: projectId }, query: { memberId: owner.id } },
@@ -1368,12 +1370,13 @@ describe("ProjectReportsController", () => {
   });
 
   /**
-   * The Reports gate (`questScope`) re-implements both traps of the backlog
-   * gate. Every other spec in this file runs with zero epics, which exercises
-   * only the branch that emits no clause at all: these cover the branch that
-   * does.
+   * The parity of `questScope`'s `draftAt IS NULL` with the backlog gate it
+   * replaced (#Q4374): the gate's own fixtures, read through the draft
+   * status, give the gate's own counts. A quest is filed into the draft epic
+   * by a raw write and stamped by `QuestDraftService.draftEpic`, the
+   * statement marking an epic draft runs.
    */
-  describe("the backlog gate", () => {
+  describe("drafts, as the backlog gate counted them", () => {
     const setupEpicProject = async () => {
       const owner = await createTestUser(ctx);
       const project = await createTestProject(ctx, owner);
@@ -1405,6 +1408,7 @@ describe("ProjectReportsController", () => {
 
       await ctx.repos.quests.updateById(parked.id, { epicId: draftEpic.id });
       await ctx.repos.quests.updateById(released.id, { epicId: activeEpic.id });
+      await ctx.alepha.inject(QuestDraftService).draftEpic(draftEpic.id);
 
       return { projectId: project.id, owner, unfiled, released };
     };
@@ -1419,9 +1423,9 @@ describe("ProjectReportsController", () => {
         { user: c.owner },
       );
 
-      // Three quests exist; exactly one sits in a draft epic. The unfiled
-      // one is the trap: `epic_id NOT IN (1)` is SQL NULL for it, and a NULL
-      // predicate excludes the row — a bare NOT IN would report 1, not 2.
+      // Three quests exist; exactly one sits in a draft epic, and it is the
+      // one draft. The unfiled one was the gate's trap (`epic_id NOT IN (1)`
+      // is SQL NULL for it): a column of the quest's own row has none.
       expect(res.data.kpis.totalQuests).toBe(2);
     });
 
@@ -1429,9 +1433,9 @@ describe("ProjectReportsController", () => {
       expect,
     }) => {
       // Completed work is history. Nothing stops an owner flipping a `done`
-      // epic back to `draft`, and if the gate applied to finished quests
-      // that flip would retroactively erase them from member credit and from
-      // the burn-up — rewriting the record of work that actually happened.
+      // epic back to `draft`, and if that made finished quests drafts the
+      // flip would retroactively erase them from member credit and from the
+      // burn-up — rewriting the record of work that actually happened.
       //
       // The shelved-quest exemption `questScope` relies on does NOT carry
       // over here: only a `todo` quest can be shelved, so a shelved quest is
@@ -1460,6 +1464,10 @@ describe("ProjectReportsController", () => {
         status: "draft",
       });
       await ctx.repos.quests.updateById(done.id, { epicId: parkedEpic.id });
+      // What marking the epic draft writes: nothing, on a completed quest.
+      expect(
+        await ctx.alepha.inject(QuestDraftService).draftEpic(parkedEpic.id),
+      ).toEqual([]);
 
       const overview = await overviewOf(
         { params: { id: project.id } },
@@ -1482,8 +1490,7 @@ describe("ProjectReportsController", () => {
         { user: c.owner },
       );
 
-      // Same two quests, both still `todo` — the gate filters, it never
-      // touches a quest's lifecycle state.
+      // Same two quests, both `todo`: the draft is out of every bucket.
       expect(res.data.funnel.todo).toBe(2);
       expect(res.data.funnel.inProgress).toBe(0);
       expect(res.data.funnel.completed).toBe(0);

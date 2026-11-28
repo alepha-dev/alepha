@@ -58,9 +58,8 @@ export type EpicPlanEdit =
  * this keeps: an agent told the status on every call worked epic #27 to 9 of
  * 9 while `planned` (today's `draft`), so a note is decoration and a refusal is information.
  * One service, so `QuestController`, `EpicController` and the MCP layer
- * cannot drift on the rules. Same reduction, same recorded reason as
- * `EpicVisibilityService`: duplicating a precondition across endpoints is how
- * the 13-endpoint bug happened (folio #20).
+ * cannot drift on the rules: duplicating a precondition across endpoints is
+ * how the 13-endpoint bug happened (folio #20).
  *
  * A refusal is a product surface. An agent reads it and has to know what to
  * do next, so every message names the epic by its per-project number and

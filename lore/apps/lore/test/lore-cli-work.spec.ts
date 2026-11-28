@@ -1,6 +1,7 @@
 import { AlephaLoreCli } from "@alepha/lore/cli";
 import { ProjectController } from "@lore/core/api";
 import { EpicController, QuestController } from "@lore/plan/api";
+import { QUEST_STATUSES_WITH_DRAFTS } from "@lore/plan/schemas";
 import { Alepha, AlephaError, z } from "alepha";
 import { ApiKeyController } from "alepha/api/keys";
 import { AdminUserController, AlephaApiUsers } from "alepha/api/users";
@@ -498,7 +499,10 @@ describe("lore project, quest and folio, against Lore", () => {
     expect(refused.error?.message).toContain("Nothing written");
     expect(refused.stdout).toBe("");
     const quests = await ctx.questController.getQuests.fetch(
-      { params: { projectId: project.id }, query: { includeDrafts: true } },
+      {
+        params: { projectId: project.id },
+        query: { status: QUEST_STATUSES_WITH_DRAFTS },
+      },
       { user: owner },
     );
     expect(quests.data.content).toHaveLength(0);

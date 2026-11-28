@@ -7,10 +7,10 @@ import type { PullRequest } from "../../api/schemas/pullRequestSchema.ts";
 /**
  * The epic stamped on a quest or folio row over MCP: the `number` an agent
  * addresses it by, its `title`, and its `status`. The status is the one
- * field that is not decoration: `folio_list` is never gated, and
- * `quest_list` is not when called with `includeDrafts: true` or an `epic:`
- * filter, so one page can mix a draft epic's rows with released ones, and
- * the status is what lets a caller tell them apart.
+ * field that is not decoration: `folio_list` leaves no epic's folios out, and
+ * `quest_list` named with `draft` among its statuses or with an `epic:`
+ * filter returns a draft epic's quests, so one page can mix a draft epic's
+ * rows with ready ones, and the status is what lets a caller tell them apart.
  */
 export interface EpicRef {
   number: number;

@@ -133,7 +133,6 @@ export class ReleaseContentService {
     // operator set and has no disjunction, but `PgQueryWhereConditions` gives
     // every `where` an `and` and an `or` one level up, ANDed with the sibling
     // keys by `QueryManager.toSQL` - so the `projectId` scoping survives.
-    // `EpicVisibilityService.applyBacklogGate` does the same thing today.
     //
     // ⚠️ With no epics attached the `epicId` branch is OMITTED ENTIRELY rather
     // than passed an empty array. `inArray: []` is not an empty match: `IN ()`
