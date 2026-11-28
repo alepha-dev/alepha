@@ -170,6 +170,16 @@ export {
   type GitHubState,
 } from "../api/entities/githubStates.ts";
 export {
+  githubDeliveries,
+  type GitHubDelivery,
+  GITHUB_DELIVERY_STATUSES,
+} from "../api/entities/githubDeliveries.ts";
+export { githubRedeliveries } from "../api/entities/githubRedeliveries.ts";
+export {
+  githubDeliveryResourceSchema,
+  type GitHubDeliveryResource,
+} from "../api/schemas/githubDeliveryResourceSchema.ts";
+export {
   projectRepositories,
   type ProjectRepository,
   PROJECT_REPOSITORY_DISCONNECT_REASONS,

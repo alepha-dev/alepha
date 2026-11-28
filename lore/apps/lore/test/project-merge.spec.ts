@@ -82,6 +82,9 @@ const NOT_MOVED: Record<string, string> = {
   // merged project keeps the target's connection, as it keeps its settings,
   // and the source's repository is free to connect again.
   project_repositories: "the target's own connection stands",
+  // A GitHub delivery's log line (#Q4364), kept seven days: it says which
+  // project it was handled for then, and moves with nothing.
+  github_deliveries: "a delivery's log line, as it was handled",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

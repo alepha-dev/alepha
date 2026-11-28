@@ -1,13 +1,15 @@
-import { $inject } from "alepha";
+import { $inject, z } from "alepha";
 import { $secure } from "alepha/security";
 import { $action, okSchema } from "alepha/server";
 
 import { githubAppRotateBodySchema } from "../schemas/githubAppRotateBodySchema.ts";
 import { githubAppStatusSchema } from "../schemas/githubAppStatusSchema.ts";
+import { githubDeliveryResourceSchema } from "../schemas/githubDeliveryResourceSchema.ts";
 import { githubManifestCompleteBodySchema } from "../schemas/githubManifestCompleteBodySchema.ts";
 import { githubManifestStartBodySchema } from "../schemas/githubManifestStartBodySchema.ts";
 import { githubManifestStartSchema } from "../schemas/githubManifestStartSchema.ts";
 import { GitHubAppService } from "../services/GitHubAppService.ts";
+import { GitHubDeliveryService } from "../services/GitHubDeliveryService.ts";
 import { LoreAudits } from "../services/LoreAudits.ts";
 
 /**
@@ -22,6 +24,7 @@ export class AdminGitHubController {
   protected readonly group = "admin:github";
   protected readonly apps = $inject(GitHubAppService);
   protected readonly audits = $inject(LoreAudits);
+  protected readonly deliveries = $inject(GitHubDeliveryService);
 
   public readonly getGitHubApp = $action({
     method: "GET",
@@ -31,7 +34,29 @@ export class AdminGitHubController {
     description:
       "The instance's GitHub App: where it comes from, its slug, install link and webhook URL, never a secret",
     schema: { response: githubAppStatusSchema },
-    handler: async () => await this.apps.status(),
+    handler: async () => {
+      const status = await this.apps.status();
+      // An App from the environment has no row to record a ping on: the
+      // last signed delivery says GitHub reaches the URL just as well.
+      const last = await this.deliveries.lastReceivedAt();
+      if (last && (!status.webhookPingAt || last > status.webhookPingAt)) {
+        return { ...status, webhookPingAt: last };
+      }
+      return status;
+    },
+  });
+
+  public readonly listGitHubDeliveries = $action({
+    method: "GET",
+    path: `${this.url}/deliveries`,
+    group: this.group,
+    use: [$secure({ permissions: ["admin:github:read"] })],
+    description:
+      "The last deliveries GitHub sent: event, repository, outcome and attempts, never the body",
+    schema: {
+      response: z.object({ items: z.array(githubDeliveryResourceSchema) }),
+    },
+    handler: async () => ({ items: await this.deliveries.recent(50) }),
   });
 
   public readonly startGitHubAppManifest = $action({
