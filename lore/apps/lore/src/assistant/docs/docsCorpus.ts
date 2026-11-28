@@ -678,6 +678,66 @@ export const docsCorpus: DocsSection[] = [
     text: "Over MCP, `chat_agent_list`, `chat_agent_get`, `chat_agent_create`,\n`chat_agent_update` and `chat_agent_delete` do the same, the avatar aside,\nwhich only the command line uploads. `tools` on a create or an update is the\nlist of tools the agent uses, and `chat_agent_list` answers the names it may\nhold. A message sent with `chat_message_send`\nthat mentions an agent starts it, as from the page. See\n[MCP tools](/lore/docs/reference-mcp-tools).",
   },
   {
+    guide: "GitHub",
+    section: "GitHub",
+    url: "https://alepha.dev/lore/docs/project-github",
+    text: "Connecting a project to a GitHub repository lets Lore follow its work: the\ncommits and pull requests that name a quest attach themselves to it, a pull\nrequest's state, checks and review show beside the quest, GitHub's events can\nnotify people or start a prompt, and agent jobs push and open pull requests\nwith a token of their own.\n\nLore talks to GitHub through one **GitHub App** per Lore instance. On\nlore.alepha.app it is set up already; on a Lore you host yourself, an instance\nadmin creates it once (see [Setting up the GitHub App](#setting-up-the-github-app)).",
+  },
+  {
+    guide: "GitHub",
+    section: "Connecting a project",
+    url: "https://alepha.dev/lore/docs/project-github#connecting-a-project",
+    text: "In **Settings ▸ General**, the **GitHub** card shows the repository the\nproject is connected to, or **Connect GitHub**. Connecting needs the\n`project:update` permission.\n\n1. Press **Connect GitHub**. GitHub opens on the App's install page.\n2. Pick the account or organization, then the repository. Install the App on\n   that repository only: Lore never needs more.\n3. GitHub sends you back to Lore, which checks that your own GitHub account\n   reaches the repository you picked, then connects it.\n\nA project holds one repository, and a repository belongs to one project. To\nchange it, press **Disconnect**, then connect the other one. Disconnecting\nkeeps what was recorded: the commits and pull requests already on quests stay\nthere.\n\nGitHub can also end a connection: the App uninstalled or suspended, or the\nrepository removed from the installation. The card then says so, with\n**Connect again**.\n\n### What the App can reach\n\nThe App sees the repositories it is installed on and nothing else, and Lore\nuses each project's connection for that one repository. It asks GitHub for:\n\n| Permission    | Access | Why                                                                    |\n| ------------- | -...",
+  },
+  {
+    guide: "GitHub",
+    section: "Commits and pull requests on quests",
+    url: "https://alepha.dev/lore/docs/project-github#commits-and-pull-requests-on-quests",
+    text: "A commit or a pull request finds its quest when it names it as `#Q12`:\n\n- a commit, in its message, once it is pushed to the repository;\n- a pull request, in its title or its description, or by its branch when\n  that is `lore/q12`, the branch an agent job works on for quest 12.\n\nThe quest then lists the commit, and the pull request with its state (open,\ndraft, merged, closed), its checks (passing, failing, pending) and its review.\nA pull request naming an epic as `#E3` attaches to the epic the same way.\n\nA pull request whose author has no write access to the repository is marked\n**Outside the team**. No prompt trigger acts on it until a member presses\n**Trust** on it, since its title and description were written by someone\noutside the project.",
+  },
+  {
+    guide: "GitHub",
+    section: "Events and prompt triggers",
+    url: "https://alepha.dev/lore/docs/project-github#events-and-prompt-triggers",
+    text: "Once a project is connected, **Settings ▸ Notifications** offers GitHub's\nevents, to subscribe a member, Discord or a webhook to:\n\n- Pull request opened on GitHub, ready for review, merged, closed unmerged;\n- review requested, pull request reviewed;\n- checks failing, checks passing;\n- pull request trusted;\n- a workflow run failed on the default branch.\n\nThe same events can start a [prompt](/lore/docs/agents-prompts). For example,\na prompt with a `pullRequest` argument and the trigger **Pull request opened\non GitHub** reviews every new pull request on its own; another on **Checks\nfailing** can read the failing checks and propose a fix.",
+  },
+  {
+    guide: "GitHub",
+    section: "Workflows",
+    url: "https://alepha.dev/lore/docs/project-github#workflows",
+    text: "The **Workflows** page, under Ship, lists the repository's workflows that\ndeclare `workflow_dispatch`, each with **Run**. Run opens a form built from\nthe workflow's inputs, with the branch or tag to run it on. Below, the recent\nruns show their outcome and who started them from Lore, with **Re-run**,\n**Re-run failed jobs** and **Cancel**.\n\nStarting, re-running and cancelling need the `deploy:workflow` permission,\nheld by the owner and the Admin rank. Each one is written to the project's\nActivity with who asked and, for a run, its inputs. An agent job can never\nstart, re-run or cancel a workflow through Lore.",
+  },
+  {
+    guide: "GitHub",
+    section: "Agent jobs",
+    url: "https://alepha.dev/lore/docs/project-github#agent-jobs",
+    text: "An [agent job](/lore/docs/agents-jobs) of a connected project carries its own\nGitHub token, made when its host picks the job up and renewed while it runs:\n\n- it reaches the project's repository only;\n- a read job reads the code; a write job also pushes; both can open pull\n  requests, post reviews, and read checks, statuses and workflow runs;\n- its commits and pull requests are made by the App's bot,\n  `<app-name>[bot]`;\n- nothing needs signing in on the host: the jobs user's `gh` is used only for\n  projects that are not connected.\n\nThe job's page says which credential it ran with: **The GitHub App's token**,\nor **The host's gh login**. The host needs a Bay recent enough to take job\ntokens; an older one runs jobs on the jobs user's own `gh` login, as before.",
+  },
+  {
+    guide: "GitHub",
+    section: "What Lore does not do",
+    url: "https://alepha.dev/lore/docs/project-github#what-lore-does-not-do",
+    text: "- It does not merge a pull request.\n- It does not change workflow files.\n- It does not complete a quest when its pull request merges: completing stays\n  your call, or the agent's.",
+  },
+  {
+    guide: "GitHub",
+    section: "From the command line",
+    url: "https://alepha.dev/lore/docs/project-github#from-the-command-line",
+    text: "```bash\nlore github status\nlore github install          # prints the install link to open in a browser\nlore github disconnect\nlore pull-request trust 118\nlore workflow list\nlore workflow run --workflow-id 4242 --ref main --inputs bump=minor\nlore workflow rerun --run-id 9001 --failed-only\nlore workflow cancel --run-id 9001\n```",
+  },
+  {
+    guide: "GitHub",
+    section: "From an agent",
+    url: "https://alepha.dev/lore/docs/project-github#from-an-agent",
+    text: "The MCP tools `github_status`, `github_install`, `github_connect`,\n`github_disconnect`, `pull_request_trust`, `workflow_list`, `workflow_run`,\n`workflow_rerun` and `workflow_cancel` do what the commands above do.",
+  },
+  {
+    guide: "GitHub",
+    section: "Setting up the GitHub App",
+    url: "https://alepha.dev/lore/docs/project-github#setting-up-the-github-app",
+    text: "On a Lore you host yourself, an instance admin creates the GitHub App once,\nin **Admin ▸ GitHub**. Lore needs `PUBLIC_URL` set to its public address, and\nthat address reachable from GitHub: GitHub posts its events to\n`<PUBLIC_URL>/api/github/webhook`.\n\n### Creating it from the Admin page\n\n1. Open **Admin ▸ GitHub**. Give the App a name (it must be unique on GitHub),\n   and an **Organization** to own it, or leave that empty for your own\n   account.\n2. Press **Create the GitHub App**. GitHub shows the App it is about to\n   create, with its permissions and events; confirm.\n3. GitHub sends you back to Lore, which stores the App's id, keys and secrets,\n   encrypted.\n\nThe page then shows the App: where it comes from, its slug, the install link,\nthe webhook URL and when the webhook was last reached.\n\n### Registering it by hand\n\nTo keep the App's secrets in your own secret store, create the App on GitHub\nyourself, with the permissions and events above, the webhook URL\n`<PUBLIC_URL>/api/github/webhook`, the callback URL\n`<PUBLIC_URL>/github/connect`, and **Request user authorization (OAuth)\nduring installation** on. Then set, all of them:\n\n| Variable                    | Value              ...",
+  },
+  {
     guide: "Quests",
     section: "Quests",
     url: "https://alepha.dev/lore/docs/plan-quests",
@@ -2481,6 +2541,12 @@ export const docsCorpus: DocsSection[] = [
   },
   {
     guide: "The lore CLI",
+    section: "GitHub",
+    url: "https://alepha.dev/lore/docs/reference-cli#github",
+    text: "See [GitHub](/lore/docs/project-github).\n\n| Command                       | What it does                                                                                     | Flags                                                                           |\n| ----------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |\n| `lore github status`          | Whether the instance offers GitHub, and the project's repository.                                |                                                                                 |\n| `lore github install`         | The App's install link for the project, to open in a browser.                                    |                                                                                 |\n| `lore github connect`         | Connect a repository of an installation a member already connected through.                      | `--installation-id`, `--repository-id` (both required)                          |\n| `lore github disconnect`      | Disconnect the project's repository.             ...",
+  },
+  {
+    guide: "The lore CLI",
     section: "Container registries",
     url: "https://alepha.dev/lore/docs/reference-cli#container-registries",
     text: "A project stores one credential per registry host. Private images are pulled\nwith it: by `lore artifacts push-image` to verify them, and by the host at\ndeploy.\n\n| Command                       | What it does                                   | Flags                                                                        |\n| ----------------------------- | ---------------------------------------------- | ---------------------------------------------------------------------------- |\n| `lore registry add <host>`    | Store the project's credential for a registry. | `--username` (`-u`, required), then `--password-stdin` or `--password @file` |\n| `lore registry list`          | Hosts and usernames, never a secret.           |                                                                              |\n| `lore registry remove <host>` | Forget the credential.                         |                                                                              |\n\nThe token is never typed inline: it comes from standard input\n(`--password-stdin`, as `docker login` does) or from a file (`--password\n@file`).",
@@ -2598,6 +2664,12 @@ export const docsCorpus: DocsSection[] = [
     section: "Prompts and agent jobs",
     url: "https://alepha.dev/lore/docs/reference-mcp-tools#prompts-and-agent-jobs",
     text: "See [Prompts](/lore/docs/agents-prompts) and\n[Agent jobs](/lore/docs/agents-jobs). Every member reads, copies and renders\nprompts; changing one, its trigger and its pins needs `prompt:manage`; running\none needs `host:read` and the prompt's own permission. Called with an agent\njob's own key, every prompt write, `prompt_run` and `job_poke` are refused. The `prompt_*`\ntools and `agent_hosts` need the `prompts` capability, and are refused while\nthe project has it off; the `job_*` tools do not.\n\n| Tool                                    | What it does                                                                                                                                                                                                                  |\n| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |\n| `prompt_list`, `prompt_get`             | The project's prompts, built-in then its own, with args, source, trigger, pins and last run; one prompt with its words.     ...",
+  },
+  {
+    guide: "MCP tools",
+    section: "GitHub",
+    url: "https://alepha.dev/lore/docs/reference-mcp-tools#github",
+    text: "See [GitHub](/lore/docs/project-github). Connecting and disconnecting need\n`project:update`, trusting a pull request `quest:update`, and starting,\nre-running or cancelling a workflow `deploy:workflow`. Called with an agent\njob's own key, every workflow write is refused.\n\n| Tool                                  | What it does                                                                               |\n| ------------------------------------- | ------------------------------------------------------------------------------------------ |\n| `github_status`                       | Whether the instance offers GitHub, and the repository the project is connected to.        |\n| `github_install`                      | The App's install link for the project, for a person to open in a browser.                 |\n| `github_connect`, `github_disconnect` | Connect a repository of an installation a member already connected through; disconnect it. |\n| `pull_request_trust`                  | Trust a pull request from outside the team, so prompt triggers act on it.                  |\n| `workflow_list`                       | The workflows that declare `workflow_dispatch`, with their inputs, and the r...",
   },
   {
     guide: "MCP tools",
