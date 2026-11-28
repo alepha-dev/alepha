@@ -228,6 +228,44 @@ describe("AgentTranscript", () => {
     expect(out.unknown).toBeUndefined();
   });
 
+  it("reads a log the same with or without the tool_use_result copy Bay drops before spooling (#Q4559)", ({
+    expect,
+  }) => {
+    const use = JSON.stringify({
+      type: "assistant",
+      message: {
+        content: [
+          {
+            type: "tool_use",
+            id: "t1",
+            name: "Bash",
+            input: { command: "ls" },
+          },
+        ],
+      },
+    });
+    const result = {
+      type: "user",
+      message: {
+        content: [
+          { type: "tool_result", tool_use_id: "t1", content: "a.ts\nb.ts" },
+        ],
+      },
+    };
+    const withCopy = JSON.stringify({
+      ...result,
+      tool_use_result: { stdout: "a.ts\nb.ts", stderr: "", interrupted: false },
+    });
+    const spooled = AgentTranscript.parse(
+      `${use}\n${JSON.stringify(result)}\n`,
+      "claude",
+    );
+    expect(spooled).toEqual(
+      AgentTranscript.parse(`${use}\n${withCopy}\n`, "claude"),
+    );
+    expect(spooled.unknown).toBeUndefined();
+  });
+
   it("reads the messages a member sent a running job as message entries, after the prompt it replays first (#Q4456)", ({
     expect,
   }) => {

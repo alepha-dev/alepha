@@ -2,6 +2,7 @@ import {
   HostJobs,
   HostCommandTransport,
   HostCommandService,
+  CoreBuckets,
   HostJobService,
 } from "@lore/core/api";
 import {
@@ -18,6 +19,7 @@ import { createTestHost } from "@lore/core/testing/hosts";
 import { LoreShipApi } from "@lore/ship/api";
 import { DeployTestEntities } from "@lore/ship/testing";
 import { Alepha } from "alepha";
+import { FileService } from "alepha/api/files";
 import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { $repository, AlephaOrm } from "alepha/orm";
@@ -455,6 +457,50 @@ describe("HostJobService", () => {
     ).toHaveLength(0);
     expect((await w.service.readLog(job.id)).stdout).toBe("one\ntwo\nthree\n");
     expect((await w.service.readTail(job.id, 10)).stdout).toBe("two\nthree\n");
+  });
+
+  it("stores an ended log gzipped, counts its text's bytes, and still reads a log stored plain before (#Q4559)", async ({
+    expect,
+  }) => {
+    const files = w.alepha.inject(FileService);
+    const job = await start(w);
+    const command = await commandOf(w, job.id);
+    const text = `${'{"type":"assistant","text":"hello"}\n'.repeat(200)}`;
+    await w.service.appendLog(w.host, {
+      type: "log",
+      id: command.id,
+      stream: "stdout",
+      offset: 0,
+      data: text,
+    });
+    await w.commands.ack(w.host.id, { id: command.id, status: "done" });
+    const ended = await w.repos.jobs.getOne({ where: { id: { eq: job.id } } });
+    const file = await files.streamFile(ended.logFileId as string, {
+      bucket: CoreBuckets.JOB_LOG_BUCKET,
+    });
+    const stored = new Uint8Array(await file.arrayBuffer());
+    expect([stored[0], stored[1]]).toEqual([0x1f, 0x8b]);
+    expect(stored.byteLength).toBeLessThan(text.length / 4);
+    expect(ended.logBytes).toBe(text.length);
+    expect((await w.service.readLog(job.id)).stdout).toBe(text);
+
+    // A log stored before the change is plain JSON, and reads as it did.
+    const older = await start(w);
+    const plain = await files.uploadFile(
+      new File(
+        [JSON.stringify({ stdout: "old\n", stderr: "warn\n" })],
+        "job.json",
+        {
+          type: "application/json",
+        },
+      ),
+      { bucket: CoreBuckets.JOB_LOG_BUCKET },
+    );
+    await w.repos.jobs.updateById(older.id, { logFileId: plain.id });
+    expect(await w.service.readLog(older.id)).toMatchObject({
+      stdout: "old\n",
+      stderr: "warn\n",
+    });
   });
 
   it("keeps a frame that lands after the one following it, so a long line is never cut (#Q4296)", async ({

@@ -21,7 +21,8 @@ export class CoreBuckets {
 
   /**
    * Where a host job's whole log lands when it ends (#Q3984), as one JSON
-   * document of both streams. Bay caps a job's output at 8 MiB.
+   * document of both streams, gzipped since #Q4559 (a log stored before is
+   * plain JSON, and still reads). Bay caps a job's output at 8 MiB.
    */
   public static readonly JOB_LOG_BUCKET = "host-job-logs";
 
@@ -58,6 +59,6 @@ export class CoreBuckets {
     name: CoreBuckets.JOB_LOG_BUCKET,
     description: "The whole log of each host job, written when it ends",
     maxSize: 10,
-    mimeTypes: ["application/json"],
+    mimeTypes: ["application/gzip", "application/json"],
   });
 }
