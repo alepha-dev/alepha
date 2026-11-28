@@ -1,3 +1,4 @@
+import type { PullRequestController } from "@lore/core/api";
 import type { EpicController } from "@lore/plan/api";
 import type { FeedbackController } from "@lore/plan/api";
 import type { QuestCommentController } from "@lore/plan/api";
@@ -80,6 +81,9 @@ export class QuestCommand {
     this.client.scope(),
   );
   protected readonly epicApi = $client<EpicController>(this.client.scope());
+  protected readonly pullRequestApi = $client<PullRequestController>(
+    this.client.scope(),
+  );
   protected readonly liveApi = $client<LiveQuestController>(
     this.client.scope(),
   );
@@ -274,9 +278,10 @@ export class QuestCommand {
                 (epic) => epic.id === quest.epicId,
               )?.pullRequests ?? [])
             : [];
-        const pullRequests = quest.pullRequests?.length
-          ? quest.pullRequests
-          : epicPullRequests;
+        const pullRequests = await this.withStates(
+          projectId,
+          quest.pullRequests?.length ? quest.pullRequests : epicPullRequests,
+        );
         // Where its commits run (#E154), as `quest_get` carries it. A project
         // with no deploys answers nothing, not an error.
         const live = await this.liveApi
@@ -294,7 +299,11 @@ export class QuestCommand {
         if (flags.output === "json") {
           this.render.json(print, {
             ...quest,
-            ...(epicPullRequests.length ? { epicPullRequests } : {}),
+            ...(quest.pullRequests?.length
+              ? { pullRequests }
+              : epicPullRequests.length
+                ? { epicPullRequests: pullRequests }
+                : {}),
             ...(live ? { live } : {}),
             comments,
             attachments,
@@ -363,10 +372,9 @@ export class QuestCommand {
             ...(pullRequests.length
               ? [
                   {
-                    title:
-                      pullRequests === quest.pullRequests
-                        ? "Pull requests"
-                        : "Pull requests (the epic's)",
+                    title: quest.pullRequests?.length
+                      ? "Pull requests"
+                      : "Pull requests (the epic's)",
                     lines: pullRequests.map(pullRequestLineOf),
                   },
                 ]
@@ -1519,5 +1527,34 @@ export class QuestCommand {
         },
       );
     }
+  }
+
+  /**
+   * The records with GitHub's state beside them, for a project connected to
+   * GitHub (#Q4367); as they were otherwise.
+   */
+  protected async withStates<T extends { url: string }>(
+    projectId: number,
+    records: T[],
+  ): Promise<Array<T & { state?: string; checks?: string; review?: string }>> {
+    if (records.length === 0) return records;
+    const states = await this.pullRequestApi
+      .getPullRequestStates({
+        params: { projectId },
+        body: { urls: records.slice(0, 50).map((pr) => pr.url) },
+      })
+      .then((answer) => answer.items)
+      .catch(() => []);
+    return records.map((pr) => {
+      const state = states.find((it) => it.url === pr.url);
+      return state
+        ? {
+            ...pr,
+            state: state.state,
+            checks: state.checks,
+            review: state.review,
+          }
+        : pr;
+    });
   }
 }

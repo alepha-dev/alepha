@@ -1,3 +1,4 @@
+import { PullRequestStateService } from "@lore/core/api";
 import {
   ProjectController,
   ResourceRegistry,
@@ -48,6 +49,7 @@ import {
  */
 export class EpicTools {
   protected readonly epicController = $inject(EpicController);
+  protected readonly pullRequestStates = $inject(PullRequestStateService);
   protected readonly reviewController = $inject(EpicReviewController);
   protected readonly reviewService = $inject(EpicReviewService);
   protected readonly links = $inject(ResourceLinkService);
@@ -136,6 +138,13 @@ export class EpicTools {
       });
       const folios = epic.folios;
 
+      // GitHub's state beside each record, from Lore's rows (#Q4367).
+      const prStates = await this.pullRequestStates
+        .statesFor(
+          epic.projectId,
+          (epic.pullRequests ?? []).map((pr) => pr.url),
+        )
+        .catch(() => []);
       return {
         id: epic.id,
         number: epic.number,
@@ -157,7 +166,7 @@ export class EpicTools {
           summary: folio.summary?.trim() ? folio.summary : undefined,
           updatedAt: folio.updatedAt ?? "",
         })),
-        pullRequests: pullRequestRefsOf(epic.pullRequests),
+        pullRequests: pullRequestRefsOf(epic.pullRequests, prStates),
         review: this.reviewBlock(epic.reviews),
       };
     },
@@ -399,7 +408,7 @@ export class EpicTools {
   epic_pull_request_add = $tool({
     description:
       "Record a pull request against an epic: an epic lands as one pull request, and every quest of the epic with none of its own shows it, so one call covers all of them. Use it when you open the pull request, and pass its number and title too. " +
-      "Deduped on the URL, so recording the same pull request twice is a no-op. Allowed in every status, 'completed' included. A list rather than one value: a large epic may be split, or reopened after a revert. Lore never reads the pull request's state from the forge: the record is what you write, like a commit.",
+      "Deduped on the URL, so recording the same pull request twice is a no-op. Allowed in every status, 'completed' included. A list rather than one value: a large epic may be split, or reopened after a revert. For a project connected to GitHub, a pull request naming the quest or epic attaches itself, and epic_get and quest_get return its state (open, draft, merged, closed, checks, review) beside the record.",
     title: "Record a pull request on an epic",
     annotations: {
       readOnlyHint: false,

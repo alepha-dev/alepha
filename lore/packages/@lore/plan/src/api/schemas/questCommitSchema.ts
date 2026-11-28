@@ -27,7 +27,14 @@ export const questCommitSchema = z.object({
    */
   repo: z.string().max(200).optional(),
   at: z.datetime(),
-  by: z.uuid(),
+  /**
+   * Who recorded it; absent when GitHub's push webhook attached it (#Q4367).
+   */
+  by: z.uuid().optional(),
+  /**
+   * `github` when a push to the default branch attached it (#Q4367).
+   */
+  source: z.enum(["github"]).optional(),
 });
 
 export type QuestCommit = Infer<typeof questCommitSchema>;

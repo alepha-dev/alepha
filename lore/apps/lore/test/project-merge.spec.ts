@@ -85,6 +85,10 @@ const NOT_MOVED: Record<string, string> = {
   // A GitHub delivery's log line (#Q4364), kept seven days: it says which
   // project it was handled for then, and moves with nothing.
   github_deliveries: "a delivery's log line, as it was handled",
+  // A pull request of the source's repository (#Q4367): the target keeps its
+  // own connection, and the records that moved with the quests read nothing
+  // until the source's repository is connected to the target.
+  pull_requests: "the source repository's pull requests",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

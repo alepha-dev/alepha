@@ -1,3 +1,4 @@
+import { PullRequestStateService } from "@lore/core/api";
 import {
   JobKeyService,
   LiveQuestRegistry,
@@ -80,6 +81,7 @@ import { EpicRefService } from "../services/EpicRefService.ts";
  */
 export class QuestTools {
   protected readonly questController = $inject(QuestController);
+  protected readonly pullRequestStates = $inject(PullRequestStateService);
   protected readonly jobKeys = $inject(JobKeyService);
   protected readonly projectController = $inject(ProjectController);
   protected readonly feedbackController = $inject(FeedbackController);
@@ -900,7 +902,7 @@ export class QuestTools {
     description:
       "Record a pull request against a quest, so the pull request a quest shipped through is a field on the quest rather than a link buried in its discussion. Use it when you open the pull request, and pass its number and title too. " +
       "For a quest in an epic, record the epic's one pull request with `epic_pull_request_add` instead: every quest of the epic with none of its own shows it. A run of loose quests landing as one pull request records it on each of its quests. " +
-      "Deduped on the URL, so recording the same pull request twice is a no-op. Allowed on completed quests. Lore never reads the pull request's state from the forge: the record is what you write, like a commit.",
+      "Deduped on the URL, so recording the same pull request twice is a no-op. Allowed on completed quests. For a project connected to GitHub, a pull request naming the quest or epic attaches itself, and epic_get and quest_get return its state (open, draft, merged, closed, checks, review) beside the record.",
     title: "Record a pull request on a quest",
     annotations: {
       readOnlyHint: false,
@@ -999,6 +1001,13 @@ export class QuestTools {
         size: file.size,
       }));
 
+      // GitHub's state beside each record, from Lore's rows (#Q4367).
+      const prStates = await this.pullRequestStates
+        .statesFor(quest.projectId, [
+          ...(quest.pullRequests ?? []).map((pr) => pr.url),
+          ...epicPullRequests.map((pr) => pr.url),
+        ])
+        .catch(() => []);
       return {
         id: quest.id,
         shortId: quest.shortId,
@@ -1027,11 +1036,13 @@ export class QuestTools {
         tags: quest.tags,
         dependsOn_shortId,
         commits: quest.commits ?? [],
-        pullRequests: pullRequestRefsOf(quest.pullRequests),
+        pullRequests: pullRequestRefsOf(quest.pullRequests, prStates),
         // The epic's, when the quest has none of its own (#Q3707): the
         // epic's one pull request is recorded once, not on every quest.
         ...(!quest.pullRequests?.length && epicPullRequests.length
-          ? { epicPullRequests: pullRequestRefsOf(epicPullRequests) }
+          ? {
+              epicPullRequests: pullRequestRefsOf(epicPullRequests, prStates),
+            }
           : {}),
         attachments,
         epic,

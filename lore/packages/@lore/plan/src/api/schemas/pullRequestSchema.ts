@@ -12,9 +12,10 @@ export const PULL_REQUEST_URL_PATTERN = /^https?:\/\/\S+$/i;
 /**
  * One pull request recorded against a quest or an epic (#Q3707).
  *
- * The record is what the agent writes, like a commit
- * (`questCommitSchema`): Lore never reads the pull request's state from the
- * forge, so there is no `open` or `merged` here and nothing to keep in step.
+ * The record is what was written, by an agent or by GitHub's webhook for a
+ * connected project (#Q4367, `PlanGitHubTrail`). The pull request's state is
+ * not kept here: it is the `pull_requests` row Lore keeps from GitHub's
+ * deliveries, matched to this record on read by repository and number.
  *
  * `url` is the identity and the link target, both: the rail and the epic
  * page link the URL as recorded, where a sha is linked from the project's
@@ -41,7 +42,16 @@ export const pullRequestSchema = z.object({
    */
   title: z.string().max(500).optional(),
   at: z.datetime(),
-  by: z.uuid(),
+  /**
+   * Who recorded it; absent when GitHub's webhook attached it and its author
+   * maps to no member (#Q4367).
+   */
+  by: z.uuid().optional(),
+  /**
+   * `github` when the webhook attached it (#Q4367); absent when somebody
+   * recorded it.
+   */
+  source: z.enum(["github"]).optional(),
 });
 
 export type PullRequest = Infer<typeof pullRequestSchema>;
@@ -92,8 +102,9 @@ const normalizeUrl = (url: string): string => url.trim().replace(/\/+$/, "");
 export const appendPullRequests = (
   existing: PullRequest[] | undefined,
   incoming: PullRequestInput[],
-  userId: string,
+  userId: string | undefined,
   at: string,
+  source?: "github",
 ): PullRequest[] => {
   const trail = [...(existing ?? [])];
   const seen = new Set(trail.map((pr) => normalizeUrl(pr.url).toLowerCase()));
@@ -109,7 +120,8 @@ export const appendPullRequests = (
       repo: pr.repo?.trim() || undefined,
       title: pr.title?.trim() || undefined,
       at,
-      by: userId,
+      ...(userId ? { by: userId } : {}),
+      ...(source ? { source } : {}),
     });
   }
 
