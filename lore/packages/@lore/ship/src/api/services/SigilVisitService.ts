@@ -42,6 +42,13 @@ export interface SigilVisitStamp {
 export interface SigilVisitPlacement {
   sessionId: string;
   visitId: string;
+  /**
+   * The visit's referrer and campaign after this batch: its entry view's,
+   * which the page view log carries on every row.
+   */
+  referrer: string;
+  campaign: string;
+  network?: string;
 }
 
 /**
@@ -83,6 +90,11 @@ export class SigilVisitService {
     stamp: SigilVisitStamp;
     events: SigilVisitEvent[];
     now: string;
+    /**
+     * Runs once the batch is placed, beside the visit write rather than
+     * after it: the page view log append needs the ids, not the write.
+     */
+    placed?: (placement: SigilVisitPlacement) => Promise<void>;
   }): Promise<SigilVisitPlacement | undefined> {
     const { sigilId, visitor, stamp, now } = input;
     if (!visitor || stamp.traffic === "bot" || input.events.length === 0) {
@@ -130,9 +142,20 @@ export class SigilVisitService {
     const landing = views.find((view) => view.entry) ?? views[0];
     const engaged = events.some((event) => event.kind === "engagement");
 
+    const network = SigilVisitService.networkLabel(stamp.network);
+    const placed = async (
+      placement: SigilVisitPlacement,
+      write: Promise<unknown>,
+    ) => {
+      await Promise.all([write, input.placed?.(placement)]);
+      return placement;
+    };
+
     if (!visit) {
       const id = crypto.randomUUID();
-      await this.visits.create({
+      const referrer = landing?.referrer ?? "direct";
+      const campaign = landing?.campaign ?? "none";
+      const write = this.visits.create({
         id,
         sigilId,
         sessionId: session.id,
@@ -142,32 +165,41 @@ export class SigilVisitService {
         engaged,
         entryPath: entry.path,
         exitPath: exit.path,
-        referrer: landing?.referrer ?? "direct",
-        campaign: landing?.campaign ?? "none",
+        referrer,
+        campaign,
         country: stamp.country,
         device: stamp.device,
         browser: stamp.browser,
         os: stamp.os,
         traffic: stamp.traffic,
         auth: stamp.auth,
-        network: SigilVisitService.networkLabel(stamp.network),
+        network,
       });
-      return { sessionId: session.id, visitId: id };
+      return placed(
+        { sessionId: session.id, visitId: id, referrer, campaign, network },
+        write,
+      );
     }
 
-    await this.visits.updateById(
-      visit.id,
-      this.merge(visit, {
-        first,
-        last,
-        views: views.length,
-        engaged,
-        entry: views[0],
-        exit: views[views.length - 1],
-        landing,
-      }),
+    const update = this.merge(visit, {
+      first,
+      last,
+      views: views.length,
+      engaged,
+      entry: views[0],
+      exit: views[views.length - 1],
+      landing,
+    });
+    return placed(
+      {
+        sessionId: session.id,
+        visitId: visit.id,
+        referrer: update.referrer ?? visit.referrer,
+        campaign: update.campaign ?? visit.campaign,
+        network: network ?? visit.network ?? undefined,
+      },
+      this.visits.updateById(visit.id, update),
     );
-    return { sessionId: session.id, visitId: visit.id };
   }
 
   /**

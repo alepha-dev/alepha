@@ -720,6 +720,29 @@ export class SigilIngestService {
       },
       events,
       now,
+      // One row per event in the 90 day log, appended as soon as the batch
+      // knows its visit, beside the visit write.
+      placed: (placement) =>
+        this.datasets.pageviews.append(
+          events.map((event) => ({
+            at: Date.parse(event.at),
+            sigilId: sigil.id,
+            sessionId: placement.sessionId,
+            visitId: placement.visitId,
+            path: event.path,
+            country: iso,
+            device: dev,
+            browser: ua,
+            os: system,
+            referrer: placement.referrer,
+            campaign: placement.campaign,
+            traffic: kind,
+            auth: audience,
+            network: placement.network ?? null,
+            views: event.kind === "view" ? 1 : 0,
+            engaged: event.kind === "engagement" ? 1 : 0,
+          })),
+        ),
     });
 
     await this.analytics.absorb({
