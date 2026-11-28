@@ -1216,6 +1216,8 @@ export default {
   "project.update.repositoryUrl.label": "Repository",
   "project.update.repositoryUrl.helper":
     "The repository this project's commits live in, on GitHub. Set it and a quest's commits link to it, and agent jobs are told where the code is.",
+  "project.update.repositoryUrl.connected":
+    "Set by the GitHub connection below. Disconnect GitHub to change it.",
   "project.update.preferredLanguage.label": "Preferred Language",
   "project.update.preferredLanguage.helper":
     "Language AI agents should use for generated content (quests, folios).",

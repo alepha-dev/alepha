@@ -1209,6 +1209,8 @@ export default {
   "project.update.repositoryUrl.label": "Dépôt",
   "project.update.repositoryUrl.helper":
     "Le dépôt où vivent les commits de ce projet, sur GitHub. Renseignez-le et les commits d'une quête y renvoient, et les tâches d'agent savent où est le code.",
+  "project.update.repositoryUrl.connected":
+    "Défini par la connexion GitHub ci-dessous. Déconnectez GitHub pour le changer.",
   "project.update.preferredLanguage.label": "Langue préférée",
   "project.update.preferredLanguage.helper":
     "Langue que les agents IA doivent utiliser pour le contenu généré (quêtes, folios).",

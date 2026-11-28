@@ -1,15 +1,16 @@
 import { useDialog } from "@alepha/ui";
 import { AutoForm } from "@alepha/ui/form";
 import { AlephaError, z } from "alepha";
-import { useAlepha, useClient } from "alepha/react";
+import { useAlepha, useClient, useQuery } from "alepha/react";
 import { useForm } from "alepha/react/form";
 import { useI18n } from "alepha/react/i18n";
 import { useRouter } from "alepha/react/router";
 import { isHttpError } from "alepha/server";
 import { GitBranch, Languages, Tag } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import type { ProjectController } from "../../../../api/controllers/ProjectController.ts";
+import type { ProjectGitHubController } from "../../../../api/controllers/ProjectGitHubController.ts";
 import type { ProjectResource } from "../../../../api/schemas/projectResourceSchema.ts";
 import { ProjectSlugService } from "../../../../api/schemas/ProjectSlugService.ts";
 import { projectTitleSchema } from "../../../../api/schemas/projectTitleSchema.ts";
@@ -76,12 +77,52 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
    */
   const slugs = useMemo(() => new ProjectSlugService(), []);
 
+  /**
+   * The project's GitHub connection (#Q4560), read under the key the GitHub
+   * card below uses, so the two share one fetch and a disconnect there
+   * (which refetches it) unlocks the field here without a reload.
+   *
+   * While a connection is live the connected repository owns the URL, and
+   * the server refuses a change with a 409. Only `connected` locks: a
+   * connection GitHub ended (uninstalled, suspended, removed) leaves the
+   * URL editable, as the server's `connectionOf` does.
+   */
+  const github = useClient<ProjectGitHubController>();
+  const githubStatus = useQuery(
+    {
+      key: ["project-github", props.project.id],
+      handler: () =>
+        github.getProjectGitHub({ params: { projectId: props.project.id } }),
+      // A failure here is the GitHub card's to show; the field simply stays
+      // editable, and the server still guards it.
+      onError: () => undefined,
+    },
+    [github, props.project.id],
+  );
+  const connection = githubStatus.data?.connection;
+  // The connection's URL rather than the project's: after the redirect from
+  // `/github/connect` the project in the atom may predate the connection.
+  const connectedUrl = connection?.connected ? connection.url : undefined;
+
+  // The server wrote that URL on the project when it connected; an atom
+  // loaded before then still holds the old one. Bring it level, so the
+  // field holds the server's value once a disconnect unlocks it, and a save
+  // then cannot write the stale URL back.
+  useEffect(() => {
+    if (connectedUrl && connectedUrl !== props.project.repositoryUrl) {
+      setCurrentProject(alepha, {
+        ...props.project,
+        repositoryUrl: connectedUrl,
+      });
+    }
+  }, [alepha, connectedUrl, props.project]);
+
   const form = useForm({
     initialValues: {
       icon: props.project.icon,
       title: props.project.title,
       preferredLanguage: props.project.preferredLanguage ?? NO_LANG,
-      repositoryUrl: props.project.repositoryUrl ?? "",
+      repositoryUrl: connectedUrl ?? props.project.repositoryUrl ?? "",
     },
     schema: z.object({
       icon: z.uuid().nullable().optional(),
@@ -132,8 +173,15 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
             icon: values.icon ?? null,
             preferredLanguage: lang && lang !== NO_LANG ? lang : null,
             // Same shape as the language: `null` clears, so a field emptied
-            // in the form actually unsets the value.
-            repositoryUrl: values.repositoryUrl?.trim() || null,
+            // in the form actually unsets the value. Sent only when it was
+            // edited, and never while GitHub owns it: a save that did not
+            // touch it cannot meet the server's 409, even before the GitHub
+            // read has answered.
+            ...(connectedUrl ||
+            (values.repositoryUrl?.trim() ?? "") ===
+              (props.project.repositoryUrl ?? "")
+              ? {}
+              : { repositoryUrl: values.repositoryUrl?.trim() || null }),
           },
         })
         .catch((error: unknown) => {
@@ -216,7 +264,14 @@ const ProjectUpdate = (props: ProjectUpdateProps) => {
           label: tr("project.update.repositoryUrl.label"),
           icon: GitBranch,
           placeholder: "https://github.com/you/your-repo",
-          description: tr("project.update.repositoryUrl.helper"),
+          ...(connectedUrl
+            ? {
+                // Disabled also drops the clear (x) button.
+                disabled: true,
+                clearable: false,
+                description: tr("project.update.repositoryUrl.connected"),
+              }
+            : { description: tr("project.update.repositoryUrl.helper") }),
         },
       }}
     />
