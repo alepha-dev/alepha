@@ -57,14 +57,19 @@ Sections with a table or a chart offer **CSV**.
 
 ## What the figures count
 
-Every report reads the same quests: shelved quests are out, and so are the open
-quests of a draft epic. A completed quest always counts, wherever it was filed.
+Every report reads the same quests: shelved quests are out, and so are
+[drafts](/lore/docs/plan-quests#drafts), the quests not ready to be taken yet,
+loose or in a draft epic. A completed quest always counts, wherever it was
+filed, since it is never a draft. Three places count drafts, each apart from
+the rest: the cumulative flow draws them as a **Draft** band, the Backlog tab
+counts them as **Drafts** beside **Open quests** and in none of its open
+figures, and an epic's burn-up counts them in its scope.
 
 | Figure                 | Counts                                                 | Divides by or notes                                                                       |
 | ---------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | **Throughput**         | Quests completed in the period                         |                                                                                           |
 | **Cycle time**         | Median time from accepted to completed                 | Hold time is taken out                                                                    |
-| **Lead time**          | Median time from created to completed                  | Hold time stays: the requester waited                                                     |
+| **Lead time**          | Median time from ready to completed                    | Hold time stays: the requester waited                                                     |
 | **WIP**                | Quests accepted and not completed, now                 | Held quests are left out                                                                  |
 | **Net growth**         | Created minus completed                                |                                                                                           |
 | **Waived**             | Objectives waived                                      | Objectives decided, on completed quests                                                   |
@@ -78,6 +83,13 @@ quests of a draft epic. A completed quest always counts, wherever it was filed.
 | **Time to restore**    | Median time from an incident starting to it ending     | From monitors                                                                             |
 | **Uptime**             | Monitor time outside an incident                       | The period                                                                                |
 
+**The clock starts when a quest is ready.** Lead time runs from the moment a
+quest stopped being a draft, or from its creation if it never was one: a draft
+is not waiting on anyone, so the time it spent as one is not counted. Cycle
+time and aging start when the quest is accepted, which a draft never is. A
+quest drafted again after it was ready counts from the last time it was marked
+ready.
+
 A median and a p85 go together: half the work took less than the first, and
 85% less than the second, so one slow quest moves neither much.
 
@@ -86,7 +98,9 @@ to the project.
 
 **Past states are rebuilt.** The cumulative flow is exact from the day Lore
 began taking nightly snapshots of the project. For earlier days it is
-reconstructed from timestamps and quest history.
+reconstructed from timestamps and quest history. Its bands are **Draft**, To
+do, In progress, On hold and Done; snapshots taken before drafts were counted
+show no Draft band.
 
 **The forecast is a simulation:** a Monte Carlo over the last twelve weeks of
 the project's throughput, not of the release. Half the simulated futures finish

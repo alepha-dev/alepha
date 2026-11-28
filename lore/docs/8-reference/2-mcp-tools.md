@@ -43,8 +43,8 @@ them.
   machine, and the `prompt_*` tools and `agent_hosts`, which need `prompts`
   for reads too. See [Capabilities](/lore/docs/project-capabilities).
 - **Lists are paged** on the tools that say so. `feedback_list` answers at most
-  50 rows and `hasMore`, and `quest_list` hides shelved quests and draft epics'
-  quests unless asked.
+  50 rows and `hasMore`, and `quest_list` leaves drafts and shelved quests out
+  unless `status` names them.
 - **Attachments move no bytes.** `quest_attachment_add`,
   `folio_attachment_add` and `usecase_run_attachment_add` check the target and
   answer a `lore attachments push` command to run in a shell.
@@ -99,12 +99,14 @@ See [Quests](/lore/docs/plan-quests).
 
 | Tool                     | What it does                                                                                                            |
 | ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `quest_list`             | List and filter quests, newest-updated first.                                                                           |
+| `quest_list`             | List and filter quests, newest-updated first. `status: "draft"` lists the drafts.                                       |
 | `quest_get`              | One quest with its objectives and discussion.                                                                           |
-| `quest_create`           | File a quest. `accept: true` takes it in the same call.                                                                 |
+| `quest_create`           | File a quest. `accept: true` takes it in the same call, `draft: true` files it as a draft.                              |
 | `quest_update`           | Change a quest. A completed quest freezes its title, description and objectives.                                        |
 | `quest_delete`           | Delete a quest. Refused inside an epic that has started.                                                                |
-| `quest_accept`           | Take a quest and start it.                                                                                              |
+| `quest_accept`           | Take a quest and start it. A draft is refused, with how to make it ready.                                               |
+| `quest_ready`            | Mark a draft in no epic ready: it becomes to do. An epic's quests become ready with their epic.                         |
+| `quest_draft`            | Mark a to-do quest in no epic as a draft. An epic's quests follow their epic.                                           |
 | `quest_unassign`         | Send an accepted quest back to the backlog.                                                                             |
 | `quest_reminder_set`     | Set or clear your reminder on a quest you hold.                                                                         |
 | `quest_objective_set`    | Tick or untick one objective.                                                                                           |
@@ -114,7 +116,7 @@ See [Quests](/lore/docs/plan-quests).
 | `quest_hold`             | Put a quest on hold, with a required reason posted as a comment, and an optional `until` date when it lifts on its own. |
 | `quest_unhold`           | Lift a hold, back to whatever it was before.                                                                            |
 | `quest_shelve`           | Set a to-do quest aside without deleting it.                                                                            |
-| `quest_unshelve`         | Bring a shelved quest back as to do.                                                                                    |
+| `quest_unshelve`         | Bring a shelved quest back as to do, or as a draft if it was one.                                                       |
 | `quest_comment_add`      | Comment on a quest, marked as written by an agent.                                                                      |
 | `quest_tags`             | Every tag in use in the project.                                                                                        |
 | `area_delete`            | Delete an empty area by its exact name; one holding quests is refused.                                                  |
@@ -131,7 +133,7 @@ See [Epics](/lore/docs/plan-epics).
 | `epic_get`              | One epic, with its progress, pull requests, folios and review log.              |
 | `epic_create`           | Create an epic, as a draft.                                                     |
 | `epic_update`           | Change its title, description or predecessor, in any status.                    |
-| `epic_set_status`       | Move an epic between `draft` and `ready`.                                       |
+| `epic_set_status`       | Move an epic between `draft` and `ready`, and its quests nobody took with it.   |
 | `epic_shelve`           | Set a whole plan aside, with its open quests.                                   |
 | `epic_unshelve`         | Bring it back, with only the quests it set aside.                               |
 | `epic_delete`           | Delete it and its quests: draft, ready, or shelved with none done. Folios stay. |

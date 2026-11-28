@@ -21,7 +21,8 @@ An epic's page is split into tabs:
 
 - **Overview**: its description.
 - **Quests**: the quests in it.
-- **Flow**: a map of how those quests depend on each other.
+- **Flow**: a map of how those quests depend on each other. A draft is drawn
+  as **Draft**, and the quests waiting on it as waiting.
 - **Review**: the blockers, questions and decisions of its reviews (see
   [Reviewing an epic](#reviewing-an-epic)).
 - **Folios**: the [folios](/lore/docs/remember-folios) filed under it, such as
@@ -43,26 +44,40 @@ and the areas it touches. An epic is written `#E4`, and `[[#E4]]` links to it fr
 
 ## The statuses
 
-An epic's status decides what can be done with everything inside it. You set
-the first two; the next two follow from the work.
+An epic's status decides what can be done with everything inside it, and
+what its quests are. You set the first two; the next two follow from the work.
 
-| Status          | How it gets there                                             | What it means                                                           |
-| --------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| **Draft**       | Every new epic.                                               | The plan is being written. Nothing in it can be started.                |
-| **Ready**       | You click **Mark as ready**.                                  | The plan is done. Its quests are in the backlog, open to anyone.        |
-| **In progress** | On its own, when its first quest is accepted or assigned.     | Work has started. The list of quests is frozen.                         |
-| **Completed**   | On its own, when its last open quest is completed or shelved. | Final. Nothing reopens.                                                 |
-| **Shelved**     | You click **Shelve**.                                         | The whole plan is set aside. See [Shelving an epic](#shelving-an-epic). |
+| Status          | How it gets there                                             | What it means                                                           | Its quests                                                                     |
+| --------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Draft**       | Every new epic.                                               | The plan is being written. Nothing in it can be started.                | Every one nobody has taken is a **Draft**.                                     |
+| **Ready**       | You click **Mark as ready**.                                  | The plan is done, and can still be edited.                              | Its drafts are **To do**, open to anyone.                                      |
+| **In progress** | On its own, when its first quest is accepted or assigned.     | Work has started. The list of quests is frozen.                         | Worked one by one, with the usual [statuses](/lore/docs/plan-quests#statuses). |
+| **Completed**   | On its own, when its last open quest is completed or shelved. | Final. Nothing reopens.                                                 | Completed or shelved.                                                          |
+| **Shelved**     | You click **Shelve**.                                         | The whole plan is set aside. See [Shelving an epic](#shelving-an-epic). | Its open ones are shelved with it.                                             |
 
 **Draft.** Quests are filed into the epic, moved in and out, reworded, shelved
-and brought back, and the whole plan can be deleted. A draft epic's quests stay
-out of the Quests list, the board and the reports: the epic's own page is where
-you read them.
+and brought back, and the whole plan can be deleted. Its quests are
+[drafts](/lore/docs/plan-quests#drafts): listed, and nobody can accept one or
+be assigned it. The epic's **Quests** tab shows them all; so does the Quests
+page when its Status filter names **Draft** or its Epic filter names the
+epic, and so does the board's **Draft** column. The default views, the counts and
+the reports leave them out, as they leave out every draft. A shelved or held
+quest of a draft epic reads **Shelved** or **On hold**, and is a draft again
+when it comes back.
 
-**Ready.** The quests join the backlog, and the plan can still be edited. An
-epic goes **Back to draft** as long as nobody has started it. **Mark as ready**
-asks first, because it changes what everyone else sees in the backlog, and the
-first accept after it freezes the plan.
+**Ready.** Every draft of the epic becomes **To do** at once, open to anyone,
+and the plan can still be edited. An epic goes **Back to draft** as long as
+nobody has started it, and its quests nobody took are drafts again. **Mark as
+ready** asks first, because it changes what everyone else sees in the
+backlog, and the first accept after it freezes the plan. Dropping one of the
+epic's drafts on the board's To do column offers the same move.
+
+A quest follows the epic it is in. Filed into a draft epic, a quest nobody has
+taken becomes a draft; filed into a ready one, a draft becomes To do. A quest
+detached from a draft epic stays a draft, now in no epic, except a held one,
+which comes back To do when its hold lifts. A quest's own **Mark as ready** and
+**Mark as draft** are for quests in no epic: inside one, the epic decides for
+all of them, never for one alone.
 
 **In progress.** Quests are accepted, completed, shelved and unassigned, but no
 quest enters, none leaves, and none is deleted. The page no longer offers
@@ -131,11 +146,12 @@ A shelved epic is not completed. An epic that depends on it stays blocked, and
 nothing inside it can be accepted, completed, moved in or out, or deleted until
 it comes back.
 
-**Unshelve** brings back exactly the quests the shelve set aside, as to do and
-unassigned. A quest that was shelved on its own before stays shelved. The epic
-returns to in progress if work on it had started, and to draft otherwise, a
-shelved ready epic included: a plan back from the shelf is reviewed again, and
-its quests are workable once you mark it ready.
+**Unshelve** brings back exactly the quests the shelve set aside, unassigned.
+A quest that was shelved on its own before stays shelved. The epic returns to
+in progress if work on it had started, with its quests to do, and to draft
+otherwise, a shelved ready epic included, with its quests drafts: a plan back
+from the shelf is reviewed again, and its quests are workable once you mark it
+ready.
 
 Shelving one quest at a time is still how a single piece of work is declined.
 Shelving them all that way completes an in-progress epic, which says the work
@@ -222,7 +238,8 @@ Over MCP the same rules apply, and every refusal is a sentence that names the
 epic, so an agent knows what happened.
 
 - `epic_create` opens a draft, and `quest_create` with `epic_number` files
-  quests into it.
+  quests into it, as drafts. `quest_create` with `draft: true` into a ready
+  epic is refused, since the epic's status decides.
 - `epic_set_status` takes `ready` or `draft` and nothing else. Whether a plan
   is done is the owner's call, so an agent refused because an epic is a draft
   says so rather than marking it ready itself.
@@ -236,9 +253,10 @@ epic, so an agent knows what happened.
   quest of the epic with none of its own shows it. `epic_get` returns them, and
   `quest_get` returns them as `epicPullRequests` on such a quest.
 
-`quest_list` hides a draft epic's quests, as the Quests page does. Pass the
-epic's id as `epic` to read one epic's quests whatever its status, or
-`includeDrafts: true` to see everything. The full list is in
+`quest_list` leaves drafts out, as the Quests page does: `status: "draft"`
+lists them, and the epic's id as `epic` reads one epic's quests whatever their
+status, drafts included. `quest_ready` and `quest_draft` refuse a quest in an
+epic, with a sentence naming the epic. The full list is in
 [MCP tools](/lore/docs/reference-mcp-tools).
 
 Going the other way, an epic can hand itself to an agent from the browser:
