@@ -2,8 +2,8 @@
  * The prompts the assistant offers on a page, keyed by route (#Q3585).
  *
  * The panel's empty state used to offer the same three prompts everywhere,
- * an epic one on Reports included, while its subtitle says "Ask anything
- * about this page". Each module registers the suggestions of its own pages
+ * an epic one on Reports included, while it promised help with "this
+ * page". Each module registers the suggestions of its own pages
  * here, from its shell service at boot, so a new page adds its prompts where
  * it lives rather than in a switch in the panel. Core registers its own
  * (Reports) the same way.

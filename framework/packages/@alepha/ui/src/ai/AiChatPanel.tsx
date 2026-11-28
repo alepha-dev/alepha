@@ -7,11 +7,18 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { type ComponentType, type ReactNode, useEffect, useRef } from "react";
+import {
+  type ComponentType,
+  type HTMLAttributes,
+  type ReactNode,
+  useEffect,
+  useRef,
+} from "react";
 
 import { Alert, AlertDescription } from "../core/Alert.tsx";
 import { Button } from "../core/Button.tsx";
 import { Spinner } from "../core/Spinner.tsx";
+import { cn } from "../core/utils.ts";
 import {
   type MarkdownLinkRenderer,
   MarkdownView,
@@ -44,6 +51,25 @@ export interface AiChatViewProps {
    * A second line under the title, quieter: the model that answers, say.
    */
   subtitle?: string;
+  /**
+   * The mark beside the title, and on the minimized pill: the app's own
+   * agent, say. Defaults to a sparkle.
+   */
+  icon?: ReactNode;
+  /**
+   * What a new conversation opens on, above the suggestions, in place of the
+   * default sparkle and "What do you want to do?". The suggestions stay.
+   */
+  emptyHero?: ReactNode;
+  /**
+   * The composer's placeholder. Defaults to "Ask the assistant".
+   */
+  placeholder?: string;
+  /**
+   * Focus the composer when the panel opens, or comes back from the pill.
+   * Default true. Never on a touch screen, where it would open the keyboard.
+   */
+  focusOnOpen?: boolean;
   /**
    * The app's own controls in the panel's header, before the history menu:
    * a link to the assistant's help page, say.
@@ -105,6 +131,11 @@ export interface AiChatPanelProps extends AiChatViewProps {
    * names its dialog with it). Defaults to a heading.
    */
   renderTitle?: (title: string, className: string) => ReactNode;
+  /**
+   * Spread on the header: a floating container makes it the handle the card
+   * is dragged by.
+   */
+  headerProps?: HTMLAttributes<HTMLDivElement>;
 }
 
 /**
@@ -143,8 +174,15 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
     <div data-testid="ai-chat" className="flex h-full min-h-0 w-full flex-col">
       {/* `h-14`, the height of `AppShell`'s header: docked beside a page, the
           two headers' bottom lines continue each other (#Q3584). */}
-      <div className="border-border flex h-14 shrink-0 items-center gap-2 border-b ps-4 pe-2.5">
-        <Sparkles className="text-primary size-4 shrink-0" />
+      <div
+        {...props.headerProps}
+        data-testid="ai-chat-header"
+        className={cn(
+          "border-border flex h-14 shrink-0 items-center gap-2 border-b ps-4 pe-2.5",
+          props.headerProps?.className,
+        )}
+      >
+        {props.icon ?? <Sparkles className="text-primary size-4 shrink-0" />}
         <div className="flex min-w-0 flex-1 flex-col">
           {props.renderTitle ? (
             props.renderTitle(title, titleClassName)
@@ -233,6 +271,7 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
       >
         {empty ? (
           <AiChatEmpty
+            hero={props.emptyHero}
             suggestions={props.suggestions}
             disabled={chat.loading}
             onPick={(prompt) => chat.send(prompt)}
@@ -311,6 +350,8 @@ export const AiChatPanel = (props: AiChatPanelProps) => {
         <AiChatComposer
           busy={busy}
           waiting={chat.pending?.kind === "confirm"}
+          placeholder={props.placeholder}
+          focusOnOpen={props.focusOnOpen !== false}
           onSend={(message) => chat.send(message)}
           onStop={() => chat.stop()}
         />

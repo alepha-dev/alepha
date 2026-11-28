@@ -18,6 +18,11 @@ export interface AiChatSuggestion {
 }
 
 export interface AiChatEmptyProps {
+  /**
+   * Shown in place of the default sparkle and sentences, above the
+   * suggestions.
+   */
+  hero?: ReactNode;
   suggestions?: AiChatSuggestion[];
   disabled?: boolean;
   onPick: (prompt: string) => void;
@@ -35,17 +40,25 @@ export const AiChatEmpty = (props: AiChatEmptyProps) => {
       data-testid="ai-chat-empty"
       className="mt-auto flex flex-col gap-3 pb-2"
     >
-      <div className="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-full">
-        <Sparkles className="size-4" />
-      </div>
-      <div className="flex flex-col gap-1">
-        <p className="text-base font-medium">
-          {tr("ai.chat.emptyTitle", { default: "What do you want to do?" })}
-        </p>
-        <p className="text-muted-foreground text-sm leading-relaxed">
-          {tr("ai.chat.empty", { default: "Ask anything about this page." })}
-        </p>
-      </div>
+      {props.hero ?? (
+        <>
+          <div className="bg-primary/10 text-primary flex size-9 items-center justify-center rounded-full">
+            <Sparkles className="size-4" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-base font-medium">
+              {tr("ai.chat.emptyTitle", {
+                default: "What do you want to do?",
+              })}
+            </p>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              {tr("ai.chat.empty", {
+                default: "Ask anything about this page.",
+              })}
+            </p>
+          </div>
+        </>
+      )}
       {props.suggestions && props.suggestions.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {props.suggestions.map((suggestion) => (

@@ -82,8 +82,8 @@ A project can also define its own agents, each with a name, an avatar, a
 playbook and a model: see [Chat agents](/lore/docs/project-chat-agents).
 
 To ask Lore something on your own, about the page you are on, open the
-[Assistant](/lore/docs/agents-assistant) from the sparkle button in the header
-instead.
+[Assistant](/lore/docs/agents-assistant) from the chat button in the header,
+**Talk to Lore**, instead.
 
 ## Notifications
 

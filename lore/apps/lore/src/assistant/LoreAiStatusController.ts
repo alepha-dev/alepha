@@ -8,9 +8,9 @@ import { LoreAiSwitch } from "./LoreAiSwitch.ts";
 
 /**
  * Whether the assistant answers on this copy, for the web: the header button
- * shows only when it does (#Q3207, #Q3211), and the panel names the model
- * that answers (#Q4269), the `api.ai` parameter's when one is saved
- * (#Q4383).
+ * shows only when it does (#Q3207, #Q3211). It also says which model answers,
+ * the `api.ai` parameter's when one is saved (#Q4383); the panel no longer
+ * shows it (#Q4562), the CLI and a script still may.
  */
 export class LoreAiStatusController {
   protected readonly assistantSwitch = $inject(LoreAiSwitch);

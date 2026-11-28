@@ -18,4 +18,5 @@ declare what it shows. Talks to `alepha/api/ai`.
 ### React Hooks
 
 - [`useAiChat`](/docs/reference-react-hooks-useaichat) - The state and actions of an assistant conversation, without any UI: what
+- [`useAiChatFloatDrag`](/docs/reference-react-hooks-useaichatfloatdrag) - Moves the floating assistant by its header, the way a chat
 - [`useAiContext`](/docs/reference-react-hooks-useaicontext) - Declare what the current page shows the assistant: a short `page` name,

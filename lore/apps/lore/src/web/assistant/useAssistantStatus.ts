@@ -16,16 +16,6 @@ export const useAssistantStatus = (): boolean => {
 };
 
 /**
- * The model that answers, for the panel's header (#Q4269): the last segment
- * of its id (`mistral-small-3.1-24b-instruct` for Workers AI's
- * `@cf/mistralai/...`), or none while loading or when the server names none.
- */
-export const useAssistantModel = (): string | undefined => {
-  const model = useAssistantStatusQuery().data?.model;
-  return model ? model.split("/").pop() : undefined;
-};
-
-/**
  * One `aiAssistantStatus` read, shared by the button and the panel.
  */
 const useAssistantStatusQuery = () => {

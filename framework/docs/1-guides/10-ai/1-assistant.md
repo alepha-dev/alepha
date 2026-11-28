@@ -356,6 +356,15 @@ const InvoicePage = (props: InvoicePageProps) => {
   drawer below. A dock renders into an `<AiChatDockSlot />` placed in your layout, which narrows
   the page to make room (`AppShell` takes one as `aside={<AiChatDockSlot />}`); without a slot it
   floats over the page's right edge.
+- `floating` is a card over the page's bottom corner, with no backdrop, that minimizes into the
+  same pill. Its header is a handle: drag it to move the card anywhere on the screen (it stays
+  inside it), and double click it to put the card back in its corner.
+- The panel speaks with your app's voice: `title` names it, `icon` replaces the sparkle beside the
+  title and on the pill, `emptyHero` replaces the sparkle and the two sentences a new conversation
+  opens on (the `suggestions` stay under it), and `placeholder` is the composer's prompt.
+- The composer takes the focus when the panel opens or comes back from the pill, so the reader
+  types at once. Not on a touch screen, where it would open the keyboard; `focusOnOpen={false}`
+  turns it off everywhere.
 - The header's full screen button, between minimize and close, opens the conversation in a dialog
   that fills the screen but for a small margin; its button again, Escape or the backdrop brings it
   back where it was.

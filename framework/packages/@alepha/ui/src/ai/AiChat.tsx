@@ -7,6 +7,7 @@ import { AiChatFloat } from "./AiChatFloat.tsx";
 import { AiChatLauncher } from "./AiChatLauncher.tsx";
 import { AiChatPanel, type AiChatViewProps } from "./AiChatPanel.tsx";
 import { type UseAiChatOptions, useAiChat } from "./useAiChat.ts";
+import { useAiChatFloatDrag } from "./useAiChatFloatDrag.ts";
 
 /**
  * Where the conversation sits.
@@ -91,6 +92,9 @@ export const AiChat = (props: AiChatProps) => {
   }, [props.open]);
 
   const [maximized, setMaximized] = useState(false);
+  // The floating card moves by its header (#Q4562); full screen and the
+  // dock stay where they are.
+  const drag = useAiChatFloatDrag();
 
   const close = () => {
     setMinimized(false);
@@ -126,27 +130,33 @@ export const AiChat = (props: AiChatProps) => {
   }
 
   if (docked || mode === "floating") {
-    const Container = docked ? AiChatDock : AiChatFloat;
     if (props.open) {
-      return (
-        <Container>
-          <AiChatPanel
-            {...props}
-            chat={chat}
-            onClose={close}
-            onMinimize={() => {
-              setMinimized(true);
-              props.onOpenChange(false);
-            }}
-            onMaximize={toggleMaximized}
-          />
-        </Container>
+      const panel = (
+        <AiChatPanel
+          {...props}
+          chat={chat}
+          headerProps={docked ? undefined : drag.headerProps}
+          onClose={close}
+          onMinimize={() => {
+            setMinimized(true);
+            props.onOpenChange(false);
+          }}
+          onMaximize={toggleMaximized}
+        />
+      );
+      return docked ? (
+        <AiChatDock>{panel}</AiChatDock>
+      ) : (
+        <AiChatFloat style={drag.style} title={props.title}>
+          {panel}
+        </AiChatFloat>
       );
     }
     return minimized ? (
       <AiChatLauncher
         chat={chat}
         title={props.title}
+        icon={props.icon}
         onRestore={() => props.onOpenChange(true)}
       />
     ) : null;
