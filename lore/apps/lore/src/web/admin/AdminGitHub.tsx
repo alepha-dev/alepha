@@ -9,6 +9,7 @@ import { GitPullRequest } from "lucide-react";
 import { useEffect, useRef } from "react";
 
 import AdminGitHubApp from "./AdminGitHubApp.tsx";
+import AdminGitHubDeliveries from "./AdminGitHubDeliveries.tsx";
 import { adminGitHubManifestFormSchema } from "./adminGitHubManifestFormSchema.ts";
 
 /**
@@ -119,7 +120,10 @@ const AdminGitHub = () => {
     <AdminPage>
       <div className="flex max-w-3xl flex-col gap-4" data-testid="admin-github">
         {app?.configured ? (
-          <AdminGitHubApp app={app} onRemove={() => remove.run()} />
+          <>
+            <AdminGitHubApp app={app} onRemove={() => remove.run()} />
+            <AdminGitHubDeliveries />
+          </>
         ) : (
           <Card>
             <CardHeader>

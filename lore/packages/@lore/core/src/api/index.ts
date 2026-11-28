@@ -57,6 +57,7 @@ import { OrganizationHooks } from "./hooks/OrganizationHooks.ts";
 import { UserDeletionHook } from "./hooks/UserDeletionHook.ts";
 import { UserDockHooks } from "./hooks/UserDockHooks.ts";
 import { DefaultRankJobs } from "./jobs/DefaultRankJobs.ts";
+import { GitHubDeliveryJobs } from "./jobs/GitHubDeliveryJobs.ts";
 import { HostCommandJobs } from "./jobs/HostCommandJobs.ts";
 import { HostExpiryJobs } from "./jobs/HostExpiryJobs.ts";
 import { HostJobJobs } from "./jobs/HostJobJobs.ts";
@@ -92,6 +93,7 @@ import { CommentService } from "./services/CommentService.ts";
 import { CommitReferenceRegistry } from "./services/CommitReferenceRegistry.ts";
 import { CoreBuckets } from "./services/CoreBuckets.ts";
 import { CoreDashboard } from "./services/CoreDashboard.ts";
+import { CoreGitHubHandlers } from "./services/CoreGitHubHandlers.ts";
 import { CoreProjectMerge } from "./services/CoreProjectMerge.ts";
 import { CoverageThreshold } from "./services/CoverageThreshold.ts";
 import { CredentialSealService } from "./services/CredentialSealService.ts";
@@ -102,7 +104,9 @@ import { DashboardScopeService } from "./services/DashboardScopeService.ts";
 import { DashboardSlotRegistry } from "./services/DashboardSlotRegistry.ts";
 import { DeliveryChangeRegistry } from "./services/DeliveryChangeRegistry.ts";
 import { GitHubAppService } from "./services/GitHubAppService.ts";
+import { GitHubDeliveryService } from "./services/GitHubDeliveryService.ts";
 import { GitHubStateService } from "./services/GitHubStateService.ts";
+import { GitHubWebhookHandlers } from "./services/GitHubWebhookHandlers.ts";
 import { HostAnchorHooks } from "./services/HostAnchorHooks.ts";
 import { HostCommandHandlerRegistry } from "./services/HostCommandHandlerRegistry.ts";
 import { HostCommandService } from "./services/HostCommandService.ts";
@@ -411,6 +415,12 @@ export const LoreCoreApi = $module({
     // A project's repository (#Q4362).
     ProjectRepositoryService,
     ProjectGitHubController,
+    // Deliveries: stored, handled by the events packages register, swept
+    // and redelivered (#Q4364). Core's own handlers keep connections in step.
+    GitHubWebhookHandlers,
+    GitHubDeliveryService,
+    GitHubDeliveryJobs,
+    CoreGitHubHandlers,
     // Job keys (#Q3995): the credential a host job holds, its pins checked on
     // every MCP call and git request it makes. Registers the port's issuer.
     JobKeyService,
@@ -579,7 +589,17 @@ export {
   type GitHubAuth,
   type GitHubRepository,
 } from "./services/GitHubClient.ts";
+export {
+  GitHubDeliveryService,
+  type GitHubStoreAnswer,
+} from "./services/GitHubDeliveryService.ts";
 export { GitHubKeyFormat } from "./services/GitHubKeyFormat.ts";
+export { GitHubText } from "./services/GitHubText.ts";
+export {
+  GitHubWebhookHandlers,
+  type GitHubWebhookContext,
+  type GitHubWebhookHandler,
+} from "./services/GitHubWebhookHandlers.ts";
 export {
   GitHubTokenService,
   type GitHubBotIdentity,

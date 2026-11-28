@@ -1,5 +1,11 @@
 import { $inject, z } from "alepha";
-import { $action, readRawBody, UnauthorizedError } from "alepha/server";
+import {
+  $action,
+  BadRequestError,
+  readRawBody,
+  TooManyRequestsError,
+  UnauthorizedError,
+} from "alepha/server";
 
 import { GitHubWebhookReceiver } from "../services/GitHubWebhookReceiver.ts";
 
@@ -38,6 +44,14 @@ export class GitHubWebhookController {
       });
       if (answer === "unauthorized") {
         throw new UnauthorizedError("Bad signature");
+      }
+      if (answer === "invalid") {
+        throw new BadRequestError(
+          "Missing X-GitHub-Event or X-GitHub-Delivery",
+        );
+      }
+      if (answer === "limited") {
+        throw new TooManyRequestsError("Too many deliveries");
       }
       request.reply.status = answer === "accepted" ? 202 : 200;
       return { ok: true };
