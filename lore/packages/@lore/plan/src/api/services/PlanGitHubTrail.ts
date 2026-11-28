@@ -133,7 +133,10 @@ export class PlanGitHubTrail {
           trail,
           record.url,
           by,
-          { silent: change.silent === true },
+          {
+            silent: change.silent === true,
+            outside: this.states.outside(change.row),
+          },
         );
       }
     }
@@ -158,7 +161,10 @@ export class PlanGitHubTrail {
           trail,
           record.url,
           by,
-          { silent: change.silent === true },
+          {
+            silent: change.silent === true,
+            outside: this.states.outside(change.row),
+          },
         );
       }
     }

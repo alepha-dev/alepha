@@ -4,11 +4,17 @@ import {
   GitHubDeliveryService,
   GitHubTransport,
   GitHubWebhookSignature,
+  ProjectEventCatalogService,
   projectEvents,
   PullRequestController,
   PullRequestStateService,
 } from "@lore/core/api";
-import { projectRepositories, pullRequests } from "@lore/core/schemas";
+import {
+  githubDeliveries,
+  jobKeys,
+  projectRepositories,
+  pullRequests,
+} from "@lore/core/schemas";
 import { MemoryGitHubTransport } from "@lore/core/testing";
 import { QuestController } from "@lore/plan/api";
 import { quests } from "@lore/plan/schemas";
@@ -17,7 +23,7 @@ import { AlephaApiUsers } from "alepha/api/users";
 import { AlephaEmail } from "alepha/email";
 import { AlephaMcp } from "alepha/mcp";
 import { $repository, AlephaOrm } from "alepha/orm";
-import { AlephaSecurity } from "alepha/security";
+import { AlephaSecurity, currentUserAtom } from "alepha/security";
 import { AlephaServer, NodeHttpServerProvider } from "alepha/server";
 import { describe, it } from "vitest";
 
@@ -30,6 +36,8 @@ import {
 } from "./fixtures/entities.ts";
 
 class Rows {
+  deliveries = $repository(githubDeliveries);
+  keys = $repository(jobKeys);
   repositories = $repository(projectRepositories);
   pullRequests = $repository(pullRequests);
   quests = $repository(quests);
@@ -99,6 +107,23 @@ const setup = async () => {
   const quest12 = await createTestQuest(alepha, project, { shortId: 12 });
   const epic = await createTestEpic(alepha, project, { number: 3 });
 
+  // The team, by default: every author writes to the repository, and the
+  // App's bot is `lore-acme[bot]`. A case narrows it with its own route.
+  const github = alepha.inject(MemoryGitHubTransport);
+  github.on("POST", /^\/app\/installations\/7\/access_tokens$/, {
+    status: 201,
+    json: {
+      token: "ghs_team",
+      expires_at: "2099-01-01T00:00:00Z",
+      permissions: {},
+    },
+  });
+  github.on("GET", /^\/repos\/acme\/web\/collaborators\/([^/]+)\/permission$/, {
+    json: { permission: "write", role_name: "write" },
+  });
+  github.on("GET", /^\/users\/lore-acme\[bot\]$/, {
+    json: { id: 123456, login: "lore-acme[bot]" },
+  });
   const url = `${alepha.inject(NodeHttpServerProvider).hostname}/api/github/webhook`;
   const signer = alepha.inject(GitHubWebhookSignature);
   const states = alepha.inject(PullRequestStateService);
@@ -123,8 +148,15 @@ const setup = async () => {
     if (response.status !== 202) {
       throw new Error(`Delivery refused: ${response.status}`);
     }
-    // Handle it here rather than wait for the deferred task.
+    // Handle it here, or wait for the deferred task that claimed it.
     await alepha.inject(GitHubDeliveryService).handle(delivery);
+    for (let i = 0; i < 200; i++) {
+      const [row] = await rows.deliveries.findMany({
+        where: { id: { eq: delivery } },
+      });
+      if (row && row.status !== "pending" && row.status !== "handling") break;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
   };
   const pr = (over: Record<string, unknown> = {}) => ({
     id: 9001,
@@ -163,7 +195,7 @@ const setup = async () => {
     questOf,
     added,
     states,
-    github: alepha.inject(MemoryGitHubTransport),
+    github,
   };
 };
 
@@ -441,5 +473,300 @@ describe("pull requests from GitHub", () => {
     expect((await ctx.questOf(ctx.quest5.id))!.pullRequests).toHaveLength(1);
     expect((await ctx.questOf(ctx.quest7.id))!.pullRequests).toHaveLength(1);
     expect(await ctx.added()).toBe(0);
+  });
+});
+
+describe("pull request and CI events", () => {
+  const names = async (ctx: Awaited<ReturnType<typeof setup>>) =>
+    (
+      await ctx.rows.events.findMany({
+        where: { name: { startsWith: "pull_request." } },
+        orderBy: [{ column: "occurredAt", direction: "asc" }],
+      })
+    )
+      .map((it) => it.name)
+      .filter((it) => it !== "pull_request.added");
+
+  it("raises each transition once, never on a repeated delivery", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const head = "a".repeat(40);
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr({ draft: true }),
+    });
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr({ draft: true }),
+    });
+    await ctx.deliver("pull_request", {
+      action: "ready_for_review",
+      pull_request: ctx.pr(),
+    });
+    await ctx.deliver("pull_request", {
+      action: "review_requested",
+      pull_request: ctx.pr(),
+    });
+    await ctx.deliver("pull_request_review", {
+      action: "submitted",
+      review: { state: "APPROVED", author_association: "MEMBER" },
+      pull_request: ctx.pr(),
+    });
+    const suite = (conclusion: string) => ({
+      action: "completed",
+      check_suite: { id: 10, head_sha: head, status: "completed", conclusion },
+    });
+    await ctx.deliver("check_suite", suite("failure"));
+    await ctx.deliver("check_suite", suite("failure"));
+    await ctx.deliver("check_suite", suite("success"));
+    await ctx.deliver("pull_request", {
+      action: "closed",
+      pull_request: ctx.pr({ state: "closed", merged: true }),
+    });
+    expect(await names(ctx)).toEqual([
+      "pull_request.opened",
+      "pull_request.ready",
+      "pull_request.review_requested",
+      "pull_request.reviewed",
+      "pull_request.checks_failed",
+      "pull_request.checks_passed",
+      "pull_request.merged",
+    ]);
+    const [opened] = await ctx.rows.events.findMany({
+      where: { name: { eq: "pull_request.opened" } },
+    });
+    expect(opened.subjectId).toBe("118");
+    expect(opened.fields).toMatchObject({
+      number: 118,
+      quest_shortId: 5,
+      head_ref: "fix/login",
+      outside: false,
+    });
+  });
+
+  it("marks a pull request from outside the team, and a member's trust raises pull_request.trusted once", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    ctx.github.on("POST", /^\/app\/installations\/7\/access_tokens$/, {
+      status: 201,
+      json: {
+        token: "ghs_x",
+        expires_at: "2099-01-01T00:00:00Z",
+        permissions: {},
+      },
+    });
+    ctx.github.on(
+      "GET",
+      /^\/repos\/acme\/web\/collaborators\/([^/]+)\/permission$/,
+      {
+        json: { permission: "read", role_name: "read" },
+      },
+    );
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr(),
+    });
+    const [opened] = await ctx.rows.events.findMany({
+      where: { name: { eq: "pull_request.opened" } },
+    });
+    expect(opened.fields.outside).toBe(true);
+
+    const api = ctx.alepha.inject(PullRequestController);
+    const user = { id: ctx.project.createdBy!, roles: ["user"] };
+    const trusted = (
+      await api.trustPullRequest.fetch(
+        { params: { projectId: ctx.project.id, number: 118 } },
+        { user },
+      )
+    ).data;
+    expect(trusted).toMatchObject({ outside: false });
+    await api.trustPullRequest.fetch(
+      { params: { projectId: ctx.project.id, number: 118 } },
+      { user },
+    );
+    expect(
+      (await names(ctx)).filter((it) => it === "pull_request.trusted"),
+    ).toHaveLength(1);
+  });
+
+  it("raises workflow_run.failed on the default branch only", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    const run = (branch: string, conclusion: string) => ({
+      action: "completed",
+      workflow_run: {
+        id: Math.floor(Math.random() * 1e6),
+        name: "Verify",
+        conclusion,
+        head_branch: branch,
+        html_url: "https://github.com/acme/web/actions/runs/1",
+        head_sha: "a".repeat(40),
+      },
+    });
+    await ctx.deliver("workflow_run", run("feature", "failure"));
+    await ctx.deliver("workflow_run", run("main", "success"));
+    await ctx.deliver("workflow_run", run("main", "failure"));
+    const failed = await ctx.rows.events.findMany({
+      where: { name: { eq: "workflow_run.failed" } },
+    });
+    expect(failed).toHaveLength(1);
+    expect(failed[0].fields).toMatchObject({
+      branch: "main",
+      workflow: "Verify",
+    });
+  });
+
+  it("holds what it cannot place: an unread permission is outside, and so is the quest it names", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    ctx.github.on(
+      "GET",
+      /^\/repos\/acme\/web\/collaborators\/([^/]+)\/permission$/,
+      { status: 502, json: { message: "Bad gateway" } },
+    );
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr(),
+    });
+    const events = await ctx.rows.events.findMany({
+      where: {
+        name: { inArray: ["pull_request.opened", "pull_request.added"] },
+      },
+    });
+    expect(
+      events
+        .map((it) => [it.name, it.fields.outside])
+        .sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    ).toEqual([
+      ["pull_request.added", true],
+      ["pull_request.opened", true],
+    ]);
+    // GitHub answers on the next delivery: the permission is read again.
+    ctx.github.on(
+      "GET",
+      /^\/repos\/acme\/web\/collaborators\/([^/]+)\/permission$/,
+      { json: { permission: "write" } },
+    );
+    await ctx.deliver("pull_request", {
+      action: "edited",
+      pull_request: ctx.pr(),
+    });
+    expect((await ctx.row())!.authorPermission).toBe("write");
+  });
+
+  it("moves the review only on a review by someone with a say on the repository", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr(),
+    });
+    await ctx.deliver("pull_request_review", {
+      action: "submitted",
+      review: { state: "APPROVED", author_association: "NONE" },
+      pull_request: ctx.pr(),
+    });
+    expect((await ctx.row())!.review).toBe("none");
+    await ctx.deliver("pull_request_review", {
+      action: "submitted",
+      review: { state: "APPROVED", author_association: "COLLABORATOR" },
+      pull_request: ctx.pr(),
+    });
+    expect((await ctx.row())!.review).toBe("approved");
+  });
+
+  it("never takes a fork's branch or a fork's run for the repository's own", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr({
+        title: "Some change",
+        head: {
+          ref: "lore/q7",
+          label: "stranger:lore/q7",
+          sha: "b".repeat(40),
+          repo: { id: 999, full_name: "stranger/web" },
+        },
+      }),
+    });
+    expect((await ctx.row())!.headRef).toBe("stranger:lore/q7");
+    expect((await ctx.questOf(ctx.quest7.id))!.pullRequests ?? []).toEqual([]);
+    await ctx.deliver("workflow_run", {
+      action: "completed",
+      workflow_run: {
+        id: 77,
+        name: "Verify",
+        conclusion: "failure",
+        head_branch: "main",
+        head_repository: { id: 999 },
+        html_url: "https://github.com/acme/web/actions/runs/77",
+        head_sha: "b".repeat(40),
+      },
+    });
+    expect(
+      await ctx.rows.events.findMany({
+        where: { name: { eq: "workflow_run.failed" } },
+      }),
+    ).toHaveLength(0);
+  });
+
+  it("refuses an agent job's key the trust of a pull request", async ({
+    expect,
+  }) => {
+    const ctx = await setup();
+    await ctx.deliver("pull_request", {
+      action: "opened",
+      pull_request: ctx.pr(),
+    });
+    const apiKeyId = crypto.randomUUID();
+    await ctx.rows.keys.create({
+      apiKeyId,
+      jobId: crypto.randomUUID(),
+      projectId: ctx.project.id,
+      userId: ctx.project.createdBy!,
+      expiresAt: new Date(Date.now() + 60_000).toISOString(),
+    });
+    const job = {
+      id: ctx.project.createdBy!,
+      roles: ["user"],
+      credential: { type: "api-key", id: apiKeyId },
+    };
+    await expect(
+      ctx.alepha.context.run(() => {
+        ctx.alepha.store.set(currentUserAtom, job as never);
+        ctx.alepha.store.set("alepha.http.request", { user: job } as never);
+        return ctx.alepha.inject(PullRequestController).trustPullRequest({
+          params: { projectId: ctx.project.id, number: 118 },
+        });
+      }),
+    ).rejects.toThrow("An agent job cannot trust");
+  });
+
+  it("lists the events only for a connected project", async ({ expect }) => {
+    const ctx = await setup();
+    const catalog = ctx.alepha.inject(ProjectEventCatalogService);
+    const listed = async () =>
+      (await catalog.describe(ctx.project.id)).map((it) => it.name);
+    expect(await listed()).toEqual(
+      expect.arrayContaining([
+        "pull_request.opened",
+        "pull_request.checks_failed",
+        "workflow_run.failed",
+        "pull_request.added",
+      ]),
+    );
+    await ctx.rows.repositories.deleteMany({});
+    const after = await listed();
+    expect(after).not.toContain("pull_request.opened");
+    expect(after).not.toContain("workflow_run.failed");
+    // Recorded on a quest by hand: not GitHub's, so it stays.
+    expect(after).toContain("pull_request.added");
   });
 });

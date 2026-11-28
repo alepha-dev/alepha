@@ -144,12 +144,22 @@ describe.skipIf(onPostgres)("Project events", () => {
       "prompt.ceiling.reached",
       "prompt.disabled",
       "pull_request.added",
+      "pull_request.checks_failed",
+      "pull_request.checks_passed",
+      "pull_request.closed",
+      "pull_request.merged",
+      "pull_request.opened",
+      "pull_request.ready",
+      "pull_request.review_requested",
+      "pull_request.reviewed",
+      "pull_request.trusted",
       "quest.assigned",
       "quest.completed",
       "quest.created",
       "quest.held",
       "quest.reminder_due",
       "release.published",
+      "workflow_run.failed",
     ]);
     for (const event of catalog) {
       expect(event.permission).toMatch(/^[a-z]+:read$/);

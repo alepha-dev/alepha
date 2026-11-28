@@ -52,6 +52,8 @@ const ALIASES: Record<string, string> = {
   // One hyphenated verb each, as `lore prompt pause-all` (#Q4282).
   prompt_pause_all: "prompt pause-all",
   prompt_resume_all: "prompt resume-all",
+  // One hyphenated subject, as `quest pull-request add` (#Q4368).
+  pull_request_trust: "pull-request trust",
 };
 
 const GAPS: string[] = [];

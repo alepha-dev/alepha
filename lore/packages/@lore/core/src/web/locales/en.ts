@@ -120,6 +120,22 @@ export default {
   "notifications.resource.prompts": "Prompts",
   "notifications.event.epic.created": "Epic created",
   "notifications.event.epic.ready": "Epic marked ready",
+  "notifications.event.pull_request.opened": "Pull request opened on GitHub",
+  "notifications.event.pull_request.ready": "Pull request ready for review",
+  "notifications.event.pull_request.merged": "Pull request merged",
+  "notifications.event.pull_request.closed": "Pull request closed unmerged",
+  "notifications.event.pull_request.review_requested":
+    "Pull request review requested",
+  "notifications.event.pull_request.reviewed": "Pull request reviewed",
+  "notifications.event.pull_request.checks_failed":
+    "Pull request checks failed",
+  "notifications.event.pull_request.checks_passed":
+    "Pull request checks passed",
+  "notifications.event.pull_request.trusted": "Pull request trusted",
+  "notifications.event.workflow_run.failed":
+    "Workflow run failed on the default branch",
+  "pullRequest.trust": "Trust",
+  "pullRequest.outside": "Outside the team",
   "notifications.event.pull_request.added": "Pull request added",
   "notifications.event.agent.job.succeeded": "Agent job succeeded",
   "notifications.event.agent.job.failed": "Agent job failed",

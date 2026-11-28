@@ -149,6 +149,31 @@ describe("prompt triggers", () => {
     );
   });
 
+  it("starts nothing for an event from outside the team until it is trusted (#Q4368)", async ({
+    expect,
+  }) => {
+    await set("triage", { on: "event:feedback.created", settleSeconds: 0 });
+    const triggers = w.alepha.inject(PromptTriggers);
+    const event = (outside: boolean) => ({
+      id: crypto.randomUUID(),
+      projectId: w.projectId,
+      name: "feedback.created",
+      subjectKind: "feedback",
+      fields: {
+        project: "p",
+        title: "t",
+        ...(outside ? { outside: true } : {}),
+      },
+      occurredAt: new Date().toISOString(),
+    });
+    await triggers.receive(event(true) as never);
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(0);
+    await triggers.receive(event(false) as never);
+    await w.drain();
+    expect(await agentJobs()).toHaveLength(1);
+  });
+
   it("starts a prompt without args at once with no settle window, and queues a burst during its run as one follow-up", async ({
     expect,
   }) => {

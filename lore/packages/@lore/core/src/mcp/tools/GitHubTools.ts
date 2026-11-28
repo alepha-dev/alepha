@@ -2,8 +2,10 @@ import { $inject, z } from "alepha";
 import { $tool } from "alepha/mcp";
 
 import { ProjectGitHubController } from "../../api/controllers/ProjectGitHubController.ts";
+import { PullRequestController } from "../../api/controllers/PullRequestController.ts";
 import { projectGitHubConnectionSchema } from "../../api/schemas/projectGitHubConnectionSchema.ts";
 import { projectGitHubStatusSchema } from "../../api/schemas/projectGitHubStatusSchema.ts";
+import { pullRequestStateSchema } from "../../api/schemas/pullRequestStateSchema.ts";
 import { githubConnectParamsSchema } from "../schemas/githubConnectParamsSchema.ts";
 import { projectParamsSchema } from "../schemas/projectParamsSchema.ts";
 import { ProjectTools } from "./ProjectTools.ts";
@@ -15,6 +17,7 @@ import { ProjectTools } from "./ProjectTools.ts";
 export class GitHubTools {
   protected readonly github = $inject(ProjectGitHubController);
   protected readonly projects = $inject(ProjectTools);
+  protected readonly pullRequests = $inject(PullRequestController);
 
   github_status = $tool({
     title: "Read GitHub connection",
@@ -94,6 +97,30 @@ export class GitHubTools {
       );
       return await this.github.disconnectProjectGitHub({
         params: { projectId },
+      });
+    },
+  });
+
+  pull_request_trust = $tool({
+    title: "Trust a pull request",
+    description:
+      "Trust a pull request from outside the team (its author lacks write on the repository), by its number, so prompt triggers act on it: until then its events notify but start no agent job. Needs quest:update. Read what it changes first: trusting lets an agent act on text a stranger wrote.",
+    annotations: { readOnlyHint: false, idempotentHint: true },
+    schema: {
+      params: projectParamsSchema
+        .extend({
+          number: z.integer().min(1).describe("The pull request's number."),
+        })
+        .strict(),
+      result: pullRequestStateSchema,
+    },
+    handler: async ({ params }) => {
+      const projectId = await this.projects.resolveProjectId(
+        params.project,
+        params.project_name,
+      );
+      return await this.pullRequests.trustPullRequest({
+        params: { projectId, number: params.number },
       });
     },
   });
