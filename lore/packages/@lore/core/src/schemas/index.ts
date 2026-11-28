@@ -164,6 +164,31 @@ export {
   renderPromptTemplate,
 } from "../api/schemas/renderPromptTemplate.ts";
 export { jobKeys, type JobKey } from "../api/entities/jobKeys.ts";
+export { githubApps, type GitHubAppRow } from "../api/entities/githubApps.ts";
+export {
+  githubStates,
+  type GitHubState,
+} from "../api/entities/githubStates.ts";
+export {
+  githubAppStatusSchema,
+  type GitHubAppStatus,
+} from "../api/schemas/githubAppStatusSchema.ts";
+export {
+  githubManifestStartSchema,
+  type GitHubManifestStart,
+} from "../api/schemas/githubManifestStartSchema.ts";
+export {
+  githubManifestStartBodySchema,
+  type GitHubManifestStartBody,
+} from "../api/schemas/githubManifestStartBodySchema.ts";
+export {
+  githubManifestCompleteBodySchema,
+  type GitHubManifestCompleteBody,
+} from "../api/schemas/githubManifestCompleteBodySchema.ts";
+export {
+  githubAppRotateBodySchema,
+  type GitHubAppRotateBody,
+} from "../api/schemas/githubAppRotateBodySchema.ts";
 export { comments, type Comment } from "../api/entities/comments.ts";
 export {
   type CommentSource,
