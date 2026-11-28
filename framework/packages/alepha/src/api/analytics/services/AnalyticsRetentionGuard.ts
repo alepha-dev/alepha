@@ -4,6 +4,7 @@ import { $logger } from "alepha/logger";
 import { AnalyticsRollupJobs } from "../jobs/AnalyticsRollupJobs.ts";
 import { AnalyticsTiers } from "../planner/AnalyticsTiers.ts";
 import { $analytics } from "../primitives/$analytics.ts";
+import { $eventLog } from "../primitives/$eventLog.ts";
 
 /**
  * Warns at boot when a dataset declares `retention.hot` but nothing will
@@ -52,7 +53,8 @@ export class AnalyticsRetentionGuard {
     const withHot = this.alepha
       .primitives($analytics)
       .filter((primitive) => AnalyticsTiers.finestKeep(primitive.dataset));
-    if (withHot.length === 0) {
+    const logs = this.alepha.primitives($eventLog);
+    if (withHot.length === 0 && logs.length === 0) {
       return;
     }
 
@@ -62,6 +64,17 @@ export class AnalyticsRetentionGuard {
     if (this.alepha.services(AnalyticsRollupJobs).length > 0) {
       return;
     }
+
+    if (logs.length > 0) {
+      const names = logs.map((primitive) => primitive.eventLog.name).join(", ");
+      this.log.warn(
+        `Event log(s) [${names}] declare 'keep' but AlephaApiAnalyticsRollup is not ` +
+          "imported, so their rows are never deleted: the table(s) will grow forever. " +
+          "Import AlephaApiAnalyticsRollup (from 'alepha/api/analytics') alongside AlephaApiAnalytics " +
+          "to run the scheduled sweep.",
+      );
+    }
+    if (withHot.length === 0) return;
 
     const names = withHot.map((primitive) => primitive.dataset.name).join(", ");
     this.log.warn(

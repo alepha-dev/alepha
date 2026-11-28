@@ -4,13 +4,19 @@ import { MemoryDestinationProvider } from "alepha/logger";
 import { $entity, Repository, db, AlephaOrmTestPostgres } from "alepha/orm";
 import { describe, expect, it } from "vitest";
 
-import { $analytics, AlephaApiAnalytics } from "../index.workerd.ts";
+import {
+  $analytics,
+  AlephaApiAnalytics,
+  EventLogProvider,
+  OrmEventLogProvider,
+} from "../index.workerd.ts";
 import { AnalyticsSlotMap } from "../planner/AnalyticsSlotMap.ts";
 import { AnalyticsProvider } from "../providers/AnalyticsProvider.ts";
 import { OrmAnalyticsProvider } from "../providers/OrmAnalyticsProvider.ts";
 import { WaeAnalyticsProvider } from "../providers/WaeAnalyticsProvider.ts";
 import type { AnalyticsDataset } from "../schemas/analyticsDatasetSchema.ts";
 import type { AnalyticsQuery } from "../schemas/analyticsQuerySchema.ts";
+import type { AnalyticsEventLog } from "../schemas/eventLogSchema.ts";
 import { AdminAnalyticsService } from "../services/AdminAnalyticsService.ts";
 import { analyticsConformance } from "./analyticsConformance.ts";
 import { FakeAnalyticsEngine } from "./FakeAnalyticsEngine.ts";
@@ -1402,6 +1408,56 @@ describe("WaeAnalyticsProvider selection", () => {
     expect(alepha.inject(AnalyticsProvider)).toBeInstanceOf(
       WaeAnalyticsProvider,
     );
+  });
+
+  it("keeps event logs on the relational provider when Analytics Engine is selected", () => {
+    const alepha = Alepha.create({
+      env: {
+        NODE_ENV: "production",
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
+        DATABASE_URL: process.env.POSTGRES_TEST_URL,
+      },
+    }).with(AlephaApiAnalytics);
+
+    expect(alepha.inject(EventLogProvider)).toBeInstanceOf(OrmEventLogProvider);
+  });
+
+  it("appends and queries an event log beside Analytics Engine in the relational store, exact", async () => {
+    const log: AnalyticsEventLog = {
+      name: "wae_pageviews",
+      index: "appId",
+      schema: z.object({ appId: z.string(), sessionId: z.string() }),
+      keep: "90d",
+    };
+    const alepha = Alepha.create({
+      env: {
+        CLOUDFLARE_ANALYTICS_DATASET: DATASET_NAME,
+        CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
+        CLOUDFLARE_ANALYTICS_TOKEN: API_TOKEN,
+      },
+    }).with(AlephaOrmTestPostgres);
+    const provider = alepha.inject(TestWaeAnalyticsProvider);
+    alepha.set("cloudflare.env", { [BINDING_NAME]: provider.fakeEngine });
+    provider.register(dataset);
+    const events = alepha.inject(OrmEventLogProvider);
+    events.register(log);
+    await alepha.start();
+    try {
+      const at = Date.parse("2026-11-02T10:00:00Z");
+      await events.append(log, [
+        { at, appId: "a", sessionId: "s1" },
+        { at, appId: "a", sessionId: "s2" },
+        { at, appId: "a", sessionId: "s1" },
+      ]);
+      const result = await events.query(log, {
+        since: "2026-11-01",
+        select: { visitors: { distinct: "sessionId" } },
+      });
+      expect(result).toEqual({ rows: [{ visitors: 2 }], estimated: false });
+      expect(provider.fakeEngine.points).toHaveLength(0);
+    } finally {
+      await alepha.stop();
+    }
   });
 
   it("falls back to OrmAnalyticsProvider when no dataset is configured, so D1-only stays a valid deployment", () => {

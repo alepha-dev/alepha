@@ -108,3 +108,46 @@ describe("OrmEventLogProvider on D1", () => {
     );
   });
 });
+
+describe("OrmEventLogProvider.prune", () => {
+  const log: AnalyticsEventLog = {
+    name: "prune_pageviews",
+    index: "appId",
+    schema: z.object({ appId: z.string() }),
+    keep: "1d",
+  };
+
+  for (const [name, factory] of [
+    ["sqlite", sqlite(D1CeilingProvider)],
+    [
+      "postgres",
+      async (logs: AnalyticsEventLog[]) => {
+        const alepha = Alepha.create().with(AlephaOrmTestPostgres);
+        const provider = alepha.inject(OrmEventLogProvider);
+        for (const it of logs) provider.register(it);
+        await alepha.start();
+        return provider;
+      },
+    ],
+  ] as const) {
+    it(`deletes the oldest expired rows first, at most the limit (${name})`, async () => {
+      const provider = await factory([log]);
+      await provider.append(log, [
+        { at: 3, appId: "c" },
+        { at: 1, appId: "a" },
+        { at: 2, appId: "b" },
+        { at: 10, appId: "kept" },
+      ]);
+      expect(await provider.prune(log, 5, 2)).toBe(2);
+      const left = await provider.query(log, {
+        from: "1970-01-01T00:00:00Z",
+        groupBy: ["appId"],
+        select: { n: { count: "*" } },
+        orderBy: { key: "appId", direction: "asc" },
+      });
+      expect(left.rows.map((row) => row.appId)).toEqual(["c", "kept"]);
+      expect(await provider.prune(log, 5, 2)).toBe(1);
+      expect(await provider.prune(log, 5, 2)).toBe(0);
+    });
+  }
+});
