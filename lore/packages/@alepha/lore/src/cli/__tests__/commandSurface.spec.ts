@@ -103,6 +103,7 @@ describe("the Lore CLI command surface", () => {
       "subscription",
       "threshold",
       "usecase",
+      "workflow",
     ]);
   });
 
@@ -227,6 +228,7 @@ describe("the Lore CLI command surface", () => {
       commits: ["push"],
       github: ["status", "install", "connect", "disconnect", "app"],
       "pull-request": ["trust"],
+      workflow: ["list", "run", "rerun", "cancel"],
       persona: ["list", "get", "create", "update", "delete", "comment"],
       requirement: [
         "list",

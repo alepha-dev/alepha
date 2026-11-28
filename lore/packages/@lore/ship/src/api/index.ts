@@ -21,6 +21,7 @@ import { StackController } from "./controllers/StackController.ts";
 import { StackDeployController } from "./controllers/StackDeployController.ts";
 import { StackVariableController } from "./controllers/StackVariableController.ts";
 import { UptimePushController } from "./controllers/UptimePushController.ts";
+import { WorkflowController } from "./controllers/WorkflowController.ts";
 import { DeployJobs } from "./jobs/DeployJobs.ts";
 import { HostCredentialJobs } from "./jobs/HostCredentialJobs.ts";
 import { ProjectErrorJobs } from "./jobs/ProjectErrorJobs.ts";
@@ -96,6 +97,7 @@ import { UptimeLatencyMetric } from "./services/UptimeLatencyMetric.ts";
 import { UptimeMetric } from "./services/UptimeMetric.ts";
 import { UptimeSocketProber } from "./services/UptimeSocketProber.ts";
 import { WebVitalsMetric } from "./services/WebVitalsMetric.ts";
+import { WorkflowService } from "./services/WorkflowService.ts";
 
 /**
  * The server half of `@lore/ship`, Lore as Vercel: apps, telemetry (sigils, analytics, vitals, errors), deployments and hosts. Quality is core's since #Q4217.
@@ -194,6 +196,9 @@ export const LoreShipApi = $module({
     // A project's container registry credentials (#Q2693), sealed and opened
     // only to verify an image and inside a deploy of the same project.
     RegistryCredentialService,
+    // The connected repository's GitHub workflows (#Q4366): its
+    // `workflow_run` handler registers at start, so it is listed.
+    WorkflowService,
     StackComposeParser,
     StackTargets,
     StackBundleReader,
@@ -249,6 +254,7 @@ export const LoreShipApi = $module({
     StackVariableController,
     StackDeployController,
     RegistryCredentialController,
+    WorkflowController,
     SigilController,
     SigilIngestController,
     // The ingest route's refusal log: a hook, so at boot (#Q3404).
@@ -284,6 +290,7 @@ export { StackController } from "./controllers/StackController.ts";
 export { StackVariableController } from "./controllers/StackVariableController.ts";
 export { StackDeployController } from "./controllers/StackDeployController.ts";
 export { RegistryCredentialController } from "./controllers/RegistryCredentialController.ts";
+export { WorkflowController } from "./controllers/WorkflowController.ts";
 export { DeployAnalytics } from "./entities/deployAnalytics.ts";
 export { LiveQuestController } from "./controllers/LiveQuestController.ts";
 export { CommitQuestSetService } from "./services/CommitQuestSetService.ts";
@@ -298,6 +305,7 @@ export { StackConsoleService } from "./services/StackConsoleService.ts";
 export { StackDeployService } from "./services/StackDeployService.ts";
 export { StackService } from "./services/StackService.ts";
 export { RegistryCredentialService } from "./services/RegistryCredentialService.ts";
+export { WorkflowService } from "./services/WorkflowService.ts";
 export { StackTargets } from "./services/StackTargets.ts";
 export { StackVariableService } from "./services/StackVariableService.ts";
 export { AppSecretService } from "./services/AppSecretService.ts";

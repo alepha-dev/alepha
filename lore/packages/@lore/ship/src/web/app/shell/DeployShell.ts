@@ -14,7 +14,14 @@ import {
   AssistantSuggestionRegistry,
 } from "@lore/core/web";
 import { $inject } from "alepha";
-import { AppWindow, Bug, Layers, Package, Rocket } from "lucide-react";
+import {
+  AppWindow,
+  Bug,
+  Layers,
+  Package,
+  Rocket,
+  Workflow,
+} from "lucide-react";
 
 import { currentErrorCountAtom } from "../atoms/currentErrorCountAtom.ts";
 import { currentInstanceAtom } from "../atoms/currentInstanceAtom.ts";
@@ -85,6 +92,16 @@ export class DeployShell {
         option: "stacks",
         activeOn: (name) =>
           name === "projectStacks" || name === "projectStackEnvironment",
+      },
+      {
+        // The connected repository's GitHub workflows (#Q4366): baseline
+        // Ship, the page says when the project is not connected.
+        route: "projectWorkflows",
+        permission: "app:read",
+        labelKey: "project.menu.workflows",
+        icon: Workflow,
+        group: "ops",
+        order: 18,
       },
       {
         // Under the `deploy` option (#Q3631): an artifact is a build pushed

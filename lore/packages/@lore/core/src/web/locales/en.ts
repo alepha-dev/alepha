@@ -866,6 +866,30 @@ export default {
   "project.menu.quests": "Quests",
   "project.menu.reports": "Reports",
   "project.menu.artifacts": "Artifacts",
+  "project.menu.workflows": "Workflows",
+  "workflows.title": "Workflows",
+  "workflows.none":
+    "No workflow of this repository declares workflow_dispatch.",
+  "workflows.notConnected":
+    "This project is not connected to a GitHub repository.",
+  "workflows.connect": "Connect it in Settings",
+  "workflows.run": "Run",
+  "workflows.run.title": "Run $1",
+  "workflows.run.ref": "Branch or tag",
+  "workflows.cancel": "Cancel",
+  "workflows.started": "Workflow started",
+  "workflows.runs": "Recent runs",
+  "workflows.runs.none": "No run yet.",
+  "workflows.byMember": "by $1 from Lore",
+  "workflows.status.queued": "Queued",
+  "workflows.status.running": "Running",
+  "workflows.status.success": "Succeeded",
+  "workflows.status.failure": "Failed",
+  "workflows.status.cancelled": "Cancelled",
+  "workflows.status.skipped": "Skipped",
+  "workflows.rerun": "Re-run",
+  "workflows.rerunFailed": "Re-run failed jobs",
+  "workflows.cancelRun": "Cancel the run",
   // ⚠️ The two empty states are distinct, and collapsing them is the defect
   // #P2130 reported: a reader with a stale filter was told they had no
   // artifacts at all. `artifacts.list.empty` is the NO-MATCH one; the
@@ -4992,6 +5016,7 @@ export default {
   "permission.sigil.manage": "Mint, rotate and delete a sigil",
   "permission.group.deploy": "Deploys",
   "permission.deploy.manage": "Deploy and set variables",
+  "permission.deploy.workflow": "Start, re-run and cancel GitHub workflows",
   "permission.group.artifact": "Artifacts",
   "permission.artifact.read": "See what CI has pushed",
   "permission.artifact.delete": "Delete a build",

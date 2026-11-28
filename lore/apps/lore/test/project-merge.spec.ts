@@ -89,6 +89,9 @@ const NOT_MOVED: Record<string, string> = {
   // own connection, and the records that moved with the quests read nothing
   // until the source's repository is connected to the target.
   pull_requests: "the source repository's pull requests",
+  // A workflow started from the source (#Q4366): a dispatch of the source's
+  // repository, read with its runs, which the target does not hold.
+  workflow_dispatches: "the source repository's workflow dispatches",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

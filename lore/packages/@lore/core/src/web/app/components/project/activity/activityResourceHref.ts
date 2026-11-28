@@ -43,6 +43,14 @@ export const activityResourceHref = (
     // An uptime transition (#Q3596): its monitor's page, by uuid.
     case "monitor":
       return `${base}/uptime/${row.resourceId}`;
+    // A workflow started, re-run or cancelled (#Q4366): the Workflows
+    // section, which links each run Lore started.
+    case "github":
+      return row.action === "dispatch" ||
+        row.action === "rerun" ||
+        row.action === "cancel"
+        ? `${base}/workflows`
+        : undefined;
     default:
       return undefined;
   }

@@ -393,7 +393,17 @@ export class LoreAudits {
   readonly github = $audit({
     type: "github",
     description: "The GitHub App and the repositories projects connect",
-    actions: ["create", "rotate", "remove", "connect", "disconnect"],
+    // `dispatch`, `rerun` and `cancel` are a workflow's (#Q4366).
+    actions: [
+      "create",
+      "rotate",
+      "remove",
+      "connect",
+      "disconnect",
+      "dispatch",
+      "rerun",
+      "cancel",
+    ],
     retentionDays: 730,
   });
 
