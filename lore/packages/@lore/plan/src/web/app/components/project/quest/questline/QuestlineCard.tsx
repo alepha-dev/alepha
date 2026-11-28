@@ -1,7 +1,14 @@
 import { type I18n, formatReference } from "@lore/core/web";
 import { useI18n } from "alepha/react/i18n";
 import { Link } from "alepha/react/router";
-import { Archive, Check, CircleDot, Lock, Play } from "lucide-react";
+import {
+  Archive,
+  Check,
+  CircleDashed,
+  CircleDot,
+  Lock,
+  Play,
+} from "lucide-react";
 import type { ComponentType, SVGProps } from "react";
 
 import {
@@ -92,7 +99,7 @@ const QuestlineCard = <T extends QuestlineItem>(
       </div>
 
       <div
-        className={`line-clamp-3 text-[13px] leading-[1.34] font-semibold ${node.state === "waiting" || node.state === "shelved" ? "text-foreground/60" : ""}`}
+        className={`line-clamp-3 text-[13px] leading-[1.34] font-semibold ${node.state === "waiting" || node.state === "shelved" || node.state === "draft" ? "text-foreground/60" : ""}`}
       >
         {node.quest.title}
       </div>
@@ -148,7 +155,8 @@ type StateLabelKey =
   | "questline.state.running"
   | "questline.state.ready"
   | "questline.state.waiting"
-  | "questline.state.shelved";
+  | "questline.state.shelved"
+  | "questline.state.draft";
 
 const STATE_LABEL: Record<QuestlineState, StateLabelKey> = {
   done: "questline.state.done",
@@ -156,6 +164,7 @@ const STATE_LABEL: Record<QuestlineState, StateLabelKey> = {
   ready: "questline.state.ready",
   waiting: "questline.state.waiting",
   shelved: "questline.state.shelved",
+  draft: "questline.state.draft",
 };
 
 const STATE_ICON: Record<
@@ -167,6 +176,7 @@ const STATE_ICON: Record<
   ready: CircleDot,
   waiting: Lock,
   shelved: Archive,
+  draft: CircleDashed,
 };
 
 const STATE_CARD: Record<QuestlineState, string> = {
@@ -175,6 +185,7 @@ const STATE_CARD: Record<QuestlineState, string> = {
   ready: "bg-card border-border ring-1 ring-primary/45 hover:bg-hover",
   waiting: "bg-card/40 border-border border-dashed hover:bg-hover",
   shelved: "bg-card/30 border-border border-dashed opacity-70 hover:bg-hover",
+  draft: "bg-card/40 border-violet-500/40 border-dashed hover:bg-hover",
 };
 
 const STATE_BAND: Record<QuestlineState, string> = {
@@ -183,6 +194,7 @@ const STATE_BAND: Record<QuestlineState, string> = {
   ready: "bg-primary",
   waiting: "bg-muted-foreground/25",
   shelved: "bg-muted-foreground/15",
+  draft: "bg-violet-500/60",
 };
 
 const STATE_TEXT: Record<QuestlineState, string> = {
@@ -191,6 +203,7 @@ const STATE_TEXT: Record<QuestlineState, string> = {
   ready: "text-primary",
   waiting: "text-muted-foreground/70",
   shelved: "text-muted-foreground/60",
+  draft: "text-violet-600 dark:text-violet-400",
 };
 
 const STATE_HANDLE: Record<QuestlineState, string> = {
@@ -199,4 +212,5 @@ const STATE_HANDLE: Record<QuestlineState, string> = {
   ready: "border-primary/70",
   waiting: "border-muted-foreground/35",
   shelved: "border-muted-foreground/25",
+  draft: "border-violet-500/50",
 };

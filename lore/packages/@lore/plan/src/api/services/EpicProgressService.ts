@@ -28,6 +28,11 @@ export type EpicProgress = EpicResource["progress"];
  * number is read by four surfaces and changing it would move all of them. A
  * caller that wants shelved work out of its denominator subtracts at the
  * call site and says so on screen - see `EpicProgressMetric`, which does.
+ *
+ * A draft is open work (#Q4380), counted as a to-do quest is: in `total`
+ * and in none of the other buckets, so the remainder every surface derives
+ * holds it. No bucket filters on `draftAt`, and none may: a draft epic's
+ * quests are all drafts, and its progress would read 0/0.
  */
 export class EpicProgressService {
   protected readonly quests = $repository(quests);

@@ -46,7 +46,8 @@ export type QuestlineState =
   | "running"
   | "ready"
   | "waiting"
-  | "shelved";
+  | "shelved"
+  | "draft";
 
 export interface QuestlineNode<T extends QuestlineItem = QuestlineItem> {
   quest: T;
@@ -252,15 +253,21 @@ export class QuestlineLayout<T extends QuestlineItem> {
   }
 
   /**
-   * Five states, and only one of them needs the graph: a quest is ready
+   * Six states, and only one of them needs the graph: a quest is ready
    * when nothing stands in front of it, which is a fact about its
    * predecessor rather than about itself.
+   *
+   * A draft is its own state whatever its predecessor (#Q4380): it cannot
+   * be taken until someone marks it ready, so calling it ready or waiting
+   * would say the wrong thing about what unblocks it. Its dependents wait
+   * on it like on any quest not completed.
    */
   protected stateOf(quest: T, byId: Map<number, T>): QuestlineState {
     const status = this.statusOf(quest);
     if (status === "completed") return "done";
     if (status === "in_progress") return "running";
     if (status === "shelved") return "shelved";
+    if (status === "draft") return "draft";
     if (quest.dependsOn == null) return "ready";
     const parent = byId.get(quest.dependsOn);
     // Outside this set: the blocker exists, we just cannot see it.

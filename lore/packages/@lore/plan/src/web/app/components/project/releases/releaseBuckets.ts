@@ -144,7 +144,8 @@ export const BUCKET_ICON_CLASS: Record<ReleaseBucket, string> = {
 };
 
 /**
- * Which bucket a quest row falls into, from the three timestamps.
+ * Which bucket a quest row falls into, from the three timestamps. A draft
+ * falls into `open`, like any quest nobody took: see `questStatus`.
  *
  * The same partition `ReleaseController.progressOf` counts, written once so a
  * row's glyph and the segment it was counted into cannot disagree. Order
@@ -156,6 +157,10 @@ export const questBucket = (quest: {
   completedAt?: string;
   acceptedAt?: string;
   shelvedAt?: string;
+  /**
+   * Read by nothing here, on purpose: a draft is `open`.
+   */
+  draftAt?: string;
 }): ReleaseBucket =>
   quest.shelvedAt
     ? "shelved"
@@ -166,19 +171,27 @@ export const questBucket = (quest: {
         : "open";
 
 /**
- * The same three timestamps read as the quest status enum, for the surface
- * the release page shares with the epic's questline: `QuestlineLayout` asks
+ * The same timestamps read as the quest status enum, for the surface the
+ * release page shares with the epic's questline: `QuestlineLayout` asks
  * each row for its status, and a `QuestResource` answers from `metadata`
- * while a release row answers from here. `open` is `todo` and `inProgress`
- * is `in_progress`; the other two are spelled the same on both sides.
+ * while a release row answers from here. `open` is `todo`, or `draft` when
+ * `draftAt` is set, and `inProgress` is `in_progress`; the other two are
+ * spelled the same on both sides.
+ *
+ * ⚠️ A draft is a status here and NOT a bucket (#E178 review, item 11):
+ * `questBucket` keeps answering `open` for it, so `ReleaseController
+ * .progressOf` and the ratio do not move, and only the chip and the
+ * questline card say draft. Read it after the bucket: a shelved draft reads
+ * `shelved`, as `QuestResourceMapper.questStatus` has it.
  */
 export const questStatus = (quest: {
   completedAt?: string;
   acceptedAt?: string;
   shelvedAt?: string;
+  draftAt?: string;
 }): QuestStatus => {
   const bucket = questBucket(quest);
-  if (bucket === "open") return "todo";
+  if (bucket === "open") return quest.draftAt ? "draft" : "todo";
   if (bucket === "inProgress") return "in_progress";
   return bucket;
 };

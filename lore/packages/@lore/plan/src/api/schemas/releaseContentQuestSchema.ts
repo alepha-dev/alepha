@@ -9,9 +9,9 @@ import { quests } from "../entities/quests.ts";
  * page draws four buckets from them and a string would have to be parsed
  * back apart: `completedAt` is done, `acceptedAt` without `completedAt` is
  * in progress, `shelvedAt` is declined, and a row carrying none of the
- * three is open and untouched. Exactly the partition
- * `ReleaseController.progressOf` counts, so a card's rows and the ratio
- * above them cannot disagree.
+ * three is open and untouched (a draft among them, by `draftAt`). Exactly
+ * the partition `ReleaseController.progressOf` counts, so a card's rows and
+ * the ratio above them cannot disagree.
  *
  * ⚠️ A shelved row is included in the list and excluded from the ratio, the
  * same way `shelved` sits outside `total` on the rollup. See
@@ -38,6 +38,12 @@ export const releaseContentQuestSchema = z.object({
   completedAt: z.datetime().optional(),
   acceptedAt: z.datetime().optional(),
   shelvedAt: z.datetime().optional(),
+  /**
+   * Set while the quest is a draft (#Q4380). It counts in the `open` bucket
+   * like any quest nobody took, so the ratio does not move: the row only
+   * wears the Draft chip.
+   */
+  draftAt: z.datetime().optional(),
 });
 
 export type ReleaseContentQuest = Infer<typeof releaseContentQuestSchema>;

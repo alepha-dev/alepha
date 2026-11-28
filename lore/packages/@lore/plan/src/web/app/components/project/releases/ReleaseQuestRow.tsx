@@ -1,12 +1,19 @@
-import { cn } from "@alepha/ui";
-import { formatReference } from "@lore/core/web";
+import { Badge, cn } from "@alepha/ui";
+import { formatReference, type I18n } from "@lore/core/web";
+import { useI18n } from "alepha/react/i18n";
 import { Link, useRouter } from "alepha/react/router";
 
 import type { ReleaseContentQuest } from "../../../../../api/schemas/releaseContentQuestSchema.ts";
 import {
+  QUEST_STATUS_ICON,
+  QUEST_STATUS_LABEL_KEYS,
+  QUEST_STATUS_TONE,
+} from "../quest/questChips.ts";
+import {
   BUCKET_ICON_CLASS,
   BUCKET_ICONS,
   questBucket,
+  questStatus,
 } from "./releaseBuckets.ts";
 import ReleasePriorityPill from "./ReleasePriorityPill.tsx";
 
@@ -24,12 +31,19 @@ export interface ReleaseQuestRowProps {
  * quest fades, because it is settled and the reader is scanning for what is
  * not; a shelved one is struck through, because it is not going to happen and
  * fading alone would read as "done" at a glance.
+ *
+ * A draft sits in the open bucket with its glyph (#E178 review, item 11),
+ * and wears the Draft chip the Quests table gives it, so the reader sees
+ * that nobody can take it yet without the ratio counting it apart.
  */
 const ReleaseQuestRow = (props: ReleaseQuestRowProps) => {
   const { quest } = props;
   const router = useRouter();
+  const { tr } = useI18n<I18n, "en">();
   const bucket = questBucket(quest);
   const Icon = BUCKET_ICONS[bucket];
+  const draft = questStatus(quest) === "draft";
+  const DraftIcon = QUEST_STATUS_ICON.draft;
 
   return (
     <Link
@@ -57,6 +71,12 @@ const ReleaseQuestRow = (props: ReleaseQuestRowProps) => {
       >
         {quest.title}
       </span>
+      {draft && (
+        <Badge variant="tint" tone={QUEST_STATUS_TONE.draft}>
+          <DraftIcon className="size-3 shrink-0" aria-hidden="true" />
+          {tr(QUEST_STATUS_LABEL_KEYS.draft)}
+        </Badge>
+      )}
       <ReleasePriorityPill
         priority={quest.priority as "optional" | "low" | "medium" | "high"}
       />

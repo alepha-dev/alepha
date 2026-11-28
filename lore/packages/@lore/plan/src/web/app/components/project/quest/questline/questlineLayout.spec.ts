@@ -149,6 +149,21 @@ describe("QuestlineLayout", () => {
       ]);
     });
 
+    it("draws a draft as a draft, never ready, and its dependent as waiting on it", () => {
+      const tracks = layout.build([
+        quest(1, { status: "draft" }),
+        quest(2, { dependsOn: 1 }),
+        quest(3, { dependsOn: 1, status: "draft" }),
+      ]);
+
+      const state = new Map(tracks[0]!.nodes.map((n) => [n.quest.id, n.state]));
+      expect(state.get(1)).toBe("draft");
+      expect(state.get(2)).toBe("waiting");
+      // A draft whose predecessor is open is still a draft: what it waits
+      // on first is somebody marking it ready.
+      expect(state.get(3)).toBe("draft");
+    });
+
     it("never calls a quest ready when its blocker is outside the set", () => {
       // The epic's Flow tab sees only the epic's own quests, so a blocker
       // filed elsewhere is invisible. Ready would be a claim we cannot make.

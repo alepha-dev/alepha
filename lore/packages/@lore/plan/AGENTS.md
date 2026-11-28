@@ -159,6 +159,19 @@ draft epic always counts. `quests_open_idx` names `draft_at` for it. The
 read filter on the draft epics' ids that this replaced is gone (#Q4374): do
 not bring back a filter on `epic.status` for a quest list.
 
+**Where a draft is drawn and not left out (#Q4380).** An epic's progress
+(`EpicProgressService`) and a release's (`ReleaseContentService.progressOf`)
+count a draft as open work, in `total` and no other bucket: no fifth bucket,
+so no ratio moves. A release row (`releaseContentQuestSchema`) carries
+`draftAt`, `questBucket` answers `open` for it and `questStatus` `draft`, for
+the Draft chip on `ReleaseQuestRow` and the release Flow. The questline
+(`QuestlineLayout.stateOf`) has a `draft` state, tested after `shelved`,
+whatever the predecessor; its dependents read `waiting`. A quest whose
+predecessor is a draft says so: "Blocked by draft" on its page
+(`getQuestLine` carries `draftAt`), and `acceptQuest`'s questline refusal
+through `QuestDraftService.blockedBySentence`, which names the epic when the
+epic owns the draft.
+
 ⚠️ **`shelved` parks a whole plan (#E78, folio #1365).** `shelveEpic` /
 `unshelveEpic` (`epic_shelve` / `epic_unshelve`, Shelve / Unshelve on the
 epic page and the list row menu) are its only writers; `setEpicStatus`

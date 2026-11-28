@@ -2051,6 +2051,7 @@ export class QuestController {
             title: z.string(),
             completedAt: z.datetime().optional(),
             shelvedAt: z.datetime().optional(),
+            draftAt: z.datetime().optional(),
           })
           .optional(),
         dependents: z.array(
@@ -2060,6 +2061,7 @@ export class QuestController {
             title: z.string(),
             completedAt: z.datetime().optional(),
             shelvedAt: z.datetime().optional(),
+            draftAt: z.datetime().optional(),
           }),
         ),
       }),
@@ -2086,6 +2088,7 @@ export class QuestController {
               title: predecessor.title,
               completedAt: predecessor.completedAt,
               shelvedAt: predecessor.shelvedAt,
+              draftAt: predecessor.draftAt,
             }
           : undefined,
         dependents: dependents.map((d) => ({
@@ -2094,6 +2097,7 @@ export class QuestController {
           title: d.title,
           completedAt: d.completedAt,
           shelvedAt: d.shelvedAt,
+          draftAt: d.draftAt,
         })),
       };
     },
@@ -2620,8 +2624,16 @@ export class QuestController {
       // "Unblocked" once the predecessor completes.
       if (quest.dependsOn != null) {
         if (predecessor && !predecessor.completedAt) {
+          // A draft predecessor is named as one (#Q4380): its epic is read
+          // only then, to say who marks it ready.
+          const predecessorEpic =
+            predecessor.draftAt && predecessor.epicId != null
+              ? await this.epics.findOne({
+                  where: { id: { eq: predecessor.epicId } },
+                })
+              : undefined;
           throw new BadRequestError(
-            `Cannot accept quest: blocked by ${formatReference("quest", predecessor.shortId)}`,
+            this.drafts.blockedBySentence(predecessor, predecessorEpic),
           );
         }
       }
