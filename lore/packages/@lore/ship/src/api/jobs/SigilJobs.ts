@@ -1,13 +1,15 @@
-import { $inject } from "alepha";
+import { $inject, z } from "alepha";
 import { $job } from "alepha/api/jobs";
 import { DateTimeProvider } from "alepha/datetime";
 import { $logger } from "alepha/logger";
-import { $repository } from "alepha/orm";
+import { $repository, DatabaseProvider, sql } from "alepha/orm";
 
+import { sigilSessions } from "../entities/sigilSessions.ts";
 import {
   sigilUniquesDaily,
   UNIQUES_COLLAPSED_HASH,
 } from "../entities/sigilUniquesDaily.ts";
+import { sigilVisits } from "../entities/sigilVisits.ts";
 
 /**
  * Keeps `sigil_uniques_daily` from growing without bound.
@@ -62,6 +64,41 @@ export class SigilJobs {
 
   protected readonly log = $logger();
   protected readonly uniques = $repository(sigilUniquesDaily);
+  protected readonly sessions = $repository(sigilSessions);
+  protected readonly visits = $repository(sigilVisits);
+  protected readonly database = $inject(DatabaseProvider);
+
+  /**
+   * How long sessions and visits are kept.
+   */
+  protected readonly VISITS_KEEP_DAYS = 400;
+
+  /**
+   * Most rows one sweep touches per statement: bounded like
+   * `MAX_DAYS_PER_SWEEP`, so a backlog is worked off over several hours
+   * rather than in one statement past the job's timeout.
+   */
+  public static MAX_VISITOR_ROWS_PER_SWEEP = 5_000;
+
+  /**
+   * Erases each visitor hash once its period has ended, then prunes sessions
+   * and visits past 400 days.
+   *
+   * On the shared `0 * * * *` slot, beside `collapseAnalytics` and the other
+   * hourly jobs, so it costs no new Cloudflare cron trigger. Each step is one
+   * bounded statement binding one or two values, so D1's 100 bound
+   * parameters never come into it.
+   */
+  public readonly expireVisitors = $job({
+    name: "sigils.expire-visitors",
+    description:
+      "Erases visitor hashes whose period has ended, and prunes sessions and visits older than 400 days.",
+    cron: "0 * * * *",
+    timeout: [2, "minutes"],
+    handler: async () => {
+      await this.expireVisitorsNow();
+    },
+  });
   protected readonly dt = $inject(DateTimeProvider);
 
   /**
@@ -94,6 +131,51 @@ export class SigilJobs {
    * counts twice. That is inherent to not keeping the hashes, and not keeping
    * them is the point; the affected window is days already older than 48 hours.
    */
+  /**
+   * One sweep of {@link expireVisitors}; public so specs run it under a
+   * paused clock. Answers what each step touched.
+   */
+  public async expireVisitorsNow(at = this.dt.nowMillis()): Promise<{
+    erased: number;
+    visits: number;
+    sessions: number;
+  }> {
+    const now = new Date(at).toISOString();
+    const cutoff = new Date(
+      at - this.VISITS_KEEP_DAYS * this.DAY_MS,
+    ).toISOString();
+    const limit = sql.raw(String(SigilJobs.MAX_VISITOR_ROWS_PER_SWEEP));
+    const s = this.sessions.table;
+    const v = this.visits.table;
+    const touched = z.object({ id: z.string() });
+
+    const erased = await this.database.run(
+      sql`UPDATE ${s} SET ${sql.raw(`"${s.visitorHash.name}"`)} = NULL WHERE ${s.id} IN (SELECT ${s.id} FROM ${s} WHERE ${s.visitorHash} IS NOT NULL AND ${s.periodEndsAt} <= ${now} LIMIT ${limit}) RETURNING ${s.id} AS id`,
+      touched,
+    );
+    // Visits before sessions: a session's last event is at least its
+    // visits', so the visits of an expiring session are expired too, and the
+    // session's own cascade has nothing left to delete unbounded.
+    const visits = await this.database.run(
+      sql`DELETE FROM ${v} WHERE ${v.id} IN (SELECT ${v.id} FROM ${v} WHERE ${v.lastSeenAt} < ${cutoff} LIMIT ${limit}) RETURNING ${v.id} AS id`,
+      touched,
+    );
+    const sessions = await this.database.run(
+      sql`DELETE FROM ${s} WHERE ${s.id} IN (SELECT ${s.id} FROM ${s} WHERE ${s.lastSeenAt} < ${cutoff} LIMIT ${limit}) RETURNING ${s.id} AS id`,
+      touched,
+    );
+
+    const result = {
+      erased: erased.length,
+      visits: visits.length,
+      sessions: sessions.length,
+    };
+    if (result.erased + result.visits + result.sessions > 0) {
+      this.log.info("Expired visitor hashes and pruned old visits", result);
+    }
+    return result;
+  }
+
   protected async collapseUniques(): Promise<void> {
     const cutoff = this.dayString(
       this.dt.nowMillis() - this.UNIQUES_COLLAPSE_AFTER_DAYS * this.DAY_MS,

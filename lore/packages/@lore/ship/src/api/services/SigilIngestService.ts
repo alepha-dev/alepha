@@ -21,6 +21,10 @@ import { type Sigil, type SigilKind, sigils } from "../entities/sigils.ts";
 import { ErrorTrustEvents } from "./ErrorTrustEvents.ts";
 import { LoreAnalyticsStore } from "./LoreAnalyticsStore.ts";
 import { ProjectErrorRuleService } from "./ProjectErrorRuleService.ts";
+import {
+  type SigilVisitEvent,
+  SigilVisitService,
+} from "./SigilVisitService.ts";
 
 /**
  * What one sigil is allowed to write, right now.
@@ -99,6 +103,11 @@ export class SigilIngestService {
    * datasets declared on `DeployAnalytics`, the only write for both.
    */
   protected readonly datasets = $inject(DeployAnalytics);
+
+  /**
+   * Sessions and visits: who visited, and how each visit went.
+   */
+  protected readonly visits = $inject(SigilVisitService);
 
   /**
    * The most a stored `count` ever holds, on a group or an error.
@@ -562,7 +571,14 @@ export class SigilIngestService {
      */
     stamp: Pick<
       SigilForwarded,
-      "country" | "device" | "traffic" | "browser" | "os" | "auth"
+      | "country"
+      | "device"
+      | "traffic"
+      | "browser"
+      | "os"
+      | "auth"
+      | "visitorPeriod"
+      | "network"
     >;
     visitor: string | undefined;
     now: string;
@@ -644,17 +660,26 @@ export class SigilIngestService {
       return bucket;
     };
 
+    // The same events, one by one, for the session and visit write.
+    const events: SigilVisitEvent[] = [];
+
     for (const view of views) {
-      const hour = this.hourBucket(this.eventTime(view.ts, now));
+      const at = this.eventTime(view.ts, now);
+      const hour = this.hourBucket(at);
       const path = this.normalizePath(view.path);
-      const bucket = bucketFor(
-        hour,
-        path,
-        this.normalizeReferrer(view.referrer),
-        this.normalizeCampaign(view.campaign),
-      );
+      const referrer = this.normalizeReferrer(view.referrer);
+      const campaign = this.normalizeCampaign(view.campaign);
+      const bucket = bucketFor(hour, path, referrer, campaign);
       bucket.count += 1;
       if (view.entry) bucket.entries += 1;
+      events.push({
+        at,
+        path,
+        kind: "view",
+        referrer,
+        campaign,
+        entry: !!view.entry,
+      });
     }
 
     // An engagement carries no arrival facts of its own — it is a later
@@ -663,10 +688,39 @@ export class SigilIngestService {
     // describes, which is fine and is the property `engaged` being a separate
     // measure buys: the two sum independently at read time.
     for (const engagement of engagements) {
-      const hour = this.hourBucket(this.eventTime(engagement.ts, now));
+      const at = this.eventTime(engagement.ts, now);
       const path = this.normalizePath(engagement.path);
-      bucketFor(hour, path, "direct", "none").engaged += 1;
+      bucketFor(this.hourBucket(at), path, "direct", "none").engaged += 1;
+      events.push({
+        at,
+        path,
+        kind: "engagement",
+        referrer: "direct",
+        campaign: "none",
+        entry: false,
+      });
     }
+
+    // Sessions and visits, beside the dataset write rather than before it:
+    // the two touch disjoint tables. A declared bot gets none (it has no
+    // session or visit to carry), and its views still land in `sigil_views`
+    // below, exactly as before.
+    const visit = this.visits.record({
+      sigilId: sigil.id,
+      visitor,
+      visitorPeriod: stamp.visitorPeriod,
+      stamp: {
+        country: iso,
+        device: dev,
+        traffic: kind,
+        browser: ua,
+        os: system,
+        auth: audience,
+        network: stamp.network,
+      },
+      events,
+      now,
+    });
 
     await this.analytics.absorb({
       // One row per visitor per day. Recorded once per batch rather than per
@@ -683,7 +737,7 @@ export class SigilIngestService {
     // above, nothing catches a failure here: there is no other copy of this
     // batch to fall back on, so a throw is real data loss and has to surface
     // as one, not be swallowed the way the now-deleted dual-write mirror did.
-    await this.datasets.views.recordMany(
+    const recorded = this.datasets.views.recordMany(
       [...buckets.values()].map((bucket) => ({
         sigilId: sigil.id,
         path: bucket.path,
@@ -701,6 +755,7 @@ export class SigilIngestService {
         hour: bucket.hour,
       })),
     );
+    await Promise.all([visit, recorded]);
   }
 
   /**
