@@ -601,6 +601,76 @@ describe("ProjectReportsController", () => {
       expect(estimates[1]?.actualHours).toBeCloseTo(10);
     });
 
+    it("starts lead time when the quest was ready, and cycle time when it was accepted", async ({
+      expect,
+    }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      const now = ctx.now();
+      const iso = (ago: number) => new Date(now - ago).toISOString();
+      const done = async (title: string, patch: Record<string, unknown>) => {
+        const quest = await createTestQuest(ctx, owner, project.id, { title });
+        await ctx.questController.acceptQuest.fetch(
+          { params: { id: quest.id } },
+          { user: owner },
+        );
+        await ctx.questController.completeQuest.fetch(
+          { params: { id: quest.id }, body: {} },
+          { user: owner },
+        );
+        await ctx.repos.quests.updateById(quest.id, {
+          createdAt: iso(100 * hour),
+          acceptedAt: iso(10 * hour),
+          completedAt: iso(0),
+          ...patch,
+        });
+      };
+      // Born a draft or released by its epic, both stamp `readyAt`.
+      await done("drafted", { readyAt: iso(40 * hour) });
+      await done("never drafted", {});
+
+      const { data } = await ctx.reportsController.getReportsFlow.fetch(
+        { params: { id: project.id }, query: { from: iso(day) } },
+        { user: owner },
+      );
+
+      const lead = Object.fromEntries(
+        data.leadHistogram.map((row) => [row.key, row.count]),
+      );
+      // 40h since ready, 100h since created.
+      expect(lead.under3d).toBe(1);
+      expect(lead.under1w).toBe(1);
+      expect(data.leadP50Hours).toBeCloseTo(70);
+      expect(data.cycleP50Hours).toBeCloseTo(10);
+    });
+
+    it("draws drafts in a band of their own, out of To do", async ({
+      expect,
+    }) => {
+      const { owner, projectId, iso } = await seed();
+      const draft = await createTestQuest(ctx, owner, projectId);
+      await ctx.repos.quests.updateById(draft.id, {
+        createdAt: iso(3 * day),
+        draftAt: iso(3 * day),
+      });
+
+      const { data } = await ctx.reportsController.getReportsFlow.fetch(
+        {
+          params: { id: projectId },
+          query: { from: iso(7 * day), grain: "day" },
+        },
+        { user: owner },
+      );
+
+      expect(data.cumulative.at(-1)).toMatchObject({
+        draft: 1,
+        todo: 0,
+        inProgress: 1,
+        done: 2,
+      });
+      expect(data.cumulative[0]?.draft).toBe(0);
+    });
+
     it("draws the cumulative flow at the grain, today's state last", async ({
       expect,
     }) => {
@@ -1085,6 +1155,32 @@ describe("ProjectReportsController", () => {
       expect(data.byTag.map((row) => row.value).sort()).toEqual(["bug", "ui"]);
       expect(data.held[0]?.heldBy).toBe(owner.id);
       expect(data.held[0]?.heldDays).toBeCloseTo(2);
+    });
+
+    it("counts drafts apart from the open quests", async ({ expect }) => {
+      const owner = await createTestUser(ctx);
+      const project = await createTestProject(ctx, owner);
+      await createTestQuest(ctx, owner, project.id, { area: "api" });
+      const draft = await createTestQuest(ctx, owner, project.id, {
+        area: "api",
+      });
+      await ctx.repos.quests.updateById(draft.id, {
+        draftAt: new Date(ctx.now()).toISOString(),
+      });
+      // A shelved draft is shelved, and in neither figure.
+      const shelved = await createTestQuest(ctx, owner, project.id);
+      await ctx.repos.quests.updateById(shelved.id, {
+        draftAt: new Date(ctx.now()).toISOString(),
+        shelvedAt: new Date(ctx.now()).toISOString(),
+      });
+
+      const data = await backlog(owner, project.id);
+
+      expect(data.open).toBe(1);
+      expect(data.drafts).toBe(1);
+      expect(data.byArea).toEqual([
+        { value: "api", todo: 1, inProgress: 0, onHold: 0 },
+      ]);
     });
 
     it("groups a blocked chain under the quest at its head", async ({

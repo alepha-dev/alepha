@@ -213,6 +213,15 @@ const ReportsFlow = (props: ReportsFlowProps) => {
               label: tr("reports.flow.state.todo"),
               color: "var(--chart-3)",
             },
+            // Drafts (#Q4377), stacked last so the band sits on To do, as the
+            // state before it. `--chart-2`, the one the chart leaves free:
+            // the quest chip's violet is `--chart-4`, In progress, in dark
+            // mode, and a raw violet would skip the colour-blind palette.
+            {
+              key: "draft",
+              label: tr("reports.flow.state.draft"),
+              color: "var(--chart-2)",
+            },
           ]}
           onSelect={(key) =>
             drillDown({
@@ -221,6 +230,7 @@ const ReportsFlow = (props: ReportsFlowProps) => {
                 onHold: "on_hold",
                 inProgress: "in_progress",
                 todo: "todo",
+                draft: "draft",
               }[key],
             })
           }

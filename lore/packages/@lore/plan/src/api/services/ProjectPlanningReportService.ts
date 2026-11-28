@@ -200,7 +200,13 @@ export class ProjectPlanningReportService {
             burnup: points.map((point) => ({
               date: point.date,
               done: point.done,
-              scope: point.todo + point.inProgress + point.onHold + point.done,
+              // A draft is scope, as `total` counts it (#Q4377).
+              scope:
+                point.draft +
+                point.todo +
+                point.inProgress +
+                point.onHold +
+                point.done,
             })),
             ...(weeks
               ? {
@@ -326,7 +332,8 @@ export class ProjectPlanningReportService {
 
   /**
    * From the day the epic started, through `QuestFlowService`: its nightly
-   * rows where they exist, and the reconstruction before them.
+   * rows where they exist, and the reconstruction before them. A draft is
+   * scope, as it was while the epic rows counted drafts in `todo` (#Q4377).
    */
   protected async burnup(
     projectId: number,
@@ -361,7 +368,12 @@ export class ProjectPlanningReportService {
       points: points.map((point) => ({
         date: point.date,
         done: point.done,
-        scope: point.todo + point.inProgress + point.onHold + point.done,
+        scope:
+          point.draft +
+          point.todo +
+          point.inProgress +
+          point.onHold +
+          point.done,
       })),
     };
   }

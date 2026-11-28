@@ -10,6 +10,9 @@ import { ProjectReportsService } from "./ProjectReportsService.ts";
  * The Backlog tab's report (#Q3002): the open work as it stands, in the scope
  * every report shares. All of it is a read of the open quests, so the period
  * only narrows the objectives figure.
+ *
+ * Drafts are out of that scope and counted apart (#Q4377): one figure, never
+ * inside the open quests, their compositions or their age.
  */
 export class ProjectBacklogReportService {
   protected readonly quests = $repository(quests);
@@ -33,7 +36,8 @@ export class ProjectBacklogReportService {
     query: ReportsQuery,
   ): Promise<ReportsBacklog> {
     const scope = await this.reports.scopeOf(projectId, query);
-    const [open, completed, shelved, total] = await Promise.all([
+    const { draftAt: _notDraft, ...withDrafts } = scope;
+    const [open, completed, shelved, total, drafts] = await Promise.all([
       this.quests.findMany({
         where: { ...scope, completedAt: { isNull: true } },
         columns: [
@@ -70,6 +74,10 @@ export class ProjectBacklogReportService {
         shelvedAt: { isNotNull: true },
       }),
       this.quests.count({ projectId: { eq: projectId } }),
+      this.quests.count({
+        ...withDrafts,
+        draftAt: { isNotNull: true },
+      }),
     ]);
 
     const now = this.dt.nowMillis();
@@ -108,6 +116,7 @@ export class ProjectBacklogReportService {
 
     return {
       open: open.length,
+      drafts,
       byArea: compose((quest) => [quest.area]),
       byTag: compose((quest) => quest.tags),
       byPriority: compose((quest) => [quest.priority]),

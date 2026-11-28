@@ -16,6 +16,10 @@ import { QuestHoldTime } from "./QuestHoldTime.ts";
  *
  * Medians and p85 throughout, never means; hold time is out of cycle time, and
  * stays in lead time, which is what the requester waited.
+ *
+ * Lead time starts when the quest was ready (#Q4377): `readyAt` when it was
+ * ever a draft, else `createdAt`, since a draft is not waiting on anyone.
+ * Cycle time and aging start at `acceptedAt`, which a draft never has.
  */
 export class ProjectFlowReportService {
   protected readonly quests = $repository(quests);
@@ -183,6 +187,7 @@ export class ProjectFlowReportService {
           "shortId",
           "title",
           "createdAt",
+          "readyAt",
           "acceptedAt",
           "completedAt",
           "size",
@@ -199,7 +204,9 @@ export class ProjectFlowReportService {
     const historyOf = new Map(heldRows.map((row) => [row.id, row.history]));
 
     return rows.map((row) => {
-      const created = this.dt.of(row.createdAt).valueOf();
+      // `readyAt` holds the last release only: a quest drafted twice waits
+      // from the second (`QuestFlowHistory`'s known gaps).
+      const ready = this.dt.of(row.readyAt ?? row.createdAt).valueOf();
       const accepted = this.dt.of(row.acceptedAt!).valueOf();
       const done = this.dt.of(row.completedAt!).valueOf();
       const held = this.holdTime.within(
@@ -212,7 +219,7 @@ export class ProjectFlowReportService {
         title: row.title,
         date: row.completedAt!.slice(0, 10),
         cycleHours: Math.max(done - accepted - held, 0) / 3_600_000,
-        leadHours: Math.max(done - created, 0) / 3_600_000,
+        leadHours: Math.max(done - ready, 0) / 3_600_000,
         heldHours: held / 3_600_000,
         size: row.size,
         estimateHours:

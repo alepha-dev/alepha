@@ -40,6 +40,18 @@ export const questFlowDaily = $entity({
     inProgress: z.integer(),
     onHold: z.integer(),
     done: z.integer(),
+    /**
+     * Drafts at the end of the day (#Q4377). A reader takes an absent value
+     * as 0: the rows written before the column existed counted none, since
+     * the project and area rows left drafts out, and an epic's rows counted
+     * them in `todo`. Those rows are never rewritten, so the draft band of a
+     * snapshot starts on the night this column was first written.
+     *
+     * ⚠️ Optional with NO `db.default(...)`, so the migration is a plain
+     * additive `ALTER TABLE ADD COLUMN`: a non-null column needs a default,
+     * and a default rebuilds the table.
+     */
+    draft: z.integer().optional(),
   }),
   indexes: [
     {

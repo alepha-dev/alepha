@@ -9,6 +9,7 @@ import { describe, it } from "vitest";
 
 import {
   LorePlanApi,
+  QuestDraftService,
   QuestFlowHistory,
   QuestFlowService,
   ReleaseForecast,
@@ -78,6 +79,92 @@ describe("QuestFlowHistory", () => {
 
     expect(history.stateAt(quest, t0 + 1.5 * day)).toBe("inProgress");
     expect(history.stateAt(quest, t0 + 3 * day)).toBe("todo");
+  });
+
+  /**
+   * The draft state (#Q4377): below every other state, above to do.
+   */
+  describe("draft", () => {
+    it("reads a quest born draft as a draft from its creation", ({
+      expect,
+    }) => {
+      const quest = { ...base, draftAt: at(0) };
+
+      expect(history.stateAt(quest, t0 - day)).toBeUndefined();
+      expect(history.stateAt(quest, t0 + day)).toBe("draft");
+      expect(history.stateAt(quest, t0 + 30 * day)).toBe("draft");
+    });
+
+    it("reads a quest its epic released as a draft until readyAt", ({
+      expect,
+    }) => {
+      // Backfilled under a draft epic, then the epic was marked ready on
+      // day 2: `draftAt` cleared, `readyAt` stamped.
+      const quest = {
+        ...base,
+        readyAt: at(2),
+        acceptedAt: at(3),
+        completedAt: at(5),
+      };
+
+      expect(history.stateAt(quest, t0 + day)).toBe("draft");
+      expect(history.stateAt(quest, t0 + 2.5 * day)).toBe("todo");
+      expect(history.stateAt(quest, t0 + 4 * day)).toBe("inProgress");
+      expect(history.stateAt(quest, t0 + 6 * day)).toBe("done");
+    });
+
+    it("never reads a quest that was never drafted as a draft", ({
+      expect,
+    }) => {
+      const quest = { ...base, acceptedAt: at(2) };
+
+      expect(history.stateAt(quest, t0 + day)).toBe("todo");
+      expect(history.stateAt(quest, t0 + 3 * day)).toBe("inProgress");
+    });
+
+    it("reads a to-do quest drafted later as to do before that", ({
+      expect,
+    }) => {
+      const quest = { ...base, draftAt: at(2) };
+
+      expect(history.stateAt(quest, t0 + day)).toBe("todo");
+      expect(history.stateAt(quest, t0 + 3 * day)).toBe("draft");
+    });
+
+    it("lets every other state win over a draft", ({ expect }) => {
+      // A held or shelved quest of a draft epic carries `draftAt` too.
+      const draft = { ...base, draftAt: at(0) };
+
+      expect(history.stateAt({ ...draft, heldAt: at(1) }, t0 + 2 * day)).toBe(
+        "onHold",
+      );
+      expect(
+        history.stateAt({ ...draft, shelvedAt: at(1) }, t0 + 2 * day),
+      ).toBeUndefined();
+      expect(
+        history.stateAt(
+          { ...base, readyAt: at(3), completedAt: at(1) },
+          t0 + 2 * day,
+        ),
+      ).toBe("done");
+    });
+
+    it("loses the first release of a quest drafted twice, a known gap", ({
+      expect,
+    }) => {
+      // Released on day 2, drafted again on day 4, released on day 6: only
+      // the last release is stored.
+      const released = { ...base, readyAt: at(6) };
+      // While drafted the second time, `draftAt` and the first release say
+      // it all.
+      const drafted = { ...base, readyAt: at(2), draftAt: at(4) };
+
+      expect(history.stateAt(released, t0 + 3 * day)).toBe("draft");
+      expect(history.stateAt(released, t0 + 7 * day)).toBe("todo");
+      expect(history.stateAt(drafted, t0 + day)).toBe("draft");
+      expect(history.stateAt(drafted, t0 + 3 * day)).toBe("todo");
+      expect(history.stateAt(drafted, t0 + 5 * day)).toBe("draft");
+    });
   });
 
   it("measures time per board column up to the next move", ({ expect }) => {
@@ -275,10 +362,10 @@ describe("QuestFlowService", () => {
     expect(point).toMatchObject({ todo: 1, exact: false });
   });
 
-  it("keeps an open quest of a draft epic out of the project row only", async ({
+  it("counts an open quest of a draft epic as a draft on the project, area and epic rows", async ({
     expect,
   }) => {
-    const { flow, repos, projectId, quest, days } = await setup();
+    const { flow, repos, projectId, quest, iso, days } = await setup();
     const draft = await repos.epics.create({
       projectId,
       number: 1,
@@ -287,7 +374,8 @@ describe("QuestFlowService", () => {
       status: "draft",
     });
     // A draft epic's quest as the epic writes it: a draft.
-    await quest({ epicId: draft.id, draftAt: "2026-01-01T00:00:00.000Z" });
+    await quest({ epicId: draft.id, createdAt: iso(3), draftAt: iso(3) });
+    await quest({ createdAt: iso(3) });
     const [today] = days(0);
 
     await flow.snapshot(projectId, today!);
@@ -295,7 +383,63 @@ describe("QuestFlowService", () => {
     const rows = await repos.questFlowDaily.findMany({
       where: { projectId: { eq: projectId } },
     });
-    expect(rows.map((row) => row.dimension)).toEqual(["epic"]);
+    const byDimension = Object.fromEntries(
+      rows.map((row) => [row.dimension, [row.draft, row.todo]]),
+    );
+    expect(byDimension).toEqual({
+      project: [1, 1],
+      area: [1, 1],
+      epic: [1, 0],
+    });
+  });
+
+  it("puts a quest released by its epic in the draft band before its release only", async ({
+    expect,
+  }) => {
+    const { alepha, flow, repos, projectId, quest, iso, days } = await setup();
+    const epic = await repos.epics.create({
+      projectId,
+      number: 1,
+      title: "Draft",
+      description: "",
+      status: "draft",
+    });
+    const released = await quest({
+      epicId: epic.id,
+      createdAt: iso(5),
+      draftAt: iso(5),
+    });
+    await alepha.inject(QuestDraftService).releaseEpic(epic.id);
+    await repos.quests.updateById(released.id, { readyAt: iso(2) });
+    const [before, after] = days(3, 1);
+
+    const points = await flow.points(projectId, [before!, after!], {});
+
+    expect(points.map((point) => [point.draft, point.todo])).toEqual([
+      [1, 0],
+      [0, 1],
+    ]);
+  });
+
+  it("reads a snapshot row written before drafts were counted as none", async ({
+    expect,
+  }) => {
+    const { flow, repos, projectId, days } = await setup();
+    const [recent] = days(1);
+    await repos.questFlowDaily.create({
+      projectId,
+      day: recent!,
+      dimension: "project",
+      subject: "",
+      todo: 3,
+      inProgress: 0,
+      onHold: 0,
+      done: 0,
+    });
+
+    const [point] = await flow.points(projectId, [recent!], {});
+
+    expect(point).toMatchObject({ draft: 0, todo: 3, exact: true });
   });
 
   it("gives each board column its median", async ({ expect }) => {
