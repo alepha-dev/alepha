@@ -1,5 +1,7 @@
 import { z } from "alepha";
 
+import { insightsRangeSchema } from "../../../../../api/schemas/insightsRangeSchema.ts";
+
 /**
  * The two questions the analytics tabs ask of one app, as URL params.
  *
@@ -15,7 +17,22 @@ import { z } from "alepha";
  * decode, which is exactly that behaviour.
  */
 export const appInsightsFiltersSchema = z.object({
-  range: z.enum(["1d", "7d", "30d"]).optional(),
+  /**
+   * A preset window. Absent means this month to date, unless `from` and `to`
+   * name a custom one.
+   */
+  range: insightsRangeSchema.optional(),
+  /**
+   * A custom window, two UTC days, both included. Only read when both are
+   * there; a preset clears them.
+   */
+  from: z.string().optional(),
+  to: z.string().optional(),
+  /**
+   * `true` reads the window of the same length just before, for the deltas.
+   * A string rather than a boolean, so the URL says `compare=true`.
+   */
+  compare: z.enum(["true"]).optional(),
   traffic: z.enum(["all", "humans", "bots"]).optional(),
   /**
    * The view dimensions a leaderboard row can narrow the page to.

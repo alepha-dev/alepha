@@ -67,7 +67,7 @@ const AppErrors = () => {
   const { tr, l } = useI18n<I18n, "en">();
   const router = useRouter();
   const [project] = useStore(currentProjectAtom);
-  const { data, loading, range, traffic, setFilters } = useAppInsights();
+  const { data, loading } = useAppInsights();
 
   const groups = data?.errorGroups ?? [];
   const series = (data?.errorSeries ?? []).map((point) => ({
@@ -93,12 +93,7 @@ const AppErrors = () => {
           <span>{tr("insights.errors.title")}</span>
           <span className="text-xs">· {tr("insights.errors.note")}</span>
         </div>
-        <AppInsightsControls
-          range={range}
-          traffic={traffic}
-          loading={loading}
-          onChange={setFilters}
-        />
+        <AppInsightsControls loading={loading} />
       </div>
 
       {/* The three window numbers, above the fold and above the list. */}

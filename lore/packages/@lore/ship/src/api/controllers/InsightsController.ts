@@ -72,15 +72,6 @@ export type { InsightsResource };
  */
 export class InsightsController {
   /**
-   * Lookback windows the Insights page offers, in whole UTC days.
-   */
-  protected readonly RANGE_DAYS: Record<string, number> = {
-    "1d": 1,
-    "7d": 7,
-    "30d": 30,
-  };
-
-  /**
    * How many rows the top-countries / top-paths leaderboards return.
    */
   protected readonly TOP_N = 10;
@@ -657,7 +648,12 @@ export class InsightsController {
     schema: {
       params: z.object({ projectId: z.integer() }),
       query: z.object({
-        range: z.enum(["1d", "7d", "30d"]).optional(),
+        /**
+         * The window, as on `getInsights`: a preset, or `from` and `to`.
+         */
+        range: insightsRangeSchema.optional(),
+        from: z.string().max(40).optional(),
+        to: z.string().max(40).optional(),
         sigilId: z.uuid().optional(),
         until: z.enum(["today", "lastCompleteDay"]).optional(),
         /**
@@ -671,8 +667,7 @@ export class InsightsController {
       response: vitalsPathsResourceSchema,
     },
     handler: async ({ params, query, user }): Promise<VitalsPathsResource> => {
-      const range = query.range ?? "7d";
-      const { since, until } = this.resolveWindow(range, query.until);
+      const { range, since, until } = this.resolveRange(query);
       const boundaries = Object.fromEntries(
         Object.entries(VITALS_BUCKETS).map(([metric, bounds]) => [
           metric,
@@ -984,53 +979,6 @@ export class InsightsController {
     browser: "other",
     os: "other",
   };
-
-  /**
-   * The day bounds a request is answered over.
-   *
-   * Shared by both actions, because a "More" listing that resolved its window
-   * a second time would be one edit away from disagreeing with the overview it
-   * expands.
-   *
-   * `anchor` is the last day IN the window; everything counts back from it, so
-   * `today` and `lastCompleteDay` differ in exactly one place. `previousWindow`
-   * is the preceding window of the same width, touching this one without
-   * overlapping it.
-   */
-  protected resolveWindow(
-    range: string,
-    until: "today" | "lastCompleteDay" | undefined,
-  ): {
-    days: number;
-    anchor: Date;
-    since: string;
-    until: string;
-    previousWindow: { since: string; until: string };
-  } {
-    const days = this.RANGE_DAYS[range] ?? 7;
-    const anchor = new Date(this.dateTime.nowMillis());
-    if (until === "lastCompleteDay") {
-      anchor.setUTCDate(anchor.getUTCDate() - 1);
-    }
-    const sinceDate = new Date(anchor);
-    sinceDate.setUTCDate(sinceDate.getUTCDate() - (days - 1));
-
-    const previousUntilDate = new Date(sinceDate);
-    previousUntilDate.setUTCDate(previousUntilDate.getUTCDate() - 1);
-    const previousSinceDate = new Date(previousUntilDate);
-    previousSinceDate.setUTCDate(previousSinceDate.getUTCDate() - (days - 1));
-
-    return {
-      days,
-      anchor,
-      since: sinceDate.toISOString().slice(0, 10),
-      until: anchor.toISOString().slice(0, 10),
-      previousWindow: {
-        since: previousSinceDate.toISOString().slice(0, 10),
-        until: previousUntilDate.toISOString().slice(0, 10),
-      },
-    };
-  }
 
   /**
    * The slice of a filter set one dataset can actually answer.

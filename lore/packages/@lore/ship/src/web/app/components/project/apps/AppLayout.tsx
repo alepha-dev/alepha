@@ -133,7 +133,14 @@ const AppLayout = () => {
   // still there when you cross back, which is what makes the tab bar a
   // navigation rather than a reset.
   const filters: Record<string, string> = {};
-  for (const key of ["range", "traffic", ...APP_INSIGHTS_FILTER_KEYS]) {
+  for (const key of [
+    "range",
+    "from",
+    "to",
+    "compare",
+    "traffic",
+    ...APP_INSIGHTS_FILTER_KEYS,
+  ]) {
     const value = router.query[key];
     if (value) {
       filters[key] = value;

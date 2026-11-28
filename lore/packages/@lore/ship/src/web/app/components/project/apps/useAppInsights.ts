@@ -5,18 +5,41 @@ import { useQueryParams } from "alepha/react/router";
 
 import type { InsightsController } from "../../../../../api/controllers/InsightsController.ts";
 import type { InsightsDimensionResource } from "../../../../../api/schemas/insightsDimensionResourceSchema.ts";
+import type { insightsRangeSchema } from "../../../../../api/schemas/insightsRangeSchema.ts";
 import { currentInstanceAtom } from "../../../atoms/currentInstanceAtom.ts";
 import { appInsightsFiltersSchema } from "./appInsightsFiltersSchema.ts";
 
-export type AppInsightsRange = "1d" | "7d" | "30d";
+export type AppInsightsRange = Infer<typeof insightsRangeSchema>;
 export type AppInsightsTraffic = "all" | "humans" | "bots";
+export type AppInsightsUrl = Infer<typeof appInsightsFiltersSchema>;
 
-export const APP_INSIGHTS_RANGES: AppInsightsRange[] = ["1d", "7d", "30d"];
+/**
+ * The presets, in the order the range control draws them: rolling windows
+ * first, then the calendar ones, the longest last.
+ */
+export const APP_INSIGHTS_RANGES: AppInsightsRange[] = [
+  "1d",
+  "7d",
+  "30d",
+  "90d",
+  "thisMonth",
+  "lastMonth",
+  "thisYear",
+  "12mo",
+];
+
+/**
+ * The window a page opens on: this month, to date.
+ */
+export const APP_INSIGHTS_DEFAULT_RANGE: AppInsightsRange = "thisMonth";
+
 export const APP_INSIGHTS_TRAFFICS: AppInsightsTraffic[] = [
   "all",
   "humans",
   "bots",
 ];
+
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * The view dimensions the page can be narrowed by, in the order their chips
@@ -80,7 +103,19 @@ export const useAppInsightsFilters = () => {
     format: "querystring",
   });
 
-  const range: AppInsightsRange = params.range ?? "7d";
+  // A custom window needs both days; half of one falls back to the preset.
+  const custom =
+    !!params.from &&
+    !!params.to &&
+    DAY.test(params.from) &&
+    DAY.test(params.to) &&
+    params.from <= params.to;
+  const range: AppInsightsRange | "custom" = custom
+    ? "custom"
+    : (params.range ?? APP_INSIGHTS_DEFAULT_RANGE);
+  const from = custom ? params.from : undefined;
+  const to = custom ? params.to : undefined;
+  const compare = params.compare === "true";
   const traffic: AppInsightsTraffic = params.traffic ?? "all";
 
   // Only the keys actually set, so an absent filter is an absent query
@@ -93,8 +128,30 @@ export const useAppInsightsFilters = () => {
     }
   }
 
+  /**
+   * The window as the insights endpoints take it: a preset, or two days.
+   */
+  const period: { range?: AppInsightsRange; from?: string; to?: string } =
+    range === "custom" ? { from, to } : { range };
+
+  /**
+   * Everything in the URL but the leaderboard dialog, which closes on any
+   * change of the question.
+   */
+  const current: AppInsightsUrl = {
+    ...filters,
+    ...(params.range ? { range: params.range } : {}),
+    ...(custom ? { from, to } : {}),
+    ...(compare ? { compare: "true" as const } : {}),
+    ...(params.traffic ? { traffic: params.traffic } : {}),
+  };
+
   return {
     range,
+    from,
+    to,
+    period,
+    compare,
     traffic,
     filters,
     /**
@@ -103,12 +160,22 @@ export const useAppInsightsFilters = () => {
      */
     leaderboard: params.leaderboard,
     /**
-     * Rewrite the whole state. Passing the full object is deliberate: a merge
-     * helper would make "clear this one filter" ambiguous between an absent
-     * key and an undefined value.
+     * Rewrite part of the state, keeping the rest and closing the dialog
+     * unless `next` names one. A key set to `undefined` is cleared.
      */
-    setFilters: (next: Infer<typeof appInsightsFiltersSchema>) =>
-      setParams(next),
+    patch: (next: Partial<AppInsightsUrl>) => {
+      const merged: Record<string, string | undefined> = {
+        ...current,
+        ...next,
+      };
+      setParams(
+        Object.fromEntries(
+          Object.entries(merged).filter(
+            (entry): entry is [string, string] => !!entry[1],
+          ),
+        ) as AppInsightsUrl,
+      );
+    },
   };
 };
 
@@ -126,7 +193,7 @@ export const useAppInsightsFilters = () => {
  * and the setter that writes them back. Changing either changes the query key,
  * which is what refetches.
  *
- * Keyed on `(sigil, range, traffic)` so the two tabs that ask the same question
+ * Keyed on `(sigil, window, compare, traffic, filters)` so the two tabs that ask the same question
  * share one answer: crossing from Analytics to Vitals with the same filters
  * renders immediately from the cache and revalidates behind it, rather than
  * blanking the page for a round-trip.
@@ -136,8 +203,8 @@ export const useAppInsights = () => {
   const [project] = useStore(currentProjectAtom);
   const [instance] = useStore(currentInstanceAtom);
   const sigil = instance?.sigil;
-  const { range, traffic, filters, setFilters, leaderboard } =
-    useAppInsightsFilters();
+  const state = useAppInsightsFilters();
+  const { period, compare, traffic, filters } = state;
 
   // The instance's own capability, not the project's and not the app's: Beacon
   // off - or no sigil at all - means there is nothing collected to ask for, and
@@ -149,11 +216,12 @@ export const useAppInsights = () => {
   const filterKey = APP_INSIGHTS_FILTER_KEYS.map(
     (key) => `${key}=${filters[key] ?? ""}`,
   ).join("&");
+  const windowKey = `${period.range ?? ""}|${period.from ?? ""}|${period.to ?? ""}`;
 
   const { data, loading, error } = useQuery(
     {
       enabled,
-      key: ["app-insights", sigil?.id, range, traffic, filterKey],
+      key: ["app-insights", sigil?.id, windowKey, compare, traffic, filterKey],
       keepPreviousData: true,
       handler: async () => {
         if (!project || !sigil) {
@@ -161,17 +229,15 @@ export const useAppInsights = () => {
         }
         return await insightsApi.getInsights({
           params: { projectId: project.id },
-          // `compare` costs a second pass over the same window, and the
-          // endpoint has answered it since 2026-08-21 with nothing reading it.
-          // It is asked for here rather than per tab because both tabs render
-          // from one cache entry; Vitals ignores `previous` and pays a query
-          // it would otherwise share with Analytics anyway.
+          // `compare` costs a second pass over the same window, so it is
+          // asked for only when the switch is on. Vitals and Errors share
+          // this cache entry and ignore `previous`.
           query: {
             ...filters,
-            range,
+            ...period,
             sigilId: sigil.id,
             traffic,
-            compare: true,
+            ...(compare ? { compare: true } : {}),
           },
         });
       },
@@ -179,17 +245,8 @@ export const useAppInsights = () => {
       // so the root `ActionErrorToaster` must not toast it on top.
       onError: () => {},
     },
-    [project?.id, sigil?.id, range, traffic, filterKey, enabled],
+    [project?.id, sigil?.id, windowKey, compare, traffic, filterKey, enabled],
   );
 
-  return {
-    data,
-    loading,
-    error,
-    range,
-    traffic,
-    filters,
-    setFilters,
-    leaderboard,
-  };
+  return { ...state, data, loading, error };
 };
