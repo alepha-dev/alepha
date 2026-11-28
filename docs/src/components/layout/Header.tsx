@@ -145,6 +145,18 @@ const Header = (props: HeaderProps) => {
               </Link>
             );
           })}
+          {/* The blog speaks for all three, so it closes the nav rather than
+              standing for a fourth product. Off on a phone, where the front
+              page lists the latest posts. */}
+          <Link
+            href="/blog"
+            className={`product-nav-link hidden-mobile${routerState.url.pathname.startsWith("/blog") ? " is-active" : ""}`}
+            aria-current={
+              routerState.url.pathname.startsWith("/blog") ? "page" : undefined
+            }
+          >
+            Blog
+          </Link>
         </nav>
 
         {/* Tabs - Only shown on docs pages, hidden on mobile */}

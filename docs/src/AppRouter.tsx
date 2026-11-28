@@ -4,6 +4,8 @@ import { $page, NotFound, Redirection } from "alepha/react/router";
 import { $sitemap } from "alepha/react/sitemap";
 import { isHttpError, NotFoundError } from "alepha/server";
 
+import BlogIndex from "./components/blog/BlogIndex.tsx";
+import BlogPost from "./components/blog/BlogPost.tsx";
 import Changelog from "./components/Changelog.tsx";
 import Docs from "./components/Docs.tsx";
 import Ecosystem from "./components/Ecosystem.tsx";
@@ -12,6 +14,7 @@ import { DOCS_THEME_BOOT_SCRIPT } from "./components/layout/docsTheme.ts";
 import Layout from "./components/layout/Layout.tsx";
 import BayHome from "./components/product/BayHome.tsx";
 import LoreHome from "./components/product/LoreHome.tsx";
+import { posts } from "./config/blog.ts";
 import type { DocProduct } from "./config/docs.ts";
 import { changelog, docs, docsHref, docsOf } from "./config/docs.ts";
 import { isLatestSite } from "./config/site.ts";
@@ -127,6 +130,8 @@ export class AppRouter {
       this.lore,
       this.bay,
       this.changelog,
+      this.blog,
+      this.blogPost,
       this.m,
       this.bayDocs,
       this.loreDocs,
@@ -207,6 +212,85 @@ export class AppRouter {
       description: "All notable changes to Alepha are documented here.",
     }),
   });
+
+  /**
+   * The blog's index (#Q4557): every post of `docs/blog/`, newest first.
+   */
+  blog = $page({
+    path: "/blog",
+    component: BlogIndex,
+    label: "Blog",
+    static: true,
+    head: () => ({
+      title: "Blog",
+      description:
+        "The stories behind the changelog of the framework, Lore and Bay.",
+      link: [this.rssLink],
+    }),
+  });
+
+  /**
+   * One post. Its slug carries no date and is frozen once published: every
+   * link to the post names it.
+   */
+  blogPost = $page({
+    path: "/blog/:slug",
+    component: BlogPost,
+    schema: { params: z.object({ slug: z.text() }) },
+    static: {
+      entries: posts.map((it) => ({
+        params: { slug: it.slug },
+        label: it.title,
+      })),
+    },
+    loader: async ({ params }) => {
+      const index = posts.findIndex((it) => it.slug === params.slug);
+      const post = posts[index];
+      if (!post) {
+        throw new NotFoundError("Post not found");
+      }
+      const link = (it: (typeof posts)[number] | undefined) =>
+        it ? { slug: it.slug, title: it.title } : undefined;
+      return {
+        title: post.title,
+        description: post.description,
+        date: post.date,
+        product: post.product,
+        content: await post.content(),
+        // Newest first: the older post is the next one in the list.
+        older: link(posts[index + 1]),
+        newer: link(posts[index - 1]),
+        slug: post.slug,
+      };
+    },
+    head: (args) => ({
+      title: args.title,
+      description: args.description,
+      type: "article",
+      link: [
+        {
+          rel: "alternate",
+          type: "text/markdown",
+          href: `/blog/${args.slug}.md`,
+        },
+        this.rssLink,
+      ],
+    }),
+    errorHandler: (error) => {
+      if (isHttpError(error, 404)) {
+        return <NotFound />;
+      }
+    },
+  });
+
+  /**
+   * The blog's feed, written after the build by `gen:llms`.
+   */
+  protected readonly rssLink: HeadLink = {
+    rel: "alternate",
+    type: "application/rss+xml",
+    href: "/blog/rss.xml",
+  };
 
   /**
    * The framework docs, and the ONLY one of the three whose URLs are frozen.

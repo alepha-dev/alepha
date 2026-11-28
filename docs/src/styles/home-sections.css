@@ -2267,3 +2267,26 @@ html:has(.home-snap) {
     padding-right: var(--space-2);
   }
 }
+
+.eco-posts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .eco-posts {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.eco-posts > li {
+  display: flex;
+}
+
+.eco-posts > li > a {
+  flex: 1;
+}
