@@ -21,6 +21,7 @@ import { ErrorCommand } from "./commands/ErrorCommand.ts";
 import { EventCommand } from "./commands/EventCommand.ts";
 import { FeedbackCommand } from "./commands/FeedbackCommand.ts";
 import { FolioCommand } from "./commands/FolioCommand.ts";
+import { GitHubCommand } from "./commands/GitHubCommand.ts";
 import { HostCommand } from "./commands/HostCommand.ts";
 import { InboxCommand } from "./commands/InboxCommand.ts";
 import { JobCommand } from "./commands/JobCommand.ts";
@@ -165,6 +166,8 @@ export const AlephaLoreCli = $module({
     PromptCommand,
     // The commit push that records a quest's commits (#Q4234).
     CommitsCommand,
+    // The GitHub App and a project's repository (epic #E177).
+    GitHubCommand,
     RegistryCommand,
     StackCommand,
     LoginCommand,

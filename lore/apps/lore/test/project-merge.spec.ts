@@ -74,6 +74,10 @@ const NOT_MOVED: Record<string, string> = {
   // Retired (#E185): its rows were copied to core's `comments`, which core's
   // step moves. Nothing reads this table; it waits for its drop.
   requirements_comments: "retired, read by nothing: the threads are comments",
+  // A GitHub round trip's one-time state (#Q4360, #Q4362), bound to the
+  // project it started from for ten minutes: moved, a callback meant for the
+  // source would connect the target.
+  github_states: "the source's pending GitHub round trips, used within minutes",
 };
 // The audit trail is not here because it has no `project_id`: `audits` is
 // scoped by `scope_type` / `scope_id`, and its rows stay with the source on

@@ -85,6 +85,13 @@ export class CredentialSealService {
    */
   public static readonly DISCORD_PURPOSE = "lore:discord-webhooks:v1";
 
+  /**
+   * The instance GitHub App's private key, webhook secret and client secret
+   * (#Q4360, epic #E177): opened to sign an App JWT, verify a delivery or
+   * exchange a user code, never for a read.
+   */
+  public static readonly GITHUB_APP_PURPOSE = "lore:github-app:v1";
+
   public static readonly KEY_VERSION = 1;
 
   protected readonly crypto = $inject(CryptoProvider);

@@ -33,6 +33,10 @@ export {
 } from "./entities.ts";
 
 export { createPresetRanks, LEGACY_CONTRIBUTOR } from "./presetRanks.ts";
+export {
+  MemoryGitHubTransport,
+  type MemoryGitHubReply,
+} from "./MemoryGitHubTransport.ts";
 export { ReadCounter } from "./ReadCounter.ts";
 export { TripCounter } from "./TripCounter.ts";
 

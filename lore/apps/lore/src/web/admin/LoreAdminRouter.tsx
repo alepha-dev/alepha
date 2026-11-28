@@ -1,11 +1,12 @@
 import { $pageAdmin } from "@alepha/ui/admin";
 import type {
+  AdminGitHubController,
   AdminMcpController,
   AdminProjectController,
   AdminHostController,
 } from "@lore/core/api";
 import { $client } from "alepha/server/links";
-import { FolderKanban, Plug, Server } from "lucide-react";
+import { FolderKanban, GitPullRequest, Plug, Server } from "lucide-react";
 
 /**
  * Lore's own pages inside the shared admin shell.
@@ -24,6 +25,7 @@ export class LoreAdminRouter {
   protected readonly projectApi = $client<AdminProjectController>();
   protected readonly hostApi = $client<AdminHostController>();
   protected readonly mcpApi = $client<AdminMcpController>();
+  protected readonly githubApi = $client<AdminGitHubController>();
   /**
    * Gated on the action rather than on `admin:project:read` alone. The
    * permission is declared by this page's own `$secure`, so an admin holding
@@ -80,5 +82,23 @@ export class LoreAdminRouter {
     },
     can: () => this.mcpApi.readMcpCalls.can(),
     lazy: () => import("./AdminMcp.client.tsx"),
+  });
+
+  /**
+   * The instance's GitHub App (#Q4360, epic #E177): created by GitHub's
+   * manifest flow, or read from the environment. GitHub sends the admin back
+   * here with the manifest's one-time code. Same gate shape as the others.
+   */
+  adminGitHub = $pageAdmin({
+    path: "/github",
+    head: { title: "GitHub" },
+    nav: {
+      label: "GitHub",
+      icon: <GitPullRequest />,
+      group: "Lore",
+      order: 106,
+    },
+    can: () => this.githubApi.getGitHubApp.can(),
+    lazy: () => import("./AdminGitHub.tsx"),
   });
 }

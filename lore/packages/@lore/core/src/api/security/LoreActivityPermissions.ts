@@ -30,6 +30,7 @@ export class LoreActivityPermissions {
     sigil: "app:read",
     monitor: "app:read",
     host: "host:read",
+    github: "project:read",
     persona: "persona:read",
     usecase: "usecase:read",
     requirement: "requirement:read",

@@ -386,6 +386,18 @@ export class LoreAudits {
   });
 
   /**
+   * The GitHub integration (epic #E177). `create`, `rotate` and
+   * `remove` are the instance App's, app layer (#Q4360); the project's
+   * connection and what members do through it are scoped to the project.
+   */
+  readonly github = $audit({
+    type: "github",
+    description: "The GitHub App and the repositories projects connect",
+    actions: ["create", "rotate", "remove"],
+    retentionDays: 730,
+  });
+
+  /**
    * Every `(type, action)` pair the project layer can write, for the Activity
    * page's two dropdowns.
    *
@@ -415,6 +427,7 @@ export class LoreAudits {
       this.sigil,
       this.host,
       this.monitor,
+      this.github,
       this.project,
     ].flatMap((audit) =>
       audit.actions.map((action) => ({ type: audit.type, action })),
