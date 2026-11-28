@@ -1146,6 +1146,13 @@ export default {
   "project.create.name.firstChar": "Commencez par une lettre ou un chiffre.",
   "project.create.name.badChar":
     "Le caractère $1 n'est pas autorisé. Utilisez des lettres, des chiffres, des espaces, - et _.",
+  "jobs.field.pullRequest": "Pull request",
+  "pullRequest.review.approved": "Approuvée",
+  "pullRequest.review.changes": "Modifications demandées",
+  "pullRequest.review.requested": "Revue demandée",
+  "pullRequest.behind": "En retard sur sa base",
+  "pullRequest.conflict": "En conflit",
+  "pullRequest.sharedByQuest": "Partagée par tous les jobs de la quête",
   "pullRequest.state.open": "Ouverte",
   "pullRequest.state.draft": "Brouillon",
   "pullRequest.state.queued": "En file de fusion",

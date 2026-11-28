@@ -11,6 +11,7 @@ import { CircleDot, Server, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 import type { PromptController } from "../../../../api/controllers/PromptController.ts";
+import JobPullRequestState from "../host-jobs/JobPullRequestState.tsx";
 import JobStatusBadge from "../host-jobs/JobStatusBadge.tsx";
 import { argsText, durationText } from "../host-jobs/jobText.ts";
 
@@ -237,6 +238,10 @@ const PromptJobsTable = (props: PromptJobsTableProps) => {
                   running={job.status === "running"}
                 />
               )}
+              {/* Its pull request, compact (#Q4369). */}
+              {job.pullRequests?.length ? (
+                <JobPullRequestState pullRequests={job.pullRequests} />
+              ) : null}
             </span>
           ),
         },

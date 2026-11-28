@@ -11,6 +11,7 @@ import { Link } from "alepha/react/router";
 
 import JobStatusBadge from "./JobStatusBadge.tsx";
 import JobUsualBar from "./JobUsualBar.tsx";
+import ProjectJobPullRequests from "./ProjectJobPullRequests.tsx";
 
 export interface ProjectJobAsideProps {
   job: HostJobResource;
@@ -91,6 +92,13 @@ const ProjectJobAside = (props: ProjectJobAsideProps) => {
     ...row(tr("jobs.field.ref"), job.input.source?.ref),
     ...row(tr("jobs.field.branch"), job.input.source?.branch),
     ...row(tr("jobs.field.commit"), job.commit?.slice(0, 12)),
+    // Its pull requests and where they stand (#Q4369).
+    ...row(
+      tr("jobs.field.pullRequest"),
+      job.pullRequests?.length ? (
+        <ProjectJobPullRequests job={job} />
+      ) : undefined,
+    ),
     ...row(tr("jobs.field.queued"), l(job.queuedAt, { date: "lll" })),
     ...row(
       tr("jobs.field.started"),

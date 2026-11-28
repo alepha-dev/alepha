@@ -8,6 +8,7 @@ import { hostJobUsualSchema } from "./hostJobUsualSchema.ts";
 import { HOST_JOB_KINDS, HOST_JOB_STATUSES } from "./hostJobValues.ts";
 import { promptJobArgSchema } from "./promptJobArgSchema.ts";
 import { promptJobCauseSchema } from "./promptJobCauseSchema.ts";
+import { pullRequestStateSchema } from "./pullRequestStateSchema.ts";
 
 /**
  * A host job as its page and its list show it (#Q3984). The input is shown
@@ -72,6 +73,13 @@ export const hostJobResourceSchema = z.object({
    * sent so far. Answered by one job's read, never by a list.
    */
   pokeable: z.boolean().optional(),
+  /**
+   * The pull requests the job opened or worked on (#Q4369), of its project's
+   * connected repository: by its branch, or the number of its
+   * `pull/<n>/head` ref. A `lore/q<n>` branch is shared by every write job
+   * of the quest, so its pull request shows on each.
+   */
+  pullRequests: z.array(pullRequestStateSchema).optional(),
   pokes: z.array(hostJobPokeSchema).optional(),
   /**
    * The job's steps (#Q4433): the quests its key accepted, done of total,

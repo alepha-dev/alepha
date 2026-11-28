@@ -144,6 +144,18 @@ export class JobCommand {
             ["Ref", job.input.source?.ref],
             ["Branch", job.input.source?.branch],
             ["Commit", job.commit],
+            // Its pull requests and where they stand (#Q4369).
+            [
+              "Pull request",
+              job.pullRequests?.length
+                ? job.pullRequests
+                    .map(
+                      (pr) =>
+                        `#${pr.number} ${pr.state}${pr.checks !== "none" ? `, checks ${pr.checks}` : ""}${pr.review !== "none" ? `, ${pr.review.replace("_", " ")}` : ""}`,
+                    )
+                    .join("; ")
+                : undefined,
+            ],
             [
               "Subject",
               job.subjectType
