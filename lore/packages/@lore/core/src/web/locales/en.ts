@@ -2014,6 +2014,7 @@ export default {
   "project.settings.kanban.columns.placeholder": "Column name",
   "project.settings.kanban.columns.status": "Maps to",
   "project.settings.kanban.columns.status.todo": "To do",
+  "project.settings.kanban.columns.status.draft": "Draft",
   "project.settings.kanban.columns.status.inProgress": "In progress",
   "project.settings.kanban.columns.status.completed": "Done",
   "project.settings.kanban.columns.wip": "WIP limit",
@@ -2222,6 +2223,7 @@ export default {
   "release.edit.descriptionHint": "Markdown. Shown on the Overview tab.",
 
   "kanban.column.todo": "To do",
+  "kanban.column.draft": "Draft",
   "kanban.column.completed": "Completed",
   "kanban.column.collapse": "Collapse column",
   "kanban.column.actions": "Column actions for $1",
@@ -2260,6 +2262,24 @@ export default {
     "Create an area first: a quest has to belong to one.",
   "kanban.error.completedCannotMove": "Completed quests cannot be moved",
   "kanban.error.acceptFirst": "You must accept the quest before completing it",
+  "kanban.draft.error.toTodo":
+    "A draft cannot be taken yet: drop it on To do to mark it ready first.",
+  "kanban.draft.error.epicToTodo":
+    "This draft belongs to $1, and its quests become ready together: drop it on To do to mark the whole epic ready.",
+  "kanban.draft.error.fromTodo": "Only a quest still to do can go to Draft.",
+  "kanban.draft.error.fromTaken":
+    "This quest is taken: unassign it first, then drop it on Draft.",
+  "kanban.draft.error.fromHeld":
+    "This quest is on hold: lift the hold first. Only a quest still to do, and taken by nobody, can go to Draft.",
+  "kanban.draft.error.fromCompleted":
+    "A completed quest cannot go back to Draft: file the follow-up as a new quest.",
+  "kanban.draft.error.epicOwns":
+    "This quest belongs to $1, whose status decides for all of its quests: send the epic back to draft from its page.",
+  "kanban.draft.epicReady.title": "Mark $1 ready?",
+  "kanban.draft.epicReady.description":
+    "This draft belongs to $1, $2, and an epic's quests become ready together, never one alone. Marking the epic ready moves every one of its drafts to To do, where anyone on the project can take them.",
+  "kanban.draft.epicReady.confirm": "Mark $1 ready ($2 quests)",
+  "kanban.draft.epicReady.confirm.one": "Mark $1 ready (1 quest)",
 
   "quest.view.unassign.title": "Unassign this quest",
   "quest.view.unassign.confirm":

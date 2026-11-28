@@ -53,12 +53,11 @@ export class KanbanController {
       // meant to remove. Unshelve from the quest view to get it back.
       where.shelvedAt = { isNull: true };
 
-      // Drafts are out, as on `QuestController.getQuests` with no status,
-      // and it has to be the same rule: a quest visible on the board but
-      // absent from the list (or the reverse) is precisely the inconsistency
-      // the list's scope exists to prevent. A held draft is out too. The
-      // board's Draft column is #Q4376's.
-      where.draftAt = { isNull: true };
+      // Drafts are IN (#Q4376): the board's leftmost column holds them, the
+      // way the quest list's Draft filter shows them, and a held draft goes
+      // there too (`KanbanGrouping.laneOf`). Only a shelved draft stays
+      // out, with every shelved quest, by the filter above. The To do
+      // column never counts one: a draft reads `draft`, never `todo`.
 
       const allQuests = await this.quests.findMany({
         where,
@@ -172,7 +171,6 @@ export class KanbanController {
     const where = this.quests.createQueryWhere();
     where.projectId = { eq: quest.projectId };
     where.shelvedAt = { isNull: true };
-    where.draftAt = { isNull: true };
 
     const rows = await this.quests.findMany({
       where,
@@ -184,9 +182,9 @@ export class KanbanController {
       orderBy: [{ column: "updatedAt", direction: "desc" }],
     });
 
-    const status = this.questMapper.questStatus(quest);
+    const status = this.laneOf(quest);
     return this.orderForBoard(rows).filter((row) => {
-      if (this.questMapper.questStatus(row) !== status) return false;
+      if (this.laneOf(row) !== status) return false;
       // Within `in_progress`, the sub-column is part of the identity: two
       // lanes side by side are two independent orderings.
       if (status !== "in_progress") return true;
@@ -194,6 +192,21 @@ export class KanbanController {
         (row.kanbanColumn ?? undefined) === (quest.kanbanColumn ?? undefined)
       );
     });
+  }
+
+  /**
+   * The lane a quest sits in on the board, by the rule the client's
+   * `KanbanGrouping.laneOf` applies: a held quest stays in the lane it was
+   * held from, In progress when it was accepted, Draft when it carries
+   * `draftAt` (a held quest of an epic sent back to draft), To do otherwise.
+   * Its status alone (`on_hold`) is no column's, so ranking it among the
+   * other held quests would order it against cards in other columns.
+   */
+  protected laneOf(quest: Quest): string {
+    const status = this.questMapper.questStatus(quest);
+    if (status !== "on_hold") return status;
+    if (quest.acceptedAt) return "in_progress";
+    return quest.draftAt ? "draft" : "todo";
   }
 
   /**

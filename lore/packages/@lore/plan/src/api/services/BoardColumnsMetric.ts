@@ -21,7 +21,11 @@ import { ProjectReportsService } from "./ProjectReportsService.ts";
  * Columns from `KanbanColumnConfig`, the board's own resolution, and each
  * quest placed by the board's rule (`KanbanGrouping`): its lane from its
  * lifecycle, then its named column inside that lane, else the lane's first.
- * The completed lane is left out: it only grows. A column over its WIP limit
+ * The completed lane is left out: it only grows. The draft lane is left out
+ * too (#Q4376): a dashboard tile leaves drafts out as every default view
+ * does, so the tile's number is the open quests, and a Draft pill would read
+ * 0 forever beside a board that shows them. A draft is never counted in To
+ * do either: it is filtered out of the read. A column over its WIP limit
  * reads `warn`.
  */
 export class BoardColumnsMetric implements DashboardMetricResolver {
@@ -66,8 +70,15 @@ export class BoardColumnsMetric implements DashboardMetricResolver {
       // The synthesized ends carry a code rather than a label: the locale
       // names them, through the pill's badge.
       const columns = this.columns
-        .resolve(project, { todo: "todo", completed: "completed" })
-        .filter((column) => column.status !== "completed");
+        .resolve(project, {
+          draft: "draft",
+          todo: "todo",
+          completed: "completed",
+        })
+        .filter(
+          (column) =>
+            column.status !== "completed" && column.status !== "draft",
+        );
       const counts = new Map(columns.map((column) => [column.name, 0]));
       for (const quest of open) {
         const lane = quest.acceptedAt ? "in_progress" : "todo";

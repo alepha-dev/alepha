@@ -1,5 +1,5 @@
 import type { QuestResource } from "../../../../api/schemas/questResourceSchema.ts";
-import type { ColumnDescriptor } from "./KanbanColumn.tsx";
+import type { ColumnDescriptor, ColumnKind } from "./KanbanColumn.tsx";
 
 /**
  * Places each quest of a board into the column that should hold it.
@@ -13,8 +13,12 @@ import type { ColumnDescriptor } from "./KanbanColumn.tsx";
  * collapses to, including two done-ish ones. So the rule generalized: a
  * quest belongs to the column that both matches its STATUS and is named by
  * its `kanbanColumn`, falling back to the first column carrying that
- * status. The lifecycle triple is still the truth; columns only map onto
+ * status. The quest's lifecycle is still the truth; columns only map onto
  * it.
+ *
+ * Since #E178 a draft has a lane of its own, Draft, which the frame always
+ * carries (`KanbanColumnConfig.resolve` synthesizes it first when no column
+ * is configured for it).
  */
 export class KanbanGrouping {
   /**
@@ -30,31 +34,8 @@ export class KanbanGrouping {
     for (const col of columns) byKey[col.key] = [];
 
     for (const quest of quests) {
-      const status = quest.metadata.status;
-
-      // Shelving means "I am not doing this", so the card leaves the board
-      // rather than falling through to a fallback below — which read as the
-      // card moving *forward* into In progress. `getBoard` already filters
-      // `shelvedAt IS NULL`, so this only has to agree with the server for
-      // the window between the mutation and the next load.
-      if (status === "shelved") continue;
-
-      // ⚠️ A held quest keeps the lane it was in, because a hold suspends
-      // work rather than moving it. `on_hold` is a derived status with no
-      // column of its own, so without this it matches no descriptor and
-      // falls into the `candidates.length === 0` branch below - which does
-      // not park the card anywhere, it drops it off the board entirely,
-      // silently, while `getBoard` is still returning it.
-      //
-      // The two-way test mirrors `QuestResourceMapper.questStatus`, where
-      // `heldAt` sits directly above `acceptedAt`: lift the hold and this
-      // is exactly the status that comes back.
-      const lane =
-        status === "on_hold"
-          ? quest.acceptedAt
-            ? "in_progress"
-            : "todo"
-          : status;
+      const lane = this.laneOf(quest);
+      if (!lane) continue;
 
       const candidates = columns.filter((col) => col.kind === lane);
       if (candidates.length === 0) continue;
@@ -81,5 +62,43 @@ export class KanbanGrouping {
     }
 
     return byKey;
+  }
+
+  /**
+   * The lifecycle lane a quest sits in on the board, or `undefined` for a
+   * quest the board does not show.
+   *
+   * Public because the drop handler asks the same question of the card it
+   * picked up and of the card it landed on: a held card reads `on_hold`,
+   * which no column carries, so reading its status directly would find no
+   * column and make the drop a no-op or a wrong transition.
+   */
+  laneOf(quest: QuestResource): ColumnKind | undefined {
+    const status = quest.metadata.status;
+
+    // Shelving means "I am not doing this", so the card leaves the board
+    // rather than falling through to a fallback below — which read as the
+    // card moving *forward* into In progress. `getBoard` already filters
+    // `shelvedAt IS NULL`, so this only has to agree with the server for
+    // the window between the mutation and the next load.
+    if (status === "shelved") return undefined;
+
+    if (status !== "on_hold") return status;
+
+    // ⚠️ A held quest keeps the lane it was in, because a hold suspends
+    // work rather than moving it. `on_hold` is a derived status with no
+    // column of its own, so without this it matches no descriptor and
+    // falls into the `candidates.length === 0` branch of `group` - which
+    // does not park the card anywhere, it drops it off the board entirely,
+    // silently, while `getBoard` is still returning it.
+    //
+    // The test mirrors `QuestResourceMapper.questStatus`, where `heldAt`
+    // sits above `acceptedAt` and `draftAt`: lift the hold and this is
+    // exactly the status that comes back. A held draft (a held quest of an
+    // epic sent back to draft carries `draftAt` under its hold, #E178) has
+    // no `acceptedAt` either way, so testing `acceptedAt` alone sent it to
+    // To do: it is a draft, and it waits in Draft like the others.
+    if (quest.acceptedAt) return "in_progress";
+    return quest.draftAt ? "draft" : "todo";
   }
 }

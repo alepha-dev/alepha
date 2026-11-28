@@ -5,14 +5,15 @@ import { paletteColorSchema } from "./paletteColorSchema.ts";
 /**
  * Per-column board settings, keyed by the column's name.
  *
- * **The lifecycle triple stays the truth.** `status` is what a column
+ * **The quest's lifecycle stays the truth.** `status` is what a column
  * COLLAPSES TO, not a status of its own: quests, releases, reports, MCP,
  * the Discussion feed and the questline map (`QuestlineLayout.stateOf`) all
- * derive from `acceptedAt` / `completedAt` / `shelvedAt`, and a column that
- * invented a fourth state would put two lifecycle models in one app. What
- * this buys is that the FRAME stops being hardcoded `New | subs |
- * Completed`: a project can mark a middle column as done-ish and have two
- * of them, or mark one as the not-started lane and have none synthesized.
+ * derive from `draftAt` / `acceptedAt` / `completedAt` / `shelvedAt`, and a
+ * column that invented a state of its own would put two lifecycle models in
+ * one app. What this buys is that the FRAME stops being hardcoded `Draft |
+ * To do | subs | Completed`: a project can mark a middle column as done-ish
+ * and have two of them, or mark one as the not-started lane, or as the
+ * draft lane, and have none synthesized.
  *
  * ⚠️ Kept in its own column rather than by turning `kanbanColumns` from
  * `string[]` into an array of objects. Changing the ELEMENT TYPE of a live
@@ -32,8 +33,13 @@ export const kanbanColumnSettingsSchema = z.object({
    * Which lifecycle state a card dropped in this column ends up in.
    * Absent means `in_progress`, which is what every configured column meant
    * before this existed.
+   *
+   * `draft` since #E178: the lane of the quests not ready to be taken. Added
+   * to the enum rather than stored elsewhere, so an existing row decodes
+   * unchanged; a project that names no `draft` column gets one synthesized
+   * first (`KanbanColumnConfig.resolve`).
    */
-  status: z.enum(["todo", "in_progress", "completed"]).optional(),
+  status: z.enum(["draft", "todo", "in_progress", "completed"]).optional(),
   /**
    * A soft cap. The header reads `3/5` and a drop past it warns; it never
    * refuses, because a hard block on your own board is a tool arguing with
