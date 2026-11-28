@@ -179,7 +179,7 @@ export class PromptService {
   ): Promise<PromptResource> {
     if (this.registry.get(body.name)) {
       throw new ConflictError(
-        `'${body.name}' is a built-in prompt's name: duplicate it to change its words`,
+        `'${body.name}' is a built-in prompt's name: duplicate it to change its content`,
       );
     }
     if (await this.rowOf(projectId, body.name)) {
@@ -231,7 +231,7 @@ export class PromptService {
         .join(", ");
       if (frozen) {
         throw new BadRequestError(
-          `'${name}' is a built-in prompt: its ${frozen} cannot change. Duplicate it to write your own words`,
+          `'${name}' is a built-in prompt: its ${frozen} cannot change. Duplicate it to write your own content`,
         );
       }
     } else {

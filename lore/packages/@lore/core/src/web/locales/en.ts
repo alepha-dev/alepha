@@ -5480,7 +5480,7 @@ export default {
   "prompts.editor.duplicate": "Duplicate $1",
   "prompts.editor.edit": "Edit $1",
   "prompts.editor.description":
-    "Its own words and args. A built-in's words are Lore's: duplicate it to change them.",
+    "Its content and args. A built-in's content is Lore's: duplicate it to change it.",
   "prompts.editor.name": "Name",
   "prompts.editor.name.description": "Lowercase letters, digits and dashes.",
   "prompts.editor.title": "Title",
@@ -5488,11 +5488,11 @@ export default {
   "prompts.editor.argName": "Arg $1",
   "prompts.editor.argType": "Type",
   "prompts.editor.argAccepts": "Accepts (statuses, comma-separated)",
-  "prompts.editor.text": "Words",
+  "prompts.editor.text": "Content",
   "prompts.editor.legend": "Placeholders: $1",
   "prompts.editor.tab.general": "General",
   "prompts.editor.tab.args": "Args",
-  "prompts.editor.tab.words": "Words",
+  "prompts.editor.tab.content": "Content",
   "prompts.trigger.title": "Trigger of $1",
   "prompts.trigger.description":
     "When its runs start on their own, as its owner. A run by hand always works.",
